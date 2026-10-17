@@ -95,7 +95,11 @@ export async function playSceneQueue(
       try {
         await adapter.releaseScene(toRelease);
       } catch (error) {
-        if (!runError) throw error;
+        if (runError) {
+          console.warn('[Scenes] Scene release failed:', error);
+        } else {
+          throw error;
+        }
       }
     }
   }

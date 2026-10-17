@@ -200,18 +200,28 @@ test('a cleanup failure rejects for the caller to restore its own controls', asy
 test('a phase failure is preserved when final scene release also throws', async () => {
   const phaseError = new Error('travel failed');
   const releaseError = new Error('release failed');
-  const f = fixture({
-    travel: async () => {
-      throw phaseError;
-    },
-    releaseScene: async () => {
-      throw releaseError;
-    },
-  });
-  await assert.rejects(
-    playSceneQueue(buildPlaybackQueue(scenes, 'a', { single: true }), f),
-    (error) => error === phaseError,
-  );
+  const warnings = [];
+  const origWarn = console.warn;
+  console.warn = (...args) => warnings.push(args);
+  try {
+    const f = fixture({
+      travel: async () => {
+        throw phaseError;
+      },
+      releaseScene: async () => {
+        throw releaseError;
+      },
+    });
+    await assert.rejects(
+      playSceneQueue(buildPlaybackQueue(scenes, 'a', { single: true }), f),
+      (error) => error === phaseError,
+    );
+    assert.equal(warnings.length, 1);
+    assert.equal(warnings[0][0], '[Scenes] Scene release failed:');
+    assert.equal(warnings[0][1], releaseError);
+  } finally {
+    console.warn = origWarn;
+  }
 });
 
 test('a failing inter-scene release releases the active scene only once', async () => {
