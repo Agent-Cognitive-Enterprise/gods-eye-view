@@ -35,6 +35,7 @@ export function buildPlaybackQueue(
  * releaseScene(scene, token?) leaves a previously loaded scene before playback
  * (false refuses that initial handoff). Between scenes and during final cleanup
  * it receives no cancelled token, so resource release can finish after Stop.
+ * The first error wins when the final release also fails.
  * An empty/already-cancelled queue acquires and releases no resources.
  *
  * @param {Array<{scene:Object, shot:Object}>} queue Normalized, fixed shot queue.

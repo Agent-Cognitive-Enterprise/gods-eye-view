@@ -213,6 +213,7 @@ test('a phase failure is preserved when final scene release also throws', async 
     (error) => error === phaseError,
   );
 });
+
 test('a failing inter-scene release releases the active scene only once', async () => {
   const releaseError = new Error('release failed');
   const released = [];
