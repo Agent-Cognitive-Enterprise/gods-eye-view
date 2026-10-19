@@ -239,3 +239,25 @@ test('a failing inter-scene release releases the active scene only once', async 
   );
   assert.deepEqual(released, ['a']);
 });
+
+test('a falsy phase failure is still preserved over a release failure', async () => {
+  const releaseError = new Error('release failed');
+  const origWarn = console.warn;
+  console.warn = () => {};
+  try {
+    const f = fixture({
+      travel: async () => {
+        throw undefined;
+      },
+      releaseScene: async () => {
+        throw releaseError;
+      },
+    });
+    await assert.rejects(
+      playSceneQueue(buildPlaybackQueue(scenes, 'a', { single: true }), f),
+      (error) => error === undefined,
+    );
+  } finally {
+    console.warn = origWarn;
+  }
+});
