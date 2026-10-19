@@ -1,9 +1,5 @@
 # God's Eye View Current State
 
-Director clock listeners, interaction observers and scene release failures no
-longer leave the director inconsistent, and a phase error is kept when cleanup
-also fails.
-
 Shared distance checks use `src/geoDistance.js` with `{ lat, lon }` points and
 the IUGG mean spherical Earth radius, 6371.0088 km. `greatCircleKm` is
 canonical; `greatCircleMeters` is its exact metre conversion. Missing,
@@ -985,6 +981,10 @@ editing/playback actions while retaining persistence, camera and layer sequencin
 Shot selection updates the highlight without replacing the row, preserving
 native double-click rename. Replacing rows revokes their old listeners. Disposal stops controls immediately;
 late file and failed-action completions cannot update removed presentation.
+
+Director clock listeners, interaction observers and scene release failures no
+longer leave the director inconsistent, and a phase error is kept when cleanup
+also fails.
 
 ## Cockpit component ownership
 
