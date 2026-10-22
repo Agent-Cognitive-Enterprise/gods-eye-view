@@ -172,7 +172,13 @@ export function createGhostMapsWatcher({
     await loadDisk();
     const head = await readHead();
     state.checkedAt = now();
-    if (head === state.commit) return false;
+    if (head === state.commit) {
+      if (state.error !== null) {
+        state.error = null;
+        emit();
+      }
+      return false;
+    }
     const next = await readCommit(head);
     const previous = new Map(state.products.map((p) => [p.id, p.version]));
     const changed = next.products

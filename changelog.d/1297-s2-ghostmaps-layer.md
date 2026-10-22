@@ -5,3 +5,5 @@
   cards on click. `/api/ghostmaps` watches the repository's branch head every
   15 s and pushes each new commit to open pages, which reload only the
   products that changed (Black Pine Defense).
+- Clear a temporary GhostMaps upstream error and notify open pages when the
+  repository becomes reachable again, including when no new edition was published.

@@ -178,6 +178,58 @@ test('the catalog survives a restart from disk, and upstream failures are report
     assert.match(catalog.error, /HTTP 503/);
   }));
 
+test('an unchanged head clears an upstream outage and announces recovery once', () =>
+  withCache(async (cacheDir) => {
+    const { fetchImpl } = fakeGitHub();
+    let unavailable = false;
+    let checkedAt = 1000;
+    const requests = [];
+    const watcher = createGhostMapsWatcher({
+      cacheDir,
+      now: () => checkedAt,
+      fetchImpl: async (url, options) => {
+        requests.push(url);
+        if (unavailable) return new Response('down', { status: 503 });
+        return fetchImpl(url, options);
+      },
+      log: () => {},
+      warn: () => {},
+    });
+    const events = [];
+    watcher.subscribe((catalog) => events.push(catalog));
+    await watcher.checkNow();
+    await Promise.all([watcher.file('cip'), watcher.file('kinetic-30d')]);
+    const healthy = watcher.catalog();
+    assert.equal(events.length, 1);
+
+    unavailable = true;
+    checkedAt = 2000;
+    assert.equal(await watcher.checkNow(), false);
+    assert.match(watcher.catalog().error, /HTTP 503/);
+    assert.equal(events.length, 2);
+
+    unavailable = false;
+    checkedAt = 3000;
+    requests.length = 0;
+    assert.equal(await watcher.checkNow(), false, 'no new edition arrived');
+    const recovered = watcher.catalog();
+    assert.equal(recovered.error, null);
+    assert.equal(recovered.checkedAt, checkedAt);
+    assert.equal(recovered.commit, healthy.commit);
+    assert.equal(recovered.changedAt, healthy.changedAt);
+    assert.deepEqual(recovered.products, healthy.products);
+    assert.equal(requests.length, 1, 'recovery needs only the ref read');
+    assert.match(requests[0], /\/info\/refs\?service=git-upload-pack$/);
+    assert.equal(events.length, 3, 'subscribers see the recovered catalog');
+    assert.equal(events[2].error, null);
+    assert.equal(events[2].checkedAt, checkedAt);
+
+    checkedAt = 4000;
+    assert.equal(await watcher.checkNow(), false);
+    assert.equal(events.length, 3, 'healthy unchanged polls stay silent');
+    watcher.stop();
+  }));
+
 test('poll interval is configurable with a 5 s floor', () => {
   assert.equal(ghostMapsPollMs(undefined), 15000);
   assert.equal(ghostMapsPollMs('30'), 30000);
