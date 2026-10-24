@@ -568,55 +568,6 @@ test('setEnabled is idempotent and serializes with toggle', async () => {
   assert.equal(entry.intervalId, null, 'stats interval cleared on disable');
 });
 
-test('polled layers skip refreshes in a hidden tab and catch up once when shown', async () => {
-  const listeners = new Set();
-  let state = 'visible';
-  const pageVisibility = {
-    isHidden: () => state === 'hidden',
-    subscribe(fn) {
-      listeners.add(fn);
-      return () => listeners.delete(fn);
-    },
-  };
-  const setVisibility = (next) => {
-    state = next;
-    for (const fn of [...listeners]) fn();
-  };
-  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-  {
-    const mgr = new DataLayerManager({}, { pageVisibility });
-    const layer = makeSlowLayer('flights', { updateInterval: 40 });
-    mgr.register(layer.module);
-    await mgr.setEnabled('flights', true);
-    assert.equal(listeners.size, 1, 'one catch-up listener while polling');
-
-    setVisibility('hidden');
-    const hiddenStart = layer.calls.update;
-    await sleep(130);
-    assert.equal(layer.calls.update, hiddenStart, 'no refresh while hidden');
-    assert.equal(mgr.layers.get('flights').updateDue, true);
-
-    // Each listener call while still hidden must not refresh either.
-    setVisibility('hidden');
-    assert.equal(layer.calls.update, hiddenStart);
-
-    setVisibility('visible');
-    assert.equal(layer.calls.update, hiddenStart + 1, 'one catch-up refresh on show');
-    assert.equal(mgr.layers.get('flights').updateDue, false);
-    setVisibility('visible');
-    assert.equal(layer.calls.update, hiddenStart + 1, 'no second catch-up');
-
-    await mgr.setEnabled('flights', false);
-    assert.equal(mgr.layers.get('flights').intervalId, null);
-    assert.equal(listeners.size, 0, 'disable removes the catch-up listener');
-
-    await mgr.setEnabled('flights', true);
-    assert.equal(listeners.size, 1);
-    await mgr.destroyLayer('flights');
-    assert.equal(listeners.size, 0, 'destroy removes the catch-up listener');
-  }
-});
-
 test('idempotent absolute intent publishes its newer origin without rerunning lifecycle', async () => {
   const mgr = new DataLayerManager({});
   const layer = makeSlowLayer('rocket-launches', { updateInterval: -1 });
@@ -3540,4 +3491,93 @@ test('refreshLayerStats reaches presentation through the bare lifecycle', async 
   lifecycle.subscribeActivity((change) => changes.push(change.type));
   lifecycle.refreshLayerStats();
   assert.deepEqual(changes, ['status']);
+});
+
+test('periodic polls pause hidden, catch up once when due, and dispose visibility listeners', async (t) => {
+  const listeners = new Set();
+  const doc = {
+    hidden: false,
+    addEventListener: (_name, fn) => listeners.add(fn),
+    removeEventListener: (_name, fn) => listeners.delete(fn),
+  };
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1000 });
+  const { LayerLifecycle } = await import('./lifecycle.js');
+  const manager = new LayerLifecycle({}, { visibilityTarget: doc });
+  const { module, calls } = makeSlowLayer('hidden-poll');
+  manager.register(module);
+  await manager.setEnabled('hidden-poll', true);
+  assert.equal(calls.update, 1);
+  doc.hidden = true;
+  t.mock.timers.tick(10000);
+  assert.equal(calls.update, 1);
+  assert.equal(await manager.refreshLayer('hidden-poll'), true);
+  assert.equal(calls.update, 2, 'explicit refresh remains allowed');
+  doc.hidden = false;
+  for (const fn of listeners) fn();
+  for (const fn of listeners) fn();
+  assert.equal(calls.update, 3);
+  await Promise.resolve();
+  await Promise.resolve();
+  await manager.destroyAll();
+  assert.equal(listeners.size, 0);
+  t.mock.timers.tick(10000);
+  assert.equal(calls.update, 3);
+});
+
+async function resumeBetweenTicks(t, { failResume = false } = {}) {
+  const listeners = new Set();
+  const doc = {
+    hidden: false,
+    addEventListener: (_name, fn) => listeners.add(fn),
+    removeEventListener: (_name, fn) => listeners.delete(fn),
+  };
+  t.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1000 });
+  const { LayerLifecycle } = await import('./lifecycle.js');
+  const manager = new LayerLifecycle({}, { visibilityTarget: doc });
+  const { module, calls } = makeSlowLayer('resume-poll');
+  const updates = [];
+  module.update = async () => {
+    calls.update++;
+    updates.push(Date.now());
+    await Promise.resolve();
+    if (failResume && updates.length === 2) throw new Error('resume failed');
+  };
+  manager.register(module);
+  await manager.setEnabled('resume-poll', true);
+  assert.deepEqual(updates, [1000]);
+  doc.hidden = true;
+  t.mock.timers.tick(1000); // 2000: due tick skipped while hidden
+  t.mock.timers.tick(500); // 2500: return between ticks
+  doc.hidden = false;
+  for (const fn of listeners) fn();
+  assert.deepEqual(updates, [1000, 2500], 'overdue poll runs once on return');
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  const managerRefreshError = manager.layers.get('resume-poll').managerRefreshError;
+  if (failResume) assert.equal(managerRefreshError, 'resume failed');
+  else assert.equal(managerRefreshError, null);
+  t.mock.timers.tick(999); // 3499: the old 3000 phase must not fire
+  assert.deepEqual(updates, [1000, 2500]);
+  t.mock.timers.tick(1); // 3500: one interval after the resume poll
+  assert.deepEqual(updates, [1000, 2500, 3500]);
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  t.mock.timers.tick(1000);
+  assert.deepEqual(updates, [1000, 2500, 3500, 4500], 'new phase keeps one interval');
+  await Promise.resolve();
+  await Promise.resolve();
+  await manager.destroyAll();
+  assert.equal(listeners.size, 0);
+  t.mock.timers.tick(5000);
+  assert.equal(updates.length, 4);
+}
+
+test('periodic polls realign to the deadline after a between-ticks resume', async (t) => {
+  await resumeBetweenTicks(t);
+});
+
+test('periodic polls realign to the deadline after a failed resume refresh', async (t) => {
+  await resumeBetweenTicks(t, { failResume: true });
 });
