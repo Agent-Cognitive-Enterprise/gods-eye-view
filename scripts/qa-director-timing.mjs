@@ -88,6 +88,57 @@ try {
     };
   });
   for (const [name, passed] of Object.entries(result)) check(name, passed);
+  const visibilityRestored = await page.evaluate(async () => {
+    const { sceneDirector: director, dataManager } = window.__godsEyeView;
+    const layerId = 'director-seek-visibility-qa';
+    window.__gevQaRegisterLayer(dataManager, {
+      id: layerId,
+      name: 'Director seek visibility QA',
+      updateInterval: -1,
+      init() {},
+      enable() {},
+      disable() {},
+      update() {},
+      destroy() {},
+      getStats: () => ({ count: 0 }),
+    });
+    const scene = {
+      id: 'visibility-qa',
+      title: 'Visibility QA',
+      shots: [
+        {
+          id: 'visibility-shot',
+          title: 'Visibility shot',
+          durationSec: 0.4,
+          holdSec: 0,
+          camera: director.styleManager.getCameraState(),
+          visual: director.styleManager.getVisualState(),
+          layers: { [layerId]: { enabled: true } },
+        },
+      ],
+    };
+    director._project.scenes.push(scene);
+    try {
+      const loaded = await director.loadShot(scene.id, scene.shots[0].id, {
+        flyDuration: 0.2,
+      });
+      await dataManager.setEnabled(layerId, false, { origin: 'user' });
+      const sought = await director.seekScene(scene.id, 0.5);
+      return (
+        loaded?.started && sought && dataManager.layers.get(layerId).enabled
+      );
+    } finally {
+      director.stopScene();
+      director._project.scenes = director._project.scenes.filter(
+        ({ id }) => id !== scene.id,
+      );
+      await window.__gevQaUnregisterLayer(dataManager, layerId);
+    }
+  });
+  check(
+    'same-shot seek restores manually changed layer visibility',
+    visibilityRestored,
+  );
   const content = await page.evaluate(async () => {
     const d = window.__godsEyeView.sceneDirector;
     const scene = d._project.scenes.find(({ title }) =>

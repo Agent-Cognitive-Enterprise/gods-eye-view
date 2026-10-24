@@ -506,6 +506,10 @@ dateline while preserving both authored endpoint longitudes, and turns heading
 and roll the short way for any authored angles.
 A seek to a shot's start, as a shot action makes, selects that shot rather than
 the end of the previous one.
+Same-shot seeking restores declared layer visibility after a manual toggle,
+using the cancellable layer admission path and reporting refused restoration
+as a failed seek. Undeclared operator layers remain untouched, and unchanged
+declared visibility retains the lightweight seek path.
 See [camera directions](DIRECTOR-CAMERA.md).
 
 Realtime voice composes separate connection, response/tool, Radio handoff, input

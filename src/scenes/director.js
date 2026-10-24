@@ -1529,16 +1529,27 @@ export class SceneDirector {
       this._selectedShotId !== shot.id
     )
       return false;
+    const states = this._layerStatesForShot(scene, shot, {
+      cameraSettled: seekState.cameraProgress >= 1,
+      sceneSeek: seekState,
+    });
+    const layers = new Map(
+      this.dataManager.getAll().map((layer) => [layer.id, layer.enabled]),
+    );
+    // A manual toggle invalidates the loaded stack. Let LOAD reconcile it
+    // through the normal cancellable admission path before reporting success.
+    if (
+      sceneLayerPlan(states, new Set(layers.keys())).some(
+        ({ id, enabled }) => Boolean(layers.get(id)) !== enabled,
+      )
+    )
+      return false;
     if (!this._claimCameraOwnership()) return false;
     this._cancelActiveSceneTravel();
     this._loadAbort?.abort();
     this._loadAbort = null;
     this._loadGeneration += 1;
     this._clock.stopShot();
-    const states = this._layerStatesForShot(scene, shot, {
-      cameraSettled: seekState.cameraProgress >= 1,
-      sceneSeek: seekState,
-    });
     let applied = true;
     for (const [layerId, state] of Object.entries(states)) {
       if (!state?.enabled || !state.params) continue;

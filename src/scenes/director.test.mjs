@@ -174,6 +174,66 @@ test('scene clock seek resolves the exact shot phase and camera in both directio
   }
 });
 
+test('same-shot seeking restores declared layer visibility after manual changes', async () => {
+  const { director, dataManager, restore } = makeDirector();
+  try {
+    const shot = director._project.scenes[0].shots[0];
+    shot.layers = { flights: { enabled: true }, traffic: { enabled: false } };
+    await director.loadShot('scene-1', 'shot-a', { flyDuration: 0 });
+    await dataManager.setEnabled('flights', false);
+    await dataManager.setEnabled('traffic', true);
+    await dataManager.setEnabled('satellites', true);
+    dataManager.setEnabledCalls.length = 0;
+
+    assert.equal(await director.seekScene('scene-1', 0.25), true);
+    const enabled = new Map(dataManager.getAll().map(({ id, enabled }) => [id, enabled]));
+    assert.equal(enabled.get('flights'), true, 'restore the shot\'s enabled layer');
+    assert.equal(enabled.get('traffic'), false, 'restore the shot\'s disabled layer');
+    assert.equal(enabled.get('satellites'), true, 'preserve undeclared operator layers');
+    assert.ok(dataManager.setEnabledCalls.every(({ id }) => id !== 'satellites'));
+  } finally {
+    await director.destroy();
+    restore();
+  }
+});
+
+test('same-shot seeking reports refusal when a manually disabled layer cannot be restored', async () => {
+  let refuse = false;
+  const { director, dataManager, restore } = makeDirector({
+    data: { refuse: () => refuse },
+  });
+  try {
+    await director.loadShot('scene-1', 'shot-a', { flyDuration: 0 });
+    await dataManager.setEnabled('flights', false);
+    refuse = true;
+
+    assert.equal(await director.seekScene('scene-1', 0.25), false);
+    assert.equal(dataManager.getAll().find(({ id }) => id === 'flights').enabled, false);
+    assert.equal(director.getPlaybackTimingState().activeTimers, 0);
+  } finally {
+    await director.destroy();
+    restore();
+  }
+});
+
+test('same-shot seeking keeps the shortcut when declared visibility is unchanged', async () => {
+  const { director, dataManager, styleManager, restore } = makeDirector();
+  try {
+    await director.loadShot('scene-1', 'shot-a', { flyDuration: 0 });
+    await dataManager.setEnabled('satellites', true);
+    dataManager.setEnabledCalls.length = 0;
+    const visualCalls = styleManager.visualCalls.length;
+
+    assert.equal(await director.seekScene('scene-1', 0.25), true);
+    assert.deepEqual(dataManager.setEnabledCalls, []);
+    assert.equal(styleManager.visualCalls.length, visualCalls);
+    assert.equal(director.getPlaybackTimingState().snapshot.sceneProgress, 0.25);
+  } finally {
+    await director.destroy();
+    restore();
+  }
+});
+
 test('scene clock subscribers receive authoritative forward playback snapshots', () => {
   const { director, restore } = makeDirector();
   const snapshots = [];
