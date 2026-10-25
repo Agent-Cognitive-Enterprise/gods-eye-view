@@ -234,7 +234,7 @@ export class SceneDirector {
   destroy() {
     if (this._destroyPromise) return this._destroyPromise;
     this._destroyed = true;
-    this._sceneSeekGeneration++;
+    this._bumpSceneSeekGeneration();
     this._visibilityUnsubscribe?.();
     this._cameraHandoffUnsubscribe?.();
     this._removeCameraInput?.();
@@ -1071,7 +1071,7 @@ export class SceneDirector {
   loadShot(sceneId, shotId, options) {
     if (this._destroyed)
       return Promise.resolve({ started: false, reason: 'destroyed' });
-    this._sceneSeekGeneration++;
+    this._bumpSceneSeekGeneration();
     this._interactionTransitions = 0;
     const previousGeneration = this._loadGeneration;
     const work = this._loadShot(sceneId, shotId, options);
@@ -1521,7 +1521,17 @@ export class SceneDirector {
    * @returns {Promise<boolean|null>} Null when the shortcut does not apply and
    *   LOAD must rebuild the shot; otherwise whether the seek settled.
    */
-  async _seekLoadedShot(scene, seekState) {
+  _bumpSceneSeekGeneration() {
+    this._loadAbort?.abort();
+    this._loadAbort = null;
+    return ++this._sceneSeekGeneration;
+  }
+
+  async _seekLoadedShot(
+    scene,
+    seekState,
+    seekGeneration = this._sceneSeekGeneration,
+  ) {
     if (this._destroyed) return null;
     const shot = seekState?.shot;
     if (
@@ -1533,6 +1543,8 @@ export class SceneDirector {
       this._selectedShotId !== shot.id
     )
       return null;
+    if (this._destroyed || seekGeneration !== this._sceneSeekGeneration)
+      return false;
     if (!this._claimCameraOwnership()) return false;
     this._cancelActiveSceneTravel();
     this._loadAbort?.abort();
@@ -1547,29 +1559,57 @@ export class SceneDirector {
     // settling, leaves declared layers off the shot's stack. Reconcile only
     // those through the cancellable admission path.
     const staleStates = Object.fromEntries(
-      Object.entries(states).filter(([id, state]) => {
-        const wantEnabled = !!state?.enabled;
-        const lifecycle = this.dataManager.getLayerLifecycleState(id);
-        return (
-          lifecycle &&
-          (lifecycle.enabled !== wantEnabled ||
-            lifecycle.lifecycleState === 'enabling' ||
-            lifecycle.lifecycleState === 'disabling' ||
-            lifecycle.uncertain ||
-            this.dataManager.isEffectivelyEnabled(id) !== wantEnabled)
-        );
-      }),
+      Object.entries(states)
+        .filter(([id, state]) => {
+          const wantEnabled = !!state?.enabled;
+          const lifecycle = this.dataManager.getLayerLifecycleState(id);
+          return (
+            lifecycle &&
+            (lifecycle.enabled !== wantEnabled ||
+              lifecycle.lifecycleState === 'enabling' ||
+              lifecycle.lifecycleState === 'disabling' ||
+              lifecycle.uncertain ||
+              this.dataManager.isEffectivelyEnabled(id) !== wantEnabled)
+          );
+        })
+        .map(([id, state]) => [id, { enabled: !!state?.enabled }]),
     );
     if (Object.keys(staleStates).length) {
+      const previousEnabled = new Map(
+        Object.keys(staleStates).map((id) => [
+          id,
+          Boolean(this.dataManager.getLayerLifecycleState(id)?.enabled),
+        ]),
+      );
       const controller = new AbortController();
       this._loadAbort = controller;
       const layerResult = await this._applyLayerStates(
         staleStates,
-        this._loadToken(generation, controller.signal),
+        this._loadToken(generation, controller.signal, seekGeneration),
+        { stopOnRefusal: true, exitContextMode: false },
       );
       if (this._loadAbort === controller) this._loadAbort = null;
-      if (layerResult.cancelled || layerResult.refused.length) return false;
+      if (
+        layerResult.cancelled ||
+        layerResult.refused.length ||
+        this._destroyed ||
+        seekGeneration !== this._sceneSeekGeneration
+      ) {
+        if (!this._destroyed && !this._loadAbort && !this._running) {
+          for (const id of [...layerResult.applied].reverse()) {
+            if (this._destroyed || this._loadAbort || this._running) break;
+            await this.dataManager.setEnabled(
+              id,
+              previousEnabled.get(id) ?? false,
+              { origin: 'scene' },
+            );
+          }
+        }
+        return false;
+      }
     }
+    if (this._destroyed || seekGeneration !== this._sceneSeekGeneration)
+      return false;
     let applied = true;
     for (const [layerId, state] of Object.entries(states)) {
       if (!state?.enabled || !state.params) continue;
@@ -1582,6 +1622,8 @@ export class SceneDirector {
       }
     }
     if (!applied) return null;
+    if (this._destroyed || seekGeneration !== this._sceneSeekGeneration)
+      return false;
     this._setCameraView(
       seekState.camera || resolveCameraPose(scene, shot.camera),
     );
@@ -1603,7 +1645,7 @@ export class SceneDirector {
   seekScene(sceneId, progress) {
     if (this._destroyed) return Promise.resolve(false);
     this.stopScene(msg('Seeking scene clock'));
-    const generation = ++this._sceneSeekGeneration;
+    const generation = this._bumpSceneSeekGeneration();
     return this._trackWork(this._seekScene(sceneId, progress, generation));
   }
 
@@ -1617,11 +1659,10 @@ export class SceneDirector {
       return false;
     const seekState = this._sceneSeekState(scene, progress);
     if (!seekState) return false;
-    const seeked = await this._seekLoadedShot(scene, seekState);
-    if (seeked !== null)
-      return (
-        seeked && !this._destroyed && generation === this._sceneSeekGeneration
-      );
+    const seeked = await this._seekLoadedShot(scene, seekState, generation);
+    if (this._destroyed || generation !== this._sceneSeekGeneration)
+      return false;
+    if (seeked !== null) return seeked;
     const result = await this._loadShot(scene.id, seekState.shot.id, {
       sceneSeek: seekState,
     });
@@ -1641,15 +1682,17 @@ export class SceneDirector {
    * @param {AbortSignal} [signal] - Abort signal for this LOAD's manager calls
    * @returns {{ cancelled: boolean, signal: AbortSignal|undefined }}
    */
-  _loadToken(generation, signal = undefined) {
+  _loadToken(generation, signal = undefined, seekGeneration = null) {
     const director = this;
     return {
       signal,
       get cancelled() {
         return (
           director._destroyed ||
-          signal?.aborted ||
-          director._loadGeneration !== generation
+          Boolean(signal?.aborted) ||
+          director._loadGeneration !== generation ||
+          (seekGeneration !== null &&
+            director._sceneSeekGeneration !== seekGeneration)
         );
       },
     };
@@ -1788,7 +1831,7 @@ export class SceneDirector {
   startScene(sceneId, options) {
     if (this._destroyed)
       return Promise.resolve({ started: false, reason: 'destroyed' });
-    this._sceneSeekGeneration++;
+    this._bumpSceneSeekGeneration();
     return this._trackWork(this._startScene(sceneId, options));
   }
 
@@ -1954,9 +1997,7 @@ export class SceneDirector {
     this._setSceneMediaPlayback();
     this._interactions?.clear();
     this._dataPacks?.clear();
-    this._sceneSeekGeneration++;
-    this._loadAbort?.abort();
-    this._loadAbort = null;
+    this._bumpSceneSeekGeneration();
     this._loadGeneration++;
     this._clock.stopShot();
     this._cancelActiveSceneTravel();
@@ -2200,7 +2241,11 @@ export class SceneDirector {
    *   the transition in flight.
    * @returns {Promise<{ applied: string[], refused: string[], cancelled: boolean }>}
    */
-  async _applyLayerStates(targetStates, token = null) {
+  async _applyLayerStates(
+    targetStates,
+    token = null,
+    { stopOnRefusal = false, exitContextMode = true } = {},
+  ) {
     const applied = [];
     const refused = [];
     const abort = () => ({ applied, refused, cancelled: true });
@@ -2210,8 +2255,10 @@ export class SceneDirector {
     // the operator's pre-mode state, which is exactly where a stopped scene
     // should come to rest. Tearing that transaction in half would strand
     // Context, so it completes and cancellation is honoured immediately after.
-    await this._exitIsolatingContextMode();
-    if (token?.cancelled) return abort();
+    if (exitContextMode) {
+      await this._exitIsolatingContextMode();
+      if (token?.cancelled) return abort();
+    }
 
     const signal = token?.signal;
     const registered = new Set(
@@ -2241,6 +2288,7 @@ export class SceneDirector {
         console.warn(
           `[Scenes] Layer refused: ${id} → ${enabled ? 'on' : 'off'}`,
         );
+        if (stopOnRefusal) break;
         continue;
       }
       if (params && typeof this.dataManager.restoreLayerState !== 'function') {
