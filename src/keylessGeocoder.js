@@ -294,7 +294,9 @@ export function selectQualifiedFeature(features, query) {
     (Array.isArray(features) ? features : []).find((feature) => {
       const properties = feature?.properties ?? {};
       const name = normalizeToponym(properties.name);
-      if (name !== head && !name.startsWith(`${head} `)) return false;
+      // Exactly the place: "Paris Gare de Lyon" is in France too, but it
+      // is not what "Paris, France" asks for.
+      if (name !== head) return false;
       const where = ` ${normalizeToponym(
         [
           properties.city,

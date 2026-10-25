@@ -512,3 +512,51 @@ test('"USA" and "UK" name their countries, and a trailing comma keeps the nearby
   assert.equal(Math.round(result.lat), 34, `got ${result.label}`);
   assert.equal(fetchImpl.urls.length, 1);
 });
+
+test('a region match takes the place itself, not a place whose name starts with it', () => {
+  const station = {
+    geometry: { type: 'Point', coordinates: [4.86, 45.76] },
+    properties: {
+      osm_key: 'railway',
+      name: 'Paris Gare de Lyon',
+      city: 'Lyon',
+      country: 'France',
+      countrycode: 'FR',
+    },
+  };
+  const paris = {
+    geometry: { type: 'Point', coordinates: [2.35, 48.86] },
+    properties: {
+      osm_key: 'place',
+      name: 'Paris',
+      state: 'Île-de-France',
+      country: 'France',
+      countrycode: 'FR',
+    },
+  };
+  assert.equal(selectQualifiedFeature([station, paris], 'Paris, France'), paris);
+  assert.equal(selectQualifiedFeature([station], 'Paris, France'), null);
+});
+
+test('"UK" names the United Kingdom', () => {
+  const london = {
+    geometry: { type: 'Point', coordinates: [-0.13, 51.51] },
+    properties: {
+      osm_key: 'place',
+      name: 'London',
+      country: 'United Kingdom',
+      countrycode: 'GB',
+    },
+  };
+  const ontario = {
+    geometry: { type: 'Point', coordinates: [-81.25, 42.98] },
+    properties: {
+      osm_key: 'place',
+      name: 'London',
+      state: 'Ontario',
+      country: 'Canada',
+      countrycode: 'CA',
+    },
+  };
+  assert.equal(selectQualifiedFeature([ontario, london], 'London, UK'), london);
+});
