@@ -451,10 +451,12 @@ test('a far-off Retry-After pauses the terrain upstream for at most 10 minutes',
     settled = true;
     return res;
   });
-  while (!settled) {
+  // Bounded: the retry budget is 10 s, so 60 simulated seconds is plenty.
+  for (let step = 0; step < 60 && !settled; step += 1) {
     await new Promise((resolve) => setImmediate(resolve));
     t.mock.timers.tick(1_000);
   }
+  assert.ok(settled, 'the first request settles within its retry budget');
   assert.equal((await first).status, 502);
   limited = false;
   const pausedAt = Date.now();
