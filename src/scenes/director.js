@@ -1533,6 +1533,12 @@ export class SceneDirector {
       this._selectedShotId !== shot.id
     )
       return null;
+    if (!this._claimCameraOwnership()) return false;
+    this._cancelActiveSceneTravel();
+    this._loadAbort?.abort();
+    this._loadAbort = null;
+    const generation = ++this._loadGeneration;
+    this._clock.stopShot();
     const states = this._layerStatesForShot(scene, shot, {
       cameraSettled: seekState.cameraProgress >= 1,
       sceneSeek: seekState,
@@ -1542,21 +1548,18 @@ export class SceneDirector {
     // those through the cancellable admission path.
     const staleStates = Object.fromEntries(
       Object.entries(states).filter(([id, state]) => {
+        const wantEnabled = !!state?.enabled;
         const lifecycle = this.dataManager.getLayerLifecycleState(id);
         return (
           lifecycle &&
-          (lifecycle.lifecycleState === 'enabling' ||
+          (lifecycle.enabled !== wantEnabled ||
+            lifecycle.lifecycleState === 'enabling' ||
             lifecycle.lifecycleState === 'disabling' ||
-            this.dataManager.isEffectivelyEnabled(id) !== !!state?.enabled)
+            lifecycle.uncertain ||
+            this.dataManager.isEffectivelyEnabled(id) !== wantEnabled)
         );
       }),
     );
-    if (!this._claimCameraOwnership()) return null;
-    this._cancelActiveSceneTravel();
-    this._loadAbort?.abort();
-    this._loadAbort = null;
-    const generation = ++this._loadGeneration;
-    this._clock.stopShot();
     if (Object.keys(staleStates).length) {
       const controller = new AbortController();
       this._loadAbort = controller;

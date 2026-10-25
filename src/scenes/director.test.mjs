@@ -14,6 +14,7 @@ import { readShellSource } from '../testSupport/readShellSource.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { LayerLifecycle } from '../data/lifecycle.js';
 import { SceneDirector } from './director.js';
 import { SCENE_TRACKING_PARAM_KEYS } from './scenePolicy.js';
 import { SCENE_RECIPES, getSceneAppendRecipeById } from './recipes.js';
@@ -241,7 +242,19 @@ test('same-shot seeking restores visibility a manual toggle is still changing', 
 });
 
 test('same-shot seeking restores a layer whose superseded LOAD transition rolls back', async () => {
-  const { director, dataManager, restore } = makeDirector();
+  const { director, dataManager, styleManager, viewer, restore } = makeDirector();
+  const lifecycle = new LayerLifecycle(viewer);
+  for (const id of ['flights', 'traffic', 'satellites']) {
+    lifecycle.register({
+      id,
+      name: id,
+      init() {},
+      enable() {},
+      disable() {},
+      update() {},
+    });
+  }
+  const realDirector = new SceneDirector(viewer, styleManager, lifecycle);
   try {
     await director.loadShot('scene-1', 'shot-a', { flyDuration: 0 });
     await dataManager.setEnabled('flights', false);
@@ -254,7 +267,36 @@ test('same-shot seeking restores a layer whose superseded LOAD transition rolls 
     await reload;
     await settle();
     assert.equal(dataManager.getAll().find(({ id }) => id === 'flights').enabled, true);
+
+    await realDirector.loadShot('scene-1', 'shot-a', { flyDuration: 0 });
+    await lifecycle.setEnabled('flights', false);
+    const queuedReload = realDirector.loadShot('scene-1', 'shot-a', { flyDuration: 0 });
+    for (let i = 0; i < 20 && !lifecycle.isEffectivelyEnabled('flights'); i++) {
+      await Promise.resolve();
+    }
+    assert.deepEqual(lifecycle.getLayerLifecycleState('flights'), {
+      enabled: false,
+      lifecycleState: 'disabled',
+      uncertain: false,
+    });
+    assert.equal(await realDirector.seekScene('scene-1', 0.25), true);
+    await queuedReload;
+    await settle();
+    assert.equal(lifecycle.isEnabled('flights'), true);
+
+    lifecycle.layers.get('flights').lifecycleUncertain = true;
+    assert.equal(await realDirector.seekScene('scene-1', 0.3), true);
+    assert.equal(lifecycle.getLayerLifecycleState('flights').uncertain, false);
+
+    let navClaims = 0;
+    styleManager.runImmediateNavigation = () => {
+      navClaims += 1;
+      return false;
+    };
+    assert.equal(await realDirector.seekScene('scene-1', 0.4), false);
+    assert.equal(navClaims, 1, 'camera refusal fails the seek without falling back to LOAD');
   } finally {
+    await realDirector.destroy();
     await director.destroy();
     restore();
   }
