@@ -1,3 +1,4 @@
 - Restore a shot's declared layer visibility when seeking within it after manual
-  layer changes. Refused restoration reports a failed seek, while undeclared
-  operator layers and the unchanged-stack shortcut are preserved (@oneill9, #1374).
+  layer changes, including toggles still in flight. Only changed layers are
+  reconciled; refused restoration reports a failed seek and keeps the last
+  position, while undeclared operator layers are preserved (@oneill9, #1374).

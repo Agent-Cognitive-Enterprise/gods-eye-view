@@ -122,10 +122,15 @@ try {
       const loaded = await director.loadShot(scene.id, scene.shots[0].id, {
         flyDuration: 0.2,
       });
-      await dataManager.setEnabled(layerId, false, { origin: 'user' });
+      const disabled =
+        (await dataManager.setEnabled(layerId, false, { origin: 'user' })) &&
+        !dataManager.layers.get(layerId).enabled;
       const sought = await director.seekScene(scene.id, 0.5);
       return (
-        loaded?.started && sought && dataManager.layers.get(layerId).enabled
+        loaded?.started &&
+        disabled &&
+        sought &&
+        dataManager.layers.get(layerId).enabled
       );
     } finally {
       director.stopScene();

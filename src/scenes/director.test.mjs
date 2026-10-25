@@ -175,7 +175,7 @@ test('scene clock seek resolves the exact shot phase and camera in both directio
 });
 
 test('same-shot seeking restores declared layer visibility after manual changes', async () => {
-  const { director, dataManager, restore } = makeDirector();
+  const { director, dataManager, styleManager, restore } = makeDirector();
   try {
     const shot = director._project.scenes[0].shots[0];
     shot.layers = { flights: { enabled: true }, traffic: { enabled: false } };
@@ -184,8 +184,11 @@ test('same-shot seeking restores declared layer visibility after manual changes'
     await dataManager.setEnabled('traffic', true);
     await dataManager.setEnabled('satellites', true);
     dataManager.setEnabledCalls.length = 0;
+    const visualCalls = styleManager.visualCalls.length;
 
     assert.equal(await director.seekScene('scene-1', 0.25), true);
+    assert.equal(styleManager.visualCalls.length, visualCalls, 'do not rebuild the shot');
+    assert.equal(director.getPlaybackTimingState().snapshot.sceneProgress, 0.25);
     const enabled = new Map(dataManager.getAll().map(({ id, enabled }) => [id, enabled]));
     assert.equal(enabled.get('flights'), true, 'restore the shot\'s enabled layer');
     assert.equal(enabled.get('traffic'), false, 'restore the shot\'s disabled layer');
@@ -199,17 +202,58 @@ test('same-shot seeking restores declared layer visibility after manual changes'
 
 test('same-shot seeking reports refusal when a manually disabled layer cannot be restored', async () => {
   let refuse = false;
-  const { director, dataManager, restore } = makeDirector({
+  const { director, dataManager, styleManager, restore } = makeDirector({
     data: { refuse: () => refuse },
   });
   try {
     await director.loadShot('scene-1', 'shot-a', { flyDuration: 0 });
+    assert.equal(await director.seekScene('scene-1', 0.1), true);
     await dataManager.setEnabled('flights', false);
     refuse = true;
+    const visualCalls = styleManager.visualCalls.length;
 
     assert.equal(await director.seekScene('scene-1', 0.25), false);
     assert.equal(dataManager.getAll().find(({ id }) => id === 'flights').enabled, false);
-    assert.equal(director.getPlaybackTimingState().activeTimers, 0);
+    const timing = director.getPlaybackTimingState();
+    assert.equal(timing.activeTimers, 0);
+    assert.ok(Math.abs(timing.snapshot.sceneProgress - 0.1) < 1e-9, 'keep the last settled seek position');
+    assert.equal(styleManager.visualCalls.length, visualCalls, 'do not rebuild the shot');
+  } finally {
+    await director.destroy();
+    restore();
+  }
+});
+
+test('same-shot seeking restores visibility a manual toggle is still changing', async () => {
+  const { director, dataManager, restore } = makeDirector();
+  try {
+    await director.loadShot('scene-1', 'shot-a', { flyDuration: 0 });
+    const disabling = dataManager.setEnabled('flights', false);
+
+    assert.equal(await director.seekScene('scene-1', 0.25), true);
+    await disabling;
+    await settle();
+    assert.equal(dataManager.getAll().find(({ id }) => id === 'flights').enabled, true);
+  } finally {
+    await director.destroy();
+    restore();
+  }
+});
+
+test('same-shot seeking restores a layer whose superseded LOAD transition rolls back', async () => {
+  const { director, dataManager, restore } = makeDirector();
+  try {
+    await director.loadShot('scene-1', 'shot-a', { flyDuration: 0 });
+    await dataManager.setEnabled('flights', false);
+    dataManager.setEnabledCalls.length = 0;
+    const reload = director.loadShot('scene-1', 'shot-a', { flyDuration: 0 });
+    for (let i = 0; i < 20 && !dataManager.setEnabledCalls.length; i++) await Promise.resolve();
+    assert.equal(dataManager.getLayerLifecycleState('flights').lifecycleState, 'enabling');
+
+    assert.equal(await director.seekScene('scene-1', 0.25), true);
+    await reload;
+    await settle();
+    assert.equal(dataManager.getAll().find(({ id }) => id === 'flights').enabled, true);
   } finally {
     await director.destroy();
     restore();
@@ -707,6 +751,7 @@ function installSceneRuntime(project = PROJECT_FIXTURE, { storage } = {}) {
  */
 function fakeDataManager({ registered = REGISTERED, refuse = () => false } = {}) {
   const enabled = new Map();
+  const pending = new Map();
   const setEnabledCalls = [];
   const setParamsCalls = [];
   const committed = [];
@@ -719,12 +764,25 @@ function fakeDataManager({ registered = REGISTERED, refuse = () => false } = {})
     setParamsCalls,
     committed,
     getAll: () => registered.map((id) => ({ id, enabled: !!enabled.get(id) })),
+    getLayerLifecycleState: (id) => {
+      if (!registered.includes(id)) return null;
+      const on = !!enabled.get(id);
+      const target = pending.get(id);
+      return {
+        enabled: on,
+        lifecycleState:
+          target === undefined ? (on ? 'enabled' : 'disabled') : target ? 'enabling' : 'disabling',
+      };
+    },
+    isEffectivelyEnabled: (id) => pending.get(id) ?? !!enabled.get(id),
     getLayerParams: () => null,
     async setEnabled(id, shouldEnable, { signal } = {}) {
       setEnabledCalls.push({ id, enabled: shouldEnable, signal });
       if (refuse(id, shouldEnable)) return false;
       // Yield once so a stop landing during the transition is observable.
+      pending.set(id, shouldEnable);
       await Promise.resolve();
+      if (pending.get(id) === shouldEnable) pending.delete(id);
       if (signal?.aborted) return false;
       enabled.set(id, shouldEnable);
       committed.push({ id, enabled: shouldEnable });

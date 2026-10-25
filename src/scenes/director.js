@@ -1516,9 +1516,13 @@ export class SceneDirector {
     return new Promise((resolve) => this._runIdleResolvers.add(resolve));
   }
 
-  /** Apply a new time inside the already-loaded shot without rebuilding its stack. */
-  _seekLoadedShot(scene, seekState) {
-    if (this._destroyed) return false;
+  /**
+   * Apply a new time inside the already-loaded shot without rebuilding its stack.
+   * @returns {Promise<boolean|null>} Null when the shortcut does not apply and
+   *   LOAD must rebuild the shot; otherwise whether the seek settled.
+   */
+  async _seekLoadedShot(scene, seekState) {
+    if (this._destroyed) return null;
     const shot = seekState?.shot;
     if (
       !scene ||
@@ -1528,28 +1532,41 @@ export class SceneDirector {
       this._loadedSceneId !== scene.id ||
       this._selectedShotId !== shot.id
     )
-      return false;
+      return null;
     const states = this._layerStatesForShot(scene, shot, {
       cameraSettled: seekState.cameraProgress >= 1,
       sceneSeek: seekState,
     });
-    const layers = new Map(
-      this.dataManager.getAll().map((layer) => [layer.id, layer.enabled]),
+    // A manual toggle, or a superseded LOAD transition whose rollback is still
+    // settling, leaves declared layers off the shot's stack. Reconcile only
+    // those through the cancellable admission path.
+    const staleStates = Object.fromEntries(
+      Object.entries(states).filter(([id, state]) => {
+        const lifecycle = this.dataManager.getLayerLifecycleState(id);
+        return (
+          lifecycle &&
+          (lifecycle.lifecycleState === 'enabling' ||
+            lifecycle.lifecycleState === 'disabling' ||
+            this.dataManager.isEffectivelyEnabled(id) !== !!state?.enabled)
+        );
+      }),
     );
-    // A manual toggle invalidates the loaded stack. Let LOAD reconcile it
-    // through the normal cancellable admission path before reporting success.
-    if (
-      sceneLayerPlan(states, new Set(layers.keys())).some(
-        ({ id, enabled }) => Boolean(layers.get(id)) !== enabled,
-      )
-    )
-      return false;
-    if (!this._claimCameraOwnership()) return false;
+    if (!this._claimCameraOwnership()) return null;
     this._cancelActiveSceneTravel();
     this._loadAbort?.abort();
     this._loadAbort = null;
-    this._loadGeneration += 1;
+    const generation = ++this._loadGeneration;
     this._clock.stopShot();
+    if (Object.keys(staleStates).length) {
+      const controller = new AbortController();
+      this._loadAbort = controller;
+      const layerResult = await this._applyLayerStates(
+        staleStates,
+        this._loadToken(generation, controller.signal),
+      );
+      if (this._loadAbort === controller) this._loadAbort = null;
+      if (layerResult.cancelled || layerResult.refused.length) return false;
+    }
     let applied = true;
     for (const [layerId, state] of Object.entries(states)) {
       if (!state?.enabled || !state.params) continue;
@@ -1561,7 +1578,7 @@ export class SceneDirector {
         applied = false;
       }
     }
-    if (!applied) return false;
+    if (!applied) return null;
     this._setCameraView(
       seekState.camera || resolveCameraPose(scene, shot.camera),
     );
@@ -1597,7 +1614,11 @@ export class SceneDirector {
       return false;
     const seekState = this._sceneSeekState(scene, progress);
     if (!seekState) return false;
-    if (this._seekLoadedShot(scene, seekState)) return true;
+    const seeked = await this._seekLoadedShot(scene, seekState);
+    if (seeked !== null)
+      return (
+        seeked && !this._destroyed && generation === this._sceneSeekGeneration
+      );
     const result = await this._loadShot(scene.id, seekState.shot.id, {
       sceneSeek: seekState,
     });
