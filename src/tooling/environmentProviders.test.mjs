@@ -411,3 +411,55 @@ test('terrain middleware retains successful chunks around a failure and retries 
   );
   assert.equal(requests.length, 4);
 });
+
+test('after a 429 the terrain proxy leaves the upstream alone and logs once', async (t) => {
+  isolate(t);
+  const warnings = [];
+  t.mock.method(console, 'warn', (...args) => warnings.push(args.join(' ')));
+  let calls = 0;
+  t.mock.method(globalThis, 'fetch', async () => {
+    calls += 1;
+    return new Response('', { status: 429 });
+  });
+  const request = install(terrainHeightsProxy());
+  await request('/?points=1,2');
+  const afterFirst = calls;
+  assert.ok(afterFirst >= 1);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /HTTP 429; pausing upstream for 60 s/);
+  // New points during the pause: no upstream call, no new log line.
+  const paused = await request('/?points=3,4');
+  assert.equal(calls, afterFirst);
+  assert.equal(paused.status, 502);
+  assert.equal(warnings.length, 1);
+});
+
+test('a far-off Retry-After pauses the terrain upstream for at most 10 minutes', async (t) => {
+  isolate(t);
+  t.mock.method(console, 'warn', () => {});
+  t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 1_000_000 });
+  let limited = true;
+  t.mock.method(globalThis, 'fetch', async () =>
+    limited
+      ? new Response('', { status: 429, headers: { 'retry-after': '86400' } })
+      : Response.json({ results: [{ ellipsoid: 100 }] }),
+  );
+  const request = install(terrainHeightsProxy());
+  // The first request spends its retry budget on 429s, then the pause begins.
+  let settled = false;
+  const first = request('/?points=1,2').then((res) => {
+    settled = true;
+    return res;
+  });
+  while (!settled) {
+    await new Promise((resolve) => setImmediate(resolve));
+    t.mock.timers.tick(1_000);
+  }
+  assert.equal((await first).status, 502);
+  limited = false;
+  const pausedAt = Date.now();
+  t.mock.timers.setTime(pausedAt + 9 * 60_000);
+  assert.equal((await request('/?points=3,4')).status, 502, 'still paused');
+  t.mock.timers.setTime(pausedAt + 10 * 60_000 + 1);
+  assert.equal((await request('/?points=3,4')).status, 200, 'pause over');
+});

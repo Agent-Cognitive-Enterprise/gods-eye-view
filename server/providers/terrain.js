@@ -6,6 +6,7 @@ import {
   parseTerrainPoints,
   resolveTerrainHeightRequest,
   terrainPointKey,
+  terrainRetryAfterMs,
   validTerrainResult,
 } from '../../src/data/terrainHeightsProxy.js';
 import { makeRateLimiter, clientKey } from './common/rate-limit.js';
@@ -55,6 +56,15 @@ export function terrainHeightsProxy(options = {}) {
   // 2026-08-21). 64 points costs 5.6-12 s, inside the timeout at both ends of
   // that range.
   const UPSTREAM_CHUNK = 64;
+  // After a 429 the upstream is left alone for its Retry-After (at most
+  // RATE_LIMIT_PAUSE_MAX_MS, so a far-off date can't stop terrain until a
+  // restart), or RATE_LIMIT_PAUSE_MS when it gives none. Every page poll for
+  // new points (about once a second while the camera moves) otherwise asks
+  // again with its own retries, which keeps the limit in force and logs each
+  // time.
+  const RATE_LIMIT_PAUSE_MS = 60_000;
+  const RATE_LIMIT_PAUSE_MAX_MS = 10 * 60_000;
+  let rateLimitedUntil = 0;
   const MAX_POINTS = UPSTREAM_CHUNK;
   /**
    * Entry ceiling for the point cache, and with it the file written from it.
@@ -211,15 +221,31 @@ export function terrainHeightsProxy(options = {}) {
    * @returns {Promise<Array<object>>}
    */
   async function fetchUpstreamAll(points) {
+    if (Date.now() < rateLimitedUntil) {
+      // Rate-limited: asking again only extends the limit. Cached points are
+      // still served; the rest resolve on the page through its geoid.
+      const error = new Error('HTTP 429');
+      error.coolingDown = true;
+      throw error;
+    }
     const results = [];
     let firstError = null;
     for (let i = 0; i < points.length; i += UPSTREAM_CHUNK) {
       const chunk = points.slice(i, i + UPSTREAM_CHUNK);
       let chunkResults = [];
-      try {
-        chunkResults = await fetchTerrainChunkWithRetry(chunk);
-      } catch (error) {
-        firstError = firstError || error;
+      if (Date.now() >= rateLimitedUntil) {
+        try {
+          chunkResults = await fetchTerrainChunkWithRetry(chunk);
+        } catch (error) {
+          firstError = firstError || error;
+          if (error?.message === 'HTTP 429')
+            rateLimitedUntil =
+              Date.now() +
+              Math.min(
+                terrainRetryAfterMs(error.retryAfter) ?? RATE_LIMIT_PAUSE_MS,
+                RATE_LIMIT_PAUSE_MAX_MS,
+              );
+        }
       }
       // Keep later chunks aligned even if a malformed upstream response omits
       // trailing positions. The resolver will reject each null individually.
@@ -292,9 +318,17 @@ export function terrainHeightsProxy(options = {}) {
           evictOverflow();
           diskDirty = true;
         }
-        if (outcome.upstreamError) {
+        if (outcome.upstreamError?.coolingDown) {
+          // Logged once, when the pause began.
+        } else if (outcome.upstreamError) {
+          const pause =
+            outcome.upstreamError.message === 'HTTP 429' &&
+            Date.now() < rateLimitedUntil
+              ? ` (HTTP 429; pausing upstream for ${Math.ceil((rateLimitedUntil - Date.now()) / 1000)} s)`
+              : '';
           console.warn(
             '[terrain-heights-proxy] refresh incomplete' +
+              pause +
               ' — serving stale points when available',
           );
         } else if (outcome.absentPoints > 0) {
