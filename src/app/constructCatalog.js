@@ -127,7 +127,7 @@ export function createApplicationCatalog({
         createApplicationGnssIntegrity({
           source: sources['gnss-integrity'],
         }),
-        createApplicationGhostMaps(),
+        createApplicationGhostMaps({ source: sources['s2-ghostmaps'] }),
         createApplicationAlpr({ surface, source: sources.alpr }),
         createApplicationStreetLevel({
           surface,

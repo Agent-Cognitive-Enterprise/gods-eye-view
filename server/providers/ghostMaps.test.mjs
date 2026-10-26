@@ -65,6 +65,17 @@ async function withCache(fn) {
   }
 }
 
+// checkNow announces the catalog before background warm-up finishes. Join the
+// same file reads before changing editions or removing the temporary cache.
+async function warmDefaults(watcher) {
+  await Promise.all(
+    watcher
+      .catalog()
+      .products.filter((product) => product.defaultOn)
+      .map((product) => watcher.file(product.id)),
+  );
+}
+
 test('a new commit is announced once, naming only the products that changed', () =>
   withCache(async (cacheDir) => {
     const { repo, fetchImpl } = fakeGitHub();
@@ -78,6 +89,7 @@ test('a new commit is announced once, naming only the products that changed', ()
     watcher.subscribe((catalog) => events.push(catalog));
 
     assert.equal(await watcher.checkNow(), true);
+    await warmDefaults(watcher);
     const first = watcher.catalog();
     assert.equal(first.commit, sha('1'));
     assert.equal(first.message, 'Oct 18 Update');
@@ -105,6 +117,7 @@ test('a new commit is announced once, naming only the products that changed', ()
       },
     ]);
     assert.equal(await watcher.checkNow(), true);
+    await warmDefaults(watcher);
     assert.equal(events.length, 2);
     const cip = events[1].products.find((p) => p.id === 'cip');
     assert.equal(cip.version, sha('c'));
@@ -165,7 +178,9 @@ test('the catalog survives a restart from disk, and upstream failures are report
   withCache(async (cacheDir) => {
     const { fetchImpl } = fakeGitHub();
     const quiet = { log: () => {}, warn: () => {} };
-    await createGhostMapsWatcher({ fetchImpl, cacheDir, ...quiet }).checkNow();
+    const online = createGhostMapsWatcher({ fetchImpl, cacheDir, ...quiet });
+    await online.checkNow();
+    await warmDefaults(online);
     const offline = createGhostMapsWatcher({
       fetchImpl: async () => new Response('down', { status: 503 }),
       cacheDir,

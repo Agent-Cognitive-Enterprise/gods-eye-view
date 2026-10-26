@@ -195,7 +195,9 @@ export function createGhostMapsLayer({
   /** Build one product's data source off-scene, then swap it in. */
   async function load(product, signal) {
     const bytes = await source.getFile(product.id, product.version, { signal });
+    signal.throwIfAborted();
     const entries = await readZipEntries(bytes);
+    signal.throwIfAborted();
     const main = kmzMainDocument(entries);
     if (!main) throw new Error(msg('That KMZ holds no KML document.'));
     const urls = [];
@@ -210,117 +212,118 @@ export function createGhostMapsLayer({
         ? resolvePacked(href)
         : null;
     };
-    let parsed;
     try {
-      parsed = readGhostMapsKml(
+      const parsed = readGhostMapsKml(
         parseXml(decodeXml(entries.get(main)), 'KML'),
         resolveImage,
       );
-    } catch (error) {
-      urls.forEach((url) => URL.revokeObjectURL(url));
-      throw error;
-    }
-    entries.clear();
-    signal.throwIfAborted();
-    const color = PRODUCT_COLORS[product.id] || ACCENT;
-    const dataSource = new Cesium.CustomDataSource(
-      `${GHOSTMAPS_LAYER_ID}:${product.id}`,
-    );
-    const features = [];
-    const pins = [];
-    dataSource.entities.suspendEvents();
-    parsed.features.forEach((feature, index) => {
-      const key = `${product.id}:${index}`;
-      const { style } = feature;
-      feature.geometries.forEach((geometry, part) => {
-        const id = `${PICK_PREFIX}${key}:${part}`;
-        if (geometry.type === 'point') {
-          const position = Cesium.Cartesian3.fromDegrees(...geometry.position);
-          const entity = dataSource.entities.add({
-            id,
-            position,
-            billboard: {
-              image: style.icon || markerImage(color),
-              scale: Math.min(
-                1.5,
-                Math.max(0.35, (style.iconScale ?? 1) * 0.7),
-              ),
-              color:
-                style.icon && style.iconColor
-                  ? cesiumColor(style.iconColor)
-                  : undefined,
-              heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-              verticalOrigin: Cesium.VerticalOrigin.CENTER,
-              // Ground-clamped icons would sink into terrain and 3D tiles; the
-              // horizon cull hides the far side instead (see `_horizon`).
-              disableDepthTestDistance: Number.POSITIVE_INFINITY,
-            },
-          });
-          pins.push({
-            position,
-            get show() {
-              return entity.show;
-            },
-            set show(value) {
-              entity.show = value;
-            },
-          });
-        } else if (geometry.type === 'line') {
-          dataSource.entities.add({
-            id,
-            polyline: {
-              positions: Cesium.Cartesian3.fromDegreesArray(
-                geometry.positions.flat(),
-              ),
-              width: Math.min(8, Math.max(1.5, style.lineWidth ?? 2)),
-              material: cesiumColor(style.lineColor, color),
-              clampToGround: true,
-            },
-          });
-        } else {
-          const ring = (points) =>
-            Cesium.Cartesian3.fromDegreesArray(points.flat());
-          dataSource.entities.add({
-            id,
-            polygon: {
-              hierarchy: new Cesium.PolygonHierarchy(
-                ring(geometry.outer),
-                geometry.holes.map(
-                  (hole) => new Cesium.PolygonHierarchy(ring(hole)),
+      entries.clear();
+      signal.throwIfAborted();
+      const color = PRODUCT_COLORS[product.id] || ACCENT;
+      const dataSource = new Cesium.CustomDataSource(
+        `${GHOSTMAPS_LAYER_ID}:${product.id}`,
+      );
+      const features = [];
+      const pins = [];
+      dataSource.entities.suspendEvents();
+      parsed.features.forEach((feature, index) => {
+        const key = `${product.id}:${index}`;
+        const { style } = feature;
+        feature.geometries.forEach((geometry, part) => {
+          const id = `${PICK_PREFIX}${key}:${part}`;
+          if (geometry.type === 'point') {
+            const position = Cesium.Cartesian3.fromDegrees(
+              ...geometry.position,
+            );
+            const entity = dataSource.entities.add({
+              id,
+              position,
+              billboard: {
+                image: style.icon || markerImage(color),
+                scale: Math.min(
+                  1.5,
+                  Math.max(0.35, (style.iconScale ?? 1) * 0.7),
                 ),
-              ),
-              material:
-                style.fill === false
-                  ? Cesium.Color.TRANSPARENT
-                  : cesiumColor(
-                      style.polyColor,
-                      color,
-                      style.polyColor ? undefined : 0.25,
-                    ),
-              classificationType: Cesium.ClassificationType.BOTH,
-            },
-          });
-          if (style.outline !== false)
+                color:
+                  style.icon && style.iconColor
+                    ? cesiumColor(style.iconColor)
+                    : undefined,
+                heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+                verticalOrigin: Cesium.VerticalOrigin.CENTER,
+                // Ground-clamped icons would sink into terrain and 3D tiles; the
+                // horizon cull hides the far side instead (see `_horizon`).
+                disableDepthTestDistance: Number.POSITIVE_INFINITY,
+              },
+            });
+            pins.push({
+              position,
+              get show() {
+                return entity.show;
+              },
+              set show(value) {
+                entity.show = value;
+              },
+            });
+          } else if (geometry.type === 'line') {
             dataSource.entities.add({
-              id: `${id}:outline`,
+              id,
               polyline: {
-                positions: ring([...geometry.outer, geometry.outer[0]]),
-                width: Math.min(6, Math.max(1.5, style.lineWidth ?? 2)),
+                positions: Cesium.Cartesian3.fromDegreesArray(
+                  geometry.positions.flat(),
+                ),
+                width: Math.min(8, Math.max(1.5, style.lineWidth ?? 2)),
                 material: cesiumColor(style.lineColor, color),
                 clampToGround: true,
               },
             });
-        }
+          } else {
+            const ring = (points) =>
+              Cesium.Cartesian3.fromDegreesArray(points.flat());
+            dataSource.entities.add({
+              id,
+              polygon: {
+                hierarchy: new Cesium.PolygonHierarchy(
+                  ring(geometry.outer),
+                  geometry.holes.map(
+                    (hole) => new Cesium.PolygonHierarchy(ring(hole)),
+                  ),
+                ),
+                material:
+                  style.fill === false
+                    ? Cesium.Color.TRANSPARENT
+                    : cesiumColor(
+                        style.polyColor,
+                        color,
+                        style.polyColor ? undefined : 0.25,
+                      ),
+                classificationType: Cesium.ClassificationType.BOTH,
+              },
+            });
+            if (style.outline !== false)
+              dataSource.entities.add({
+                id: `${id}:outline`,
+                polyline: {
+                  positions: ring([...geometry.outer, geometry.outer[0]]),
+                  width: Math.min(6, Math.max(1.5, style.lineWidth ?? 2)),
+                  material: cesiumColor(style.lineColor, color),
+                  clampToGround: true,
+                },
+              });
+          }
+        });
+        features.push({
+          name: feature.name,
+          folder: feature.folder,
+          description: feature.description,
+          anchor: anchorOf(feature.geometries[0]),
+        });
       });
-      features.push({
-        name: feature.name,
-        folder: feature.folder,
-        description: feature.description,
-        anchor: anchorOf(feature.geometries[0]),
-      });
-    });
-    dataSource.entities.resumeEvents();
-    return { version: product.version, dataSource, urls, features, pins };
+      dataSource.entities.resumeEvents();
+      return { version: product.version, dataSource, urls, features, pins };
+    } catch (error) {
+      urls.forEach((url) => URL.revokeObjectURL(url));
+      throw error;
+    }
   }
 
   /** Bring the globe in line with the catalog and the chip selection. */

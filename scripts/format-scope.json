@@ -884,6 +884,7 @@
   "src/layers/ghostMaps/source.js",
   "src/layers/ghostMaps/catalog.test.mjs",
   "src/layers/ghostMaps/records.test.mjs",
+  "src/layers/ghostMaps/lifecycle.test.mjs",
   "scripts/qa-ghostmaps.mjs",
   "src/layers/cyclones/index.js",
   "src/layers/cyclones/rendering.js",

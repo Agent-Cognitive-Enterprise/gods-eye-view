@@ -7,3 +7,6 @@
   products that changed (Black Pine Defense).
 - Clear a temporary GhostMaps upstream error and notify open pages when the
   repository becomes reachable again, including when no new edition was published.
+- Release packed-image resources when a load is cancelled or fails, respect
+  injected or omitted GhostMaps sources, and wait for background cache warm-up
+  before removing provider test fixtures.
