@@ -172,3 +172,10 @@ test('the snapshot detail carries the proxy staleness and fetch time', async () 
   });
   assert.deepEqual(await source.getSnapshot(), []);
 });
+
+test('getSnapshot works when taken off its source object', async () => {
+  const { getSnapshot } = createWfigsPerimeterSource({
+    fetchImpl: async () => Response.json({ rows: [] }),
+  });
+  assert.deepEqual(await getSnapshot(), []);
+});
