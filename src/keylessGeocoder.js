@@ -390,16 +390,22 @@ export async function geocodeKeylessWithOutcome(
   // to the wrong continent. So a biased answer is only accepted when it leads
   // with the name asked for; otherwise the same query runs unbiased, which is
   // what a user searching for somewhere off-screen meant in the first place.
-  // A query naming a region is only answered nearby by a match inside it.
+  // A query naming a region is answered nearby only by a match inside it.
+  // A nearby place whose own name has a comma ("Bed, Bath & Beyond") and
+  // equals the whole query is kept as the last choice, after the region
+  // checks of both passes.
   let feature = null;
+  let nearbyNameMatch = null;
   let everyAskAnswered = true;
   if (bias) {
     const biased = await ask(photonSearchUrl(trimmed, { bias, endpoint }));
     if (biased === null) everyAskAnswered = false;
-    else
-      feature = queryRegion(trimmed)
-        ? selectQualifiedFeature(biased, trimmed)
-        : selectPhotonFeature(biased, normalizeToponym(trimmed));
+    else if (queryRegion(trimmed)) {
+      feature = selectQualifiedFeature(biased, trimmed);
+      nearbyNameMatch = selectPhotonFeature(biased, normalizeToponym(trimmed));
+    } else {
+      feature = selectPhotonFeature(biased, normalizeToponym(trimmed));
+    }
   }
 
   signal?.throwIfAborted();
@@ -415,9 +421,11 @@ export async function geocodeKeylessWithOutcome(
       const head = normalizeToponym(trimmed.split(',')[0]);
       feature =
         selectQualifiedFeature(anywhere, trimmed) ||
+        nearbyNameMatch ||
         selectPhotonFeature(anywhere, head, { allowContains: true }) ||
         anywhere[0];
     }
+    if (!feature) feature = nearbyNameMatch;
   }
 
   signal?.throwIfAborted();

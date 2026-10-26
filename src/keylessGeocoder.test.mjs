@@ -560,3 +560,26 @@ test('"UK" names the United Kingdom', () => {
   };
   assert.equal(selectQualifiedFeature([ontario, london], 'London, UK'), london);
 });
+
+test('a nearby place whose own name has a comma still wins when nothing matches as place and region', async () => {
+  const store = (lon, lat, city) => ({
+    geometry: { type: 'Point', coordinates: [lon, lat] },
+    properties: {
+      osm_key: 'shop',
+      osm_value: 'houseware',
+      name: 'Bed, Bath & Beyond',
+      city,
+      countrycode: 'US',
+    },
+  });
+  const nearby = store(-104.94, 39.66, 'Denver');
+  const fetchImpl = photonPair([nearby], [store(-73.99, 40.74, 'New York')]);
+
+  const result = await geocodeKeyless('Bed, Bath & Beyond', {
+    bias: '39.60,-105.00|39.70,-104.90',
+    fetchImpl,
+  });
+
+  assert.match(result.label, /Denver/);
+  assert.equal(fetchImpl.urls.length, 2, 'the region checks ran first');
+});

@@ -5191,7 +5191,11 @@ HTTP refusals and outages remain retryable. Searches share a 12-second total
 deadline, with Photon requests capped at six seconds each. Caller/application
 cancellation stops retries and late cache writes. Replacing a location search
 cancels the previous lookup; disposing its controls cancels the active lookup. Photon uses a soft proximity bias, up to five
-candidates, and an unbiased retry for name mismatches. Invalid/wrapped bounds
+candidates, and an unbiased retry for name mismatches. A "place, region" query
+only accepts a candidate named exactly for the place whose city, county, state,
+country or country code (or USA/UK) contains the region; nearby results that
+fail that check are retried unbiased, and a nearby place whose whole name is the
+query (one with a comma in it) is the last choice. Invalid/wrapped bounds
 are omitted rather than framing the wrong part of the globe.
 
 ### Map Stack Switcher (June 2026)
