@@ -471,3 +471,202 @@ test('native typed input observation preserves receiver/result, refuses failed s
   old.call(controller, 'late');
   assert.equal(inputs, 1);
 });
+
+test('explicit silent OpenAI completion rearms expiry, including cancelled and failed responses', () => {
+  for (const status of ['completed', 'cancelled', 'failed', 'incomplete']) {
+    const turns = new RealtimeTurns({});
+    const controller = { status: 'idle', dc: null, _turns: turns, _input: {} };
+    let idle;
+    let timer;
+    let expired = 0;
+    const observer = observeNativeActivity({
+      adapter: { controller },
+      nativeProvider: 'openai',
+      onChange: () => idle?.update(),
+    });
+    idle = createVoiceInactivity({
+      readActivity: observer.snapshot,
+      readPending: () => false,
+      setTimer(callback) {
+        timer = callback;
+        return 1;
+      },
+      clearTimer() {
+        timer = null;
+      },
+      onExpire: () => expired++,
+    });
+    controller.status = 'listening';
+    controller.dc = {};
+    observer.handle({ type: 'state', state: 'listening' });
+    assert.equal(typeof timer, 'function');
+    turns.responseActive = true;
+    turns.observeSpeech({
+      type: 'response.created',
+      response: { id: 'silent' },
+    });
+    assert.equal(timer, null);
+    turns.observeSpeech({
+      type: 'response.done',
+      response: {
+        id: 'silent',
+        status,
+        output:
+          status === 'completed'
+            ? [{ type: 'function_call', name: 'set_panel_open' }]
+            : [],
+      },
+    });
+    // The provider updates generation state after forwarding the raw event.
+    assert.equal(timer, null);
+    turns.responseActive = false;
+    observer.handle({ type: 'completion' });
+    assert.equal(observer.snapshot().known, true);
+    assert.equal(typeof timer, 'function');
+    timer();
+    assert.equal(expired, 1);
+    idle.destroy();
+    observer.destroy();
+  }
+});
+
+test('silent OpenAI replies cannot clear unresolved older audio or incomplete output metadata', () => {
+  const turns = new RealtimeTurns({});
+  const observer = observeNativeActivity({
+    adapter: {
+      controller: { status: 'idle', dc: null, _turns: turns, _input: {} },
+    },
+    nativeProvider: 'openai',
+  });
+  const created = (id) =>
+    turns.observeSpeech({ type: 'response.created', response: { id } });
+  const done = (id, output) =>
+    turns.observeSpeech({
+      type: 'response.done',
+      response: { id, status: 'completed', output },
+    });
+  created('audio');
+  turns.observeSpeech({
+    type: 'response.output_audio.delta',
+    response_id: 'audio',
+  });
+  created('silent');
+  done('silent', []);
+  assert.equal(observer.snapshot().known, false);
+  done('audio', []); // Even contradictory completion metadata cannot erase audio evidence.
+  assert.equal(observer.snapshot().known, false);
+  turns.observeSpeech({
+    type: 'output_audio_buffer.started',
+    response_id: 'audio',
+  });
+  assert.equal(observer.snapshot().outputBusy, true);
+  done('silent', []);
+  assert.equal(observer.snapshot().outputBusy, true);
+  turns.observeSpeech({
+    type: 'output_audio_buffer.stopped',
+    response_id: 'audio',
+  });
+  assert.equal(observer.snapshot().outputBusy, false);
+  created('unknown');
+  done('unknown', undefined);
+  assert.equal(observer.snapshot().known, false);
+  done('unobserved', []);
+  assert.equal(observer.snapshot().known, false);
+  observer.destroy();
+});
+
+test('overlapping silent replies resolve independently and audio output items remain unknown until playback', () => {
+  const turns = new RealtimeTurns({});
+  const observer = observeNativeActivity({
+    adapter: {
+      controller: { status: 'idle', dc: null, _turns: turns, _input: {} },
+    },
+    nativeProvider: 'openai',
+  });
+  for (const id of ['a', 'b'])
+    turns.observeSpeech({ type: 'response.created', response: { id } });
+  for (const id of ['a', 'b']) {
+    turns.observeSpeech({
+      type: 'response.done',
+      response: {
+        id,
+        status: 'completed',
+        output: [
+          { type: 'message', content: [{ type: 'text', text: 'Done' }] },
+        ],
+      },
+    });
+    assert.equal(observer.snapshot().known, id === 'b');
+  }
+  turns.observeSpeech({ type: 'response.created', response: { id: 'audio' } });
+  turns.observeSpeech({
+    type: 'response.done',
+    response: {
+      id: 'audio',
+      status: 'completed',
+      output: [{ type: 'message', content: [{ type: 'audio' }] }],
+    },
+  });
+  assert.equal(observer.snapshot().known, false);
+  observer.destroy();
+});
+
+test('silent completion cannot establish output knowledge when observer attached mid-session', () => {
+  const turns = new RealtimeTurns({});
+  const observer = observeNativeActivity({
+    adapter: {
+      controller: { status: 'listening', dc: {}, _turns: turns, _input: {} },
+    },
+    nativeProvider: 'openai',
+  });
+  turns.observeSpeech({ type: 'response.created', response: { id: 'new' } });
+  turns.observeSpeech({
+    type: 'response.done',
+    response: { id: 'new', status: 'completed', output: [] },
+  });
+  assert.equal(observer.snapshot().known, false);
+  observer.destroy();
+});
+
+test('Gemini restores each retired audio immediately across repeated same-mount restarts', () => {
+  const originals = new Map();
+  const controller = {
+    input: {},
+    createAudio() {
+      const audio = { pending: 0, play() {}, clearPlayback() {}, close() {} };
+      originals.set(audio, { ...audio });
+      return audio;
+    },
+    handleMessage() {},
+  };
+  const observer = observeNativeActivity({
+    adapter: { controller },
+    nativeProvider: 'gemini',
+  });
+  const assertRestored = (audio) => {
+    for (const key of ['play', 'clearPlayback', 'close'])
+      assert.equal(audio[key], originals.get(audio)[key]);
+  };
+  for (let i = 0; i < 5; i++) {
+    observer.handle({ type: 'state', state: 'connecting' });
+    controller.audio = controller.createAudio({});
+    const audio = controller.audio;
+    observer.handle({ type: 'state', state: 'listening' });
+    assert.notEqual(audio.close, originals.get(audio).close);
+    audio.close();
+    assertRestored(audio);
+    controller.audio = null;
+    observer.handle({ type: 'state', state: 'idle' });
+  }
+  controller.audio = controller.createAudio({});
+  const replaced = controller.audio;
+  controller.audio = controller.createAudio({});
+  assertRestored(replaced);
+  const current = controller.audio;
+  const replacement = () => {};
+  current.play = replacement;
+  observer.handle({ type: 'state', state: 'error' });
+  assert.equal(current.play, replacement);
+  assert.equal(current.close, originals.get(current).close);
+  observer.destroy();
+});

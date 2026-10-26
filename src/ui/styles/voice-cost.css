@@ -62,6 +62,15 @@
   color: #ffc46b;
 }
 
+.gev-voice-cost-warning {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.gev-voice-cost-warning[data-level='unknown'] {
+  color: #ffc46b;
+}
+
 .gev-voice-cost-value[data-level='cap'] {
   color: #ff6b6b;
   font-weight: 600;

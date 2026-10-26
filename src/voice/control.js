@@ -49,7 +49,7 @@ export function createVoiceControl({ reset = false, panel = false } = {}) {
         <div id="gev-voice-status">${voiceStatusLabel('idle')}</div>
         ${
           panel
-            ? ''
+            ? `<span id="gev-voice-cost-warning" class="gev-voice-cost-value gev-voice-cost-warning" hidden role="status" aria-live="polite"></span>`
             : `<div class="gev-voice-cost">
           <button id="gev-voice-tier" class="gev-voice-tier-btn" type="button" aria-pressed="false" title="${t('Voice model tier — applies next session')}">${t('STD')}</button>
           <span id="gev-voice-cost-value" class="gev-voice-cost-value" data-level="ok" title="${t('Estimated session cost')}">~$0.00</span>
@@ -193,6 +193,7 @@ export function createVoiceControl({ reset = false, panel = false } = {}) {
     errorDetail: root.querySelector('#gev-voice-error-detail'),
     tierButton: root.querySelector('#gev-voice-tier'),
     costValue: root.querySelector('#gev-voice-cost-value'),
+    costWarning: root.querySelector('#gev-voice-cost-warning'),
     card: root.querySelector('#gev-voice-card'),
   };
 }

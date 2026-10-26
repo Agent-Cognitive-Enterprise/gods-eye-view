@@ -36,6 +36,33 @@ export function observeNativeActivity({
   let audio = null,
     version = 0;
   const restores = [];
+  const audioRestores = [];
+  const pendingOutput = new Map();
+  let untrackedOutput = !outputKnown;
+  function retireAudio() {
+    audio = null;
+    for (const restore of audioRestores.splice(0).reverse()) restore();
+  }
+  function refreshOutputKnowledge() {
+    outputKnown = !untrackedOutput && pendingOutput.size === 0;
+  }
+  function hasNoAudioOutput(response) {
+    return (
+      ['completed', 'cancelled', 'failed', 'incomplete'].includes(
+        response?.status,
+      ) &&
+      Array.isArray(response.output) &&
+      response.output.every(
+        (item) =>
+          item?.type === 'function_call' ||
+          (item?.type === 'message' &&
+            Array.isArray(item.content) &&
+            item.content.every((part) =>
+              ['text', 'output_text', 'refusal'].includes(part?.type),
+            )),
+      )
+    );
+  }
   function snapshot() {
     const turns = nativeProvider === 'openai' ? controller?._turns : controller;
     return {
@@ -72,7 +99,7 @@ export function observeNativeActivity({
       } catch {}
     }
   }
-  function wrap(object, key, after) {
+  function wrap(object, key, after, ownedRestores = restores) {
     const original = object?.[key];
     if (typeof original !== 'function') return;
     function wrapped(...args) {
@@ -86,7 +113,7 @@ export function observeNativeActivity({
       return result;
     }
     object[key] = wrapped;
-    restores.push(() => {
+    ownedRestores.push(() => {
       if (object[key] === wrapped) object[key] = original;
     });
   }
@@ -104,9 +131,11 @@ export function observeNativeActivity({
         (state === 'connecting' && wasConnected)
       ) {
         version++;
-        audio = null;
+        retireAudio();
         inputBusy = false;
         outputKnown = cleanNativeOutput();
+        untrackedOutput = !outputKnown;
+        pendingOutput.clear();
       }
     }
     notify();
@@ -127,13 +156,41 @@ export function observeNativeActivity({
           inputBusy = true;
         if (event?.type === 'input_audio_buffer.speech_stopped')
           inputBusy = false;
-        // A previous turn's drain does not prove the next transport emits output events.
-        if (event?.type === 'response.created') outputKnown = false;
+        const type = event?.type;
+        const id = event?.response_id || event?.response?.id;
+        // Keep each unresolved response separate: a later silent reply cannot
+        // establish that an earlier audio reply has drained.
+        if (type === 'response.created') {
+          if (id && pendingOutput.size < 64)
+            pendingOutput.set(id, { audioSeen: false });
+          else untrackedOutput = true;
+        }
+        const pending = pendingOutput.get(id);
         if (
-          event?.type === 'output_audio_buffer.started' ||
-          event?.type === 'output_audio_buffer.cleared'
+          pending &&
+          (type?.startsWith('response.output_audio') ||
+            type?.startsWith('response.audio') ||
+            ['audio', 'output_audio'].includes(event?.part?.type))
         )
-          outputKnown = true;
+          pending.audioSeen = true;
+        if (
+          type === 'response.done' &&
+          pending &&
+          !pending.audioSeen &&
+          hasNoAudioOutput(event.response)
+        )
+          pendingOutput.delete(id);
+        if (
+          type === 'output_audio_buffer.started' ||
+          type === 'output_audio_buffer.cleared'
+        ) {
+          // Native playback events establish the transport's output lifecycle.
+          // Generation completion alone never establishes audio drainage.
+          untrackedOutput = false;
+          if (id) pendingOutput.delete(id);
+          else pendingOutput.clear();
+        }
+        refreshOutputKnowledge();
         notify();
       });
     } else {
@@ -183,12 +240,23 @@ export function observeNativeActivity({
         forwarded[0] = decorated;
         current = Reflect.apply(original, this, forwarded);
         if (!dead && stamp === version) {
+          retireAudio();
           audio = current;
           inputBusy = false;
           for (const key of ['play', 'clearPlayback', 'close'])
-            wrap(current, key, () => {
-              if (audio === current && controller.audio === current) notify();
-            });
+            wrap(
+              current,
+              key,
+              () => {
+                if (audio !== current) return;
+                if (key === 'close') {
+                  retireAudio();
+                  inputBusy = false;
+                }
+                if (controller.audio === current) notify();
+              },
+              audioRestores,
+            );
         }
         return current;
       }
@@ -203,7 +271,9 @@ export function observeNativeActivity({
     if (dead) return;
     dead = true;
     version++;
-    for (const restore of restores.reverse()) restore();
+    retireAudio();
+    pendingOutput.clear();
+    for (const restore of restores.splice(0).reverse()) restore();
     signal?.removeEventListener('abort', destroy);
   }
   signal?.addEventListener('abort', destroy, { once: true });
