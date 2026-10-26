@@ -432,6 +432,7 @@ test('after a 429 the terrain proxy leaves the upstream alone and logs once', as
     await new Promise((resolve) => setImmediate(resolve));
     t.mock.timers.tick(1_000);
   }
+  assert.ok(settled, 'the first request settles within its retry budget');
   await first;
   const afterFirst = calls;
   assert.ok(afterFirst >= 1);
