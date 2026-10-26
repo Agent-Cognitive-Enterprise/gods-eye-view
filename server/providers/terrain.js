@@ -225,6 +225,7 @@ export function terrainHeightsProxy(options = {}) {
       // Rate-limited: asking again only extends the limit. Cached points are
       // still served; the rest resolve on the page through its geoid.
       const error = new Error('HTTP 429');
+      error.status = 429;
       error.coolingDown = true;
       throw error;
     }
@@ -233,18 +234,23 @@ export function terrainHeightsProxy(options = {}) {
     for (let i = 0; i < points.length; i += UPSTREAM_CHUNK) {
       const chunk = points.slice(i, i + UPSTREAM_CHUNK);
       let chunkResults = [];
+      // Re-checked per chunk for when a request spans several chunks again;
+      // today requests are capped at one chunk (MAX_POINTS).
       if (Date.now() >= rateLimitedUntil) {
         try {
           chunkResults = await fetchTerrainChunkWithRetry(chunk);
         } catch (error) {
           firstError = firstError || error;
-          if (error?.message === 'HTTP 429')
-            rateLimitedUntil =
+          // Concurrent 429s extend the pause, never cut it short.
+          if (error?.status === 429)
+            rateLimitedUntil = Math.max(
+              rateLimitedUntil,
               Date.now() +
-              Math.min(
-                terrainRetryAfterMs(error.retryAfter) ?? RATE_LIMIT_PAUSE_MS,
-                RATE_LIMIT_PAUSE_MAX_MS,
-              );
+                Math.min(
+                  terrainRetryAfterMs(error.retryAfter) ?? RATE_LIMIT_PAUSE_MS,
+                  RATE_LIMIT_PAUSE_MAX_MS,
+                ),
+            );
         }
       }
       // Keep later chunks aligned even if a malformed upstream response omits
@@ -322,7 +328,7 @@ export function terrainHeightsProxy(options = {}) {
           // Logged once, when the pause began.
         } else if (outcome.upstreamError) {
           const pause =
-            outcome.upstreamError.message === 'HTTP 429' &&
+            outcome.upstreamError.status === 429 &&
             Date.now() < rateLimitedUntil
               ? ` (HTTP 429; pausing upstream for ${Math.ceil((rateLimitedUntil - Date.now()) / 1000)} s)`
               : '';

@@ -421,8 +421,18 @@ test('after a 429 the terrain proxy leaves the upstream alone and logs once', as
     calls += 1;
     return new Response('', { status: 429 });
   });
+  t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 1_000_000 });
   const request = install(terrainHeightsProxy());
-  await request('/?points=1,2');
+  // The retries' backoff runs on mocked time.
+  let settled = false;
+  const first = request('/?points=1,2').then(() => {
+    settled = true;
+  });
+  for (let step = 0; step < 60 && !settled; step += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+    t.mock.timers.tick(1_000);
+  }
+  await first;
   const afterFirst = calls;
   assert.ok(afterFirst >= 1);
   assert.equal(warnings.length, 1);
