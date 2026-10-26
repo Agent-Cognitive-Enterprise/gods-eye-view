@@ -10,3 +10,5 @@
 - Release packed-image resources when a load is cancelled or fails, respect
   injected or omitted GhostMaps sources, and wait for background cache warm-up
   before removing provider test fixtures.
+- Include Simplified Chinese translations and keep the combined voice prompt
+  within its existing size limit while retaining all spoken aliases.

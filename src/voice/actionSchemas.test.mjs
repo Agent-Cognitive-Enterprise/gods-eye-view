@@ -43,7 +43,8 @@ test('the complete Realtime tool payload pins the manifest-generated layer relea
     // reset guidance/defaults update only move_camera and mode descriptions.
     // Restore base descriptions; append only globe-rotation defaults and fit guidance.
     // S2 GhostMaps adds its layer id to the generated layer enums.
-    '1f95d78074559217872ccbdfa57d4363264ea88c1a22b259e6ebba3c8189b806',
+    // Compact alias separators preserve the existing prompt budget.
+    '0128b5e28a8baf0d6466bfdbc6e7a80fd4bb32d0d22ccadfade2af641714f12a',
   );
 });
 
