@@ -16,7 +16,8 @@ export function observeNativeActivity({
     : null;
   let dead = false,
     connected = false,
-    inputBusy = false;
+    inputBusy = false,
+    recoverableError = false;
   function cleanNativeOutput() {
     if (nativeProvider === 'gemini') return true;
     if (nativeProvider !== 'openai') return false;
@@ -122,13 +123,22 @@ export function observeNativeActivity({
     if (event?.type === 'state') {
       const state = event.state;
       const wasConnected = connected;
+      const liveError =
+        state === 'error' &&
+        nativeProvider === 'openai' &&
+        controller.dc?.readyState === 'open';
+      const restartingAfterError = state === 'connecting' && recoverableError;
+      recoverableError = liveError;
       connected = !['idle', 'connecting', 'error'].includes(state);
       // Connecting has multiple native phases around audio allocation. Retire
       // a previous connected generation once, not each phase of this start.
+      // A failed reply can briefly report error on a live OpenAI transport.
+      // Preserve its output evidence through recovery to listening; a later
+      // reconnect still retires the failed connection's generation.
       if (
         state === 'idle' ||
-        state === 'error' ||
-        (state === 'connecting' && wasConnected)
+        (state === 'error' && !liveError) ||
+        (state === 'connecting' && (wasConnected || restartingAfterError))
       ) {
         version++;
         retireAudio();

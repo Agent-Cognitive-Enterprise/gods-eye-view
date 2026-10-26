@@ -670,3 +670,101 @@ test('Gemini restores each retired audio immediately across repeated same-mount 
   assert.equal(current.close, originals.get(current).close);
   observer.destroy();
 });
+
+test('actual OpenAI failed-response error/listening recovery preserves only proven no-audio knowledge', async (t) => {
+  const { GevRealtimeController } = await import('../realtimeController.js');
+  t.mock.method(console, 'error', () => {});
+  for (const [output, known] of [
+    [[], true],
+    [[{ type: 'message', content: [{ type: 'audio' }] }], false],
+    [undefined, false],
+  ]) {
+    let observer, idle, timer;
+    const states = [];
+    let expired = 0;
+    const controller = new GevRealtimeController({
+      runner: async () => ({ ok: true }),
+      backend: {},
+      debugSink: null,
+      ui: {
+        root: {
+          dataset: {},
+          classList: { remove() {} },
+          querySelectorAll: () => [],
+        },
+        status: {},
+        detail: {},
+      },
+      onSessionEvent(event) {
+        if (event.type === 'state') states.push(event.state);
+        observer?.handle(event);
+      },
+    });
+    observer = observeNativeActivity({
+      adapter: { controller },
+      nativeProvider: 'openai',
+      onChange: () => idle?.update(),
+    });
+    idle = createVoiceInactivity({
+      readActivity: observer.snapshot,
+      readPending: () => false,
+      setTimer(callback) {
+        timer = callback;
+        return 1;
+      },
+      clearTimer() {
+        timer = null;
+      },
+      onExpire() {
+        expired++;
+      },
+    });
+    try {
+      controller.dc = {
+        readyState: 'open',
+        send() {},
+        close() {
+          this.readyState = 'closed';
+        },
+      };
+      controller.setStatus('listening', 'Ready');
+      const event = (payload) =>
+        controller.handleRealtimeEvent({ data: JSON.stringify(payload) });
+      await event({
+        type: 'response.created',
+        response: { id: 'failed-reply' },
+      });
+      await event({
+        type: 'response.done',
+        response: {
+          id: 'failed-reply',
+          status: 'failed',
+          output,
+          status_details: { error: { message: 'Synthetic failed reply' } },
+        },
+      });
+      assert.deepEqual(states.slice(-2), ['error', 'listening']);
+      assert.equal(controller.dc.readyState, 'open');
+      assert.equal(observer.snapshot().known, known);
+      assert.equal(idle.snapshot().eligible, known);
+      if (known) {
+        timer();
+        assert.equal(expired, 1);
+      } else assert.equal(timer, null);
+      // Fatal teardown can preserve the error status; the next connection must
+      // still retire the old generation rather than inherit unresolved output.
+      controller.setStatus('error', 'Transport failed');
+      controller.stop({ preserveStatus: true });
+      controller.setStatus('connecting', 'Reconnecting');
+      assert.equal(observer.snapshot().connected, false);
+      assert.equal(observer.snapshot().known, true);
+      controller.stop();
+      assert.equal(observer.snapshot().connected, false);
+      assert.equal(observer.snapshot().known, true);
+    } finally {
+      idle.destroy();
+      observer.destroy();
+      controller.stop();
+    }
+  }
+});
