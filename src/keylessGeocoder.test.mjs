@@ -594,3 +594,30 @@ test('wrapped view bias stays near the antimeridian and malformed coordinates ar
     assert.equal(new URL(photonSearchUrl('island', { bias })).searchParams.has('lon'), false);
   }
 });
+
+test('the nearby whole-name fallback takes an exact name, not one that only starts with the query', async () => {
+  const place = (name, lon, lat, props) => ({
+    geometry: { type: 'Point', coordinates: [lon, lat] },
+    properties: { osm_key: 'place', name, ...props },
+  });
+  const nearby = [
+    place('Springfield IL Auto', -89.6, 39.8, {
+      osm_key: 'shop',
+      city: 'Springfield',
+      state: 'Illinois',
+      countrycode: 'US',
+    }),
+  ];
+  const anywhere = [
+    place('Springfield', -89.65, 39.78, { state: 'Illinois', countrycode: 'US' }),
+  ];
+  const fetchImpl = photonPair(nearby, anywhere);
+
+  const result = await geocodeKeyless('Springfield, IL', {
+    bias: '39.70,-89.70|39.90,-89.50',
+    fetchImpl,
+  });
+
+  assert.doesNotMatch(result.label, /Auto/);
+  assert.match(result.label, /^Springfield/);
+});
