@@ -1052,13 +1052,13 @@ test('the voice TOOL SCHEMA matches the pinned contract — the mission mapping 
   // Globe rotation adds one camera motion and its descriptions; Globe View
   // framing/default guidance updates only move_camera and mode descriptions.
   // Radio markup and the complete production-request comparison pin locality.
-  // Restore the base camera/Globe View wording with the globe-rotation append.
-  // S2 GhostMaps adds its layer id to the generated layer enums.
-  // Alias-hint separators omit spaces to keep the existing prompt budget.
-  assert.equal(block.length, 30888, 'serialized tool schema length drifted');
+  // Panel adds timeout and named voice/provider targets; consolidated guidance
+  // preserves the mission mapping and globe-rotation arguments.
+  // S2 GhostMaps extends the generated layer enums; both feature contracts remain.
+  assert.equal(block.length, 31206, 'serialized tool schema length drifted');
   assert.equal(
     crypto.createHash('sha256').update(block).digest('hex'),
-    'b809253254b5589f3c199c218b405d8f661f040962fdd841f1182e5009119420',
+    'f772df95404494bf492e02fde1beabffdfe61986940bffd0cf9ad5a38d768746',
     'the first-run missions must ride EXISTING tools: no schema edit, no cache bust',
   );
   const instructions = fs.readFileSync(
