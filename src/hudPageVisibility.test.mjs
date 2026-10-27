@@ -47,6 +47,7 @@ function installHiddenPage() {
       pitch: -Math.PI / 2,
       positionCartographic: { latitude: 0.7, longitude: -1.2, height: 500 },
       computeViewRectangle: () => undefined,
+      moveStart: { addEventListener() {}, removeEventListener() {} },
       moveEnd: { addEventListener() {}, removeEventListener() {} },
     },
   };
