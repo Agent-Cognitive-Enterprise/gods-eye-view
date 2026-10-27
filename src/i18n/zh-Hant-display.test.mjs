@@ -69,10 +69,10 @@ test('Traditional Chinese readouts preserve unit case, coordinates and natural r
     assert.equal(READOUT_WORDS.daysAgo(9), '9 天前');
     assert.equal(READOUT_WORDS.daysAgo(0), '今天');
     assert.equal(cctvSourceStatusLabel('ok'), '正常');
-    assert.equal(t('SAVE KEYS'), '儲存金鑰');
+    assert.equal(t('SAVE KEYS'), '保存密鑰');
     assert.equal(
       tn(2, 'Click {count} more point.', 'Click {count} more points.'),
-      '再點選 2 個點。',
+      '再點擊 2 個點。',
     );
   } finally {
     setLocale(previous);

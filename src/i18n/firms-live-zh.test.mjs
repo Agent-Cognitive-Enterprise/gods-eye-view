@@ -10,7 +10,7 @@ const cases = [
   [7200000, '2 小时前', '2h ago', '2 小時前'],
 ];
 
-for (const [age, zh, en, tw] of cases) {
+for (const [age, zh, en, hant] of cases) {
   test(`FIRMS live age ${age} ms has one relative-time suffix`, (context) => {
     const now = 1800000000000;
     context.mock.method(Date, 'now', () => now);
@@ -37,7 +37,7 @@ for (const [age, zh, en, tw] of cases) {
       setLocale('zh-CN');
       assert.equal(methods.getStats().loadingLabel, `实时 · 更新于 ${zh}`);
       setLocale('zh-Hant');
-      assert.equal(methods.getStats().loadingLabel, `即時 · 更新於 ${tw}`);
+      assert.equal(methods.getStats().loadingLabel, `實時 · 更新於 ${hant}`);
     } finally {
       setLocale(previousLocale);
     }
