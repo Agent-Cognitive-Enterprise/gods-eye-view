@@ -36,7 +36,7 @@ for (const [age, zh, en, tw] of cases) {
       assert.equal(methods.getStats().loadingLabel, `LIVE · updated ${en}`);
       setLocale('zh-CN');
       assert.equal(methods.getStats().loadingLabel, `实时 · 更新于 ${zh}`);
-      setLocale('zh-TW');
+      setLocale('zh-Hant');
       assert.equal(methods.getStats().loadingLabel, `即時 · 更新於 ${tw}`);
     } finally {
       setLocale(previousLocale);

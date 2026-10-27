@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { setLocale, t, tn, getLocale } from './index.js';
-import { resolveLocale, LOCALE_STORAGE_KEY } from './locale.js';
+import {
+  resolveLocale,
+  LOCALE_STORAGE_KEY,
+  writeStoredLocale,
+  applyDocumentLanguage,
+} from './locale.js';
 import { hudQuantity, LOCALIZED_LOCALITY } from '../hudLocalityFormat.js';
 import { formatCockpitDistance } from '../ui/cockpitPresentation.js';
 import { READOUT_WORDS } from '../layers/recentImagery/display.js';
@@ -14,7 +19,7 @@ test('Traditional Chinese resolves from URL, saved preference and browser langua
       storage: { getItem: () => 'en' },
       languages: ['en'],
     }),
-    'zh-TW',
+    'zh-Hant',
   );
   assert.equal(
     resolveLocale({
@@ -24,7 +29,7 @@ test('Traditional Chinese resolves from URL, saved preference and browser langua
       },
       languages: ['en'],
     }),
-    'zh-TW',
+    'zh-Hant',
   );
   assert.equal(
     resolveLocale({
@@ -32,14 +37,29 @@ test('Traditional Chinese resolves from URL, saved preference and browser langua
       storage: { getItem: () => null },
       languages: ['zh-Hant', 'en'],
     }),
-    'zh-TW',
+    'zh-Hant',
   );
+});
+
+test('Traditional Chinese persists and exposes the script locale for legacy choices', () => {
+  const stored = new Map();
+  assert.equal(
+    writeStoredLocale('zh-TW', {
+      setItem: (key, value) => stored.set(key, value),
+    }),
+    true,
+  );
+  assert.equal(stored.get(LOCALE_STORAGE_KEY), 'zh-Hant');
+  const doc = { documentElement: {} };
+  assert.equal(applyDocumentLanguage(doc, 'zh-TW'), true);
+  assert.equal(doc.documentElement.lang, 'zh-Hant');
+  assert.equal(doc.documentElement.dir, 'ltr');
 });
 
 test('Traditional Chinese readouts preserve unit case, coordinates and natural relative dates', () => {
   const previous = getLocale();
   try {
-    setLocale('zh-TW');
+    setLocale('zh-Hant');
     assert.equal(hudQuantity(2069, 'km', 1), '2069.0 km');
     assert.equal(formatCockpitDistance(14000), '14\u00a0km');
     assert.equal(

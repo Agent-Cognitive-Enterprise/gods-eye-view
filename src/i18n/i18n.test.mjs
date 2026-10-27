@@ -39,12 +39,14 @@ test('normalizeLocale folds regional variants and rejects unshipped tags', () =>
   assert.equal(normalizeLocale('zh'), 'zh-CN');
   assert.equal(normalizeLocale('zh-CN'), 'zh-CN');
   assert.equal(normalizeLocale('zh-Hans-SG'), 'zh-CN');
-  assert.equal(normalizeLocale('zh-TW'), 'zh-TW');
-  assert.equal(normalizeLocale('zh-Hant-HK'), 'zh-TW');
+  assert.equal(normalizeLocale('zh-Hant'), 'zh-Hant');
+  assert.equal(normalizeLocale(' ZH_hant '), 'zh-Hant');
+  assert.equal(normalizeLocale('zh-TW'), 'zh-Hant');
+  assert.equal(normalizeLocale('zh-Hant-HK'), 'zh-Hant');
   assert.equal(normalizeLocale('zh-Hans-TW'), 'zh-CN');
-  assert.equal(normalizeLocale('zh-Hant-CN'), 'zh-TW');
-  assert.equal(normalizeLocale('zh_HK'), 'zh-TW');
-  assert.equal(normalizeLocale('zh-MO'), 'zh-TW');
+  assert.equal(normalizeLocale('zh-Hant-CN'), 'zh-Hant');
+  assert.equal(normalizeLocale('zh_HK'), 'zh-Hant');
+  assert.equal(normalizeLocale('zh-MO'), 'zh-Hant');
   assert.equal(normalizeLocale(undefined), null);
 });
 
