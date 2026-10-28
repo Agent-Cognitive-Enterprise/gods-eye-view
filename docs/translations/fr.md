@@ -52,6 +52,7 @@ The `many` form is the `other` text with « de » (« d' » before a vowel) afte
 | launch / launch site / space mission                         | lancement / site de lancement / mission spatiale                        |
 | ascent / replay / payload / stage / downrange                | ascension / rejeu / charge utile / étage / distance au sol (DIST. SOL)  |
 | contact / tracking / track (HUD)                             | contact / suivi / piste                                                 |
+| brackets (HUD corner brackets around contacts)               | cadres de ciblage                                                       |
 | installation / site                                          | installation / site                                                     |
 | mapped / observed                                            | cartographié / observé                                                  |
 | camera / CCTV camera / ALPR camera                           | caméra / caméra CCTV / caméra LAPI                                      |
@@ -66,6 +67,7 @@ The `many` form is the `other` text with « de » (« d' » before a vowel) afte
 | route (directions) / turn (maneuver)                         | itinéraire / manœuvre                                                   |
 | scene / shot / scene recipe                                  | scène / plan / recette de scène                                         |
 | bundle / data pack / anchor                                  | archive / paquet de données / ancre                                     |
+| import / export (noun: file, scene, project)                 | importation / exportation (not « import » / « export »)                 |
 | capture camera as anchor / set move start (scene editor)     | ancre à la position de la caméra / vue actuelle comme départ            |
 | story beat                                                   | étape du récit                                                          |
 | briefing / panel / dock                                      | briefing / panneau / dock                                               |
