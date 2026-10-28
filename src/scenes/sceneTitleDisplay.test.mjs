@@ -4,6 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  SCENE_APPEND_RECIPES,
   SCENE_RECIPES,
   displaySceneTitle,
   displayShotTitle,
@@ -138,6 +139,27 @@ test('the scene context of a shot carries its display title by provenance', asyn
   assert.notEqual(
     contextFor({ id: 'r', title, sourcePackId: 'bhote-koshi-nepal-scene' })
       .shotDisplayTitle,
+    title,
+  );
+});
+
+test('the base shots of a scene the Nepal pack upgraded localize', () => {
+  const pack = SCENE_APPEND_RECIPES.find(
+    (recipe) => recipe.legacySceneBootstrap?.cameraPath?.length,
+  );
+  if (!pack) return;
+  setLocale('de');
+  const title = pack.legacySceneBootstrap.cameraPath[0].title;
+  const base = { id: 'shot-base', title };
+  const upgraded = {
+    id: 'scene-upgraded',
+    shots: [base, { id: 'shot-pack', title: 'x', sourcePackId: pack.id }],
+  };
+  assert.equal(displayShotTitle(title, base, upgraded), displayShotTitle(title));
+  assert.notEqual(displayShotTitle(title), title);
+  // The same title in a scene no pack touched stays as typed.
+  assert.equal(
+    displayShotTitle(title, base, { id: 'scene-user', shots: [base] }),
     title,
   );
 });

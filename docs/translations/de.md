@@ -13,9 +13,10 @@ Translation source: abiyeenzo (#908).
 - Short labels, chips and HUD readouts stay short. German runs about a third longer than English, so prefer a short word or a standard abbreviation with a period over a wrapped line: REICHW., GESCHW., NIEDERSCHL., SONST., NACHR., VERST., VGL., KAL.
 - The avionics codes HDG, BRG, CRS, DEST, SPD, ALT, GS, TRK, V/S, FOV and SQUAWK stay in English, as in the cockpit. Words used in a sentence are translated: heading → «Kurs», bearing → «Peilung», range → «Reichweite».
 - A dash between clauses is a spaced en dash « – »; a colon is fine where it explains: «Feed ausgefallen – langsame Wiederholung», «SIMULIERT: Verkehrsdienst nicht erreichbar». Quotes are „…“.
+- Status and waiting messages use the neutral infinitive too: «Warten auf Aktualisierung», not «Warte auf …». Reasons inserted after a dash stay lower case: «Szene nicht gespeichert – das Projekt ist größer als 5 MiB».
 - Keyboard keys are named as on German keyboards where they differ: Leertaste, Rücktaste, Umschalt; Esc, Enter, Tab and letter keys stay.
 - Decimal comma in fixed text: «M4,4», «28,2710° N». Thousands separator is a period: «1.000 km». Formatted numbers come from `Intl` and are already German.
-- Units: km, m, km/h, m/s, kn (knots, also in the cockpit), ft (feet), hPa, MW, h, min, s, T (days, in short readouts); in UPPERCASE text KM, KM/H, KN, FT, MIN. A space between number and unit: «{value} m», «{count} min», «50 %». `°` sticks to the number.
+- Units: km, m, km/h, m/s, kn (knots, also in the cockpit), ft (feet), hPa, MW, h, min, s, T (days, in short readouts); in UPPERCASE text KM, KM/H, KN, FT, MIN. A space between number and unit, in compact readouts too: «{value} m», «{count} min», «50 %», «{speed} KN», «{count} / 30 T». `°` sticks to the number.
 - "ago" goes before the time: «vor {count} min», «vor {value}». When a placeholder already holds a localized "ago" text (`{age}` in `STALE · cached {age}`, `{ago}`), do not add «vor» again.
 - Compass points use O for Ost: N, NNO, NO, ONO, O, OSO, SO, SSO, S, SSW, SW, WSW, W, WNW, NW, NNW; hemisphere letters N, S, O, W.
 - Routing: direction words are lowercase adverbs (links, leicht rechts, scharf links, geradeaus), so a sentence never starts with one: «Auf {road} {direction} abbiegen», «Dann {direction} abbiegen», «Weiter {direction}». Roundabout exits are ordinals with a period: «die {exit} Ausfahrt» → «die 2. Ausfahrt».
@@ -36,7 +37,7 @@ Keep the verb in agreement: «{count} Station meldet» / «{count} Stationen mel
 | English                                        | Deutsch                                                              |
 | ---------------------------------------------- | -------------------------------------------------------------------- |
 | layer / data layer                             | Ebene / Datenebene                                                   |
-| feed / source / data source                    | Feed / Quelle / Datenquelle                                          |
+| feed / source / data source / input (cockpit)  | Feed / Quelle / Datenquelle / Quelle                                 |
 | LIVE (status) / live data                      | LIVE / Live-Daten                                                    |
 | SIMULATED                                      | SIMULIERT                                                            |
 | stale / degraded / unavailable                 | veraltet / eingeschränkt / nicht verfügbar                           |
@@ -57,7 +58,7 @@ Keep the verb in agreement: «{count} Station meldet» / «{count} Stationen mel
 | mapped / observed                              | kartiert / beobachtet                                                |
 | camera / CCTV camera / camera badge            | Kamera / CCTV-Kamera / Kamera-Markierung                             |
 | earthquake / active fire / fire perimeter      | Erdbeben / aktiver Brand / Brandgrenze                               |
-| cyclone / advisory (NHC/CPHC) / cone           | Wirbelsturm / Warnung / Kegel                                        |
+| cyclone / advisory (NHC/CPHC) / cone           | Wirbelsturm / Lagebericht (not «Warnung») / Kegel                    |
 | radio station                                  | Sender                                                               |
 | broadcast FM                                   | UKW                                                                  |
 | road / flow (traffic)                          | Straße / Verkehrsfluss                                               |
@@ -88,3 +89,7 @@ Keep the verb in agreement: «{count} Station meldet» / «{count} Stationen mel
 | voice (control) / voice session                | Sprachsteuerung / Sprachsitzung                                      |
 | YOU / THIS / HERE (voice card labels)          | EINGABE / DIES / HIER                                                |
 | click / click to …                             | anklicken / … klicken                                                |
+| card (host card) / voice card                  | Eintrag (in hints), Infokarte / Sprachkarte                          |
+| label (on the map) / clear (switch off layers) | Beschriftung / ausschalten (not «löschen»)                           |
+| station tag (radio filter)                     | Kategorie                                                            |
+| MIC (dock button)                              | MIKRO                                                                |

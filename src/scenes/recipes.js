@@ -1069,11 +1069,32 @@ export function displaySceneTitle(scene) {
 export function displayShotTitle(title, shot = undefined, scene = undefined) {
   const text = typeof title === 'string' ? title : '';
   const fromRecipe = shot
-    ? Boolean(shot.sourcePackId) || recipeDeclaresShotTitle(scene?.id, text)
+    ? Boolean(shot.sourcePackId) ||
+      recipeDeclaresShotTitle(scene?.id, text) ||
+      shotPackDeclaresBaseTitle(scene, text)
     : true;
   if (fromRecipe && BUILTIN_SHOT_TITLES.has(text)) return t(text);
   const numbered = /^Shot ([1-9]\d*)$/.exec(text);
   return numbered ? t('Shot {n}', { n: numbered[1] }) : text;
+}
+
+/**
+ * Whether a shot pack that upgraded this scene declares the title for one of
+ * its legacy base shots. The upgrade rebuilds those shots without a
+ * sourcePackId (see SceneDirector._bootstrapLegacyShotPacks), so the pack's
+ * own shots in the scene vouch for them.
+ * @param {{shots?: Array<{sourcePackId?: string}>}} [scene]
+ * @param {string} title
+ * @returns {boolean}
+ */
+function shotPackDeclaresBaseTitle(scene, title) {
+  const shots = Array.isArray(scene?.shots) ? scene.shots : [];
+  return SCENE_APPEND_RECIPES.some(
+    (pack) =>
+      pack.legacySceneBootstrap?.cameraPath?.some(
+        (keyframe) => keyframe?.title === title,
+      ) && shots.some((item) => item?.sourcePackId === pack.id),
+  );
 }
 
 /** Whether the built-in recipe behind a scene declares a shot with this title. */
