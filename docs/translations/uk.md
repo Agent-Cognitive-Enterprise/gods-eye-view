@@ -8,7 +8,7 @@ Translation source: meirm (#312).
 
 - Address the user with polite imperatives: «Натисніть», «Увімкніть», «Спробуйте ще раз».
 - Sentence case, not Title Case: "Live Flights" → «Рейси онлайн».
-- Ukrainian norms, not Russian calques: «у радіусі», «за посиланням», «надто довгий», «потім», «вигляд» (view), «стеження» (tracking); prepositions alternate у/в and і/й by euphony.
+- Ukrainian norms, not Russian calques: «у радіусі», «за посиланням», «надто довгий», «потім», «вигляд» (a camera view: «вигляд згори»), «стеження» (tracking); prepositions alternate у/в and і/й by euphony.
 - The apostrophe is always ʼ (U+02BC): обʼєкт, звʼязок, памʼять. Not ' or ’.
 - Quotes inside Ukrainian text are «ялинки»; a button or layer name inside a sentence goes in them: Увімкніть «Вуличні знімки».
 - In short labels, a standard abbreviation with a period beats a wrapped line: ПОПЕР., ДАЛЬН., КАЛІБР.
@@ -35,7 +35,7 @@ A `tn()` entry needs four forms. `Intl.PluralRules('uk')` picks:
 | layer / data layer                              | шар / шар даних                                                  |
 | feed                                            | потік даних (short: потік)                                       |
 | source / data source                            | джерело / джерело даних                                          |
-| LIVE (status) / live data                       | ОНЛАЙН / у реальному часі                                        |
+| LIVE (status) / live data                       | ОНЛАЙН / у реальному часі (status chip: ДАНІ ОНЛАЙН)             |
 | SIMULATED / SYNTHETIC                           | ІМІТАЦІЯ                                                         |
 | stale / degraded / unavailable                  | застарів / з перебоями (chip: ПЕРЕБОЇ) / недоступний             |
 | retry                                           | повтор                                                           |
@@ -48,7 +48,7 @@ A `tn()` entry needs four forms. `Intl.PluralRules('uk')` picks:
 | launch (rocket) / space mission                 | запуск / космічна місія                                          |
 | ascent (rocket) / booster FLIGHT {n}            | виведення / ПОЛІТ {n} (not рейс)                                 |
 | contact / tracking                              | контакт / стеження                                               |
-| installation, site / mapped                     | обʼєкт / нанесений на карту                                      |
+| installation, site / mapped                     | обʼєкт / нанесений (обʼєкт, контакт)                             |
 | camera / CCTV camera                            | камера / камера CCTV                                             |
 | earthquake / active fire / fire perimeter       | землетрус / активна пожежа / контур пожежі                       |
 | advisory (NHC/CPHC cyclone)                     | зведення                                                         |
@@ -81,3 +81,13 @@ A `tn()` entry needs four forms. `Intl.PluralRules('uk')` picks:
 | pitch (CCTV camera pose)                        | нахил                                                            |
 | traffic (road traffic layer)                    | дорожній рух                                                     |
 | phosphor (CRT)                                  | люмінофор                                                        |
+| view (map extent) / view centre / in view       | видима область (карти) / центр карти / у кадрі                   |
+| select (verb) / selected                        | вибрати / вибраний (not обрати)                                  |
+| ping (cockpit proximity contacts)               | контакт                                                          |
+| merge (turn-by-turn) / on ramp                  | влитися в потік / вʼїзд (off ramp: зʼїзд)                        |
+| watch (Earth/Orbital Watch)                     | спостереження                                                    |
+| timeout                                         | тайм-аут                                                         |
+| icon                                            | значок (not іконка)                                              |
+| run (scene playback) / RUN LOG                  | відтворення / ЖУРНАЛ ВІДТВОРЕННЯ (запуск is a rocket launch)     |
+| Preview (voice panel replies)                   | відповіді                                                        |
+| Marine (radio tag) / pleasure craft             | море (not флот) / прогулянкове судно                             |
