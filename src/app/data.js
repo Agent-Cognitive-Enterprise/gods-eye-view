@@ -13,6 +13,8 @@ export function createApplicationData({
   // Initialize data layer manager
   const dataManager = new LayerLifecycle(viewer, {
     allowQaRegistration,
+    visibilityTarget: document,
+    getSourceAvailability: catalog?.getSourceAvailability,
   });
   defer(async () => {
     await dataManager.destroyAll();
