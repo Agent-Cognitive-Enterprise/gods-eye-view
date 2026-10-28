@@ -13,11 +13,11 @@ Translation source: abiyeenzo (#912).
 - Short labels, chips and HUD readouts stay short. A standard abbreviation with a period beats a wrapped line: REGOLAZ., RILEV., INCL., ALT., VEL., STIM., PROIEZ., ESP.; PREC / SUCC for PREV / NEXT and PREVIOUS / NEXT.
 - The HUD codes HDG, BRG, CRS, FOV and DEST stay in English, as in cockpit avionics. RANGE is «PORTATA». Words used in a sentence are translated: heading → «prua» (aircraft, ships) or «direzione» (camera, buses, trams, trains), course → «rotta».
 - Keyboard keys stay in English: Space, Enter, Esc, Tab, Shift, Backspace, H, 1–9 («Tieni premuto Space per parlare», «Premi Enter per riprovare»).
-- Decimal comma in numbers written in the text: «28,2710° N». Numbers formatted by the code follow `Intl` and need nothing.
+- Decimal comma in numbers written in the text, magnitudes included: «28,2710° N», «M5,2». Numbers formatted by the code follow `Intl` and need nothing.
 - Amounts: thousands, millions and billions are written out or abbreviated in Italian, not with K/M/B: «{amount} mila $», «{amount} mln $», «{amount} mld $».
 - Units: km, m, km/h, m/s, kn (knots), ft (feet), h, min, s; in UPPERCASE text KM, KM/S, KT, FT, MIN, H. "m" is always metres, so minutes are «min» («5 min fa»). MW stays MW. `°` and `%` stay.
 - "ago" goes after the time: «{count} min fa». When a placeholder already holds a localized "ago" text (`{age}`, `{ago}`), do not add «fa» again.
-- A feature name used as a sentence subject gets a head noun so the verb agrees: «La modalità Missioni spaziali isola…», «Il pannello Impostazioni provider è disattivato…», «Il livello {layer} è attivo…», «Lo strumento {name} è attivo…». A short card title with a placeholder name puts the state after a colon: «{label}: attivato».
+- A feature name used as a sentence subject gets a head noun so the verb agrees: «La modalità Missioni spaziali isola…», «Il pannello Impostazioni provider è disattivato…», «Il livello {layer} è attivo…», «Lo strumento {name} è attivo…». A short card title with a placeholder name puts the state after a colon: «{label}: attivato». The same goes for a placeholder list of names: «Attivazione recente: {layers}». A count in a plain `t()` entry (no plural forms) that can be 1 goes after a label, so nothing has to agree with it: «Record accettati: {accepted} su {raw}».
 - English loanwords that Italian UIs use as they are stay in English: feed, live, cockpit, briefing, preset, overlay, layout, snapshot, tile, provider, timeout, payload, bloom, scope.
 
 ## Plurals
@@ -62,9 +62,11 @@ The `many` form is the `other` text with «di» after the number when a noun fol
 | mapped / observed                             | mappato / osservato                                          |
 | camera (view) / camera, CCTV camera           | camera / telecamera, telecamera CCTV                         |
 | earthquake / active fire / fire perimeter     | terremoto / incendio attivo / perimetro dell'incendio        |
+| lightning strike / cloud (cover, %)           | fulmine / nuvole («non singoli fulmini», «20% di nuvole»)    |
 | incident (wildfire, Type N) / scene incident  | evento (Evento di tipo N, Incendio senza nome) / evento      |
 | trigger record (USGS card) / OPEN SOURCE link | scheda / APRI LA FONTE                                       |
 | advisory (NHC/CPHC cyclone) / cone            | bollettino / cono di incertezza                              |
+| forecast lead hours (cyclone points)          | scadenze di previsione in ore                                |
 | radio station / broadcaster                   | stazione radio / emittente                                   |
 | CH (radio channel readout)                    | CH (unchanged)                                               |
 | road / flow (traffic)                         | strada / flusso                                              |
