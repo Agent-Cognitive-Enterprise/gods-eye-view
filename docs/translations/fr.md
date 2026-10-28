@@ -34,7 +34,7 @@ The `many` form is the `other` text with « de » (« d' » before a vowel) afte
 
 | English                                        | Français                                                        |
 | ---------------------------------------------- | --------------------------------------------------------------- |
-| layer / data layer                             | couche / couche de données                                      |
+| layer / data layer / DATA LAYERS (panel title) | couche / couche de données / COUCHES                            |
 | feed / source / data source                    | flux / source / source de données                               |
 | LIVE (status) / live data                      | DIRECT / données en direct                                      |
 | SIMULATED                                      | SIMULÉ                                                          |
@@ -62,7 +62,7 @@ The `many` form is the `other` text with « de » (« d' » before a vowel) afte
 | forecast / lead hours / valid / issued         | prévision / échéances / valide / émise                          |
 | AQHI (Canada)                                  | CQAS (cote air santé)                                           |
 | radio station / tune                           | station / régler                                                |
-| bikeshare / transit                            | vélos en libre-service / transports en commun                   |
+| bikeshare / transit                            | vélos partagés / transports en commun                           |
 | route (directions) / turn (maneuver)           | itinéraire / manœuvre                                           |
 | scene / shot / scene recipe                    | scène / plan / recette de scène                                 |
 | bundle / data pack / anchor                    | archive / paquet de données / ancre                             |
