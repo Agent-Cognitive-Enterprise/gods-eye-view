@@ -17,7 +17,7 @@ Translation source: abiyeenzo (#913).
 
 ## Numbers, units and dates
 
-- Units: km, m, km/h, m/s, kt, ft, mph, hPa, MW, dB, °, % stay as written, with the English spacing (「250 km」, 「{frp} MW」, 「95 kt」).
+- Units: km, m, km/h, m/s, kt, ft, mph, hPa, MW, dB, °, % stay as written, with the English spacing (「250 km」, 「{frp} MW」, 「95 kt」). Code-built cockpit distances follow this too (`cockpitUnitCase` skips the HUD upper-casing for ja, as for zh). The cockpit's own speed caption is the HUD code KT, in 対地速度 · KT and under the readout.
 - Time units are words written straight after the number: 秒, 分, 時間, 日 (「5分前」, 「{count}時間」, 「1時間5分」). `formatQuantity` and `formatRelativeTime` drop the space for Japanese unit words, so code-built values match the catalog.
 - Counters follow the thing counted: 機 (aircraft), 隻 (ships), 基 (satellites), 台 (cameras, vehicles), 局 (stations), 件 (records, results, events), か所 (sites), 個 (generic). Prefer a counter to a bare number.
 - Dates come from `Intl` and read year first: 2026年8月26日. Coordinates in prose are 北緯 / 東経; HUD hemisphere letters stay N, S, E, W.
@@ -62,12 +62,15 @@ Translation source: abiyeenzo (#913).
 | track (TRK, direction over the ground)    | 対地針路                                |
 | HDG / BRG / CRS / FOV                     | そのまま（HUDコード）                   |
 | squawk                                    | スコーク                                |
+| radio failure / emergency (7600 / 7700)   | 通信機故障 / 緊急事態                   |
 | map heading / North up                    | 方位 / 北を上に                         |
 | Street Level / Street View (Google)       | ストリートレベル / ストリートビュー     |
 | Recent Imagery                            | 最近の衛星画像                          |
 | Global Context / Context (panel)          | グローバルコンテキスト / コンテキスト   |
 | radio (station) / tune / seek             | ラジオ（局）/ 選局・同調 / シーク       |
+| Public Safety / SAFETY (radio category)   | 警察・消防                              |
 | transit / bikeshare                       | 公共交通 / シェアサイクル               |
+| occupancy: empty / standing room only / crushed | 乗客なし / 立ち乗りのみ / 非常に混雑 |
 | traffic flow (TomTom)                     | 交通流                                  |
 | Previous / Next                           | 前へ / 次へ                             |
 | SIG / NEWS / LOCAL (briefing tabs)        | シグナル / ニュース / ローカル          |
@@ -76,7 +79,8 @@ Translation source: abiyeenzo (#913).
 | weather model / forecast lead hours       | モデル / 予報時間                       |
 | valid (forecast time) / issued            | 対象時刻 / 発表                         |
 | radar reflectivity / lightning density    | レーダー反射強度 / 雷密度               |
-| cyclone, storm (NHC/CPHC) / advisory      | サイクロン / 情報（第N報）              |
+| cyclone, storm (NHC/CPHC) / advisory      | サイクロン / 情報（第N報）; alone: サイクロン情報 |
+| potential tropical cyclone (NHC PC)       | サイクロン化のおそれがある擾乱          |
 | forecast uncertainty cone                 | 予報円                                  |
 | tropical storm / tropical depression      | 熱帯暴風雨 / 熱帯低気圧                 |
 | scene cloud / mosaic / daily overview     | シーン雲量 / モザイク / 日次概観        |
@@ -97,3 +101,4 @@ Translation source: abiyeenzo (#913).
 | roundabout / ramp / exit                  | ロータリー / ランプ / 出口              |
 | reduced motion                            | 動きを減らす                            |
 | NOT AN ALL-CLEAR                          | 安全の保証ではありません                |
+| … Watch (scene titles: Earth, Orbital)    | 監視（地球監視, 軌道監視）              |

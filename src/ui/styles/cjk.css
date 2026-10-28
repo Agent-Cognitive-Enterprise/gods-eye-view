@@ -69,3 +69,11 @@ html:lang(ja) .recent-imagery-readout .ri-slot-value {
   word-break: keep-all;
   overflow-wrap: break-word;
 }
+
+/* Japanese layer status lines wrap at their spaces and · separators, so an
+   age such as 1分以内 stays whole (更新 1 / 分以内); a run too long for the
+   line still breaks. */
+html:lang(ja) .data-toggle-meta {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}

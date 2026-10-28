@@ -8,6 +8,22 @@ import {
   isDatasheetFov,
 } from './modelSpecs.js';
 
+/** The camera's zoom bucket (cctv model) in the HUD's view-band words. */
+function viewBandLabel(band) {
+  switch (band) {
+    case 'street':
+      return t('STREET', { context: 'view band' });
+    case 'city':
+      return t('CITY', { context: 'view band' });
+    case 'regional':
+      return t('REGIONAL', { context: 'view band' });
+    case 'global':
+      return t('GLOBAL', { context: 'view band' });
+    default:
+      return band.toUpperCase();
+  }
+}
+
 export function createPresentation({
   state: layerState,
   services,
@@ -82,7 +98,7 @@ export function createPresentation({
         : t('SRC {value}', {
             value: String(active.camera.feedType || 'image').toUpperCase(),
           }),
-      t('{value} CONTEXT', { value: viewBand.toUpperCase() }),
+      t('{value} CONTEXT', { value: viewBandLabel(viewBand) }),
       // Identified hardware: append the model's datasheet specs + attribution.
       active.camera.spec
         ? t('{spec} · SPECS: CCTV-DATABASE.COM', {
