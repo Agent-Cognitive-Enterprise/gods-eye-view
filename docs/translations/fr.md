@@ -28,64 +28,72 @@ A `tn()` entry needs three forms. `Intl.PluralRules('fr')` picks:
 | `many`  | 1 000 000, 2 000 000… (exact millions) | 1 000 000 de caméras |
 | `other` | everything else: 2–999 999, 2,5…       | 3 caméras            |
 
-The `many` form is the `other` text with « de » (« d' » before a vowel) after the number: « {count} de couches effacées », « {count} D'ENTRÉES INCONNUES ». When the words after the number cannot agree (an UPPERCASE readout, a list), put the number after a colon in every form: « CAPTÉS : {count} ».
+The `many` form is the `other` text with « de » (« d' » before a vowel) after the number: « {count} de couches effacées », « {count} D'ENTRÉES INCONNUES ». When the words after the number cannot agree (an UPPERCASE readout, a list), put the number after a colon in every form: « CAPTÉS : {count} ». The same goes for a layer name whose gender and number vary: « Couche activée : {label} », not « {label} activé ».
 
 ## Glossary
 
-| English                                                   | Français                                                                |
-| --------------------------------------------------------- | ----------------------------------------------------------------------- |
-| layer / data layer / DATA LAYERS (panel title)            | couche / couche de données / COUCHES                                    |
-| feed / source / data source                               | flux / source / source de données                                       |
-| LIVE (status) / live data                                 | DIRECT / données en direct                                              |
-| SIMULATED                                                 | SIMULÉ                                                                  |
-| stale / degraded / unavailable                            | obsolète / dégradé / indisponible                                       |
-| retry / retrying                                          | nouvel essai / réessayez                                                |
-| rate-limited                                              | limite de requêtes atteinte                                             |
-| key (API key) / POWER UP / POWERED UP                     | clé (clé API) / ALLUMER / ALLUMÉ                                        |
-| Provider Settings                                         | paramètres des fournisseurs                                             |
-| enable / disable                                          | activer / désactiver                                                    |
-| globe / map / map source / basemap / map stack            | globe / carte / source de carte / fond de carte / fond de carte         |
-| tile (map)                                                | tuile                                                                   |
-| aircraft / flight / military flights                      | aéronef (avion in short copy) / vol / vols militaires                   |
-| vessel, ship / tanker (AIS type)                          | navire / navire-citerne                                                 |
-| satellite / shell (Starlink) / DENSE                      | satellite / couche de la constellation / DENSE                          |
-| launch / launch site / space mission                      | lancement / site de lancement / mission spatiale                        |
-| ascent / replay / payload / stage / downrange             | ascension / rejeu / charge utile / étage / distance au sol (DIST. SOL)  |
-| contact / tracking / track (HUD)                          | contact / suivi / piste                                                 |
-| installation / site                                       | installation / site                                                     |
-| mapped / observed                                         | cartographié / observé                                                  |
-| camera / CCTV camera / ALPR camera                        | caméra / caméra CCTV / caméra LAPI                                      |
-| earthquake                                                | séisme                                                                  |
-| active fire (FIRMS detection) / wildfire                  | feu actif / incendie                                                    |
-| contained / containment (wildfire)                        | circonscrit / part circonscrite (not « maîtrisé », which is controlled) |
-| advisory (NHC/CPHC cyclone)                               | bulletin                                                                |
-| forecast / lead hours / valid / issued                    | prévision / échéances / valide / émise                                  |
-| AQHI (Canada)                                             | CQAS (cote air santé)                                                   |
-| radio station / tune                                      | station / régler                                                        |
-| bikeshare / transit                                       | vélos partagés / transports en commun                                   |
-| route (directions) / turn (maneuver)                      | itinéraire / manœuvre                                                   |
-| scene / shot / scene recipe                               | scène / plan / recette de scène                                         |
-| bundle / data pack / anchor                               | archive / paquet de données / ancre                                     |
-| story beat                                                | étape du récit                                                          |
-| briefing / panel / dock                                   | briefing / panneau / dock                                               |
-| cockpit                                                   | cockpit                                                                 |
-| preset / visual preset                                    | préréglage / préréglage visuel                                          |
-| Scope (circular viewport mask) / keyhole                  | lunette / ouverture                                                     |
-| detection overlay                                         | surcouche de détection                                                  |
-| Clean UI                                                  | vue épurée                                                              |
-| Street Level (layer) / Street View (Google)               | Niveau rue / Street View                                                |
-| Recent Imagery / box                                      | imagerie récente / zone                                                 |
-| pin (Draw tool) / pin (Recent Imagery)                    | épingle / épingler                                                      |
-| Cyber (HUD layout, effect)                                | Cyber                                                                   |
-| heading / course (ground track) / altitude / ground speed | cap / route / altitude / vitesse sol                                    |
-| HDG / BRG / CRS / FOV / DEST / SPD / ALT                  | unchanged                                                               |
-| RANGE / PITCH / HGT (CCTV calibration chips)              | PORTÉE / INCL. / HAUT.                                                  |
-| PREV / PREVIOUS / NEXT (chips)                            | PRÉC. / PRÉC. / SUIV.                                                   |
-| Previous / Next (button text)                             | Précédent / Suivant                                                     |
-| L / R (relative bearing)                                  | G / D                                                                   |
-| SIG / NEWS / LOCAL (briefing tabs)                        | SIG / ACTUS / LOCAL                                                     |
-| compass points (N, NNE, …, W, NW)                         | N, NNE, …, O, NO                                                        |
-| NOT AN ALL-CLEAR                                          | PAS UN FEU VERT                                                         |
-| AI agent                                                  | agent IA                                                                |
-| share (a view or link)                                    | partager                                                                |
-| click / click to …                                        | cliquez / cliquer pour …                                                |
+| English                                                      | Français                                                                |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| layer / data layer / DATA LAYERS (panel title)               | couche / couche de données / COUCHES                                    |
+| feed / source / data source                                  | flux / source / source de données                                       |
+| LIVE (status) / live data                                    | DIRECT / données en direct                                              |
+| SIMULATED                                                    | SIMULÉ                                                                  |
+| stale / degraded / unavailable                               | obsolète / dégradé / indisponible                                       |
+| retry / retrying (status: RETRYING X)                        | nouvel essai / réessayez (NOUVEL ESSAI : X)                             |
+| rate-limited                                                 | limite de requêtes atteinte                                             |
+| key (API key) / POWER UP / POWERED UP                        | clé (clé API) / ALLUMER / ALLUMÉ                                        |
+| Provider Settings                                            | paramètres des fournisseurs                                             |
+| enable / disable                                             | activer / désactiver                                                    |
+| globe / map / map source / basemap / map stack               | globe / carte / source de carte / fond de carte / fond de carte         |
+| tile (map)                                                   | tuile                                                                   |
+| aircraft / flight / military flights                         | aéronef (avion in short copy) / vol / vols militaires                   |
+| vessel, ship / tanker (AIS type)                             | navire / navire-citerne                                                 |
+| satellite / shell (Starlink) / DENSE                         | satellite / couche de la constellation / DENSE                          |
+| launch / launch site / space mission                         | lancement / site de lancement / mission spatiale                        |
+| ascent / replay / payload / stage / downrange                | ascension / rejeu / charge utile / étage / distance au sol (DIST. SOL)  |
+| contact / tracking / track (HUD)                             | contact / suivi / piste                                                 |
+| installation / site                                          | installation / site                                                     |
+| mapped / observed                                            | cartographié / observé                                                  |
+| camera / CCTV camera / ALPR camera                           | caméra / caméra CCTV / caméra LAPI                                      |
+| earthquake                                                   | séisme                                                                  |
+| active fire (FIRMS detection) / wildfire                     | feu actif / incendie                                                    |
+| contained / containment (wildfire)                           | circonscrit / part circonscrite (not « maîtrisé », which is controlled) |
+| advisory (NHC/CPHC cyclone)                                  | bulletin                                                                |
+| forecast / lead hours / valid / issued                       | prévision / échéances / valide / émise                                  |
+| AQHI (Canada)                                                | CQAS (cote air santé)                                                   |
+| radio station / tune                                         | station / régler                                                        |
+| bikeshare / transit                                          | vélos partagés / transports en commun                                   |
+| route (directions) / turn (maneuver)                         | itinéraire / manœuvre                                                   |
+| scene / shot / scene recipe                                  | scène / plan / recette de scène                                         |
+| bundle / data pack / anchor                                  | archive / paquet de données / ancre                                     |
+| story beat                                                   | étape du récit                                                          |
+| briefing / panel / dock                                      | briefing / panneau / dock                                               |
+| cockpit                                                      | cockpit                                                                 |
+| preset / visual preset                                       | préréglage / préréglage visuel                                          |
+| Scope (circular viewport mask) / keyhole                     | lunette / ouverture                                                     |
+| detection overlay                                            | surcouche de détection                                                  |
+| Clean UI                                                     | vue épurée                                                              |
+| Street Level (layer) / Street View (Google)                  | Niveau rue / Street View                                                |
+| Recent Imagery / box                                         | imagerie récente / zone                                                 |
+| pin (Draw tool) / pin (Recent Imagery)                       | épingle / épingler                                                      |
+| Cyber (HUD layout, effect)                                   | Cyber                                                                   |
+| heading / course (ground track) / altitude / ground speed    | cap / route / altitude / vitesse sol                                    |
+| HDG / BRG / CRS / FOV / DEST / SPD / ALT                     | unchanged                                                               |
+| RANGE / PITCH / HGT (CCTV calibration chips)                 | PORTÉE / INCL. / HAUT.                                                  |
+| PREV / PREVIOUS / NEXT (chips)                               | PRÉC. / PRÉC. / SUIV.                                                   |
+| Previous / Next (button text)                                | Précédent / Suivant                                                     |
+| L / R (relative bearing)                                     | G / D                                                                   |
+| SIG / NEWS / LOCAL (briefing tabs)                           | SIG / ACTUS / LOCAL                                                     |
+| compass points (N, NNE, …, W, NW)                            | N, NNE, …, O, NO                                                        |
+| NOT AN ALL-CLEAR                                             | PAS UN FEU VERT                                                         |
+| AI agent                                                     | agent IA                                                                |
+| share (a view or link)                                       | partager                                                                |
+| click / click to …                                           | cliquez / cliquer pour …                                                |
+| map heading (compass, north-up control)                      | orientation (de la carte)                                               |
+| subject (cockpit / shared contact)                           | cible                                                                   |
+| cloud cover / CLOUD (briefing readout)                       | nébulosité / NÉBULOSITÉ                                                 |
+| LEVEL (cockpit horizon guide)                                | HORIZON                                                                 |
+| CALIBRATED / CURATED / RAW PRIOR (CCTV pose)                 | CALIBRÉE / VÉRIFIÉE / ESTIM. INITIALE                                   |
+| PORT TENDER (AIS type)                                       | SERVITUDE PORT. (navire de servitude portuaire)                         |
+| ChatGPT sign-in (action) / opening sign-in / sign-in expired | connexion / page de connexion / la session a expiré                     |
+| authored shot (scene)                                        | plan scénarisé                                                          |
