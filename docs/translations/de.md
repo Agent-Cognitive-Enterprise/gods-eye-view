@@ -96,6 +96,7 @@ Keep the verb in agreement: «{count} Station meldet» / «{count} Stationen mel
 | YOU / THIS / HERE (voice card labels)          | EINGABE / DIES / HIER                                                  |
 | click / click to …                             | anklicken / … klicken                                                  |
 | tap (touch)                                    | Antippen (not «Tipp», which is a hint)                                 |
+| press / tap a key                              | Taste drücken / kurz drücken (never «tippen» for keys)                 |
 | tilted view                                    | Schrägansicht                                                          |
 | card (host card) / voice card                  | Eintrag (in hints), Infokarte / Sprachkarte                            |
 | label (on the map) / clear (switch off layers) | Beschriftung / ausschalten (not «löschen»)                             |
