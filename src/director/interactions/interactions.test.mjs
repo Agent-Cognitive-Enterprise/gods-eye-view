@@ -233,6 +233,37 @@ test('a throwing changed observer does not break session dispatch, activation, o
   }
 });
 
+test('an observer that always throws cannot stop activate or clear', () => {
+  const warnings = [];
+  const origWarn = console.warn;
+  console.warn = (...args) => warnings.push(args);
+  try {
+    const session = createInteractionSession({
+      execute: () => true,
+      changed: () => {
+        throw new Error('observer failed');
+      },
+    });
+    session.activate([{ id: 'a' }, { id: 'b' }]);
+    assert.deepEqual(session.getState(), {
+      active: true,
+      busy: false,
+      selected: null,
+      count: 2,
+    });
+    session.clear();
+    assert.deepEqual(session.getState(), {
+      active: false,
+      busy: false,
+      selected: null,
+      count: 0,
+    });
+    assert.equal(warnings.length, 3);
+  } finally {
+    console.warn = origWarn;
+  }
+});
+
 test('settled pack shots cannot take the same-shot seek shortcut after Stop released geometry', async () => {
   const { SceneDirector } = await import('../../scenes/director.js');
   const shot = { id: 'shot', dataPackIds: ['pack'] };
