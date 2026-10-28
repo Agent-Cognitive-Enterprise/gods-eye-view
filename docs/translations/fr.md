@@ -96,6 +96,8 @@ The `many` form is the `other` text with « de » (« d' » before a vowel) afte
 | cloud cover / CLOUD (briefing readout)                       | nébulosité / NÉBULOSITÉ                                                 |
 | LEVEL (cockpit horizon guide)                                | HORIZON                                                                 |
 | CALIBRATED / CURATED / RAW PRIOR (CCTV pose)                 | CALIBRÉE / VÉRIFIÉE / ESTIM. INITIALE                                   |
+| DATASHEET / SPEC FOV (CCTV lens range)                       | FICHE TECHNIQUE / FOV CONSTRUCTEUR                                      |
 | PORT TENDER (AIS type)                                       | SERVITUDE PORT. (navire de servitude portuaire)                         |
 | ChatGPT sign-in (action) / opening sign-in / sign-in expired | connexion / page de connexion / la session a expiré                     |
 | authored shot (scene)                                        | plan scénarisé                                                          |
+| report / record (USGS event card) / readout, reading         | rapport / relevé (a measured value only)                                |
