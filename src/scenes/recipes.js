@@ -1079,7 +1079,15 @@ export function displayShotTitle(title, shot = undefined, scene = undefined) {
 /** Whether the built-in recipe behind a scene declares a shot with this title. */
 function recipeDeclaresShotTitle(sceneId, title) {
   const recipe = sceneId ? getSceneRecipeById(sceneId) : null;
-  return Boolean(
-    recipe?.cameraPath?.some((keyframe) => keyframe?.title === title),
+  if (!recipe) return false;
+  const declares = (path) =>
+    Array.isArray(path) && path.some((keyframe) => keyframe?.title === title);
+  if (declares(recipe.cameraPath)) return true;
+  // A bootstrap recipe seeds legacy "Shot N" keyframes; the upgrade replaces
+  // them with the append recipe's bootstrap shots, which carry no source pack.
+  return SCENE_APPEND_RECIPES.some(
+    (append) =>
+      append.legacySceneBootstrap?.targetSceneTitle === recipe.title &&
+      declares(append.legacySceneBootstrap.cameraPath),
   );
 }

@@ -152,6 +152,7 @@
     "CCTV",
     "CCTV OFF",
     "CCTV ON",
+    "CH {index} / {total}",
     "COCKPIT",
     "CRS {value}°",
     "CRT",

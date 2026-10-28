@@ -14,9 +14,10 @@ Translation source: abiyeenzo (#912).
 - The HUD codes HDG, BRG, CRS, FOV and DEST stay in English, as in cockpit avionics. RANGE is «PORTATA». Words used in a sentence are translated: heading → «prua» (aircraft, ships) or «direzione» (camera, buses, trams, trains), course → «rotta».
 - Keyboard keys stay in English: Space, Enter, Esc, Tab, Shift, Backspace, H, 1–9 («Tieni premuto Space per parlare», «Premi Enter per riprovare»).
 - Decimal comma in numbers written in the text: «28,2710° N». Numbers formatted by the code follow `Intl` and need nothing.
+- Amounts: thousands, millions and billions are written out or abbreviated in Italian, not with K/M/B: «{amount} mila $», «{amount} mln $», «{amount} mld $».
 - Units: km, m, km/h, m/s, kn (knots), ft (feet), h, min, s; in UPPERCASE text KM, KM/S, KT, FT, MIN, H. "m" is always metres, so minutes are «min» («5 min fa»). MW stays MW. `°` and `%` stay.
 - "ago" goes after the time: «{count} min fa». When a placeholder already holds a localized "ago" text (`{age}`, `{ago}`), do not add «fa» again.
-- A feature name used as a sentence subject gets a head noun so the verb agrees: «La modalità Missioni spaziali isola…», «Il pannello Impostazioni provider è disattivato…».
+- A feature name used as a sentence subject gets a head noun so the verb agrees: «La modalità Missioni spaziali isola…», «Il pannello Impostazioni provider è disattivato…», «Il livello {layer} è attivo…», «Lo strumento {name} è attivo…». A short card title with a placeholder name puts the state after a colon: «{label}: attivato».
 - English loanwords that Italian UIs use as they are stay in English: feed, live, cockpit, briefing, preset, overlay, layout, snapshot, tile, provider, timeout, payload, bloom, scope.
 
 ## Plurals
@@ -51,6 +52,9 @@ The `many` form is the `other` text with «di» after the number when a noun fol
 | aircraft, plane / flight / military flights   | aereo / volo / voli militari                                 |
 | vessel, ship                                  | nave                                                         |
 | satellite / shell (Starlink) / DENSE          | satellite / shell / DENSO                                    |
+| SPARSE / BALANCED / DENSE (detection modes)   | RADO / BILANCIATO / DENSO (agree with «overlay»)             |
+| broadband (Starlink shell)                    | a banda larga                                                |
+| VISUAL (CelesTrak group)                      | VISIBILI                                                     |
 | launch (rocket) / launch site / space mission | lancio / sito di lancio / missione spaziale                  |
 | ascent / replay / payload / stage             | salita / replay / payload / stadio                           |
 | contact / tracking                            | contatto / tracciamento                                      |
@@ -58,10 +62,14 @@ The `many` form is the `other` text with «di» after the number when a noun fol
 | mapped / observed                             | mappato / osservato                                          |
 | camera (view) / camera, CCTV camera           | camera / telecamera, telecamera CCTV                         |
 | earthquake / active fire / fire perimeter     | terremoto / incendio attivo / perimetro dell'incendio        |
+| incident (wildfire, Type N) / scene incident  | evento (Evento di tipo N, Incendio senza nome) / evento      |
+| trigger record (USGS card) / OPEN SOURCE link | scheda / APRI LA FONTE                                       |
 | advisory (NHC/CPHC cyclone) / cone            | bollettino / cono di incertezza                              |
 | radio station / broadcaster                   | stazione radio / emittente                                   |
+| CH (radio channel readout)                    | CH (unchanged)                                               |
 | road / flow (traffic)                         | strada / flusso                                              |
 | transit / bike share                          | trasporto pubblico / bike sharing                            |
+| last report (vehicle position)                | ultima segnalazione                                          |
 | scene / shot / scene recipe                   | scena / scatto / ricetta della scena                         |
 | anchor / data pack / bundle (scene)           | ancora / pacchetto dati / pacchetto                          |
 | story beat                                    | tappa del racconto                                           |
@@ -88,6 +96,7 @@ The `many` form is the `other` text with «di» after the number when a noun fol
 | RANGE / PITCH / HGT (CCTV calibration)        | PORTATA / INCL. / ALT.                                       |
 | PREV / NEXT                                   | PREC / SUCC                                                  |
 | Previous / Next (button text)                 | Precedente / Successivo                                      |
+| Focus {target} (action, aria label)           | Inquadra {target} (the FOCUS button stays FOCUS)             |
 | L / R (relative bearing)                      | S / D                                                        |
 | SIG / NEWS / LOCAL (briefing tabs)            | SIG / NOTIZIE / LOCALE                                       |
 | compass points (N, NNE, …, W, NW)             | N, NNE, …, O, NO (west is «O», ovest)                        |

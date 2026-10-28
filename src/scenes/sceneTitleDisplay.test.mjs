@@ -4,6 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  SCENE_APPEND_RECIPES,
   SCENE_RECIPES,
   displaySceneTitle,
   displayShotTitle,
@@ -140,4 +141,29 @@ test('the scene context of a shot carries its display title by provenance', asyn
       .shotDisplayTitle,
     title,
   );
+});
+
+test('bootstrap shots of a built-in scene localize without a source pack', () => {
+  setLocale('ru');
+  const append = SCENE_APPEND_RECIPES.find(
+    (recipe) => recipe.legacySceneBootstrap?.cameraPath?.length,
+  );
+  if (!append) return;
+  const bootstrap = append.legacySceneBootstrap;
+  const scene = SCENE_RECIPES.find(
+    (recipe) => recipe.title === bootstrap.targetSceneTitle,
+  );
+  if (!scene) return;
+  for (const { title } of bootstrap.cameraPath) {
+    // The upgrade copies these keyframes into the scene without sourcePackId.
+    assert.equal(
+      displayShotTitle(title, { id: 'shot-old', title }, { id: scene.id }),
+      displayShotTitle(title),
+    );
+    // The same title in an operator's own scene stays as typed.
+    assert.equal(
+      displayShotTitle(title, { id: 'shot-user', title }, { id: 'scene-user' }),
+      title,
+    );
+  }
 });
