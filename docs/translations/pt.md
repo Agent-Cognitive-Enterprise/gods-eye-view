@@ -9,15 +9,15 @@ Translation source: abiyeenzo (#909).
 - Brazilian Portuguese (pt-BR): câmera, tela, compartilhar, arquivo, baixar, ônibus, metrô. Every `pt` tag, `pt-PT` included, gets this catalog, so avoid slang and regionalisms.
 - Address the user with «você» imperatives: «Clique no mapa», «Ative o CCTV», «Tente novamente». Tooltips that name an action use the infinitive: «Expandir painel», «Redefinir a câmera».
 - Sentence case, not Title Case: "Live Flights" → «Voos ao vivo». UPPERCASE English stays UPPERCASE: «AO VIVO», «SEM DADOS».
-- Quotes inside Portuguese text are straight double quotes: «Excluir o plano "{shot}"?». A sentence that names a panel uses «o painel "Configurações de provedores"», so the verb agrees.
+- Quotes inside Portuguese text are straight double quotes: «Excluir o plano "{shot}"?». A sentence that names a panel quotes it: «o painel "Configurações de provedores"» as the subject, so the verb agrees, and «adicione em "Configurações de provedores"» after a preposition.
 - A dash between clauses is a spaced em dash « — », even where the English runs it in.
-- A date or time after a participle takes a preposition: «emitido em {time}», «válida para {valid}», «Posição em {time}».
+- A date or time after a participle takes a preposition: «emitido em {time}», «válida para {valid}», «Posição em {time}», «onde estava em {time}». Use «em», not «às», wherever {time} can include a date.
 - Short labels, chips and HUD readouts stay short. A standard abbreviation with a period beats a wrapped line: ANT., PRÓX., DESLIG., EXCL., INCL., ALT., VEL., câm.
-- The HUD codes HDG, BRG, CRS, FOV, DEST, SPD, RANGE, ALT, GS and TRK stay in English, as in cockpit avionics («ALT {altitude} FT · GS {speed} KT · TRK {track}»), and so does the HUD recording mark REC. Words used in a sentence are translated: heading → «rumo», range → «alcance».
+- The HUD codes HDG, BRG, CRS, FOV, DEST, SPD, RANGE, ALT, GS, TRK and V/S stay in English, as in cockpit avionics («ALT {altitude} FT · GS {speed} KT · TRK {track}», «V/S {rate} FT/MIN»), and so does the HUD recording mark REC. Words used in a sentence are translated: heading → «rumo», range → «alcance».
 - Keyboard keys stay in English: Space, Esc, Enter, Tab, Shift, Backspace, H, 1–9 («Segure Space para falar»).
 - Common English tech words used in Brazil stay: feed, stream, snapshot, briefing, dock, layout, bloom, status, app, link, token.
-- Units: km, m, km/h, m/s, kt (knots), ft (feet), h, min, s, always spaced from the number («Terremotos (24 h)», «Missões espaciais (30 d)»); in UPPERCASE text KM, KM/S, KT, FT, MIN, H. "m" is always metres, so minutes are «min» («há 5 min»). MW stays MW. `°` and `%` stay. Decimal comma in written numbers («M4,4»).
-- "ago" goes before the time: «há {count} min». When a placeholder already holds a localized "ago" text (`{age}`, `{ago}`), do not add «há» again.
+- Units: km, m, km/h, m/s, kt (knots), ft (feet), h, min, s, always spaced from the number («Terremotos (24 h)», «Missões espaciais (30 d)»; in the layer names the space is a no-break space, U+00A0, so the unit never wraps away from the number); in UPPERCASE text KM, KM/S, KT, FT, MIN, H. "m" is always metres, so minutes are «min» («há 5 min»). MW stays MW. `°` and `%` stay. Decimal comma in written numbers («M4,4»).
+- "ago" goes before the time: «há {count} min», «mais recente há {value}». When a placeholder already holds a localized "ago" text (`{age}`, `{ago}`), do not add «há» again.
 - Money: «US$ {amount} mil / mi / bi» for thousands, millions and billions.
 - Compass points use Leste/Oeste: N, NNE, NE, ENE, L, ESE, SE, SSE, S, SSO, SO, OSO, O, ONO, NO, NNO; hemisphere letters N, S, L, O.
 
@@ -84,6 +84,7 @@ The `many` form is the `other` text with «de» after the number: «{count} de c
 | Cyber (HUD layout, effect)                    | Ciber                                                        |
 | heading / course / altitude / ground speed    | rumo / curso / altitude / velocidade solo (VELOC. SOLO)      |
 | HDG / BRG / CRS / FOV / DEST / SPD / RANGE    | HDG / BRG / CRS / FOV / DEST / SPD / RANGE (unchanged)       |
+| V/S (vertical speed code)                     | V/S (unchanged)                                              |
 | PREV / NEXT                                   | ANT. / PRÓX.                                                 |
 | Previous / Next (button text)                 | Anterior / Próximo (Próxima)                                 |
 | L / R (relative bearing)                      | E / D                                                        |
@@ -91,4 +92,7 @@ The `many` form is the `other` text with «de» after the number: «{count} de c
 | REGIONAL NEWS (fits the 16-character kicker)  | NOTÍCIAS DA ÁREA                                             |
 | PITCH / HGT (CCTV calibration chips)          | INCL. / ALT.                                                 |
 | NOT AN ALL-CLEAR                              | NÃO GARANTE SEGURANÇA                                        |
+| Last report (transit vehicle position)        | Último registro                                              |
+| intersection (CCTV)                           | cruzamento                                                   |
+| {layers} just turned on (any list of layers)  | «{layers}: ativação recente» (no agreement needed)           |
 | turn-by-turn: turn left / keep left / lane    | vire à esquerda / mantenha-se à esquerda / faixa da esquerda |

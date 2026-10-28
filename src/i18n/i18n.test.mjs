@@ -216,6 +216,21 @@ test('applyDocumentTranslations translates opted-in text and attributes in place
   assert.equal(unknown.textContent, 'No such message');
 });
 
+test('applyDocumentTranslations reads data-i18n-context for element text', () => {
+  const option = fakeElement({
+    text: 'All',
+    attributes: { 'data-i18n-context': 'radio tag' },
+  });
+  const doc = {
+    querySelectorAll: (selector) =>
+      selector === '[data-i18n]' ? [option] : [],
+  };
+  setLocale('pt');
+  applyDocumentTranslations(doc);
+  assert.equal(option.textContent, t('All', { context: 'radio tag' }));
+  assert.notEqual(option.textContent, t('All'));
+});
+
 test('persistLocaleAndReload keeps the choice in ?lang when storage is blocked', () => {
   const calls = [];
   const location = {

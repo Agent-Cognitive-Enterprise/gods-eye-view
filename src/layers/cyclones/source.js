@@ -1,11 +1,11 @@
 import { readResponseJsonCapped } from '../../sources/httpBody.js';
 
-// Shared with the AI tools, so no i18n import: the timeout stays English here
-// and the cyclones layer translates it where it shows it (translateKnown).
+// Shared with the AI tools, so no i18n import: these errors stay English here
+// and the cyclones layer translates them where it shows them (translateKnown).
 const msg = (text) => text;
 
 export const CYCLONE_RESPONSE_LIMIT = 4 * 1024 * 1024;
-const malformed = () => new Error('Malformed cyclone snapshot');
+const malformed = () => new Error(msg('Malformed cyclone snapshot'));
 const text = (value, max = 160) => {
   if (
     typeof value !== 'string' ||
