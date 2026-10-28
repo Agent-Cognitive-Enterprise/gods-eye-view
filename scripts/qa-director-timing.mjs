@@ -89,6 +89,8 @@ try {
   });
   for (const [name, passed] of Object.entries(result)) check(name, passed);
   const visibilityRestored = await page.evaluate(async () => {
+    // QA layer registration exists only in Vite dev builds.
+    if (typeof window.__gevQaRegisterLayer !== 'function') return 'skipped';
     const { sceneDirector: director, dataManager } = window.__godsEyeView;
     const layerId = 'director-seek-visibility-qa';
     window.__gevQaRegisterLayer(dataManager, {
@@ -140,10 +142,16 @@ try {
       await window.__gevQaUnregisterLayer(dataManager, layerId);
     }
   });
-  check(
-    'same-shot seek restores manually changed layer visibility',
-    visibilityRestored,
-  );
+  if (visibilityRestored === 'skipped') {
+    console.log(
+      '[SKIP] same-shot seek visibility needs a Vite dev server (QA_BASE_URL)',
+    );
+  } else {
+    check(
+      'same-shot seek restores manually changed layer visibility',
+      visibilityRestored,
+    );
+  }
   const content = await page.evaluate(async () => {
     const d = window.__godsEyeView.sceneDirector;
     const scene = d._project.scenes.find(({ title }) =>
