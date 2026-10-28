@@ -5,6 +5,7 @@ import {
   applyDocumentTranslations,
   formatDate,
   formatNumber,
+  formatRelativeTime,
   msg,
   persistLocaleAndReload,
   setLocale,
@@ -35,6 +36,9 @@ test('normalizeLocale folds regional variants and rejects unshipped tags', () =>
   assert.equal(normalizeLocale(' RU '), 'ru');
   assert.equal(normalizeLocale('en_GB'), 'en');
   assert.equal(normalizeLocale('xx'), null);
+  assert.equal(normalizeLocale('ja'), 'ja');
+  assert.equal(normalizeLocale('ja-JP'), 'ja');
+  assert.equal(normalizeLocale('JA_jp'), 'ja');
   // Explicit script tags take precedence over regional defaults.
   assert.equal(normalizeLocale('zh'), 'zh-CN');
   assert.equal(normalizeLocale('zh-CN'), 'zh-CN');
@@ -164,7 +168,13 @@ test('Intl formatters follow the active locale', () => {
   assert.equal(formatNumber(1234.5), '1,234.5');
   setLocale('ru');
   assert.equal(formatDate(date, options), '15 января 2026 г.');
+  assert.equal(formatRelativeTime(-5, 'minute'), '5 минут назад');
   assert.equal(formatNumber(1234.5), '1 234,5');
+  // Japanese keeps a number and its unit together, as the catalog does.
+  setLocale('ja');
+  assert.equal(formatDate(date, options), '2026年1月15日');
+  assert.equal(formatRelativeTime(-5, 'minute'), '5分前');
+  assert.equal(formatRelativeTime(-3, 'day'), '3日前');
 });
 
 function fakeElement({ text = '', attributes = {} } = {}) {
