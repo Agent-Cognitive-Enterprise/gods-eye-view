@@ -10,12 +10,13 @@ Translation source: abiyeenzo (#912).
 - Sentence case, not Title Case: "Live Flights" → «Voli live», "Space Missions" → «Missioni spaziali». UPPERCASE English stays UPPERCASE: «LIVE», «NON DISPONIBILE».
 - Quotes inside Italian text are straight double quotes: «Eliminare lo scatto "{shot}"?». Use the accented capitals (È, À) in UPPERCASE text: «VELOCITÀ», «CITTÀ».
 - Errors read as a statement, not a past participle on its own: "Search failed" → «Ricerca non riuscita»; "Could not …" → «Impossibile …». A dash that joins a cause and a hint becomes a colon: «Chiave API rifiutata: controlla AISSTREAM_API_KEY».
-- Short labels, chips and HUD readouts stay short. A standard abbreviation with a period beats a wrapped line: REGOLAZ., RILEV., INCL., ALT., VEL., STIM.; PREC / SUCC for PREV / NEXT.
-- The HUD codes HDG, BRG, CRS, FOV and DEST stay in English, as in cockpit avionics. RANGE is «PORTATA». Words used in a sentence are translated: heading → «prua» (aircraft) or «direzione» (camera), course → «rotta».
+- Short labels, chips and HUD readouts stay short. A standard abbreviation with a period beats a wrapped line: REGOLAZ., RILEV., INCL., ALT., VEL., STIM., PROIEZ., ESP.; PREC / SUCC for PREV / NEXT and PREVIOUS / NEXT.
+- The HUD codes HDG, BRG, CRS, FOV and DEST stay in English, as in cockpit avionics. RANGE is «PORTATA». Words used in a sentence are translated: heading → «prua» (aircraft, ships) or «direzione» (camera, buses, trams, trains), course → «rotta».
 - Keyboard keys stay in English: Space, Enter, Esc, Tab, Shift, Backspace, H, 1–9 («Tieni premuto Space per parlare», «Premi Enter per riprovare»).
 - Decimal comma in numbers written in the text: «28,2710° N». Numbers formatted by the code follow `Intl` and need nothing.
 - Units: km, m, km/h, m/s, kn (knots), ft (feet), h, min, s; in UPPERCASE text KM, KM/S, KT, FT, MIN, H. "m" is always metres, so minutes are «min» («5 min fa»). MW stays MW. `°` and `%` stay.
 - "ago" goes after the time: «{count} min fa». When a placeholder already holds a localized "ago" text (`{age}`, `{ago}`), do not add «fa» again.
+- A feature name used as a sentence subject gets a head noun so the verb agrees: «La modalità Missioni spaziali isola…», «Il pannello Impostazioni provider è disattivato…».
 - English loanwords that Italian UIs use as they are stay in English: feed, live, cockpit, briefing, preset, overlay, layout, snapshot, tile, provider, timeout, payload, bloom, scope.
 
 ## Plurals
@@ -36,7 +37,7 @@ The `many` form is the `other` text with «di» after the number when a noun fol
 | --------------------------------------------- | ------------------------------------------------------------ |
 | layer / data layer                            | livello / livello dati                                       |
 | feed / source / data source                   | feed / fonte / fonte dati                                    |
-| LIVE (status) / live data                     | LIVE / dati live                                             |
+| LIVE (status) / live data / live (feed state) | LIVE / dati live / live                                      |
 | SIMULATED                                     | SIMULATO                                                     |
 | stale / degraded / unavailable                | obsoleto / degradato / non disponibile                       |
 | retry / retrying                              | riprova / nuovo tentativo                                    |
@@ -78,6 +79,11 @@ The `many` form is the `other` text with «di» after the number when a noun fol
 | Recent Imagery                                | Immagini recenti                                             |
 | Global Context / Context (panel)              | Contesto globale / Contesto                                  |
 | heading, course / altitude / ground speed     | prua, rotta / altitudine / velocità al suolo (VEL. AL SUOLO) |
+| altitude in short HUD captions / Alt unknown  | QUOTA (QUOTA · FT) / Quota sconosciuta                       |
+| fallback (FALLBACK, Street View fallback)     | riserva / di riserva (SUPERFICIE DI RISERVA)                 |
+| forecast track / advisory center (cyclones)   | traccia prevista / centro del ciclone da bollettino          |
+| witness source / authored (scene)             | fonte testimoniale / predefinito, definito dall'autore       |
+| explore manually                              | esplora manualmente                                          |
 | HDG / BRG / CRS / FOV / DEST                  | HDG / BRG / CRS / FOV / DEST (unchanged)                     |
 | RANGE / PITCH / HGT (CCTV calibration)        | PORTATA / INCL. / ALT.                                       |
 | PREV / NEXT                                   | PREC / SUCC                                                  |

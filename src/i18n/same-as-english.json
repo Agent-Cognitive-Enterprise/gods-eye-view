@@ -260,6 +260,7 @@
     "World",
     "audio {state}",
     "dB",
+    "feed status|live",
     "ft",
     "hPa",
     "installation class|BASE",
