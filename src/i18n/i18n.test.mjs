@@ -34,6 +34,8 @@ test('normalizeLocale folds regional variants and rejects unshipped tags', () =>
   assert.equal(normalizeLocale('ru-RU'), 'ru');
   assert.equal(normalizeLocale(' RU '), 'ru');
   assert.equal(normalizeLocale('en_GB'), 'en');
+  assert.equal(normalizeLocale('pt-BR'), 'pt');
+  assert.equal(normalizeLocale('pt_PT'), 'pt');
   assert.equal(normalizeLocale('xx'), null);
   // Explicit script tags take precedence over regional defaults.
   assert.equal(normalizeLocale('zh'), 'zh-CN');
@@ -140,6 +142,20 @@ test('tn() picks English and Russian plural forms', () => {
   assert.match(label(3), / 3 КЛЮЧА(?![А-ЯЁ])/);
   assert.match(label(5), / 5 КЛЮЧЕЙ(?![А-ЯЁ])/);
   assert.match(label(21), / 21 КЛЮЧ(?![А-ЯЁ])/);
+});
+
+test('tn() picks the Portuguese one, many and other forms', () => {
+  const label = (count) =>
+    tn(
+      count,
+      'POWER UP · {count} KEY WAITING',
+      'POWER UP · {count} KEYS WAITING',
+    );
+  setLocale('pt');
+  assert.equal(label(0), 'ATIVAR · 0 CHAVE PENDENTE');
+  assert.equal(label(1), 'ATIVAR · 1 CHAVE PENDENTE');
+  assert.equal(label(3), 'ATIVAR · 3 CHAVES PENDENTES');
+  assert.equal(label(1_000_000), 'ATIVAR · 1000000 DE CHAVES PENDENTES');
 });
 
 test('t() context separates identical English with different meanings', () => {
