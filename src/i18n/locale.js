@@ -8,11 +8,19 @@ export const LOCALE_STORAGE_KEY = 'gev:locale:v1';
 export const DEFAULT_LOCALE = 'en';
 
 /** Shipped locales; order does not matter. Adding one: docs/TRANSLATORS.md. */
-export const LOCALES = Object.freeze(['en', 'es', 'ru', 'zh-CN', 'zh-Hant']);
+export const LOCALES = Object.freeze([
+  'en',
+  'de',
+  'es',
+  'ru',
+  'zh-CN',
+  'zh-Hant',
+]);
 
 /** Each locale named in its own language, for the selector. */
 export const LOCALE_NAMES = Object.freeze({
   en: 'English',
+  de: 'Deutsch',
   es: 'Español',
   ru: 'Русский',
   'zh-CN': '中文（简体）',
@@ -24,6 +32,7 @@ const RTL_LOCALES = Object.freeze([]);
 
 /**
  * Map any language tag to a shipped locale: 'ru-RU' and 'RU' → 'ru',
+ * 'de-AT' and 'de_CH' → 'de',
  * 'zh', 'zh-CN' and 'zh-Hans-SG' → 'zh-CN';
  * 'zh-Hant', 'zh-TW', 'zh-HK' and 'zh-MO' → 'zh-Hant'.
  * @returns {string|null}

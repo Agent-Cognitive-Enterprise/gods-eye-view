@@ -34,6 +34,9 @@ test('normalizeLocale folds regional variants and rejects unshipped tags', () =>
   assert.equal(normalizeLocale('ru-RU'), 'ru');
   assert.equal(normalizeLocale(' RU '), 'ru');
   assert.equal(normalizeLocale('en_GB'), 'en');
+  assert.equal(normalizeLocale('de'), 'de');
+  assert.equal(normalizeLocale('de-AT'), 'de');
+  assert.equal(normalizeLocale('de_CH'), 'de');
   assert.equal(normalizeLocale('xx'), null);
   // Explicit script tags take precedence over regional defaults.
   assert.equal(normalizeLocale('zh'), 'zh-CN');
@@ -68,7 +71,7 @@ test('resolveLocale: ?lang= wins, then the stored choice, then browser languages
     resolveLocale({
       location: { search: '?lang=xx' },
       storage: memoryStorage(),
-      languages: ['de-DE', 'ru-RU'],
+      languages: ['ko-KR', 'ru-RU'],
     }),
     'ru',
   );
@@ -76,7 +79,15 @@ test('resolveLocale: ?lang= wins, then the stored choice, then browser languages
     resolveLocale({
       location: { search: '' },
       storage: memoryStorage(),
-      languages: ['de'],
+      languages: ['de-DE', 'ru-RU'],
+    }),
+    'de',
+  );
+  assert.equal(
+    resolveLocale({
+      location: { search: '' },
+      storage: memoryStorage(),
+      languages: ['ko'],
     }),
     'en',
   );
