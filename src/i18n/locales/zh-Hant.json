@@ -1184,7 +1184,7 @@
   "STALE · cached source metadata": "已過期 · 數據源元數據來自緩存",
   "Map center is outside source coverage": "地圖中心在數據源覆蓋範圍之外",
   "NOAA/NWS 15-minute lightning density derived from Vaisala NLDN/GLD360. Coverage 110°E across the Pacific/Americas to 0°, 25°S–80°N. Not a live strike count, global coverage or a safety warning.": "NOAA/NWS 15 分鐘閃電密度，來源為 Vaisala NLDN/GLD360。覆蓋自 110°E 經太平洋/美洲至 0°，25°S–80°N。不是實時閃擊計數、不是全球覆蓋，也不構成安全警示。",
-  "NOAA MRMS radar echoes indicate precipitation patterns, not rain rate, a storm warning or a future forecast. Native source approximately 1 km; display is limited to level 6. Frames use exact advertised observation times.": "NOAA MRMS 雷達回波反映降水形態，不代表降雨強度、風暴警報或未來預報。原始數據分辨率約 1 km；顯示僅限縮放級別 6。各幀使用數據源公佈的精確觀測時間。",
+  "NOAA MRMS radar echoes indicate precipitation patterns, not rain rate, a storm warning or a future forecast. Native source approximately 1 km; display is limited to level 6. Frames use exact advertised observation times.": "NOAA MRMS 雷達回波反映降水形態，不代表降雨強度、風暴警報或未來預報。原始數據分辨率約 1 km；顯示僅限縮放級別 6。各幀使用數據源公布的精確觀測時間。",
   "GOES-19/18 longwave infrared Band 14 regional; NESDIS global longwave mosaic. Clouds only dims everything but bright, cold cloud tops; a brightness filter, not a cloud mask. Coverage and freshness differ by region.": "GOES-19/18 第 14 波段長波紅外區域圖；NESDIS 全球長波鑲嵌圖。“僅雲區”會調暗除明亮冷雲頂之外的一切；這是亮度濾鏡，不是雲掩膜。覆蓋範圍與新鮮度因區域而異。",
   "REGION": "區域",
   "IMAGE": "圖像",
