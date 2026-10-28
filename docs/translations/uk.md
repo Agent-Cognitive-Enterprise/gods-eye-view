@@ -30,47 +30,54 @@ A `tn()` entry needs four forms. `Intl.PluralRules('uk')` picks:
 
 ## Glossary
 
-| English                                    | Українська                                           |
-| ------------------------------------------ | ---------------------------------------------------- |
-| layer / data layer                         | шар / шар даних                                      |
-| feed                                       | потік даних (short: потік)                           |
-| source / data source                       | джерело / джерело даних                              |
-| LIVE (status) / live data                  | ОНЛАЙН / у реальному часі                            |
-| SIMULATED / SYNTHETIC                      | ІМІТАЦІЯ                                             |
-| stale / degraded / unavailable             | застарів / з перебоями (chip: ПЕРЕБОЇ) / недоступний |
-| retry                                      | повтор                                               |
-| key (API key) / POWER UP                   | ключ / ЗАПУСК                                        |
-| Provider Settings / provider               | Налаштування постачальників / постачальник           |
-| globe / map / map source / basemap         | глобус / карта / джерело карти / підкладка           |
-| aircraft / flight / military flights       | літак (short HUD: борт) / рейс / військові рейси     |
-| vessel, ship / vessels                     | судно / судна (gen. pl. суден)                       |
-| satellite                                  | супутник                                             |
-| launch (rocket) / space mission            | запуск / космічна місія                              |
-| contact / tracking                         | контакт / стеження                                   |
-| installation, site / mapped                | обʼєкт / нанесений на карту                          |
-| camera / CCTV camera                       | камера / камера CCTV                                 |
-| earthquake / active fire / fire perimeter  | землетрус / активна пожежа / контур пожежі           |
-| advisory (NHC/CPHC cyclone)                | зведення                                             |
-| scene / shot / scene recipe                | сцена / кадр / рецепт сцени                          |
-| briefing / panel / dock                    | брифінг / панель / док                               |
-| preset / visual preset                     | пресет / візуальний пресет                           |
-| Scope (circular viewport mask)             | приціл                                               |
-| overlay (detection overlay)                | накладка                                             |
-| heading / altitude / ground speed          | курс / висота / шляхова швидкість                    |
-| HDG / BRG / CRS / FOV / DEST / SPD / RANGE | КУРС / ПЕЛ. / ШЛЯХ / ОГЛЯД / ПРИЗН. / ШВИД / ДАЛЬН.  |
-| Street View (Google)                       | Перегляд вулиць (as in Ukrainian Google Maps)        |
-| Street Level (layer)                       | Вуличні знімки                                       |
-| imagery / recent imagery                   | знімки / свіжі знімки                                |
-| radar reflectivity / lightning density     | радіолокаційна відбивність / щільність блискавок     |
-| infrared                                   | інфрачервоний (short: ІЧ)                            |
-| receiver / gain / decoder                  | приймач / підсилення / декодер                       |
-| broadcaster                                | мовник                                               |
-| CONUS, WHOT/BHOT, Ironbow, CRT, NVG, FLIR  | без перекладу                                        |
-| PREV / NEXT (HUD) / Previous / Next        | ПОПЕР. / ДАЛІ / Попередній / Наступний               |
-| anchor / data pack / bundle (scene)        | якір / пакет даних / архів                           |
-| box (Recent Imagery area)                  | область                                              |
-| camera move                                | переліт                                              |
-| SIG / NEWS / LOCAL (briefing tabs)         | СИГН. / НОВИНИ / МІСЦ.                               |
-| compass points (N, NNE, NE, …)             | Пн, ПнПнСх, ПнСх, …                                  |
-| L / R (relative bearing)                   | Л / П                                                |
-| click / tap                                | клацнути / натиснути                                 |
+| English                                         | Українська                                                       |
+| ----------------------------------------------- | ---------------------------------------------------------------- |
+| layer / data layer                              | шар / шар даних                                                  |
+| feed                                            | потік даних (short: потік)                                       |
+| source / data source                            | джерело / джерело даних                                          |
+| LIVE (status) / live data                       | ОНЛАЙН / у реальному часі                                        |
+| SIMULATED / SYNTHETIC                           | ІМІТАЦІЯ                                                         |
+| stale / degraded / unavailable                  | застарів / з перебоями (chip: ПЕРЕБОЇ) / недоступний             |
+| retry                                           | повтор                                                           |
+| key (API key) / POWER UP                        | ключ / ЗАПУСК                                                    |
+| Provider Settings / provider                    | Налаштування постачальників / постачальник                       |
+| globe / map / map source / basemap              | глобус / карта / джерело карти / підкладка                       |
+| aircraft / flight / military flights            | літак (short HUD: борт) / рейс / військові рейси                 |
+| vessel, ship / vessels                          | судно / судна (gen. pl. суден)                                   |
+| satellite                                       | супутник                                                         |
+| launch (rocket) / space mission                 | запуск / космічна місія                                          |
+| ascent (rocket) / booster FLIGHT {n}            | виведення / ПОЛІТ {n} (not рейс)                                 |
+| contact / tracking                              | контакт / стеження                                               |
+| installation, site / mapped                     | обʼєкт / нанесений на карту                                      |
+| camera / CCTV camera                            | камера / камера CCTV                                             |
+| earthquake / active fire / fire perimeter       | землетрус / активна пожежа / контур пожежі                       |
+| advisory (NHC/CPHC cyclone)                     | зведення                                                         |
+| scene / shot / scene recipe                     | сцена / кадр / рецепт сцени                                      |
+| briefing / panel / dock                         | брифінг / панель / док                                           |
+| preset / visual preset                          | пресет / візуальний пресет                                       |
+| Scope (circular viewport mask)                  | приціл                                                           |
+| overlay (detection overlay)                     | накладка                                                         |
+| heading / altitude / ground speed               | курс / висота / шляхова швидкість                                |
+| HDG / BRG / CRS, TRK / FOV / DEST / SPD / RANGE | КУРС / ПЕЛ. / ШК (шляховий кут) / ОГЛЯД / ПРИЗН. / ШВИД / ДАЛЬН. |
+| Street View (Google)                            | Перегляд вулиць (as in Ukrainian Google Maps)                    |
+| Street Level (layer)                            | Вуличні знімки                                                   |
+| imagery / recent imagery                        | знімки / свіжі знімки                                            |
+| radar reflectivity / lightning density          | радіолокаційна відбивність / щільність блискавок                 |
+| infrared                                        | інфрачервоний (short: ІЧ)                                        |
+| receiver / gain / decoder                       | приймач / підсилення / декодер                                   |
+| broadcaster                                     | мовник                                                           |
+| CONUS, WHOT/BHOT, Ironbow, CRT, NVG, FLIR       | без перекладу                                                    |
+| PREV / NEXT (HUD) / Previous / Next             | ПОПЕР. / ДАЛІ / Попередній / Наступний                           |
+| anchor / data pack / bundle (scene)             | якір / пакет даних / архів                                       |
+| box (Recent Imagery area)                       | область                                                          |
+| camera move                                     | переліт                                                          |
+| SIG / NEWS / LOCAL (briefing tabs)              | СИГН. / НОВИНИ / МІСЦ.                                           |
+| compass points (N, NNE, NE, …)                  | Пн, ПнПнСх, ПнСх, …                                              |
+| L / R (relative bearing)                        | Л / П                                                            |
+| click / tap                                     | клацнути / натиснути                                             |
+| session (voice, OAuth)                          | сеанс                                                            |
+| sequence (street-level photos)                  | послідовність                                                    |
+| search (place search)                           | пошук місця                                                      |
+| pitch (CCTV camera pose)                        | нахил                                                            |
+| traffic (road traffic layer)                    | дорожній рух                                                     |
+| phosphor (CRT)                                  | люмінофор                                                        |
