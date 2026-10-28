@@ -107,7 +107,10 @@ export function terrainRetryAfterMs(value, nowMs = Date.now()) {
 /**
  * Fetch one upstream chunk with jittered exponential backoff. Network errors,
  * 429, and 5xx retry; other HTTP failures and malformed successes fail fast.
- * Retry sleeps and retry attempts share a 10s budget after attempt one.
+ * Retry sleeps and retry attempts share a 10s budget after attempt one. A
+ * Retry-After longer than the budget left ends the retries at once: sleeping
+ * out the budget cannot reach the time the upstream asked for, and it would
+ * delay the caller's own back-off (the proxy's 429 pause) by up to 10 s.
  *
  * Dependencies are injectable for deterministic offline tests.
  * @param {Array<[number, number]>} points
@@ -168,6 +171,7 @@ export async function fetchTerrainChunkWithRetry(
       if (remaining <= 0) break;
 
       const retryAfterMs = terrainRetryAfterMs(error?.retryAfter, now());
+      if (retryAfterMs != null && retryAfterMs > remaining) break;
       const backoffMs = Math.round(
         350 * 2 ** attempt * (0.75 + random() * 0.5),
       );

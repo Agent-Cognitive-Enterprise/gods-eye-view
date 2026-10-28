@@ -209,7 +209,8 @@ export function terrainHeightsProxy(options = {}) {
    *
    * The first try keeps its empirically required 30s timeout; network errors,
    * 429, and 5xx receive up to three jittered retries sharing a 10s added-time
-   * budget, with Retry-After honored within that bound.
+   * budget, with Retry-After honored within that bound; a longer Retry-After
+   * ends the retries at once so the 429 pause below starts without delay.
    *
    * A chunk that still fails yields nulls for its own positions rather than
    * rejecting: with several chunks per request, throwing would discard every
