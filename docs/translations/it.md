@@ -9,7 +9,7 @@ Translation source: abiyeenzo (#912).
 - Standard Italian as in Italian software UIs. Address the user with informal "tu" imperatives: «Aggiungi», «Attiva», «Scegli», «Incolla», «Riprova». Tooltips that name an action use the same imperative: «Espandi il pannello», «Ripristina la camera».
 - Sentence case, not Title Case: "Live Flights" → «Voli live», "Space Missions" → «Missioni spaziali». UPPERCASE English stays UPPERCASE: «LIVE», «NON DISPONIBILE».
 - Quotes inside Italian text are straight double quotes: «Eliminare lo scatto "{shot}"?». Use the accented capitals (È, À) in UPPERCASE text: «VELOCITÀ», «CITTÀ».
-- Errors read as a statement, not a past participle on its own: "Search failed" → «Ricerca non riuscita»; "Could not …" → «Impossibile …». A dash that joins a cause and a hint becomes a colon: «Chiave API rifiutata: controlla AISSTREAM_API_KEY».
+- Errors read as a statement, not a past participle on its own: "Search failed" → «Ricerca non riuscita»; "Could not …" → «Impossibile …». A dash that joins a cause and a hint becomes a colon: «Chiave API rifiutata: controlla AISSTREAM_API_KEY». The same goes for a label and its hint in a tooltip: «Direzione (bussola °): clic per digitare».
 - Short labels, chips and HUD readouts stay short. A standard abbreviation with a period beats a wrapped line: REGOLAZ., RILEV., INCL., ALT., VEL., STIM., PROIEZ., ESP.; PREC / SUCC for PREV / NEXT and PREVIOUS / NEXT.
 - The HUD codes HDG, BRG, CRS, FOV and DEST stay in English, as in cockpit avionics. RANGE is «PORTATA». Words used in a sentence are translated: heading → «prua» (aircraft, ships) or «direzione» (camera, buses, trams, trains), course → «rotta».
 - Keyboard keys stay in English: Space, Enter, Esc, Tab, Shift, Backspace, H, 1–9 («Tieni premuto Space per parlare», «Premi Enter per riprovare»).
@@ -67,6 +67,7 @@ The `many` form is the `other` text with «di» after the number when a noun fol
 | trigger record (USGS card) / OPEN SOURCE link | scheda / APRI LA FONTE                                       |
 | advisory (NHC/CPHC cyclone) / cone            | bollettino / cono di incertezza                              |
 | forecast lead hours (cyclone points)          | scadenze di previsione in ore                                |
+| AIR / SEA (radio category) / ground station   | ARIA / MARE / stazione di terra                              |
 | radio station / broadcaster                   | stazione radio / emittente                                   |
 | CH (radio channel readout)                    | CH (unchanged)                                               |
 | road / flow (traffic)                         | strada / flusso                                              |
