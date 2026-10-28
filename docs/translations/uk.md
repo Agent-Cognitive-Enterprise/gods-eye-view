@@ -55,9 +55,10 @@ A `tn()` entry needs four forms. `Intl.PluralRules('uk')` picks:
 | scene / shot / scene recipe                     | сцена / кадр / рецепт сцени                                      |
 | briefing / panel / dock                         | брифінг / панель / док                                           |
 | preset / visual preset                          | пресет / візуальний пресет                                       |
-| Scope (circular viewport mask)                  | приціл                                                           |
-| overlay (detection overlay)                     | накладка                                                         |
+| Scope, keyhole (circular viewport mask)         | приціл                                                           |
+| overlay (detection overlay) / world overlay     | накладка / накладка на глобусі                                   |
 | heading / altitude / ground speed               | курс / висота / шляхова швидкість                                |
+| map bearing, map heading                        | азимут карти                                                     |
 | HDG / BRG / CRS, TRK / FOV / DEST / SPD / RANGE | КУРС / ПЕЛ. / ШК (шляховий кут) / ОГЛЯД / ПРИЗН. / ШВИД / ДАЛЬН. |
 | Street View (Google)                            | Перегляд вулиць (as in Ukrainian Google Maps)                    |
 | Street Level (layer)                            | Вуличні знімки                                                   |
@@ -91,3 +92,8 @@ A `tn()` entry needs four forms. `Intl.PluralRules('uk')` picks:
 | run (scene playback) / RUN LOG                  | відтворення / ЖУРНАЛ ВІДТВОРЕННЯ (запуск is a rocket launch)     |
 | Preview (voice panel replies)                   | відповіді                                                        |
 | Marine (radio tag) / pleasure craft             | море (not флот) / прогулянкове судно                             |
+| emergency (ADS-B) / Emergency (radio tag)       | аварійний стан / надзвичайні ситуації                            |
+| confidence (FIRMS fire detection)               | достовірність (short: достов.)                                   |
+| thermal (FLIR-style imaging)                    | тепловий (not термальний)                                        |
+| map stack                                       | набір карт                                                       |
+| stage (rocket) re-entry / recovery              | вхід ступеня в атмосферу / повернення                            |
