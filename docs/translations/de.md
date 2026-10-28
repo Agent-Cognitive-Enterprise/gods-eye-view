@@ -18,10 +18,10 @@ Translation source: abiyeenzo (#908).
 - Rolling time windows say their length, so they cannot read as the previous calendar period: LAST YEAR → «LETZTE 12 MONATE», LAST MONTH → «LETZTE 30 TAGE».
 - Keyboard keys are named as on German keyboards where they differ: Leertaste, Rücktaste, Umschalt; Esc, Enter, Tab and letter keys stay.
 - Decimal comma in fixed text: «M4,4», «28,2710° N». Thousands separator is a period: «1.000 km». Formatted numbers come from `Intl` and are already German.
-- Units: km, m, km/h, m/s, kn (knots, also in the cockpit), ft (feet), hPa, MW, h, min, s, T (days, in short readouts); in UPPERCASE text KM, KM/H, KN, FT, MIN. A space between number and unit, in compact readouts too: «{value} m», «{count} min», «50 %», «{speed} KN», «{count} / 30 T». `°` sticks to the number.
+- Units: km, m, km/h, m/s, kn (knots, also in the cockpit), ft (feet), hPa, MW, h, min, s, T (days, in short readouts); in UPPERCASE text KM, KM/H, KN, FT, MIN, H, T («VOR {count} H»). A space between number and unit, in compact readouts too: «{value} m», «{count} min», «50 %», «{speed} KN», «{count} / 30 T». `°` sticks to the number.
 - "ago" goes before the time: «vor {count} min», «vor {value}». When a placeholder already holds a localized "ago" text (`{age}` in `STALE · cached {age}`, `{ago}`), do not add «vor» again.
 - Compass points use O for Ost: N, NNO, NO, ONO, O, OSO, SO, SSO, S, SSW, SW, WSW, W, WNW, NW, NNW; hemisphere letters N, S, O, W.
-- Routing: direction words are lowercase adverbs (links, leicht rechts, scharf links, geradeaus), so a sentence never starts with one: «Auf {road} {direction} abbiegen», «Dann {direction} abbiegen», «Weiter {direction}». Roundabout exits are ordinals with a period: «die {exit} Ausfahrt» → «die 2. Ausfahrt». A lane is named by where it leads, not by its position: «Die geradeaus führende Spur benutzen», «die leicht nach links führende», «die scharf nach rechts führende» (not «halblinke» or «äußerst linke»).
+- Routing: direction words are lowercase adverbs (links, leicht rechts, scharf links, geradeaus), so a sentence never starts with one: «Auf {road} {direction} abbiegen», «Hier {direction} abbiegen», «Weiter {direction}». «Hier», not «Dann»: the step card already says «dann {leg}» and «Nächster Schritt: …». At a fork the verb is «weiter», which also works with «geradeaus»: «An der Gabelung {direction} weiter». Roundabout exits are ordinals with a period: «die {exit} Ausfahrt» → «die 2. Ausfahrt». A lane is named by where it leads, not by its position: «Die geradeaus führende Spur benutzen», «die leicht nach links führende», «die scharf nach rechts führende» (not «halblinke» or «äußerst linke»).
 
 ## Plurals
 
@@ -83,7 +83,7 @@ Keep the verb in agreement: «{count} Station meldet» / «{count} Stationen mel
 | RANGE / PITCH / HGT (CCTV calibration chips)   | REICHW. / NEIGUNG / HÖHE                                               |
 | PREV / NEXT                                    | ZURÜCK / WEITER                                                        |
 | RESUME (radio transport button)                | FORTSETZEN (not «WEITER», which is NEXT in the same row)               |
-| nearest (spatial)                              | nächstgelegen (where «nächste» could read as NEXT)                     |
+| nearest (spatial)                              | nächstgelegen (always; «nächste» is NEXT)                              |
 | expand / collapse (sections)                   | ausklappen / einklappen                                                |
 | L / R (relative bearing)                       | L / R                                                                  |
 | SIG / NEWS / LOCAL (briefing tabs)             | SIG / NEWS / LOKAL                                                     |
@@ -95,6 +95,8 @@ Keep the verb in agreement: «{count} Station meldet» / «{count} Stationen mel
 | voice (control) / voice session                | Sprachsteuerung / Sprachsitzung                                        |
 | YOU / THIS / HERE (voice card labels)          | EINGABE / DIES / HIER                                                  |
 | click / click to …                             | anklicken / … klicken                                                  |
+| tap (touch)                                    | Antippen (not «Tipp», which is a hint)                                 |
+| tilted view                                    | Schrägansicht                                                          |
 | card (host card) / voice card                  | Eintrag (in hints), Infokarte / Sprachkarte                            |
 | label (on the map) / clear (switch off layers) | Beschriftung / ausschalten (not «löschen»)                             |
 | station tag (radio filter)                     | Kategorie                                                              |
