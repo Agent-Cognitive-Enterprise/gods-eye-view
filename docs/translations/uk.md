@@ -97,3 +97,10 @@ A `tn()` entry needs four forms. `Intl.PluralRules('uk')` picks:
 | thermal (FLIR-style imaging)                    | тепловий (not термальний)                                        |
 | map stack                                       | набір карт                                                       |
 | stage (rocket) re-entry / recovery              | вхід ступеня в атмосферу / повернення                            |
+| ON / OFF (toggle chips)                         | УВІМК. / ВИМК.                                                   |
+| Clean UI / EXIT CLEAN VIEW                      | чистий інтерфейс / ПОВЕРНУТИ ІНТЕРФЕЙС                           |
+| full globe view                                 | вигляд всього глобуса                                            |
+| inputs (cockpit context chip)                   | потоки (not вхідні дані)                                         |
+| downrange (rocket stage)                        | дальність                                                        |
+| resolution (spatial)                            | роздільна здатність (not роздільність)                           |
+| shared follow expired                           | посилання на стеження застаріло                                  |
