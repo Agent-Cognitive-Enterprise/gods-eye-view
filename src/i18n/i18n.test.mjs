@@ -34,6 +34,9 @@ test('normalizeLocale folds regional variants and rejects unshipped tags', () =>
   assert.equal(normalizeLocale('ru-RU'), 'ru');
   assert.equal(normalizeLocale(' RU '), 'ru');
   assert.equal(normalizeLocale('en_GB'), 'en');
+  assert.equal(normalizeLocale('fr'), 'fr');
+  assert.equal(normalizeLocale('fr-CA'), 'fr');
+  assert.equal(normalizeLocale('FR_be'), 'fr');
   assert.equal(normalizeLocale('xx'), null);
   // Explicit script tags take precedence over regional defaults.
   assert.equal(normalizeLocale('zh'), 'zh-CN');
