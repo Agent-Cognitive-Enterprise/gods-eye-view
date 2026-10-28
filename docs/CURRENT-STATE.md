@@ -5760,7 +5760,8 @@ easier to meet (detection is now on more often), but does not create it.
   shared loading batch as LOAD FAILED. Harnesses must gate on `!stats.error`,
   never on `mode === 'live'` alone. When the drawn flow came from the proxy's
   cached STALE-BUDGET / STALE-ERROR tiles, `getStats()` reports `stale: true`
-  and `oldestTileAt`, the row reads STALE, and the sync chip reads
+  and `oldestTileAt`, the row reads STALE with the oldest tile's age, and the
+  sync chip reads
   `STALE · Roads: <source> · Flow: cached TomTom tiles` instead of LIVE.
 - Traffic runs in `sim` mode (white dots, hardcoded speeds) unless `TOMTOM_API_KEY`
   is configured (env or Keychain `tomtom-api`/`api-key`), which enables `live` mode:
