@@ -223,7 +223,7 @@ export function createRendering({
       0,
       VISIBILITY_UPDATE_MS - (now - state.lastVisibilityUpdate),
     );
-    state.trailingVisibilityTimer = setTimeout(() => {
+    state.trailingVisibilityTimer = vesselState._aisRuntime.setTimeout(() => {
       state.trailingVisibilityTimer = null;
       if (state.feed.enabled) governorRequestRender('ais-vessels-visibility');
     }, waitMs);
@@ -231,7 +231,7 @@ export function createRendering({
 
   function cancelTrailingVisibilityPass() {
     if (!state.trailingVisibilityTimer) return;
-    clearTimeout(state.trailingVisibilityTimer);
+    vesselState._aisRuntime.clearTimeout(state.trailingVisibilityTimer);
     state.trailingVisibilityTimer = null;
   }
 
@@ -256,7 +256,15 @@ export function createRendering({
     if (focusPass) state.lastFocusUpdate = now;
     if (!state.records.all.length) {
       // No records — flush any lingering card entries (vanished-feed case).
-      if (regularPass) updateClusteredLabels([]);
+      // Still record the pose this pass evaluated, or every later frame that
+      // falls inside the cadence would schedule another trailing frame.
+      if (regularPass) {
+        if (state.viewer?.camera)
+          vesselState._lastCamPoseSig = cameraPoseSignature(
+            state.viewer.camera,
+          );
+        updateClusteredLabels([]);
+      }
       if (focusPass) {
         state.activeFocusCount = 0;
         releaseContinuousRender('ais-vessels');

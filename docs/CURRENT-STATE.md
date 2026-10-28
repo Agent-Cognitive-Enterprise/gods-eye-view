@@ -2262,7 +2262,10 @@ fetching, trailing-24-hour filtering and partial-success caching are unchanged.
 > only when a poll lands, so the layer requests a frame for every forced pass
 > (new data, selection), leaves one trailing frame when the camera moved inside
 > the 800 ms visibility cadence, and holds `ais-vessels` only while focus
-> emphasis is animating. The 80 ms focus pass also skips hidden sprites whose
+> emphasis animates or any vessel stays dimmed under a live focus target. The
+> trailing frame goes through the layer's injectable runtime clock and is
+> cancelled on disable, destroy and reset (`renderGovernor.test.mjs` pins the
+> no-self-wake invariant). The 80 ms focus pass also skips hidden sprites whose
 > focus state is at rest (`spriteFocusAtRest`), since advancing them changes
 > nothing; with a 12k worldwide feed that is most of the fleet.
 > The scope's OUTSIDE terminus is **altitude-adaptive** (2026-08-17): 0.94

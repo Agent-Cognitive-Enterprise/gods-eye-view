@@ -125,7 +125,7 @@ export function createLifecycle({
     state.interactionHandlerFactory = null;
     state.interactionKeyTarget = null;
     state.preRenderRemover = null;
-    state.trailingVisibilityTimer = null;
+    components.rendering.cancelTrailingVisibilityPass();
     state.lastVisibilityUpdate = 0;
     state.lastFocusUpdate = 0;
     state.activeFocusCount = 0;
