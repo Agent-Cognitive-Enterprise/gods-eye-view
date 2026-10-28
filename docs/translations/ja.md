@@ -12,6 +12,8 @@ Translation source: abiyeenzo (#913).
 - Button names cited in running text go in ［］: ［次へ］を使ってください.
 - No space between Japanese and Latin letters, digits or a `{placeholder}`: 「AIS船舶」, 「Spaceを長押しで話す」, 「{count}件」, 「{name}を表示」.
 - Two exceptions keep the space: a Japanese label before its value in a readout (「雲量 {pct}%」, 「ステーション {id}」, 「高度 {altitude}」), and the state words in toggles (「CCTV オン」, 「ラジオ オフ」).
+- Waiting states are 「X待ち」, not 「Xを待機中」: 「観測データ待ち」, 「進路/予報円は第{number}報待ち」, 「RTL-SDRデバイスの接続待ち…」. 待機中 is for something on standby with no object: 「フィード待機中」, 「音声待機中」.
+- Key names keep their own case in running text and hints: Tab, Enter, Space, Esc (「Tabでプレビュー · Enter / Spaceで選択」). Text that CSS upper-cases shows them in capitals, as in English.
 - Loanwords are katakana with the long-vowel mark, as in Microsoft and Apple style: ユーザー, ブラウザー, ビューアー, プロバイダー, レイヤー, フィルター, モニター, パラメーター. Pick one katakana form per term and keep it (see the glossary).
 - Product, provider and dataset names stay in Latin script: Google Maps, Cesium ion, OpenSky, CelesTrak, NASA FIRMS, Sentinel-2, KartaView. Google's own product names use Google's Japanese, joined like any Latin word: Googleストリートビュー. Nepal place names in the Bhote Koshi scenes stay in Latin script, as in zh-CN; country and well-known city names are translated (ネパール, 東京, オースティン).
 
@@ -37,6 +39,7 @@ Translation source: abiyeenzo (#913).
 | LIVE (status) / live data                 | ライブ / ライブデータ                   |
 | SIMULATED                                 | シミュレーション                        |
 | stale / degraded / unavailable            | 更新遅延 / 性能低下 / 利用不可          |
+| cached (status)                           | キャッシュの（キャッシュの予報）        |
 | PARTIAL (feed state)                      | 部分的                                  |
 | upstream (remote data source)             | 配信元                                  |
 | retry                                     | 再試行                                  |
@@ -92,6 +95,7 @@ Translation source: abiyeenzo (#913).
 | WINDOW (search radius around a subject)   | 範囲                                    |
 | coverage / coverage % / full, partial     | カバー範囲 / カバー率（%のみ）/ 全体, 一部 |
 | pin (Recent Imagery)                      | 固定                                    |
+| clear day (Recent Imagery)                | 雲の少ない日                            |
 | outline / mark (map annotation)           | 輪郭 / マーク                           |
 | share (a view or link)                    | 共有                                    |
 | import / export (project, presets)        | インポート / エクスポート               |
