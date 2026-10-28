@@ -150,6 +150,7 @@
     "Landsat 8/9",
     "MSG/S",
     "NVG",
+    "POS: {time}Z",
     "REC",
     "S2 GhostMaps",
     "SRC {value}",

@@ -18,6 +18,7 @@ Translation source: abiyeenzo (#913).
 ## Numbers, units and dates
 
 - Units: km, m, km/h, m/s, kt, ft, mph, hPa, MW, dB, °, % stay as written, with the English spacing (「250 km」, 「{frp} MW」, 「95 kt」). Code-built cockpit distances follow this too (`cockpitUnitCase` skips the HUD upper-casing for ja, as for zh). The cockpit's own speed caption is the HUD code KT, in 対地速度 · KT and under the readout.
+- Number ranges keep the English en dash, not ～: 「2–6日ごと」, 「50–99%」, 「南緯25°–北緯80°」.
 - Time units are words written straight after the number: 秒, 分, 時間, 日 (「5分前」, 「{count}時間」, 「1時間5分」). `formatQuantity` and `formatRelativeTime` drop the space for Japanese unit words, so code-built values match the catalog.
 - Counters follow the thing counted: 機 (aircraft), 隻 (ships), 基 (satellites), 台 (cameras, vehicles), 局 (stations), 件 (records, results, events), か所 (sites), 個 (generic). Prefer a counter to a bare number.
 - Dates come from `Intl` and read year first: 2026年8月26日. Coordinates in prose are 北緯 / 東経; HUD hemisphere letters stay N, S, E, W.
@@ -36,12 +37,15 @@ Translation source: abiyeenzo (#913).
 | LIVE (status) / live data                 | ライブ / ライブデータ                   |
 | SIMULATED                                 | シミュレーション                        |
 | stale / degraded / unavailable            | 更新遅延 / 性能低下 / 利用不可          |
+| PARTIAL (feed state)                      | 部分的                                  |
+| upstream (remote data source)             | 配信元                                  |
 | retry                                     | 再試行                                  |
 | key (API key) / POWER UP                  | キー（APIキー）/ パワーアップ           |
 | Provider Settings                         | プロバイダー設定                        |
 | globe / map / map source / basemap        | 地球儀 / 地図 / マップソース / ベースマップ |
 | mapped (OSM-mapped sites)                 | マップ済み                              |
 | aircraft / flight / military flights      | 航空機 / フライト / 軍用機              |
+| FLIGHT {count} (a rocket stage's nth flight) | {count}回目の飛行                    |
 | vessel, ship                              | 船舶                                    |
 | satellite                                 | 衛星                                    |
 | launch (rocket) / space mission           | 打ち上げ / 宇宙ミッション               |
@@ -60,7 +64,7 @@ Translation source: abiyeenzo (#913).
 | cockpit                                   | コックピット                            |
 | heading / altitude / ground speed         | 機首方位 / 高度 / 対地速度              |
 | track (TRK, direction over the ground)    | 対地針路                                |
-| HDG / BRG / CRS / FOV                     | そのまま（HUDコード）                   |
+| HDG / BRG / CRS / FOV / SPD / POS        | そのまま（HUDコード）                   |
 | squawk                                    | スコーク                                |
 | radio failure / emergency (7600 / 7700)   | 通信機故障 / 緊急事態                   |
 | map heading / North up                    | 方位 / 北を上に                         |
