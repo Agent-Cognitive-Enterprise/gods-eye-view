@@ -5785,7 +5785,11 @@ easier to meet (detection is now on more often), but does not create it.
   coverage number. `stats.loading` covers outstanding flow work as well as the
   road fetch, so a flow failure landing after the first paint still ends the
   shared loading batch as LOAD FAILED. Harnesses must gate on `!stats.error`,
-  never on `mode === 'live'` alone.
+  never on `mode === 'live'` alone. When the drawn flow came from the proxy's
+  cached STALE-BUDGET / STALE-ERROR tiles, `getStats()` reports `stale: true`
+  and `oldestTileAt`, the row reads STALE with the oldest tile's age, and the
+  sync chip reads
+  `STALE · Roads: <source> · Flow: cached TomTom tiles` instead of LIVE.
 - Traffic runs in `sim` mode (white dots, hardcoded speeds) unless `TOMTOM_API_KEY`
   is configured (env or Keychain `tomtom-api`/`api-key`), which enables `live` mode:
   TomTom flow vector tiles via the budget-governed `/api/tomtom` proxy
