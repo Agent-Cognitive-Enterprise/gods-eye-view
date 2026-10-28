@@ -3001,5 +3001,7 @@
   "Your choice applies now, but could not be saved.": "Tu elección se aplica ahora, pero no se pudo guardar.",
   "Voice replies appear here.": "Las respuestas de voz aparecen aquí.",
   "Preview is off.": "La vista previa está desactivada.",
-  "Automatic stop is unavailable for this voice connection.": "La parada automática no está disponible para esta conexión de voz."
+  "Automatic stop is unavailable for this voice connection.": "La parada automática no está disponible para esta conexión de voz.",
+  "Cyclone request timed out": "La petición de ciclones agotó el tiempo de espera",
+  "Malformed cyclone snapshot": "Instantánea de ciclones mal formada"
 }

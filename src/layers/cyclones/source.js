@@ -1,7 +1,11 @@
 import { readResponseJsonCapped } from '../../sources/httpBody.js';
 
+// No i18n here, as in the wind source: the texts stay English data and the
+// cyclone layer shows them translated.
+const msg = (text) => text;
+
 export const CYCLONE_RESPONSE_LIMIT = 4 * 1024 * 1024;
-const malformed = () => new Error('Malformed cyclone snapshot');
+const malformed = () => new Error(msg('Malformed cyclone snapshot'));
 const text = (value, max = 160) => {
   if (
     typeof value !== 'string' ||
@@ -215,7 +219,7 @@ export function createCycloneSource({
       const abort = () => controller.abort(signal.reason);
       signal?.addEventListener('abort', abort, { once: true });
       const timer = setTimeout(
-        () => controller.abort(new Error('Cyclone request timed out')),
+        () => controller.abort(new Error(msg('Cyclone request timed out'))),
         timeoutMs,
       );
       try {
