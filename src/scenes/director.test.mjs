@@ -428,6 +428,77 @@ test('same-shot seeking aborts in-flight admission when superseded by an early-r
   }
 });
 
+test('a rejected loadShot does not cancel an in-flight LOAD', async () => {
+  const { styleManager, viewer, restore } = makeDirector();
+  let holdEnable = true;
+  let releaseEnable;
+  const enableGate = new Promise((resolve) => {
+    releaseEnable = resolve;
+  });
+  const lifecycle = new LayerLifecycle(viewer);
+  lifecycle.register({
+    id: 'flights',
+    name: 'flights',
+    init() {},
+    async enable() {
+      if (holdEnable) await enableGate;
+    },
+    disable() {},
+    update() {},
+  });
+  const director = new SceneDirector(viewer, styleManager, lifecycle);
+  try {
+    const load = director.loadShot('scene-1', 'shot-a', { flyDuration: 0 });
+    for (
+      let i = 0;
+      i < 20 && lifecycle.getLayerLifecycleState('flights').lifecycleState !== 'enabling';
+      i++
+    ) {
+      await Promise.resolve();
+    }
+    assert.equal(lifecycle.getLayerLifecycleState('flights').lifecycleState, 'enabling');
+
+    assert.equal((await director.loadShot('missing', 'nope')).reason, 'shot-not-found');
+    holdEnable = false;
+    releaseEnable();
+    assert.equal((await load)?.started, true, 'the valid LOAD still lands');
+    assert.equal(lifecycle.isEnabled('flights'), true);
+  } finally {
+    releaseEnable?.();
+    await director.destroy();
+    restore();
+  }
+});
+
+test('refused same-shot seek rollback keeps a manual toggle still in flight', async () => {
+  let refuse = () => false;
+  const { director, dataManager, restore } = makeDirector({
+    data: { refuse: (id, on) => refuse(id, on) },
+  });
+  try {
+    const shot = director._project.scenes[0].shots[0];
+    shot.layers = { flights: { enabled: true }, traffic: { enabled: true } };
+    await director.loadShot('scene-1', 'shot-a', { flyDuration: 0 });
+    assert.equal(await director.seekScene('scene-1', 0.1), true);
+    await dataManager.setEnabled('flights', false);
+    await dataManager.setEnabled('traffic', false);
+    refuse = (id) => id === 'traffic';
+    const manualEnable = dataManager.setEnabled('flights', true);
+
+    assert.equal(await director.seekScene('scene-1', 0.25), false);
+    await manualEnable;
+    await settle();
+    assert.equal(
+      dataManager.getAll().find(({ id }) => id === 'flights').enabled,
+      true,
+      'rollback restores the operator\'s intended state, not the stale committed one',
+    );
+  } finally {
+    await director.destroy();
+    restore();
+  }
+});
+
 test('same-shot seeking keeps the shortcut when declared visibility is unchanged', async () => {
   const { director, dataManager, styleManager, restore } = makeDirector();
   try {
