@@ -9,12 +9,14 @@ Translation source: abiyeenzo (#909).
 - Brazilian Portuguese (pt-BR): câmera, tela, compartilhar, arquivo, baixar, ônibus, metrô. Every `pt` tag, `pt-PT` included, gets this catalog, so avoid slang and regionalisms.
 - Address the user with «você» imperatives: «Clique no mapa», «Ative o CCTV», «Tente novamente». Tooltips that name an action use the infinitive: «Expandir painel», «Redefinir a câmera».
 - Sentence case, not Title Case: "Live Flights" → «Voos ao vivo». UPPERCASE English stays UPPERCASE: «AO VIVO», «SEM DADOS».
-- Quotes inside Portuguese text are straight double quotes: «Excluir o plano "{shot}"?».
+- Quotes inside Portuguese text are straight double quotes: «Excluir o plano "{shot}"?». A sentence that names a panel uses «o painel "Configurações de provedores"», so the verb agrees.
+- A dash between clauses is a spaced em dash « — », even where the English runs it in.
+- A date or time after a participle takes a preposition: «emitido em {time}», «válida para {valid}», «Posição em {time}».
 - Short labels, chips and HUD readouts stay short. A standard abbreviation with a period beats a wrapped line: ANT., PRÓX., DESLIG., EXCL., INCL., ALT., VEL., câm.
-- The HUD codes HDG, BRG, CRS, FOV, DEST, SPD, RANGE, ALT, GS and TRK stay in English, as in cockpit avionics. Words used in a sentence are translated: heading → «rumo», range → «alcance».
+- The HUD codes HDG, BRG, CRS, FOV, DEST, SPD, RANGE, ALT, GS and TRK stay in English, as in cockpit avionics («ALT {altitude} FT · GS {speed} KT · TRK {track}»), and so does the HUD recording mark REC. Words used in a sentence are translated: heading → «rumo», range → «alcance».
 - Keyboard keys stay in English: Space, Esc, Enter, Tab, Shift, Backspace, H, 1–9 («Segure Space para falar»).
 - Common English tech words used in Brazil stay: feed, stream, snapshot, briefing, dock, layout, bloom, status, app, link, token.
-- Units: km, m, km/h, m/s, kt (knots), ft (feet), h, min, s; in UPPERCASE text KM, KM/S, KT, FT, MIN, H. "m" is always metres, so minutes are «min» («há 5 min»). MW stays MW. `°` and `%` stay. Decimal comma in written numbers («M4,4»).
+- Units: km, m, km/h, m/s, kt (knots), ft (feet), h, min, s, always spaced from the number («Terremotos (24 h)», «Missões espaciais (30 d)»); in UPPERCASE text KM, KM/S, KT, FT, MIN, H. "m" is always metres, so minutes are «min» («há 5 min»). MW stays MW. `°` and `%` stay. Decimal comma in written numbers («M4,4»).
 - "ago" goes before the time: «há {count} min». When a placeholder already holds a localized "ago" text (`{age}`, `{ago}`), do not add «há» again.
 - Money: «US$ {amount} mil / mi / bi» for thousands, millions and billions.
 - Compass points use Leste/Oeste: N, NNE, NE, ENE, L, ESE, SE, SSE, S, SSO, SO, OSO, O, ONO, NO, NNO; hemisphere letters N, S, L, O.
@@ -41,6 +43,7 @@ The `many` form is the `other` text with «de» after the number: «{count} de c
 | SIMULATED                                     | SIMULADO                                                     |
 | stale / degraded / unavailable                | desatualizado / degradado / indisponível                     |
 | retry / retrying                              | nova tentativa / tentando de novo                            |
+| retrying (a fetch) / retrying slowly          | buscando de novo / tentando de novo em intervalos maiores    |
 | key (API key) / POWER UP / POWERED UP         | chave / ATIVAR / ATIVADO                                     |
 | Provider Settings                             | Configurações de provedores                                  |
 | ON / OFF (state chips)                        | ATIVO / INATIVO                                              |
@@ -48,23 +51,32 @@ The `many` form is the `other` text with «de» after the number: «{count} de c
 | globe / map / map source / map stack          | globo / mapa / fonte do mapa / pilha de mapas                |
 | basemap / tile                                | mapa base / bloco                                            |
 | aircraft, plane / flight / military flights   | aeronave, avião / voo / voos militares                       |
-| vessel, ship                                  | embarcação                                                   |
+| vessel, ship / TANKER (AIS class)             | embarcação / NAVIO-TANQUE                                    |
 | satellite / shell (Starlink) / DENSE          | satélite / camada orbital / DENSO                            |
+| SPARSE / BALANCED / DENSE (detection modes)   | ESPARSO / EQUILIBRADO / DENSO (o modo)                       |
 | launch (rocket) / launch site / space mission | lançamento / local de lançamento / missão espacial           |
+| KM DOWNRANGE / EST. DOWNRANGE                 | KM DO LOCAL DE LANÇAMENTO / EST. PELA DIST. DO LANÇAMENTO    |
 | ascent / replay / payload / stage             | subida / reprise / carga útil / estágio                      |
 | contact / tracking / track                    | contato / rastreamento / rastro                              |
 | installation / site                           | instalação / local                                           |
+| PLACES CANDIDATE (installation class)         | CANDIDATO DO GOOGLE PLACES                                   |
 | mapped / observed                             | mapeado / observado                                          |
 | camera / CCTV camera                          | câmera / câmera de CCTV                                      |
+| CALIBRATED / CURATED (CCTV badge)             | CALIBRADA / COM CURADORIA                                    |
+| AUTO HOP ON / OFF (CCTV)                      | TROCA AUTO. LIGADA / DESLIG. (as the other CCTV toggles)     |
 | earthquake / active fire                      | terremoto / incêndio ativo                                   |
 | advisory (NHC/CPHC cyclone)                   | boletim                                                      |
+| weather (layer, card) / weather satellite     | clima / meteorologia, meteorológico                          |
+| FOG / cloud unknown                           | NEVOEIRO / nebulosidade desconhecida                         |
+| AQHI bands Low … Very High                    | Risco baixo … Risco muito alto                               |
 | radio station / broadcaster                   | estação de rádio / emissora                                  |
+| Oldies / World (radio tags)                   | Flashback / Músicas do mundo                                 |
 | road / flow (traffic)                         | via / fluxo                                                  |
 | Street Level (layer)                          | Nível da rua                                                 |
 | scene / shot / scene recipe                   | cena / plano / receita de cena                               |
 | briefing / panel / dock                       | briefing / painel / dock                                     |
 | cockpit                                       | cabine                                                       |
-| preset / visual preset                        | predefinição / predefinição visual                           |
+| preset / visual preset / EXPORT PRESETS       | predefinição / predefinição visual / EXPORTAR PREDEF.        |
 | Scope (circular viewport mask) / keyhole      | mira / visor                                                 |
 | feather / fade                                | suavização / esmaecimento                                    |
 | detection overlay                             | sobreposição de detecção                                     |
@@ -76,6 +88,7 @@ The `many` form is the `other` text with «de» after the number: «{count} de c
 | Previous / Next (button text)                 | Anterior / Próximo (Próxima)                                 |
 | L / R (relative bearing)                      | E / D                                                        |
 | SIG / NEWS / LOCAL (briefing tabs)            | SIG / NOTÍCIAS / LOCAL                                       |
+| REGIONAL NEWS (fits the 16-character kicker)  | NOTÍCIAS DA ÁREA                                             |
 | PITCH / HGT (CCTV calibration chips)          | INCL. / ALT.                                                 |
 | NOT AN ALL-CLEAR                              | NÃO GARANTE SEGURANÇA                                        |
 | turn-by-turn: turn left / keep left / lane    | vire à esquerda / mantenha-se à esquerda / faixa da esquerda |

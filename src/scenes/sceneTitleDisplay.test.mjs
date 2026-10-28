@@ -141,3 +141,26 @@ test('the scene context of a shot carries its display title by provenance', asyn
     title,
   );
 });
+
+test('legacy base shots of an applied append pack show their built-in names', async () => {
+  const { SCENE_APPEND_RECIPES } = await import('./recipes.js');
+  const pack = SCENE_APPEND_RECIPES.find(
+    (recipe) => recipe.legacySceneBootstrap?.cameraPath?.length,
+  );
+  if (!pack) return;
+  setLocale('ru');
+  const title = pack.legacySceneBootstrap.cameraPath[0].title;
+  const shot = { id: 'legacy-base', title };
+  // The bootstrap writes these shots without sourcePackId, into a scene whose
+  // own recipe only declares "Shot N".
+  assert.equal(
+    displayShotTitle(title, shot, {
+      id: 'bhote-koshi-nepal-scene',
+      appliedShotPacks: [{ id: pack.id, version: pack.version }],
+    }),
+    displayShotTitle(title),
+  );
+  assert.notEqual(displayShotTitle(title), title);
+  // Without the pack marker the same title in another scene stays as typed.
+  assert.equal(displayShotTitle(title, shot, { id: 'scene-user' }), title);
+});

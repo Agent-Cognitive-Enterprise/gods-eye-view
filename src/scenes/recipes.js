@@ -1062,24 +1062,37 @@ export function displaySceneTitle(scene) {
  * typed. Without `shot`, the title alone decides.
  * @param {string} title
  * @param {{sourcePackId?: string}} [shot]
- * @param {{id?: string}} [scene] The shot's scene, for projects saved before
- *   shots recorded their source pack.
+ * @param {{id?: string, appliedShotPacks?: {id: string}[]}} [scene] The
+ *   shot's scene, for shots without a source pack: projects saved before
+ *   shots recorded one, and the legacy base shots a pack bootstrap rewrote.
  * @returns {string}
  */
 export function displayShotTitle(title, shot = undefined, scene = undefined) {
   const text = typeof title === 'string' ? title : '';
   const fromRecipe = shot
-    ? Boolean(shot.sourcePackId) || recipeDeclaresShotTitle(scene?.id, text)
+    ? Boolean(shot.sourcePackId) || recipeDeclaresShotTitle(scene, text)
     : true;
   if (fromRecipe && BUILTIN_SHOT_TITLES.has(text)) return t(text);
   const numbered = /^Shot ([1-9]\d*)$/.exec(text);
   return numbered ? t('Shot {n}', { n: numbered[1] }) : text;
 }
 
-/** Whether the built-in recipe behind a scene declares a shot with this title. */
-function recipeDeclaresShotTitle(sceneId, title) {
-  const recipe = sceneId ? getSceneRecipeById(sceneId) : null;
-  return Boolean(
-    recipe?.cameraPath?.some((keyframe) => keyframe?.title === title),
+/**
+ * Whether the built-in recipe behind a scene declares a shot with this title:
+ * its own keyframes, or the legacy base shots an applied append pack wrote
+ * (those carry no sourcePackId, see SceneDirector._bootstrapLegacyShotPacks).
+ */
+function recipeDeclaresShotTitle(scene, title) {
+  const declares = (cameraPath) =>
+    Boolean(cameraPath?.some((keyframe) => keyframe?.title === title));
+  const recipe = scene?.id ? getSceneRecipeById(scene.id) : null;
+  if (declares(recipe?.cameraPath)) return true;
+  const packs = Array.isArray(scene?.appliedShotPacks)
+    ? scene.appliedShotPacks
+    : [];
+  return packs.some((entry) =>
+    declares(
+      getSceneAppendRecipeById(entry?.id)?.legacySceneBootstrap?.cameraPath,
+    ),
   );
 }
