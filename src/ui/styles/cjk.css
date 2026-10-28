@@ -62,3 +62,10 @@ html:is(:lang(zh), :lang(ja)) .recent-imagery-readout .ri-card-sensor {
   white-space: normal;
   text-overflow: clip;
 }
+
+/* The Japanese imagery slot line wraps at its · separators, never inside a
+   word (プレ / ビュー); a run too long for the line still breaks. */
+html:lang(ja) .recent-imagery-readout .ri-slot-value {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}

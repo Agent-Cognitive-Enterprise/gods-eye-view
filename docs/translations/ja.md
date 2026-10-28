@@ -50,7 +50,7 @@ Translation source: abiyeenzo (#913).
 | installation, site                        | 施設                                    |
 | camera / CCTV camera                      | カメラ / CCTVカメラ                     |
 | earthquake / active fire / fire perimeter | 地震 / 火災検知 / 延焼範囲              |
-| contained (fire)                          | 鎮圧                                    |
+| contained / containment (fire)            | 封じ込め / 封じ込め率                   |
 | scene / shot                              | シーン / ショット                       |
 | briefing / panel / dock                   | ブリーフィング / パネル / ドック        |
 | preset / visual preset                    | プリセット / ビジュアルプリセット       |
@@ -59,6 +59,7 @@ Translation source: abiyeenzo (#913).
 | Clean UI                                  | クリーンUI                              |
 | cockpit                                   | コックピット                            |
 | heading / altitude / ground speed         | 機首方位 / 高度 / 対地速度              |
+| track (TRK, direction over the ground)    | 対地針路                                |
 | HDG / BRG / CRS / FOV                     | そのまま（HUDコード）                   |
 | squawk                                    | スコーク                                |
 | map heading / North up                    | 方位 / 北を上に                         |
@@ -67,20 +68,28 @@ Translation source: abiyeenzo (#913).
 | Global Context / Context (panel)          | グローバルコンテキスト / コンテキスト   |
 | radio (station) / tune / seek             | ラジオ（局）/ 選局・同調 / シーク       |
 | transit / bikeshare                       | 公共交通 / シェアサイクル               |
+| traffic flow (TomTom)                     | 交通流                                  |
 | Previous / Next                           | 前へ / 次へ                             |
+| SIG / NEWS / LOCAL (briefing tabs)        | シグナル / ニュース / ローカル          |
 | compass points (N, NNE, NE, ENE, …)       | 北, 北北東, 北東, 東北東, …             |
 | weather field / FIELD (selector)          | 要素                                    |
 | weather model / forecast lead hours       | モデル / 予報時間                       |
 | valid (forecast time) / issued            | 対象時刻 / 発表                         |
 | radar reflectivity / lightning density    | レーダー反射強度 / 雷密度               |
-| cyclone / advisory (NHC/CPHC)             | サイクロン / 情報（第N報）              |
+| cyclone, storm (NHC/CPHC) / advisory      | サイクロン / 情報（第N報）              |
 | forecast uncertainty cone                 | 予報円                                  |
 | tropical storm / tropical depression      | 熱帯暴風雨 / 熱帯低気圧                 |
 | scene cloud / mosaic / daily overview     | シーン雲量 / モザイク / 日次概観        |
 | box (Recent Imagery area)                 | 範囲                                    |
+| WINDOW (search radius around a subject)   | 範囲                                    |
+| coverage / coverage % / full, partial     | カバー範囲 / カバー率（%のみ）/ 全体, 一部 |
 | pin (Recent Imagery)                      | 固定                                    |
 | outline / mark (map annotation)           | 輪郭 / マーク                           |
 | share (a view or link)                    | 共有                                    |
+| import / export (project, presets)        | インポート / エクスポート               |
+| EXPORT (image, PNG)                       | 書き出し                                |
+| voice (the voice assistant)               | 音声アシスタント / 音声機能             |
+| activate (a control, screen-reader text)  | 押す（「押すと…」）                      |
 | AI agent                                  | AIエージェント                          |
 | frame (bring into view)                   | 視野に収める                            |
 | story beat / evidence beat                | ストーリー区切り / 証拠の区切り         |
