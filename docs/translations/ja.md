@@ -13,7 +13,7 @@ Translation source: abiyeenzo (#913).
 - No space between Japanese and Latin letters, digits or a `{placeholder}`: 「AIS船舶」, 「Spaceを長押しで話す」, 「{count}件」, 「{name}を表示」.
 - Two exceptions keep the space: a Japanese label before its value in a readout (「雲量 {pct}%」, 「ステーション {id}」, 「高度 {altitude}」), and the state words in toggles (「CCTV オン」, 「ラジオ オフ」).
 - Loanwords are katakana with the long-vowel mark, as in Microsoft and Apple style: ユーザー, ブラウザー, ビューアー, プロバイダー, レイヤー, フィルター, モニター, パラメーター. Pick one katakana form per term and keep it (see the glossary).
-- Product, provider and dataset names stay in Latin script: Google Maps, Cesium ion, OpenSky, CelesTrak, NASA FIRMS, Sentinel-2, KartaView. Google's own product names use Google's Japanese: Google ストリートビュー. Nepal place names in the Bhote Koshi scenes stay in Latin script, as in zh-CN; country and well-known city names are translated (ネパール, 東京, オースティン).
+- Product, provider and dataset names stay in Latin script: Google Maps, Cesium ion, OpenSky, CelesTrak, NASA FIRMS, Sentinel-2, KartaView. Google's own product names use Google's Japanese, joined like any Latin word: Googleストリートビュー. Nepal place names in the Bhote Koshi scenes stay in Latin script, as in zh-CN; country and well-known city names are translated (ネパール, 東京, オースティン).
 
 ## Numbers, units and dates
 
