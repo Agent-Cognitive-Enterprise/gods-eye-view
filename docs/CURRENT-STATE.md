@@ -3906,6 +3906,8 @@ reports it (`keyAlternatives`), and the panel's KEY REQUIRED, its coverage
 line and the layer row's tooltip say to light it. The
 viewer sits under the header with EXPAND, FIT/FILL and close above the
 image. SINCE is a stepped slider whose readout names the cut-off date.
+The viewer caption's bearing wraps after rounding to whole degrees, so a view
+facing 359.5° or more reads `0°` rather than `360°`.
 
 MapillaryJS loads on the first photo. Opening one frames it with a single
 camera flight through the application's deferred navigation (`begin` /
