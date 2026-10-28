@@ -9,7 +9,7 @@ Translation source: abiyeenzo (#907); the French part of meirm's #312 was used f
 - Standard French that reads naturally in France, Belgium, Switzerland and Canada; avoid regionalisms.
 - Address the user with "vous" imperatives: « Cliquez », « Activez », « Réessayez ». Tooltips that name an action use the infinitive: « Réduire le panneau », « Réinitialiser la caméra ». UPPERCASE HUD instructions also use the infinitive: « CLIQUER SUR UNE CAMÉRA POUR L'ACTIVER ».
 - Sentence case, not Title Case: "Live Flights" → « Vols en direct ». UPPERCASE English stays UPPERCASE, accents included: « ÉTAT », « PRÉC. ».
-- Typography: a narrow no-break space (U+202F) goes before `:` `;` `?` `!` and `%`, and inside « » quotes: `Supprimer le plan « {shot} » ?`. It keeps the sign on the same line as the word before it. Do not type a plain space there. Ellipsis is `…`, not `...`. Dashes keep their spaces: « flux indisponible — réessayez ».
+- Typography: a narrow no-break space (U+202F) goes before `:` `;` `?` `!` and `%`, and inside « » quotes: `Supprimer le plan « {shot} » ?`. It keeps the sign on the same line as the word before it. Do not type a plain space there. The same narrow no-break space separates thousands in a number written into the text: « 1 000 km ». Ellipsis is `…`, not `...`. Dashes keep their spaces: « flux indisponible — réessayez ».
 - Short labels, chips and HUD readouts stay short. A standard abbreviation with a period beats a wrapped line: PRÉC., SUIV., RÉINIT., ENREG., INDISP., DIST.
 - The HUD codes HDG, BRG, CRS, FOV, DEST, SPD and ALT stay in English everywhere, as in cockpit avionics. Words are translated: RANGE → « PORTÉE », heading in a sentence → « cap », ground-track course → « route » (« ROUTE 270° »).
 - ON and OFF stay as they are on HUD toggles and chips (« CCTV ON », « PROJECTION OFF »); in a sentence use « activé » / « désactivé ».
@@ -28,7 +28,7 @@ A `tn()` entry needs three forms. `Intl.PluralRules('fr')` picks:
 | `many`  | 1 000 000, 2 000 000… (exact millions) | 1 000 000 de caméras |
 | `other` | everything else: 2–999 999, 2,5…       | 3 caméras            |
 
-The `many` form is the `other` text with « de » (« d' » before a vowel) after the number: « {count} de couches effacées », « {count} D'ENTRÉES INCONNUES ». When the words after the number cannot agree (an UPPERCASE readout, a list), put the number after a colon in every form: « CAPTÉS : {count} ». The same goes for a layer name whose gender and number vary: « Couche activée : {label} », not « {label} activé ».
+The `many` form is the `other` text with « de » (« d' » before a vowel) after the number: « {count} de couches effacées », « {count} D'ENTRÉES INCONNUES ». When the words after the number cannot agree (an UPPERCASE readout, a list), put the number after a colon in every form: « CAPTÉS : {count} ». The same goes for a layer name whose gender and number vary: « Couche activée : {label} », not « {label} activé », or a tool name: « Outil actif : {name} », not « {name} est actif ».
 
 ## Glossary
 
@@ -66,6 +66,7 @@ The `many` form is the `other` text with « de » (« d' » before a vowel) afte
 | route (directions) / turn (maneuver)                         | itinéraire / manœuvre                                                   |
 | scene / shot / scene recipe                                  | scène / plan / recette de scène                                         |
 | bundle / data pack / anchor                                  | archive / paquet de données / ancre                                     |
+| capture camera as anchor / set move start (scene editor)     | ancre à la position de la caméra / vue actuelle comme départ            |
 | story beat                                                   | étape du récit                                                          |
 | briefing / panel / dock                                      | briefing / panneau / dock                                               |
 | cockpit                                                      | cockpit                                                                 |
@@ -75,6 +76,7 @@ The `many` form is the `other` text with « de » (« d' » before a vowel) afte
 | Clean UI                                                     | vue épurée                                                              |
 | Street Level (layer) / Street View (Google)                  | Niveau rue / Street View                                                |
 | Recent Imagery / box                                         | imagerie récente / zone                                                 |
+| Daily overview / overview (Recent Imagery VIIRS product)     | vue quotidienne (one name for the product, not « vue d'ensemble »)      |
 | pin (Draw tool) / pin (Recent Imagery)                       | épingle / épingler                                                      |
 | Cyber (HUD layout, effect)                                   | Cyber                                                                   |
 | heading / course (ground track) / altitude / ground speed    | cap / route / altitude / vitesse sol                                    |
