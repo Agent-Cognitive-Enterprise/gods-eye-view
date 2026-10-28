@@ -4,6 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  SCENE_APPEND_RECIPES,
   SCENE_RECIPES,
   displaySceneTitle,
   displayShotTitle,
@@ -85,6 +86,28 @@ test('a built-in shot title localizes only for a recipe-sourced shot', () => {
       declared,
     );
   }
+});
+
+test('a shot rebuilt by an applied pack bootstrap localizes its built-in title', () => {
+  const pack = SCENE_APPEND_RECIPES.find(
+    (recipe) => recipe.requiredShotTitles?.length,
+  );
+  if (!pack) return;
+  setLocale('ru');
+  const title = pack.requiredShotTitles[0];
+  const shot = { id: 'shot-bootstrap', title };
+  // The legacy bootstrap rebuilds these shots without a sourcePackId; the
+  // scene's applied-pack marker vouches for them.
+  assert.equal(
+    displayShotTitle(title, shot, {
+      id: 'scene-upgraded',
+      appliedShotPacks: [{ id: pack.id, version: pack.version }],
+    }),
+    displayShotTitle(title),
+  );
+  assert.notEqual(displayShotTitle(title), title);
+  // The same title in a scene without that pack stays as typed.
+  assert.equal(displayShotTitle(title, shot, { id: 'scene-user' }), title);
 });
 
 test('the Scene status line shows an operator-typed shot title as typed', async () => {

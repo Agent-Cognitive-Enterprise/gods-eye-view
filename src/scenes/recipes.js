@@ -1069,17 +1069,29 @@ export function displaySceneTitle(scene) {
 export function displayShotTitle(title, shot = undefined, scene = undefined) {
   const text = typeof title === 'string' ? title : '';
   const fromRecipe = shot
-    ? Boolean(shot.sourcePackId) || recipeDeclaresShotTitle(scene?.id, text)
+    ? Boolean(shot.sourcePackId) || recipeDeclaresShotTitle(scene, text)
     : true;
   if (fromRecipe && BUILTIN_SHOT_TITLES.has(text)) return t(text);
   const numbered = /^Shot ([1-9]\d*)$/.exec(text);
   return numbered ? t('Shot {n}', { n: numbered[1] }) : text;
 }
 
-/** Whether the built-in recipe behind a scene declares a shot with this title. */
-function recipeDeclaresShotTitle(sceneId, title) {
-  const recipe = sceneId ? getSceneRecipeById(sceneId) : null;
-  return Boolean(
-    recipe?.cameraPath?.some((keyframe) => keyframe?.title === title),
+/**
+ * Whether the built-in recipe behind a scene, or a shot pack applied to it,
+ * declares a shot with this title. A pack's legacy bootstrap rebuilds the
+ * first shots of an upgraded scene without a sourcePackId, so the pack's
+ * required titles vouch for them.
+ */
+function recipeDeclaresShotTitle(scene, title) {
+  const recipe = scene?.id ? getSceneRecipeById(scene.id) : null;
+  if (recipe?.cameraPath?.some((keyframe) => keyframe?.title === title))
+    return true;
+  const packs = Array.isArray(scene?.appliedShotPacks)
+    ? scene.appliedShotPacks
+    : [];
+  return packs.some((entry) =>
+    Boolean(
+      getSceneAppendRecipeById(entry?.id)?.requiredShotTitles?.includes(title),
+    ),
   );
 }
