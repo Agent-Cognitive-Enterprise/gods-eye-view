@@ -305,6 +305,7 @@ function describeConnectionError(error) {
 /**
  * State fields for a receiver error: `message` in the UI language for the
  * Radio card, `errorText` as English data for the Local ADS-B layer's stats.
+ * A new connection, a mode switch and stop() clear `errorText` again.
  * @param {string} text English error text (ours or the browser's).
  */
 function errorState(text) {
@@ -360,6 +361,7 @@ export class SdrController {
       gain: this._gainByMode.fm,
       seeking: false,
       seekMessage: '',
+      errorText: null,
       snr: null,
       aircraft: [],
       decodedMessages: 0,
@@ -1082,6 +1084,7 @@ export class SdrController {
     this._setState({
       status: 'connecting',
       message: t('Waiting for an RTL-SDR device…'),
+      errorText: null,
     });
     let acquisition = null;
     try {
@@ -1554,6 +1557,7 @@ export class SdrController {
       message: t('Switching to {mode}…', {
         mode: nextMode === 'adsb' ? 'ADS-B' : 'FM',
       }),
+      errorText: null,
     });
     try {
       if (nextMode === 'fm' && !(await this._ensureAudio())) {
@@ -1869,7 +1873,7 @@ export class SdrController {
       status: preserveMessage ? this.state.status : idleStatus,
       ...(preserveMessage
         ? {}
-        : { message: message || t('RTL-SDR disconnected') }),
+        : { message: message || t('RTL-SDR disconnected'), errorText: null }),
       snr: null,
       samplesPerSecond: 0,
       workerBlocks: 0,

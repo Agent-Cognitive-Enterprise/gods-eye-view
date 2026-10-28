@@ -122,6 +122,8 @@ const ROUTING_REFUSALS = new Set([
   msg('routing service is rate limited'),
   msg('route leg too long'),
   msg('route too long'),
+  msg('routing busy — too many routes at once'),
+  msg('route proxy error'),
 ]);
 const routingRefusal = (text) =>
   ROUTING_REFUSALS.has(text) ? t(text) : translateKnown(text);

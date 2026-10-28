@@ -99,6 +99,10 @@ for (const locale of ['es', 'ru']) {
       const row = rowFor(status, 0);
       assert.ok(row.includes(state.message), row);
       assert.doesNotMatch(row, /No RTL-SDR device selected/, row);
+
+      // The English text goes with the error: stop() clears it.
+      await receiver.stop();
+      assert.equal(receiver.getState().errorText, null);
     } finally {
       setLocale('en');
       await receiver.destroy();

@@ -83,6 +83,28 @@ for (const locale of ['es', 'ru']) {
         translateFeedError('Routing failed: something else'),
         t('Routing failed: {error}', { error: 'something else' }),
       );
+      // Every refusal the proxy sends (server/providers/places/routes.js),
+      // and "rate limited" after "Routing failed:", which the feed pattern
+      // "<source> rate limited" would otherwise take.
+      for (const [english, shown] of [
+        [
+          'routing busy — too many routes at once — try again in a moment',
+          t('{error} — try again in a moment', {
+            error: t('routing busy — too many routes at once'),
+          }),
+        ],
+        [
+          'Routing failed: route proxy error',
+          t('Routing failed: {error}', { error: t('route proxy error') }),
+        ],
+        [
+          'Routing failed: rate limited',
+          t('Routing failed: {error}', { error: t('rate limited') }),
+        ],
+      ]) {
+        assert.equal(translateFeedError(english), shown);
+        assert.doesNotMatch(shown, /routing busy|route proxy|rate limited/);
+      }
     } finally {
       setLocale('en');
     }
