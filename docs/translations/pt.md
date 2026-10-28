@@ -12,6 +12,8 @@ Translation source: abiyeenzo (#909).
 - Quotes inside Portuguese text are straight double quotes: «Excluir o plano "{shot}"?». A sentence that names a panel quotes it: «o painel "Configurações de provedores"» as the subject, so the verb agrees, and «adicione em "Configurações de provedores"» after a preposition.
 - A dash between clauses is a spaced em dash « — », even where the English runs it in.
 - A date or time after a participle takes a preposition: «emitido em {time}», «válida para {valid}», «Posição em {time}», «onde estava em {time}». Use «em», not «às», wherever {time} can include a date.
+- A count in a string with no plural form (no `tn()`) goes after a colon, so it reads right for 1: «sincronizando feeds de cidades: {count}...», «CÂMERAS EM ESPERA: {count}».
+- A placeholder that holds a layer or tool name of unknown gender and number gets a noun to agree with: «{label}: camada ativada», «A ferramenta "{owner}" está usando o ponteiro — feche-a primeiro».
 - Short labels, chips and HUD readouts stay short. A standard abbreviation with a period beats a wrapped line: ANT., PRÓX., DESLIG., EXCL., INCL., ALT., VEL., câm.
 - The HUD codes HDG, BRG, CRS, FOV, DEST, SPD, RANGE, ALT, GS, TRK and V/S stay in English, as in cockpit avionics («ALT {altitude} FT · GS {speed} KT · TRK {track}», «V/S {rate} FT/MIN»), and so does the HUD recording mark REC. Words used in a sentence are translated: heading → «rumo», range → «alcance».
 - Keyboard keys stay in English: Space, Esc, Enter, Tab, Shift, Backspace, H, 1–9 («Segure Space para falar»).
@@ -44,6 +46,8 @@ The `many` form is the `other` text with «de» after the number: «{count} de c
 | stale / degraded / unavailable                | desatualizado / degradado / indisponível                     |
 | retry / retrying                              | nova tentativa / tentando de novo                            |
 | retrying (a fetch) / retrying slowly          | buscando de novo / tentando de novo em intervalos maiores    |
+| rate-limited                                  | «X: limite de requisições atingido»                          |
+| dismiss (window, card, error)                 | fechar                                                       |
 | key (API key) / POWER UP / POWERED UP         | chave / ATIVAR / ATIVADO                                     |
 | Provider Settings                             | Configurações de provedores                                  |
 | ON / OFF (state chips)                        | ATIVO / INATIVO                                              |
@@ -71,18 +75,21 @@ The `many` form is the `other` text with «de» after the number: «{count} de c
 | AQHI bands Low … Very High                    | Risco baixo … Risco muito alto                               |
 | radio station / broadcaster                   | estação de rádio / emissora                                  |
 | Oldies / World (radio tags)                   | Flashback / Músicas do mundo                                 |
+| radio genre tags agree with «música»          | Alternativa, Clássica, Eletrônica, Latina                    |
 | road / flow (traffic)                         | via / fluxo                                                  |
 | Street Level (layer)                          | Nível da rua                                                 |
 | scene / shot / scene recipe                   | cena / plano / receita de cena                               |
 | briefing / panel / dock                       | briefing / painel / dock                                     |
 | cockpit                                       | cabine                                                       |
 | preset / visual preset / EXPORT PRESETS       | predefinição / predefinição visual / EXPORTAR PREDEF.        |
+| VISUAL PRESETS (dock caption)                 | PREDEF. VISUAIS                                              |
 | Scope (circular viewport mask) / keyhole      | mira / visor                                                 |
 | feather / fade                                | suavização / esmaecimento                                    |
 | detection overlay                             | sobreposição de detecção                                     |
 | pin (Draw tool) / box (Recent Imagery)        | marcador / área                                              |
 | Cyber (HUD layout, effect)                    | Ciber                                                        |
 | heading / course / altitude / ground speed    | rumo / curso / altitude / velocidade solo (VELOC. SOLO)      |
+| map heading / bearing (compass, north up)     | orientação (do mapa)                                         |
 | HDG / BRG / CRS / FOV / DEST / SPD / RANGE    | HDG / BRG / CRS / FOV / DEST / SPD / RANGE (unchanged)       |
 | V/S (vertical speed code)                     | V/S (unchanged)                                              |
 | PREV / NEXT                                   | ANT. / PRÓX.                                                 |
@@ -95,4 +102,5 @@ The `many` form is the `other` text with «de» after the number: «{count} de c
 | Last report (transit vehicle position)        | Último registro                                              |
 | intersection (CCTV)                           | cruzamento                                                   |
 | {layers} just turned on (any list of layers)  | «{layers}: ativação recente» (no agreement needed)           |
+| {label} on / off (one layer)                  | «{label}: camada ativada / desativada»                       |
 | turn-by-turn: turn left / keep left / lane    | vire à esquerda / mantenha-se à esquerda / faixa da esquerda |
