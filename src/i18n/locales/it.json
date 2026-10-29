@@ -63,7 +63,7 @@
   "Gyirong border gate": "Valico di frontiera di Gyirong",
   "Border gate": "Valico di frontiera",
   "Timure evidence cluster": "Gruppo di prove di Timure",
-  "Mailung / Upper Trishuli bridge": "Ponte di Mailung / Alto Trishuli",
+  "Mailung / Upper Trishuli bridge": "Ponte di Mailung / Upper Trishuli",
   "Dandagaun viewpoint restaurant": "Ristorante panoramico di Dandagaun",
   "Dandagaun viewpoint": "Punto panoramico di Dandagaun",
   "Bidur - Trishuli bridge": "Ponte di Bidur - Trishuli",
@@ -3004,6 +3004,5 @@
   "ESC to dismiss": "ESC per chiudere",
   "Tip: the GEV MIC button in the dock lets you talk to the map.": "Suggerimento: il pulsante GEV MIC nel dock ti permette di parlare con la mappa.",
   "Malformed cyclone snapshot": "Snapshot dei cicloni non valido",
-  "Cyclone request timed out": "La richiesta dei cicloni è andata in timeout",
-  "Upper Trishuli": "Alto Trishuli"
+  "Cyclone request timed out": "La richiesta dei cicloni è andata in timeout"
 }

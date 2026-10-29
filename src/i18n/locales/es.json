@@ -1990,7 +1990,6 @@
   "Border gate": "Paso fronterizo",
   "Timure evidence cluster": "Grupo de evidencias de Timure",
   "Mailung / Upper Trishuli bridge": "Mailung / puente de Upper Trishuli",
-  "Upper Trishuli": "Upper Trishuli",
   "Dandagaun viewpoint restaurant": "Restaurante mirador de Dandagaun",
   "Dandagaun viewpoint": "Mirador de Dandagaun",
   "Bidur - Trishuli bridge": "Puente Bidur - Trishuli",
@@ -3004,8 +3003,6 @@
   "Voice replies appear here.": "Las respuestas de voz aparecen aquí.",
   "Preview is off.": "La vista previa está desactivada.",
   "Automatic stop is unavailable for this voice connection.": "La parada automática no está disponible para esta conexión de voz.",
-  "Cyclone request timed out": "La petición de ciclones agotó el tiempo de espera",
-  "Malformed cyclone snapshot": "Instantánea de ciclones mal formada",
   "routing busy — too many routes at once": "servicio de rutas ocupado: demasiadas rutas a la vez",
   "route proxy error": "error del proxy de rutas"
 }

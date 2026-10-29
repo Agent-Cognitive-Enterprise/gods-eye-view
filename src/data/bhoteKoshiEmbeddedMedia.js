@@ -66,7 +66,6 @@ const EVENT_PACK_TEXT = new Set([
   msg('Border gate'),
   msg('Timure evidence cluster'),
   msg('Mailung / Upper Trishuli bridge'),
-  msg('Upper Trishuli'),
   msg('Dandagaun viewpoint restaurant'),
   msg('Dandagaun viewpoint'),
   msg('Bidur - Trishuli bridge'),
