@@ -98,16 +98,10 @@
     display: none;
   }
 
-  .hud-top-bar,
   .hud-bottom-bar {
     width: calc(100vw - 24px);
     left: 12px;
     transform: none;
-  }
-
-  .hud-top-bar {
-    top: 54px;
-    font-size: 9px;
   }
 
   .hud-bottom-bar {

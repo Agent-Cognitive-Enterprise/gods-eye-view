@@ -717,10 +717,7 @@ test('the Display selector, voice schema and final stylesheet expose Cyber', () 
   assert.match(cyberStyles, /\.hud-top-left/);
   assert.match(cyberStyles, /transparent 0 min\(40vw, 52vh\)/);
   assert.match(cyberStyles, /\.hud-bottom-bar \{\s*display: none;/);
-  assert.match(
-    cyberStyles,
-    /#intel-hud\[data-variant='cyber'\] \.hud-top-bar \{\s*display: none;/,
-  );
+  assert.doesNotMatch(cyberStyles, /\.hud-top-bar/);
   // Cyber shares the measured rail/credit keep-out rather than overriding it.
   assert.doesNotMatch(
     cyberStyles,

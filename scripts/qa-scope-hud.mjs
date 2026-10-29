@@ -564,7 +564,7 @@ try {
           );
         });
       const broadBackings = [
-        ...hud.querySelectorAll('.hud-corner, .hud-top-bar, .hud-bottom-bar'),
+        ...hud.querySelectorAll('.hud-corner, .hud-bottom-bar'),
       ].filter(
         (el) =>
           el.offsetWidth > 0 &&

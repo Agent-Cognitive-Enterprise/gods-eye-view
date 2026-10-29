@@ -288,12 +288,6 @@ export class IntelHUD {
     this._el.innerHTML = `
       <div class="hud-sonar" aria-hidden="true"></div>
 
-      <div class="hud-top-bar">
-        <span class="hud-readout"><span class="hud-top-bar-left">TOP SECRET // SI-TK // NOFORN</span></span>
-        <span class="hud-readout"><span class="hud-top-bar-center">${this._missionId}</span></span>
-        <span class="hud-readout"><span class="hud-top-bar-right">PAGE 1/1</span></span>
-      </div>
-
       <div class="hud-corner hud-top-left">
         <div class="hud-bracket">┌</div>
         <div class="hud-content">

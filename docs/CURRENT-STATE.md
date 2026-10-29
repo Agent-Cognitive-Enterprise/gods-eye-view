@@ -236,7 +236,9 @@ restoration and both Scope presentations. `QA_SCREENSHOT_DIR` saves screenshots.
 Display > HUD > Layout offers Tactical, Minimal and Cyber; the `set_hud` voice
 action accepts the same three. The Operator layout is retired. Share links
 keep its enum code so older links still parse, and a link, scene or saved state
-that names Operator restores the default Tactical layout.
+that names Operator restores the default Tactical layout. Operator was the
+only layout that showed the HUD's top banner bar, so its markup and styles are
+removed too.
 
 ## Cyber HUD — September 30, 2026
 
