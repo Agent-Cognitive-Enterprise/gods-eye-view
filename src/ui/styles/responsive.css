@@ -110,13 +110,6 @@
     font-size: 9px;
   }
 
-  #intel-hud[data-variant='operator'] .hud-top-bar {
-    left: 12px;
-    right: auto;
-    width: calc(100vw - 24px);
-    transform: none;
-  }
-
   .hud-bottom-bar {
     bottom: 90px;
     font-size: 9px;

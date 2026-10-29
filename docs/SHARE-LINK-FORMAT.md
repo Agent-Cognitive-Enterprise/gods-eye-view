@@ -129,6 +129,9 @@ table learns its code. A new style's settings are encoded against its own
 defaults, while a decoder that does not know the style uses Normal's; adding a
 style also extends the pinned style-defaults table.
 
+`hudVariant` code 1 (`operator`) is retired: the app no longer offers that
+layout and restores it as `tactical`. The code stays reserved.
+
 Flag bits (field 9): 0 `bloom`, 1 `sharpen`, 2 `hudVisible`, 3
 `celestialRing` (each defaulting by style), 4 `scopeEnabled` (default on).
 

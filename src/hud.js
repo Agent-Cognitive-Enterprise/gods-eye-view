@@ -9,7 +9,7 @@ import { applicationServices } from './services/application.js';
  * real-time at configurable cadences.
  *
  * The HUD auto-activates when a military-style shader (NVG, FLIR, CRT) is
- * selected and supports three layout variants: tactical, operator, minimal.
+ * selected and supports the layout variants: tactical, minimal, cyber.
  *
  * Color theming is driven by the active shader mode via CSS custom properties.
  */
@@ -1063,7 +1063,7 @@ export class IntelHUD {
    * Switch the HUD layout variant. Falls back to `'tactical'` if the
    * name is unrecognized. Cyber also applies a coordinated skin to the full
    * application shell; leaving Cyber restores the standard shell tokens.
-   * @param {string} variantName - One of `'tactical'`, `'operator'`, `'minimal'`, `'cyber'`.
+   * @param {string} variantName - One of `'tactical'`, `'minimal'`, `'cyber'`.
    */
   setVariant(variantName) {
     this._variant = normalizeHudLayout(variantName);

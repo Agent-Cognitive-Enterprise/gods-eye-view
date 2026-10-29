@@ -54,7 +54,8 @@ function styleOwner(t, initialVariant = 'cyber') {
   const hud = {
     getVariant: () => variant,
     setVariant: (value) => {
-      variant = value;
+      // Normalize like the real HUD so retired layouts fall back.
+      variant = normalizeHudLayout(value);
       applyHudUiTheme(root, value);
     },
     setMode: (value) => calls.push(['mode', value]),
@@ -131,7 +132,7 @@ test('visual styles retain Cyber through real preset application without droppin
 
 test('non-Cyber style presets and explicit HUD choices remain authoritative', (t) => {
   const { owner, hud, root } = styleOwner(t);
-  for (const variant of ['tactical', 'operator', 'minimal']) {
+  for (const variant of ['tactical', 'minimal']) {
     owner._setHudVariant(variant);
     assert.equal(hud.getVariant(), variant);
     assert.equal(root.dataset.uiTheme, undefined);
@@ -150,8 +151,8 @@ test('leaving Cyber without a preset choice restores the prior visual preset', (
   assert.equal(owner._preCyberStyle, 'noir');
   assert.equal(owner._cyberStyleUserSelected, false);
 
-  owner._setHudVariant('operator', { applyVisualDefaults: true });
-  assert.equal(hud.getVariant(), 'operator');
+  owner._setHudVariant('minimal', { applyVisualDefaults: true });
+  assert.equal(hud.getVariant(), 'minimal');
   assert.equal(owner.activeStyle, 'noir');
   assert.equal(owner._preCyberStyle, null);
   assert.equal(owner._cyberStyleUserSelected, false);
@@ -170,8 +171,8 @@ test('a preset explicitly selected in Cyber survives exit and resets for re-entr
   // Reselecting the active mode must not erase the user's preset intent.
   owner._setHudVariant('cyber', { applyVisualDefaults: true });
   assert.equal(owner._preCyberStyle, 'noir');
-  owner._setHudVariant('operator', { applyVisualDefaults: true });
-  assert.equal(hud.getVariant(), 'operator');
+  owner._setHudVariant('minimal', { applyVisualDefaults: true });
+  assert.equal(hud.getVariant(), 'minimal');
   assert.equal(owner.activeStyle, 'snow');
   assert.equal(owner._preCyberStyle, null);
   assert.equal(owner._cyberStyleUserSelected, false);
@@ -192,7 +193,7 @@ test('an explicit same-value FLIR choice is preserved on Cyber exit', (t) => {
   owner.setStyle('thermal', { userInitiated: true });
   assert.equal(owner.activeStyle, 'thermal');
   assert.equal(owner._cyberStyleUserSelected, true);
-  owner._setHudVariant('operator', { applyVisualDefaults: true });
+  owner._setHudVariant('minimal', { applyVisualDefaults: true });
   assert.equal(owner.activeStyle, 'thermal');
 });
 
@@ -207,7 +208,7 @@ test('an authoritative same-Cyber reset clears local preset ownership', (t) => {
   assert.equal(owner.activeStyle, 'snow');
   assert.equal(owner._preCyberStyle, null);
   assert.equal(owner._cyberStyleUserSelected, false);
-  owner._setHudVariant('operator', { applyVisualDefaults: true });
+  owner._setHudVariant('minimal', { applyVisualDefaults: true });
   assert.equal(owner.activeStyle, 'snow');
 });
 
@@ -241,9 +242,9 @@ test('Display and voice HUD routes preserve explicit Cyber entry and exit author
   assert.equal(display.owner.activeStyle, 'thermal');
   snowButton.dispatchEvent(new Event('click'));
   assert.equal(display.owner.activeStyle, 'snow');
-  hudLayout.value = 'operator';
+  hudLayout.value = 'minimal';
   hudLayout.dispatchEvent(new Event('change'));
-  assert.equal(display.hud.getVariant(), 'operator');
+  assert.equal(display.hud.getVariant(), 'minimal');
   assert.equal(display.owner.activeStyle, 'snow');
   controls.destroy();
 
@@ -266,9 +267,9 @@ test('Display and voice HUD routes preserve explicit Cyber entry and exit author
   const selected = await runVoiceAction('set_visual_style', { style: 'snow' });
   assert.equal(selected.ok, true);
   assert.equal(voice.owner.activeStyle, 'snow');
-  const exited = await runVoiceAction('set_hud', { layout: 'operator' });
+  const exited = await runVoiceAction('set_hud', { layout: 'minimal' });
   assert.equal(exited.ok, true);
-  assert.equal(voice.hud.getVariant(), 'operator');
+  assert.equal(voice.hud.getVariant(), 'minimal');
   assert.equal(voice.owner.activeStyle, 'snow');
 });
 
@@ -284,7 +285,7 @@ test('scope choice and expanded feather survive every HUD layout and both restor
   assert.equal(owner._scopeBtn.checked, false);
   assert.equal(owner._scopeFeatherSlider.disabled, true);
   assert.equal(owner._scopeFeatherSlider.value, '200');
-  for (const layout of ['minimal', 'operator', 'cyber', 'tactical']) {
+  for (const layout of ['minimal', 'cyber', 'tactical']) {
     owner._setHudVariant(layout, { applyVisualDefaults: true });
     assert.equal(isScopeMaskEnabled(), false, layout);
     assert.equal(getScopeMaskFeather(), 2, layout);
@@ -313,7 +314,7 @@ test('scene and share HUD transitions do not restore a local pre-Cyber preset', 
   assert.equal(owner.activeStyle, 'retro');
   assert.equal(owner._preCyberStyle, null);
   assert.equal(owner._cyberStyleUserSelected, false);
-  owner._setHudVariant('operator', { applyVisualDefaults: true });
+  owner._setHudVariant('minimal', { applyVisualDefaults: true });
   assert.equal(owner.activeStyle, 'retro');
 
   owner.setStyle('surveillance');
@@ -342,7 +343,8 @@ test('scene and share restoration override Cyber and preserve restored Cyber par
     style: 'surveillance',
     hudVariant: 'operator',
   });
-  assert.equal(hud.getVariant(), 'operator');
+  // A link saved with the retired Operator layout restores as Tactical.
+  assert.equal(hud.getVariant(), 'tactical');
   await owner.restoreShareState({
     style: 'thermal',
     hudVariant: 'cyber',
@@ -564,8 +566,9 @@ test('Cyber side panels share one width and one framed surface material', () => 
 });
 
 test('Cyber is a canonical HUD layout with a safe Tactical fallback', () => {
-  assert.deepEqual(HUD_LAYOUTS, ['tactical', 'operator', 'minimal', 'cyber']);
+  assert.deepEqual(HUD_LAYOUTS, ['tactical', 'minimal', 'cyber']);
   assert.equal(normalizeHudLayout('CYBER'), 'cyber');
+  assert.equal(normalizeHudLayout('operator'), 'tactical');
   assert.equal(normalizeHudLayout('unknown'), 'tactical');
 });
 
@@ -597,7 +600,7 @@ test('an explicit transition into Cyber selects FLIR with Ironbow 0.42 once', ()
   );
   assert.equal(cyberVisualDefaultsForHudTransition('tactical', 'cyber'), null);
   assert.equal(
-    cyberVisualDefaultsForHudTransition('cyber', 'operator', {
+    cyberVisualDefaultsForHudTransition('cyber', 'minimal', {
       explicit: true,
     }),
     null,

@@ -2159,7 +2159,7 @@ async function main() {
         recordLayoutStep();
         if (index < 4) {
           if (index < 2) {
-            hudLayout.value = index === 0 ? 'operator' : 'minimal';
+            hudLayout.value = index === 0 ? 'minimal' : 'tactical';
             hudLayout.dispatchEvent(new Event('change', { bubbles: true }));
           } else {
             hudToggle.click();
