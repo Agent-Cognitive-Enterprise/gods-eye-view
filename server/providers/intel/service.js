@@ -8,6 +8,7 @@ import path from 'node:path';
 import { clusterEvents } from '../../../src/intel/clustering.js';
 import { createIntelEngine } from '../../../src/intel/engine.js';
 import { createReplay } from '../../../src/intel/replay.js';
+import { PLACE_LABELS } from '../../../src/intel/proximity.js';
 import {
   AUTOPILOT_DEFAULTS,
   CATEGORIES,
@@ -44,6 +45,32 @@ export function sanitizeSettings(input = {}) {
   num('tourMinimumScore', 0, 100);
   num('pullBackHoldMs', 0, 120_000);
   num('pullBackStepMs', 2_000, 60_000);
+  num('proximityRadiusKm', 50, 5000);
+  num('proximityDecayKm', 25, 2000);
+  if (Array.isArray(input.homeLocations)) {
+    // One place per label; ~1 km precision is plenty for a 1,000 km scale
+    // and keeps the exact address out of settings and the status API.
+    const byLabel = new Map();
+    for (const place of input.homeLocations.slice(0, 16)) {
+      const lat = Number(place?.lat);
+      const lon = Number(place?.lon);
+      if (
+        PLACE_LABELS.includes(place?.label) &&
+        Number.isFinite(lat) &&
+        Number.isFinite(lon) &&
+        Math.abs(lat) <= 90 &&
+        Math.abs(lon) <= 180
+      )
+        byLabel.set(place.label, {
+          label: place.label,
+          lat: Math.round(lat * 100) / 100,
+          lon: Math.round(lon * 100) / 100,
+        });
+    }
+    out.homeLocations = PLACE_LABELS.filter((l) => byLabel.has(l)).map((l) =>
+      byLabel.get(l),
+    );
+  }
   for (const key of [
     'autopilotEnabled',
     'narrationEnabled',
@@ -51,6 +78,7 @@ export function sanitizeSettings(input = {}) {
     'tourWhenIdle',
     'pullBackEnabled',
     'tourAnalystIncidents',
+    'proximityEnabled',
   ])
     if (typeof input[key] === 'boolean') out[key] = input[key];
   if (input.categoryRelevance && typeof input.categoryRelevance === 'object') {

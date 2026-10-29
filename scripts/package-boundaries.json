@@ -1825,6 +1825,7 @@
       "src/ui/dockAutoHide.js",
       "src/intel/client.js",
       "src/intel/framing.js",
+      "src/intel/proximity.js",
       "src/intel/scheduler.js",
       "src/intel/clustering.js",
       "src/intel/evidence.js",

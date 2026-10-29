@@ -156,6 +156,13 @@ export const AUTOPILOT_DEFAULTS = Object.freeze({
   pullBackEnabled: true,
   pullBackHoldMs: 10_000,
   pullBackStepMs: 5_000,
+  // Personal relevance: attention rises toward 100 near these places
+  // ({label: home|family|travel|custom, lat, lon}), fading exponentially to
+  // nothing at the radius. Confidence is never changed by proximity.
+  proximityEnabled: true,
+  homeLocations: [],
+  proximityRadiusKm: 1000,
+  proximityDecayKm: 400,
   // Local model assessments (Phase 3); off means rule-based scoring only.
   localAiEnabled: true,
 });

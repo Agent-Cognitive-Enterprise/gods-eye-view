@@ -10,6 +10,7 @@ import {
   CATEGORY_POLICY,
   SCORE_WEIGHTS,
 } from './taxonomy.js';
+import { boostAttention, eventProximity } from './proximity.js';
 
 const clamp = (value, lo = 0, hi = 100) =>
   Math.min(hi, Math.max(lo, Number.isFinite(value) ? value : lo));
@@ -215,6 +216,16 @@ export function scoreEvent(event, now, settings = {}) {
     criticalBlocked = 'insufficient_corroboration_for_critical';
     attention = critical - 1;
   }
+  // Personal relevance lifts attention toward 100 near the operator's places.
+  // It may rank an event first, never interrupt by itself: a boosted score
+  // stays below the critical threshold unless the event already reached it.
+  const baseAttention = attention;
+  const proximity = eventProximity(event, settings);
+  if (proximity?.weight > 0 && baseAttention < critical)
+    attention = Math.min(
+      critical - 1,
+      round(boostAttention(baseAttention, proximity.weight)),
+    );
   if (verification === 'retracted' || verification === 'resolved')
     attention = 0;
   return {
@@ -224,6 +235,8 @@ export function scoreEvent(event, now, settings = {}) {
     verification,
     escalation,
     attention_score: attention,
+    base_attention_score: baseAttention,
+    proximity,
     critical_qualified: criticalQualified,
     critical_blocked: criticalBlocked,
     evidence_factor: Math.round(evidenceFactor * 100) / 100,

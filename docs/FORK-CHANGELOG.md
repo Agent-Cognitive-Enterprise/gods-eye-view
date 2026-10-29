@@ -7,6 +7,9 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **Personal relevance.** Home/Family/Travel/Custom places raise attention
+  with an exponential distance curve (1,000 km radius, 400 km decay); confidence
+  is unchanged and proximity alone never interrupts.
 - **Lower background load.** After a model timeout the abandoned KoboldCpp
   generation is stopped, assessments rest 5 min and the event waits 30 min;
   revised events are re-assessed at most every 20 min; at most 40

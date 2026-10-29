@@ -137,6 +137,31 @@ test('settings are bounded and unknown keys ignored', () => {
   );
 });
 
+test('home locations: one per label, rounded to ~1 km, junk dropped', () => {
+  assert.deepEqual(
+    sanitizeSettings({
+      homeLocations: [
+        { label: 'family', lat: 52.37021, lon: 4.89517 },
+        { label: 'home', lat: -33.8688, lon: 151.2093, address: '1 Secret St' },
+        { label: 'home', lat: -33.9, lon: 151.1 },
+        { label: 'office', lat: 1, lon: 1 },
+        { label: 'travel', lat: 95, lon: 0 },
+        null,
+      ],
+      proximityRadiusKm: 99_999,
+      proximityDecayKm: 1,
+    }),
+    {
+      proximityRadiusKm: 5000,
+      proximityDecayKm: 25,
+      homeLocations: [
+        { label: 'home', lat: -33.9, lon: 151.1 },
+        { label: 'family', lat: 52.37, lon: 4.9 },
+      ],
+    },
+  );
+});
+
 test('pull-back settings are bounded', () => {
   assert.deepEqual(
     sanitizeSettings({

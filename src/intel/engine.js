@@ -333,6 +333,8 @@ export function createIntelEngine({ store, now, settings = {} }) {
       verification: score.verification,
       escalation: score.escalation,
       attention_score: score.attention_score,
+      base_attention_score: score.base_attention_score,
+      proximity: score.proximity,
       critical_qualified: score.critical_qualified,
       critical_blocked: score.critical_blocked,
       evidence_factor: score.evidence_factor,

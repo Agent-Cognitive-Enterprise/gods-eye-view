@@ -191,7 +191,31 @@ const SETTING_CHOICES = Object.freeze([
     [15_000, 30_000, 60_000],
     (v) => formatQuantity(v / 1000, 's'),
   ],
+  [
+    'proximityRadiusKm',
+    msg('NEAR'),
+    [500, 1000, 2000],
+    (v) => formatQuantity(v, 'km'),
+  ],
+  [
+    'proximityDecayKm',
+    msg('DECAY'),
+    [200, 400, 800],
+    (v) => formatQuantity(v, 'km'),
+  ],
 ]);
+const PLACE_NAMES = Object.freeze({
+  home: msg('HOME'),
+  family: msg('FAMILY'),
+  travel: msg('TRAVEL'),
+  custom: msg('CUSTOM'),
+});
+const PLACE_TEXT = Object.freeze({
+  home: msg('Home'),
+  family: msg('Family'),
+  travel: msg('Travel'),
+  custom: msg('Custom place'),
+});
 
 const el = (doc, tag, className, text) => {
   const node = doc.createElement(tag);
@@ -276,6 +300,7 @@ export function createIntelConsole({
   let storedMode = null; // last mode written to storage
   let modeRestored = false; // nothing is written before the stored mode is read
   let notice = '';
+  let placeSlot = 'home'; // which place the PLACES buttons set
   let points = null;
   let clickHandler = null;
   let history = null; // null = hidden, [] = shown
@@ -507,6 +532,12 @@ export function createIntelConsole({
               value: formatNumber(event.confidence, { style: 'percent' }),
             }),
             event.camera_eligible ? null : t('not a camera target'),
+            event.proximity?.weight > 0
+              ? t('{distance} from {place}', {
+                  distance: formatQuantity(event.proximity.km, 'km'),
+                  place: t(PLACE_TEXT[event.proximity.place] ?? msg('Home')),
+                })
+              : null,
           ]
             .filter(Boolean)
             .join(' · '),
@@ -536,6 +567,103 @@ export function createIntelConsole({
         el(documentRef, 'li', 'intel-muted', t('No active events')),
       );
     if (count) count.textContent = formatNumber(data.events.length);
+  }
+
+  /** PLACES: pick a slot, then set it from the map centre or this device. */
+  function renderPlaces() {
+    const row = el(documentRef, 'div', 'intel-setting intel-places');
+    row.append(el(documentRef, 'span', 'intel-setting-label', t('PLACES')));
+    const places = settings.homeLocations ?? [];
+    const placeOf = (label) => places.find((p) => p.label === label) ?? null;
+    for (const label of Object.keys(PLACE_NAMES)) {
+      const chip = el(
+        documentRef,
+        'button',
+        'data-toggle-chip',
+        `${placeOf(label) ? '● ' : ''}${t(PLACE_NAMES[label])}`,
+      );
+      chip.type = 'button';
+      chip.classList.toggle('active', placeSlot === label);
+      chip.setAttribute('aria-pressed', String(placeSlot === label));
+      chip.addEventListener('click', () => {
+        placeSlot = label;
+        renderSettings();
+      });
+      row.append(chip);
+    }
+    const current = placeOf(placeSlot);
+    row.append(
+      el(
+        documentRef,
+        'span',
+        'intel-muted intel-place-value',
+        current
+          ? `${formatNumber(Math.abs(current.lat))}°${current.lat < 0 ? 'S' : 'N'} ${formatNumber(Math.abs(current.lon))}°${current.lon < 0 ? 'W' : 'E'}`
+          : t('not set'),
+      ),
+    );
+    const action = (text, title, handler) => {
+      const button = el(documentRef, 'button', 'data-toggle-chip', text);
+      button.type = 'button';
+      button.title = title;
+      button.addEventListener('click', handler);
+      row.append(button);
+    };
+    action(t('MAP CENTRE'), t('Use the point at the centre of the map'), () => {
+      const point = mapCentre();
+      if (point) setPlace(placeSlot, point);
+      else {
+        notice = t('Point the map at the globe first');
+        render();
+      }
+    });
+    if (globalThis.navigator?.geolocation)
+      action(
+        t('MY LOCATION'),
+        t('Use this device’s location (the browser asks first)'),
+        () =>
+          globalThis.navigator.geolocation.getCurrentPosition(
+            (position) =>
+              setPlace(placeSlot, {
+                lat: position.coords.latitude,
+                lon: position.coords.longitude,
+              }),
+            () => {
+              notice = t('This device’s location is not available');
+              render();
+            },
+            { maximumAge: 600_000, timeout: 15_000 },
+          ),
+      );
+    if (current)
+      action(t('CLEAR'), t('Forget this place'), () =>
+        changeSettings({
+          homeLocations: places.filter((p) => p.label !== placeSlot),
+        }),
+      );
+    return row;
+  }
+
+  function mapCentre() {
+    const canvas = viewer.scene?.canvas;
+    const centre =
+      canvas &&
+      viewer.camera?.pickEllipsoid?.(
+        new Cesium.Cartesian2(canvas.clientWidth / 2, canvas.clientHeight / 2),
+      );
+    if (!centre) return null;
+    const carto = Cesium.Cartographic.fromCartesian(centre);
+    return {
+      lat: Cesium.Math.toDegrees(carto.latitude),
+      lon: Cesium.Math.toDegrees(carto.longitude),
+    };
+  }
+
+  function setPlace(label, { lat, lon }) {
+    const places = (settings.homeLocations ?? []).filter(
+      (p) => p.label !== label,
+    );
+    changeSettings({ homeLocations: [...places, { label, lat, lon }] });
   }
 
   function renderSettings() {
@@ -657,8 +785,10 @@ export function createIntelConsole({
       });
       narrationRow.append(narrationChip);
     }
+    const placesRow = renderPlaces();
     ui.settings.replaceChildren(
       ...rows,
+      placesRow,
       critical,
       tourRow,
       zoomRow,

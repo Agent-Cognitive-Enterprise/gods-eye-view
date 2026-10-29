@@ -173,6 +173,23 @@ anything that qualifies. The TOUR rule (`tourWhenIdle`, on by default) turns it
 off, restoring the single still global view. The card says why an event is not
 an alert: too little evidence, past its focus window, or a filtered category.
 
+Personal relevance (PLACES, `homeLocations`): up to four places (Home,
+Family, Travel, Custom), set in the panel from the map centre or this device's
+location, stored to about 1 km. Attention rises toward 100 near the nearest
+place: `P' = P + (1 − P) · W(d)`, `W(d) = (e^(−d/L) − e^(−R/L)) / (1 − e^(−R/L))`
+below the radius `R` (`proximityRadiusKm`, 1,000 km; NEAR) and 0 beyond it,
+with decay length `L` (`proximityDecayKm`, 400 km; DECAY). Score 33 becomes
+100, 66, 48, 38 and 33 at 0, 250, 500, 750 and 1,000 km. Proximity changes
+attention only: confidence and verification stay as the sources make them, so
+a nearby rumour is still unverified and still needs the camera confidence to
+become an alert. It never lowers a score (a distant major event keeps its
+own), and a boosted score stays below the critical threshold unless the event
+reached it on its own, so proximity ranks but never interrupts. Distances use
+the event's point; a small area (half-diagonal up to 100 km) counts from its
+nearest edge, a larger one (a whole state or country) from its centre; region
+and country precision count 0.75 and 0.5 of the boost. Queue rows show
+"N km from Home".
+
 Camera moves (ZOOM OUT rule, `pullBackEnabled`, on by default): a move to a
 distant event first turns the globe at the current height until the event is
 centred, waits up to 2.5 s for that view's tiles, then descends. Once the
@@ -401,7 +418,8 @@ Shared rules:
 `criticalInterruptThreshold 95`, `normalPreemptionMargin 15`,
 `preemptionConfirmMs 10000`, `maxMarkersInView 200`, `narrationEnabled false`,
 `tourWhenIdle true`, `tourDwellMs 45000`, `tourMinimumScore 40`, `localAiEnabled true`,
-`tourAnalystIncidents true`, `pullBackEnabled true`, `pullBackHoldMs 10000`, `pullBackStepMs 5000`,
+`tourAnalystIncidents true`, `proximityEnabled true`, `homeLocations []`,
+`proximityRadiusKm 1000`, `proximityDecayKm 400`, `pullBackEnabled true`, `pullBackHoldMs 10000`, `pullBackStepMs 5000`,
 `categoryRelevance` (0 disables a category for the camera), `weights`.
 Stored in `.gev-cache/intel/settings.json`; `DELETE /api/intel/settings`
 resets. Category lifecycle defaults are in `src/intel/taxonomy.js`.
