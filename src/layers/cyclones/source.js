@@ -1,7 +1,7 @@
 import { readResponseJsonCapped } from '../../sources/httpBody.js';
 
-// No i18n here, as in the wind source: the texts stay English data and the
-// cyclone layer shows them translated.
+// Shared with the AI tools, so no i18n import: these errors stay English here
+// and the cyclones layer translates them where it shows them (translateKnown).
 const msg = (text) => text;
 
 export const CYCLONE_RESPONSE_LIMIT = 4 * 1024 * 1024;

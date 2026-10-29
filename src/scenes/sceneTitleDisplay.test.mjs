@@ -143,36 +143,39 @@ test('the scene context of a shot carries its display title by provenance', asyn
   );
 });
 
-test('the base shots of a scene the Nepal pack upgraded localize', () => {
-  const pack = SCENE_APPEND_RECIPES.find(
+test('bootstrap shots of a built-in scene localize without a source pack', () => {
+  setLocale('ru');
+  const append = SCENE_APPEND_RECIPES.find(
     (recipe) => recipe.legacySceneBootstrap?.cameraPath?.length,
   );
-  if (!pack) return;
-  setLocale('de');
-  const title = pack.legacySceneBootstrap.cameraPath[0].title;
-  const base = { id: 'shot-base', title };
-  // A user shot renamed to the same built-in title is not the bound one.
-  const renamed = { id: 'shot-user', title };
-  const upgraded = {
-    id: 'scene-upgraded',
-    shots: [
-      base,
-      { id: 'shot-pack', title: 'x', sourcePackId: pack.id },
-      renamed,
-    ],
-    appliedShotPacks: [
-      { id: pack.id, version: 1, shotBindings: { [title]: base.id } },
-    ],
-  };
-  assert.equal(
-    displayShotTitle(title, base, upgraded),
-    displayShotTitle(title),
+  if (!append) return;
+  const bootstrap = append.legacySceneBootstrap;
+  const scene = SCENE_RECIPES.find(
+    (recipe) => recipe.title === bootstrap.targetSceneTitle,
   );
-  assert.notEqual(displayShotTitle(title), title);
-  assert.equal(displayShotTitle(title, renamed, upgraded), title);
-  // The same title in a scene no pack touched stays as typed.
-  assert.equal(
-    displayShotTitle(title, base, { id: 'scene-user', shots: [base] }),
-    title,
-  );
+  if (!scene) return;
+  for (const { title } of bootstrap.cameraPath) {
+    // The upgrade copies these keyframes into the scene without sourcePackId
+    // and binds each title to its shot in the pack marker.
+    const upgraded = {
+      id: scene.id,
+      appliedShotPacks: [
+        { id: append.id, version: 1, shotBindings: { [title]: 'shot-old' } },
+      ],
+    };
+    assert.equal(
+      displayShotTitle(title, { id: 'shot-old', title }, upgraded),
+      displayShotTitle(title),
+    );
+    // Another shot the operator gave the same title stays as typed.
+    assert.equal(
+      displayShotTitle(title, { id: 'shot-user', title }, upgraded),
+      title,
+    );
+    // The same title in an operator's own scene stays as typed.
+    assert.equal(
+      displayShotTitle(title, { id: 'shot-user', title }, { id: 'scene-user' }),
+      title,
+    );
+  }
 });
