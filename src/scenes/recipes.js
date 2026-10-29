@@ -1069,7 +1069,7 @@ export function displaySceneTitle(scene) {
 export function displayShotTitle(title, shot = undefined, scene = undefined) {
   const text = typeof title === 'string' ? title : '';
   const fromRecipe = shot
-    ? Boolean(shot.sourcePackId) || recipeDeclaresShotTitle(scene, text)
+    ? Boolean(shot.sourcePackId) || recipeDeclaresShotTitle(scene, text, shot)
     : true;
   if (fromRecipe && BUILTIN_SHOT_TITLES.has(text)) return t(text);
   const numbered = /^Shot ([1-9]\d*)$/.exec(text);
@@ -1080,9 +1080,11 @@ export function displayShotTitle(title, shot = undefined, scene = undefined) {
  * Whether the built-in recipe behind a scene, or a shot pack applied to it,
  * declares a shot with this title. A pack's legacy bootstrap rebuilds the
  * first shots of an upgraded scene without a sourcePackId, so the pack's
- * required titles vouch for them.
+ * required titles vouch for them: through the marker's shotBindings when it
+ * has them, so an operator's shot named like a pack shot stays as typed, and
+ * by title alone for markers saved before bindings.
  */
-function recipeDeclaresShotTitle(scene, title) {
+function recipeDeclaresShotTitle(scene, title, shot) {
   const recipe = scene?.id ? getSceneRecipeById(scene.id) : null;
   if (recipe?.cameraPath?.some((keyframe) => keyframe?.title === title))
     return true;
@@ -1090,8 +1092,12 @@ function recipeDeclaresShotTitle(scene, title) {
     ? scene.appliedShotPacks
     : [];
   return packs.some((entry) =>
-    Boolean(
-      getSceneAppendRecipeById(entry?.id)?.requiredShotTitles?.includes(title),
-    ),
+    entry?.shotBindings
+      ? entry.shotBindings[title] === shot?.id
+      : Boolean(
+          getSceneAppendRecipeById(entry?.id)?.requiredShotTitles?.includes(
+            title,
+          ),
+        ),
   );
 }
