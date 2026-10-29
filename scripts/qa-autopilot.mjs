@@ -16,6 +16,7 @@
  *   - after the dwell it rotates; the qualified critical event interrupts once;
  *   - a mouse drag on the globe pauses Autopilot until RESUME (A11);
  *   - with everything shown it settles once on a still global view.
+ * Local AI is paused for the run (rule-based scores) and restored afterwards.
  * Writes a timeline (JSON) and screenshots of every shot to --out.
  */
 import fs from 'node:fs';
@@ -55,6 +56,17 @@ const browser = await puppeteer.launch({
   defaultViewport: { width: 1600, height: 900 },
 });
 const timeline = [];
+// The camera checks are deterministic only with rule-based scores: the local
+// model may legitimately move a drill event below the critical threshold.
+const settingsUrl = `${APP_URL}/api/intel/settings`;
+const putSettings = (body) =>
+  fetch(settingsUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+const savedLocalAi = (await (await fetch(settingsUrl)).json()).localAiEnabled;
+await putSettings({ localAiEnabled: false });
 const errors = [];
 const started = Date.now();
 try {
@@ -176,6 +188,7 @@ try {
   await shot('9-resumed');
   record('no page errors', errors.length === 0, errors.join(' | '));
 } finally {
+  await putSettings({ localAiEnabled: savedLocalAi !== false }).catch(() => {});
   fs.writeFileSync(
     path.join(OUT, 'timeline.json'),
     JSON.stringify({ checks, timeline, errors }, null, 2),

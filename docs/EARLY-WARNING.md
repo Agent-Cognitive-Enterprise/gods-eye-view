@@ -1,7 +1,7 @@
 # Early-warning event engine (fork feature)
 
-Status: **Phases 0–2 implemented (event engine, evidence store, AUTOPILOT
-console and camera scheduler); Phases 3–6 pending.** Off unless
+Status: **Phases 0–3 implemented (event engine, evidence store, AUTOPILOT
+console and camera scheduler, local Qwen assessments); Phases 4–6 pending.** Off unless
 `GEV_INTEL_ENABLED=1`. This document is the architecture decision record and
 operator reference for the Global Early-Warning Autopilot specification
 (29 October 2026). It states what exists today; nothing listed as pending is
@@ -33,7 +33,9 @@ flowchart LR
   UI --> AP[Scheduler src/intel/scheduler.js<br/>+ framing src/intel/framing.js]
   AP --> NAV[Existing navigation authority<br/>runImmediateNavigation · Cockpit refusal]
   NAV -. handoff / pointer / wheel .-> UI
-  SC -. Phase 3 .-> Q[Local Qwen via KoboldCpp<br/>bounded assessment only]
+  E --> AS[Assessor<br/>select · fence · validate]
+  AS <--> Q[Local Qwen via KoboldCpp<br/>loopback only, 1 at a time]
+  AS --> SC
   AP -. Phase 4 .-> V[Local STT/TTS sidecars]
 ```
 
@@ -59,6 +61,9 @@ flowchart LR
 | `src/intel/client.js`                 | Same-origin `/api/intel` client                                                  | Injected fetch                                              |
 | `src/ui/intelConsole.js`              | AUTOPILOT panel, markers, overlay labels/cards, Autopilot controller             | Camera claims via the shared navigation owner               |
 | `scripts/qa-autopilot.mjs`            | Browser gate for the console and camera behaviour                                | Real clicks and pointer input                               |
+| `src/intel/assessment.js`             | Model prompt, output schema, strict validation, cache key                        | Evidence fenced as untrusted data                           |
+| `server/providers/intel/localLlm.js`  | Loopback OpenAI-compatible client (KoboldCpp)                                    | No cloud path; busy check; timeout                          |
+| `server/providers/intel/assessor.js`  | Which events the model assesses, when                                            | Serialized cycles, hourly cap                               |
 
 `src/intel/` is portable (no Node, DOM or Cesium) and is not yet a declared
 package export; the server imports it like the existing GhostMaps catalog.
@@ -150,6 +155,62 @@ the least precise member (point 40 km, city 80 km, region 600 km, country
 1,500 km). A cluster without a point is framed by its stated bounds or not at
 all; hemisphere-wide or polar groups get a global view.
 
+## Local intelligence (Phase 3)
+
+The running KoboldCpp (1.119, `Qwen3.6-35B-A3B-Q4_K_M`, 262k context) was
+probed rather than assumed: it listens on `127.0.0.1:8790` on this machine,
+supports schema-constrained JSON through `response_format: json_schema`
+(plain `json_object` mode produced invalid output and is not used), reports
+`queue`/`idle` at `/api/extra/perf`, and has no audio, transcription or TTS
+enabled. Its configuration was not changed.
+
+Configuration (server environment): `GEV_LLM_BASE_URL` (default probe
+`http://127.0.0.1:5001/v1`; this installation sets `http://127.0.0.1:8790/v1`
+in its launcher), `GEV_LLM_TIMEOUT_MS` (default 90 s), `GEV_LLM_DISABLED=1`.
+Only loopback hosts are accepted (`localhost`, `127.0.0.0/8`, `::1`), without
+credentials, query or fragment; anything else is refused and reported, so
+there is no route to a remote or cloud model. The operator can pause it with
+the LOCAL AI rule (`localAiEnabled`).
+
+What the model sees: the event's rule category, place, measured feed values
+(never a source's own severity suggestion), lineage count, and up to eight
+newest observations as `<evidence id="eN" ...>` elements. Evidence text is
+plain text with angle brackets neutralized, so it cannot close or forge an
+element; the system prompt states that evidence is untrusted and must never be
+followed. Drill evidence is sent with its drill labels removed and an explicit
+exercise instruction, so the model judges the scenario rather than the label;
+live evidence never gets that framing.
+
+What the model may return (schema-constrained, then validated again):
+category, severity 0–100, escalation, confidence, material_update, a short
+attributed summary, `title_en`/`title_ru`, cited evidence ids and up to four
+uncertainties. Any extra field (for example coordinates), an evidence id that
+was not supplied, a link or a coordinate pair in prose, an out-of-range value
+or malformed JSON rejects the whole reply. A rejected reply is retried once,
+then the revision is recorded as rejected and not retried.
+
+How it is used: only for the event revision it assessed; severity can move at
+most ±25 from the rule baseline; escalation may replace the rule estimate.
+Verification, confidence, corroboration, lifecycle, coordinates and the
+camera stay deterministic. A new revision falls back to rules until
+reassessed. The card shows the summary and first uncertainty labelled with
+the model name, and a translated headline (Russian or English UI) marked as a
+machine translation; queue rows show an AI badge.
+
+Scheduling: every 15 s, one cycle at a time (a manual trigger joins the
+running cycle); up to three events per cycle, highest attention first,
+active and at least 40 or camera-eligible, not yet assessed for this
+revision, model and prompt version; at most 120 generations an hour. A cycle
+is skipped while KoboldCpp reports another client's work (its `idle=0` for
+six seconds after our own request is ignored). A timeout or connection
+failure marks the model offline until the next probe (60 s) and leaves all
+scores rule-based.
+
+Measured on this machine: about 13–19 s per assessment; 45 live assessments
+across the drill and USGS feed with 0 rejections. Routes: `GET /api/intel/ai`
+(status, model, queue, counts, last rejection) and host-only
+`POST /api/intel/ai/assess` (run a cycle now).
+
 ## Evidence contract (summary)
 
 Connectors emit raw records; `normalizeObservation` validates them into:
@@ -233,25 +294,27 @@ Run: `node --test src/intel/*.test.mjs server/providers/intel/*.test.mjs`
 (also part of `npm test`), plus `node scripts/qa-autopilot.mjs` against a
 running server.
 
-| Spec scenario                                      | Covered by                                                  | Result                                     |
-| -------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------ |
-| A01 one verified event                             | `engine.test.mjs`, `scheduler.test.mjs`, `qa-autopilot`     | pass (flight, 40 km framing, dwell)        |
-| A02 two events ~300 km                             | `clustering.test.mjs`, `scheduler.test.mjs` (framing)       | pass                                       |
-| A03 continents apart                               | `clustering.test.mjs`, `scheduler.test.mjs`                 | pass (separate shots, rotation)            |
-| A04 179°E / 179°W                                  | clustering and framing tests, `qa-autopilot` (Fiji shot)    | pass                                       |
-| A05 syndicated copies                              | `engine.test.mjs`, demo replay (Lima)                       | pass                                       |
-| A06 republished every minute                       | `engine.test.mjs`, demo replay                              | pass                                       |
-| A07 material development, evacuation               | `engine.test.mjs`, demo replay                              | pass                                       |
-| A08 hysteresis / oscillation                       | `scheduler.test.mjs`                                        | pass                                       |
-| A09 critical arrival                               | `scheduler.test.mjs`, `qa-autopilot`                        | pass (interrupts once)                     |
-| A10 sensational single source                      | engine, service and scheduler tests                         | pass (capped, cannot interrupt)            |
-| A11 manual override                                | `scheduler.test.mjs`, `qa-autopilot` (real mouse drag)      | pass (pauses until RESUME)                 |
-| A12 fade and archive                               | `engine.test.mjs`                                           | pass                                       |
-| A13 feed offline / stale                           | `service.test.mjs`                                          | pass                                       |
-| A14, A15 KoboldCpp failure, malformed model output | —                                                           | pending (Phase 3)                          |
-| A16–A18 local voice / no-cloud                     | —                                                           | pending (Phase 4)                          |
-| A19 restart / hidden tab                           | `scheduler.test.mjs` (no backlog); store reopens on restart | pass (unit); hidden-tab browser QA pending |
-| A20 upstream change check                          | —                                                           | pending (Phase 6)                          |
+| Spec scenario                                               | Covered by                                                         | Result                                     |
+| ----------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------ |
+| A01 one verified event                                      | `engine.test.mjs`, `scheduler.test.mjs`, `qa-autopilot`            | pass (flight, 40 km framing, dwell)        |
+| A02 two events ~300 km                                      | `clustering.test.mjs`, `scheduler.test.mjs` (framing)              | pass                                       |
+| A03 continents apart                                        | `clustering.test.mjs`, `scheduler.test.mjs`                        | pass (separate shots, rotation)            |
+| A04 179°E / 179°W                                           | clustering and framing tests, `qa-autopilot` (Fiji shot)           | pass                                       |
+| A05 syndicated copies                                       | `engine.test.mjs`, demo replay (Lima)                              | pass                                       |
+| A06 republished every minute                                | `engine.test.mjs`, demo replay                                     | pass                                       |
+| A07 material development, evacuation                        | `engine.test.mjs`, demo replay                                     | pass                                       |
+| A08 hysteresis / oscillation                                | `scheduler.test.mjs`                                               | pass                                       |
+| A09 critical arrival                                        | `scheduler.test.mjs`, `qa-autopilot`                               | pass (interrupts once)                     |
+| A10 sensational single source                               | engine, service and scheduler tests                                | pass (capped, cannot interrupt)            |
+| A11 manual override                                         | `scheduler.test.mjs`, `qa-autopilot` (real mouse drag)             | pass (pauses until RESUME)                 |
+| A12 fade and archive                                        | `engine.test.mjs`                                                  | pass                                       |
+| A13 feed offline / stale                                    | `service.test.mjs`                                                 | pass                                       |
+| A14 KoboldCpp stops during inference                        | `localLlm.test.mjs` (hung generation → timeout)                    | pass (offline, rule scores kept)           |
+| A15 malformed JSON, fake evidence ids, invented coordinates | `assessment.test.mjs`, `localLlm.test.mjs`                         | pass (rejected, source data unchanged)     |
+| A16–A17 local voice                                         | —                                                                  | pending (Phase 4)                          |
+| A18 no remote AI requests                                   | `localLlm.test.mjs` (loopback-only URLs, remote base URLs refused) | pass for the model; voice pending          |
+| A19 restart / hidden tab                                    | `scheduler.test.mjs` (no backlog); store reopens on restart        | pass (unit); hidden-tab browser QA pending |
+| A20 upstream change check                                   | —                                                                  | pending (Phase 6)                          |
 
 Additional: two protests in one city stay separate; retraction authority;
 nationwide reports without points; malformed records; batch-order
@@ -260,8 +323,11 @@ injection text stored inert (`[DRILL]` rumour).
 
 ## Known limitations
 
-- Autopilot narration, local AI and voice are Phases 3–4; the panel does not
-  offer them.
+- Narration and voice are Phase 4; the panel does not offer them.
+- The model's summary is English only; Russian summaries come with Phase 4
+  narration. Its category suggestion is shown in the data but not applied.
+- The browser QA gate pauses local AI for its run (camera checks need
+  rule-based scores) and restores the setting afterwards.
 - Region-only events need explicit `bounds` to be framed; there is no
   country-outline lookup yet, so a bare region code stays queue-only.
 - Event titles are shown in their original language until Phase 3 translation.
