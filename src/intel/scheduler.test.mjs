@@ -1,7 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { clusterEvents } from './clustering.js';
-import { frameCluster, heightForRadius, minHalfFov } from './framing.js';
+import {
+  frameCluster,
+  globeViewHeight,
+  heightForRadius,
+  minHalfFov,
+  pullBackPlan,
+} from './framing.js';
 import {
   createSchedulerState,
   setSchedulerMode,
@@ -415,4 +421,51 @@ test('tour: retracted, low-confidence, filtered, weak and unlocated events are s
     log.map((d) => d.type),
     ['idle', 'none'],
   );
+});
+
+test('pull-back: whole globe fits the smaller field of view with space around it', () => {
+  const height = globeViewHeight({ fovRad: Math.PI / 3, aspect: 16 / 9 });
+  // The globe's limb must sit inside the smaller half field of view.
+  const r = 6_371_000;
+  const limb = Math.asin(r / (r + height));
+  assert.ok(limb < minHalfFov(Math.PI / 3, 16 / 9), 'globe fits');
+  assert.ok(limb > minHalfFov(Math.PI / 3, 16 / 9) * 0.8, 'not a tiny dot');
+  assert.ok(
+    globeViewHeight({ aspect: 21 / 9 }) > height,
+    'a wider screen (narrower smaller fov) needs more height',
+  );
+});
+
+test('pull-back: holds, then zooms out every step, evenly, ending on the globe before the next shot', () => {
+  const plan = pullBackPlan(40_000, {
+    spanMs: 45_000,
+    holdMs: 16_500,
+    stepMs: 5_000,
+    endHeight: 16_000_000,
+  });
+  assert.deepEqual(
+    plan.map((p) => p.atMs),
+    [16_500, 21_500, 26_500, 31_500, 36_500],
+  );
+  assert.equal(plan.at(-1).height, 16_000_000);
+  assert.ok(
+    plan.at(-1).atMs <= 45_000 - 5_000,
+    'globe shown before the next flight',
+  );
+  const ratios = plan.slice(1).map((p, i) => p.height / plan[i].height);
+  for (const ratio of ratios)
+    assert.ok(Math.abs(ratio - ratios[0]) < 0.01, `even zoom ${ratios}`);
+  assert.ok(plan[0].height > 40_000 && plan[0].height < 16_000_000);
+});
+
+test('pull-back: nothing to do for a global shot or a span too short', () => {
+  const opts = {
+    spanMs: 45_000,
+    holdMs: 10_000,
+    stepMs: 5_000,
+    endHeight: 16_000_000,
+  };
+  assert.deepEqual(pullBackPlan(18_000_000, opts), []);
+  assert.deepEqual(pullBackPlan(40_000, { ...opts, spanMs: 12_000 }), []);
+  assert.deepEqual(pullBackPlan(40_000, { ...opts, stepMs: 0 }), []);
 });

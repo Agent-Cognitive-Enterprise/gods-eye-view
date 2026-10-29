@@ -20,8 +20,14 @@ import {
   t,
   tn,
 } from '../i18n/index.js';
+import { greatCircleKm } from '../geoDistance.js';
 import { createIntelClient } from '../intel/client.js';
-import { frameCluster, GLOBAL_VIEW_HEIGHT } from '../intel/framing.js';
+import {
+  frameCluster,
+  GLOBAL_VIEW_HEIGHT,
+  globeViewHeight,
+  pullBackPlan,
+} from '../intel/framing.js';
 import {
   createSchedulerState,
   setSchedulerMode,
@@ -41,7 +47,52 @@ const REPLAY_REFRESH_MS = 3_000;
 const MAX_LABELS = 12;
 const MAX_QUEUE_ROWS = 12;
 const FLIGHT_SEC = 3.5;
+// Two-stage move: turn the globe at the current height, then descend.
+const PAN_SEC = 3;
+const PULL_BACK_STEP_SEC = 2;
+// Closer than this (km between view centres) the turn is skipped.
+const PAN_MIN_KM = 50;
+// Bounded waits for map tiles: after the turn, and before a shot's hold.
+const PAN_WAIT_MS = 2_500;
+const SETTLE_WAIT_MS = 4_000;
+const TILE_POLL_MS = 200;
+// Globe tiles kept in memory while Autopilot runs (Cesium's default is 100).
+const TILE_CACHE = 1_000;
 const DEMO_SPEED = 30;
+// Per-browser memory of ON / OFF / PAUSED across page reloads.
+const MODE_STORAGE_KEY = 'gev.intel.autopilotMode';
+const RESTORABLE_MODES = new Set(['auto', 'paused', 'off']);
+
+function defaultStorage() {
+  try {
+    return globalThis.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** The stored Autopilot mode, or null when absent or unreadable. */
+export function readStoredMode(storage) {
+  try {
+    const stored = JSON.parse(storage?.getItem(MODE_STORAGE_KEY) ?? 'null');
+    return RESTORABLE_MODES.has(stored?.mode)
+      ? {
+          mode: stored.mode,
+          reason: typeof stored.reason === 'string' ? stored.reason : null,
+        }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeStoredMode(storage, mode, reason = null) {
+  try {
+    storage?.setItem(MODE_STORAGE_KEY, JSON.stringify({ mode, reason }));
+  } catch {
+    // Private windows and blocked storage: the mode is simply not remembered.
+  }
+}
 
 export const CATEGORY_COLORS = Object.freeze({
   natural_disaster: '#ff9f43',
@@ -181,7 +232,7 @@ export function whyText(event) {
 /**
  * @param {{viewer: object, navigation: object, overlayHost: object,
  *   picking?: object, pointer?: object, documentRef?: Document,
- *   fetchImpl?: Function, now?: () => number,
+ *   fetchImpl?: Function, now?: () => number, storage?: Storage | null,
  *   openExternal?: (url: string) => void}} options
  */
 export function createIntelConsole({
@@ -193,6 +244,7 @@ export function createIntelConsole({
   documentRef = document,
   fetchImpl = (...args) => globalThis.fetch(...args),
   now = () => Date.now(),
+  storage = defaultStorage(),
   openExternal = (url) => window.open(url, '_blank', 'noopener,noreferrer'),
 }) {
   const client = createIntelClient({ fetchImpl });
@@ -219,6 +271,10 @@ export function createIntelConsole({
   let lastDecision = null;
   let selectedId = null;
   let claiming = false;
+  let flightSeq = 0;
+  let pullBackTimers = [];
+  let storedMode = null; // last mode written to storage
+  let modeRestored = false; // nothing is written before the stored mode is read
   let notice = '';
   let points = null;
   let clickHandler = null;
@@ -556,6 +612,27 @@ export function createIntelConsole({
       changeSettings({ tourWhenIdle: !tourOn }),
     );
     tourRow.append(tourChip);
+    const zoomRow = el(documentRef, 'div', 'intel-setting');
+    zoomRow.append(
+      el(documentRef, 'span', 'intel-setting-label', t('ZOOM OUT')),
+    );
+    const zoomOn = settings.pullBackEnabled !== false;
+    const zoomChip = el(
+      documentRef,
+      'button',
+      'data-toggle-chip',
+      zoomOn ? t('ON') : t('OFF'),
+    );
+    zoomChip.type = 'button';
+    zoomChip.classList.toggle('active', zoomOn);
+    zoomChip.setAttribute('aria-pressed', String(zoomOn));
+    zoomChip.title = t(
+      'After each event, zoom out step by step until the whole globe is in view',
+    );
+    zoomChip.addEventListener('click', () =>
+      changeSettings({ pullBackEnabled: !zoomOn }),
+    );
+    zoomRow.append(zoomChip);
     const narrationRow = el(documentRef, 'div', 'intel-setting');
     if (voice.tts) {
       narrationRow.append(
@@ -584,6 +661,7 @@ export function createIntelConsole({
       ...rows,
       critical,
       tourRow,
+      zoomRow,
       ...(voice.tts ? [narrationRow] : []),
       local,
     );
@@ -693,8 +771,18 @@ export function createIntelConsole({
     );
   }
 
+  function rememberMode() {
+    if (!modeRestored) return;
+    const key = `${scheduler.mode}:${scheduler.pauseReason ?? ''}`;
+    if (key === storedMode) return;
+    storedMode = key;
+    writeStoredMode(storage, scheduler.mode, scheduler.pauseReason);
+  }
+
   function render() {
     if (destroyed || !enabled) return;
+    rememberMode();
+    syncBuffering();
     renderMode();
     renderWorld();
     renderFocus();
@@ -925,8 +1013,7 @@ export function createIntelConsole({
   }
 
   // ----------------------------------------------------------------- camera
-  function flyTo(shot) {
-    if (!shot) return false;
+  function navigate(shot, duration, maximumHeight, complete) {
     claiming = true;
     let accepted;
     try {
@@ -938,7 +1025,10 @@ export function createIntelConsole({
             shot.height,
           ),
           orientation: { heading: 0, pitch: -Cesium.Math.PI_OVER_TWO, roll: 0 },
-          duration: FLIGHT_SEC,
+          duration,
+          maximumHeight,
+          easingFunction: Cesium.EasingFunction.QUADRATIC_IN_OUT,
+          complete,
         });
         return true;
       });
@@ -946,6 +1036,149 @@ export function createIntelConsole({
       claiming = false;
     }
     return accepted !== false;
+  }
+
+  /** Globe tiles and every shown 3D tileset loaded for the current view. */
+  function viewLoaded() {
+    const scene = viewer.scene;
+    if (scene?.globe?.show && scene.globe.tilesLoaded === false) return false;
+    const primitives = scene?.primitives;
+    for (let i = 0; i < (primitives?.length ?? 0); i += 1) {
+      const primitive = primitives.get(i);
+      if (primitive?.show && primitive.tilesLoaded === false) return false;
+    }
+    return true;
+  }
+
+  /** Calls `done` once the view has loaded, or after `maxMs` regardless. */
+  function whenViewLoaded(maxMs, done) {
+    const until = Date.now() + maxMs;
+    const check = () => {
+      if (destroyed) return;
+      if (viewLoaded() || Date.now() >= until) done();
+      else pullBackTimers.push(setTimeout(check, TILE_POLL_MS));
+    };
+    check();
+  }
+
+  /**
+   * Keep more tiles while Autopilot runs (the whole-globe view and recent
+   * places are not fetched again) and load neighbouring tiles ahead of a
+   * turn; the app's own values come back when Autopilot stops.
+   */
+  let bufferingSaved = null;
+  function syncBuffering() {
+    const globe = viewer.scene?.globe;
+    if (!globe) return;
+    const want = scheduler.mode === 'auto';
+    if (want && !bufferingSaved) {
+      bufferingSaved = {
+        tileCacheSize: globe.tileCacheSize,
+        preloadSiblings: globe.preloadSiblings,
+      };
+      globe.tileCacheSize = Math.max(globe.tileCacheSize ?? 0, TILE_CACHE);
+      globe.preloadSiblings = true;
+    } else if (!want && bufferingSaved) {
+      Object.assign(globe, bufferingSaved);
+      bufferingSaved = null;
+    }
+  }
+
+  /**
+   * Fly to a shot. With `pan`, a distant target is first brought to the
+   * centre at the current height (never lower than the shot); once that view
+   * has loaded the camera descends. `onSettled(ms)` runs when the shot's own
+   * tiles have loaded (or after a bounded wait), with the time since the
+   * flight began; a newer or cancelled flight ends the sequence.
+   * Returns false when navigation was refused.
+   */
+  function flyTo(
+    shot,
+    { pan = false, duration = FLIGHT_SEC, onSettled = null } = {},
+  ) {
+    if (!shot) return false;
+    const seq = ++flightSeq;
+    const began = Date.now();
+    const current = () => seq === flightSeq && !destroyed;
+    const descend = () =>
+      navigate(shot, duration, undefined, () => {
+        if (current() && onSettled)
+          whenViewLoaded(SETTLE_WAIT_MS, () => {
+            if (current()) onSettled(Date.now() - began);
+          });
+      });
+    const carto = viewer.camera?.positionCartographic;
+    const fromHeight = carto?.height ?? 0;
+    const panHeight = Math.max(fromHeight, shot.height);
+    const far =
+      carto &&
+      greatCircleKm(
+        {
+          lat: Cesium.Math.toDegrees(carto.latitude),
+          lon: Cesium.Math.toDegrees(carto.longitude),
+        },
+        shot,
+      ) > PAN_MIN_KM;
+    if (!pan || !far || panHeight <= shot.height * 1.05) return descend();
+    return navigate(
+      { lat: shot.lat, lon: shot.lon, height: panHeight },
+      PAN_SEC,
+      panHeight,
+      () => {
+        if (current())
+          whenViewLoaded(PAN_WAIT_MS, () => {
+            if (current()) descend();
+          });
+      },
+    );
+  }
+
+  function cancelPullBack() {
+    for (const id of pullBackTimers) clearTimeout(id);
+    pullBackTimers = [];
+  }
+
+  /**
+   * After a shot settles (`settledMs` after it began), zoom out in steps
+   * until the whole globe shows.
+   */
+  function schedulePullBack(shot, settledMs, tour) {
+    if (!shot || settings.pullBackEnabled === false) return;
+    const canvas = viewer.scene?.canvas;
+    const hold = settings.pullBackHoldMs ?? 10_000;
+    const plan = pullBackPlan(shot.height, {
+      spanMs: tour
+        ? (settings.tourDwellMs ?? 45_000)
+        : (settings.minimumDwellMs ?? 30_000),
+      // Alerts stay close a little longer before pulling back.
+      holdMs: settledMs + (tour ? hold : hold * 1.5),
+      stepMs: settings.pullBackStepMs ?? 5_000,
+      endHeight: globeViewHeight({
+        fovRad: viewer.camera?.frustum?.fov ?? Math.PI / 3,
+        aspect:
+          canvas?.clientWidth && canvas?.clientHeight
+            ? canvas.clientWidth / canvas.clientHeight
+            : 16 / 9,
+      }),
+    });
+    const shotKey = scheduler.current?.key;
+    const shotStart = scheduler.current?.startedAt;
+    for (const stepPlan of plan)
+      pullBackTimers.push(
+        setTimeout(() => {
+          const sameShot =
+            scheduler.mode === 'auto' &&
+            scheduler.current?.key === shotKey &&
+            scheduler.current?.startedAt === shotStart;
+          if (destroyed || !sameShot) return cancelPullBack();
+          if (documentRef.hidden) return;
+          flightSeq += 1; // supersedes any unfinished two-stage flight
+          navigate(
+            { lat: shot.lat, lon: shot.lon, height: stepPlan.height },
+            PULL_BACK_STEP_SEC,
+          );
+        }, stepPlan.atMs - settledMs),
+      );
   }
 
   function shotFor(cluster) {
@@ -1158,13 +1391,21 @@ export function createIntelConsole({
     lastDecision = decision;
     if (decision.type === 'fly') {
       selectedId = null;
-      if (!flyTo(shotFor(decision.cluster))) {
+      const shot = shotFor(decision.cluster);
+      const tour = decision.reason === 'tour';
+      cancelPullBack();
+      const accepted = flyTo(shot, {
+        pan: true,
+        onSettled: (settledMs) => schedulePullBack(shot, settledMs, tour),
+      });
+      if (!accepted) {
         scheduler = setSchedulerMode(scheduler, 'paused', 'navigation_refused');
         return;
       }
       loadDetail(decision.cluster.event_ids[0]);
       if (decision.reason !== 'tour') void narrate(decision.cluster);
     } else if (decision.type === 'idle') {
+      cancelPullBack();
       const carto = viewer.camera?.positionCartographic;
       flyTo({
         lat: 15,
@@ -1234,7 +1475,7 @@ export function createIntelConsole({
               bounds: event.location?.bounds ?? null,
             };
       const shot = shotFor(cluster);
-      if (shot) flyTo(shot);
+      if (shot) flyTo(shot, { pan: true });
       else notice = t('This event has no map location to show');
     }
     loadDetail(id);
@@ -1405,6 +1646,14 @@ export function createIntelConsole({
         selectEvent(id.slice(PICK_PREFIX.length));
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
     await refresh({ force: true });
+    // Pick up where this browser left off before a reload.
+    const restored = readStoredMode(storage);
+    modeRestored = true;
+    if (restored && restored.mode !== scheduler.mode && !destroyed) {
+      scheduler = setSchedulerMode(scheduler, restored.mode, restored.reason);
+      if (scheduler.mode === 'auto') step();
+    }
+    render();
     timer = setTimeout(tick, TICK_MS);
   }
 
@@ -1414,6 +1663,9 @@ export function createIntelConsole({
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      cancelPullBack();
+      if (bufferingSaved && viewer.scene?.globe)
+        Object.assign(viewer.scene.globe, bufferingSaved);
       stopNarration();
       abort.abort();
       clearTimeout(timer);
@@ -1444,6 +1696,7 @@ export function createIntelConsole({
       clusters: data.clusters.length,
       selectedId,
       narrating: narration?.text ?? null,
+      pullBackSteps: pullBackTimers.length,
     }),
     toggleAutopilot,
     voiceControl,

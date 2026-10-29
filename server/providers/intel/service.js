@@ -42,11 +42,14 @@ export function sanitizeSettings(input = {}) {
   num('maxMarkersInView', 10, 2000);
   num('tourDwellMs', 15_000, 600_000);
   num('tourMinimumScore', 0, 100);
+  num('pullBackHoldMs', 0, 120_000);
+  num('pullBackStepMs', 2_000, 60_000);
   for (const key of [
     'autopilotEnabled',
     'narrationEnabled',
     'localAiEnabled',
     'tourWhenIdle',
+    'pullBackEnabled',
   ])
     if (typeof input[key] === 'boolean') out[key] = input[key];
   if (input.categoryRelevance && typeof input.categoryRelevance === 'object') {

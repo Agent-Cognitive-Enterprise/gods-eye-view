@@ -2968,6 +2968,8 @@
   "tour · nothing urgent right now": "巡览 · 目前没有紧急事件",
   "TOUR": "巡览",
   "When nothing is urgent, slowly visit other active events in turn": "没有紧急事件时，依次缓慢浏览其他活动事件",
+  "ZOOM OUT": "拉远",
+  "After each event, zoom out step by step until the whole globe is in view": "每个事件之后，逐步拉远镜头，直到整个地球进入画面",
   "Past its focus window: not an alert": "已过关注窗口：不是警报",
   "Category filtered out of Autopilot": "此类别已从自动驾驶中排除",
   "Local voice · hold Space to talk": "本地语音 · 按住空格说话",

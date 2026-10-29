@@ -7,6 +7,11 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **Camera moves.** Turn the globe at the current height, then descend;
+  stepped zoom-out to a whole-globe view after each shot (ZOOM OUT rule);
+  waits for map tiles before descending and before the hold, a larger tile
+  cache and sibling preloading while Autopilot runs; the Autopilot state is
+  remembered per browser across reloads.
 - **Phase 6, operations and upstream integration.** Offline mode
   (`GEV_INTEL_OFFLINE=1`); `GEV_INTEL_DB` now moves settings with the store;
   `scripts/smoke-autopilot.mjs` smoke test; `scripts/upstream-check.mjs`

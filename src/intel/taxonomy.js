@@ -149,6 +149,11 @@ export const AUTOPILOT_DEFAULTS = Object.freeze({
   tourWhenIdle: true,
   tourDwellMs: 45_000,
   tourMinimumScore: 40,
+  // After a shot settles: hold, then zoom out in steps until the whole globe
+  // is in view; the next flight turns the globe first, then zooms in.
+  pullBackEnabled: true,
+  pullBackHoldMs: 10_000,
+  pullBackStepMs: 5_000,
   // Local model assessments (Phase 3); off means rule-based scoring only.
   localAiEnabled: true,
 });

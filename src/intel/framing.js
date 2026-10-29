@@ -105,3 +105,43 @@ export function frameCluster(
 
 const clampHeight = (height, floor) =>
   Math.round(Math.min(MAX_HEIGHT, Math.max(floor, height)));
+
+/**
+ * Height (m) at which the whole globe fits the smaller field of view, with
+ * `margin` to spare so space shows around it (the end of a pull-back).
+ */
+export function globeViewHeight({
+  fovRad = Math.PI / 3,
+  aspect = 16 / 9,
+  margin = 1.1,
+} = {}) {
+  const r = EARTH_RADIUS_KM * 1000;
+  const height = (r * margin) / Math.sin(minHalfFov(fovRad, aspect)) - r;
+  return Math.round(Math.min(3 * MAX_HEIGHT, height));
+}
+
+/**
+ * Stepped pull-back after a shot reaches its target: hold, then every
+ * `stepMs` one geometric step (equal ratios read as an even zoom), the last
+ * one reaching `endHeight` at least one step before the shot's span ends, so
+ * the whole globe is seen before the next flight. Offsets are from the start
+ * of the shot. Empty when the shot is already that high or the span is short.
+ * @returns {{atMs: number, height: number}[]}
+ */
+export function pullBackPlan(
+  startHeight,
+  { spanMs, holdMs, stepMs, endHeight },
+) {
+  if (!(startHeight > 0) || !(endHeight > startHeight * 1.05) || !(stepMs > 0))
+    return [];
+  const count = Math.floor((spanMs - holdMs) / stepMs);
+  if (count < 1) return [];
+  const factor = (endHeight / startHeight) ** (1 / count);
+  return Array.from({ length: count }, (_, i) => ({
+    atMs: holdMs + i * stepMs,
+    height:
+      i === count - 1
+        ? Math.round(endHeight)
+        : Math.round(startHeight * factor ** (i + 1)),
+  }));
+}

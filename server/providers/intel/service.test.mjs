@@ -137,6 +137,17 @@ test('settings are bounded and unknown keys ignored', () => {
   );
 });
 
+test('pull-back settings are bounded', () => {
+  assert.deepEqual(
+    sanitizeSettings({
+      pullBackEnabled: false,
+      pullBackHoldMs: -1,
+      pullBackStepMs: 500,
+    }),
+    { pullBackEnabled: false, pullBackHoldMs: 0, pullBackStepMs: 2_000 },
+  );
+});
+
 function replayAt(minutes) {
   let now = T0;
   const service = createIntelService({ scenarios: { demo }, now: () => now });

@@ -3181,6 +3181,8 @@
   "tour · nothing urgent right now": "обзор · сейчас ничего срочного",
   "TOUR": "ОБЗОР",
   "When nothing is urgent, slowly visit other active events in turn": "Когда нет ничего срочного, по очереди спокойно показывать другие активные события",
+  "ZOOM OUT": "ОТДАЛЕНИЕ",
+  "After each event, zoom out step by step until the whole globe is in view": "После каждого события постепенно отдалять камеру, пока весь глобус не окажется в кадре",
   "Past its focus window: not an alert": "Окно внимания прошло: это не тревога",
   "Category filtered out of Autopilot": "Категория исключена из автопилота",
   "Local voice · hold Space to talk": "Локальный голос · удерживайте пробел, чтобы говорить",
