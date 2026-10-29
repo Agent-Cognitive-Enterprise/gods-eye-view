@@ -206,10 +206,11 @@ test('no unchanged Realtime tool definition drifts silently', () => {
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((tool) => structuredClone(tool))
     .filter((tool) => tool.name !== 'set_cyber_sonar');
-  // Cyber adds one HUD choice and the sonar tool; retain the existing pin for every legacy field.
+  // Cyber adds one HUD choice and the sonar tool, and Operator was retired;
+  // retain the existing pin for every legacy field.
   const hudLayout = unchanged.find((tool) => tool.name === 'set_hud').parameters.properties.layout;
-  assert.deepEqual(hudLayout.enum, ['tactical', 'operator', 'minimal', 'cyber']);
-  hudLayout.enum = hudLayout.enum.filter((layout) => layout !== 'cyber');
+  assert.deepEqual(hudLayout.enum, ['tactical', 'minimal', 'cyber']);
+  hudLayout.enum = ['tactical', 'operator', 'minimal'];
   // Globe rotation adds one motion and clarifies the two affected descriptions.
   // Check those edits explicitly, then keep the legacy pin for every other field.
   const camera = unchanged.find((tool) => tool.name === 'move_camera');
@@ -239,6 +240,19 @@ test('no unchanged Realtime tool definition drifts silently', () => {
     'Direct the camera like a drone operator: orbit the current view target, pan, tilt, or rotate — one bounded nudge (mode=once) or continuous motion until stopped (mode=continuous). Continuous motion also stops on any manual camera input or when a navigation tool runs. Say the RESULTING state when confirming ("Orbiting slowly").';
   camera.parameters.properties.direction.description =
     'Required except for orbit (defaults right/clockwise) and stop.';
+  // Snow is retired from set_visual_style; restore it to keep the legacy pin.
+  const visualStyle = unchanged.find(
+    (tool) => tool.name === 'set_visual_style',
+  ).parameters.properties.style;
+  assert.deepEqual(visualStyle.enum, [
+    'normal',
+    'retro',
+    'surveillance',
+    'thermal',
+    'anime',
+    'noir',
+  ]);
+  visualStyle.enum = [...visualStyle.enum, 'snow'];
   assert.equal(unchanged.length, 14);
   const digest = createHash('sha256')
     .update(JSON.stringify(unchanged))
