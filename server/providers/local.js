@@ -26,7 +26,8 @@ import { keySetupEndpoint } from '../standalone/key-setup.js';
 import { weatherProxy } from './weather.js';
 import { firePerimetersProxy } from './firePerimeters.js';
 import { gnssIntegrityProxy } from './gnssIntegrity.js';
-import { ghostMapsProxy } from './ghostMaps.js';
+import { createGhostMapsWatcher, ghostMapsProxy } from './ghostMaps.js';
+import { intelProxy } from './intel/index.js';
 import { cycloneProxy } from './cyclones.js';
 import { windProxy } from './wind.js';
 
@@ -35,6 +36,8 @@ import { windProxy } from './wind.js';
  * `realtime` configures OpenAI; `gemini` explicitly opts into Gemini Live.
  */
 function localProviderPlugins({ realtime, gemini } = {}) {
+  // One GhostMaps watcher serves both the map layer and early-warning ingestion.
+  const ghostMapsWatcher = createGhostMapsWatcher();
   return [
     openSkyProxy(),
     celestrakProxy(),
@@ -65,7 +68,8 @@ function localProviderPlugins({ realtime, gemini } = {}) {
     mapillaryProxy(),
     firePerimetersProxy(),
     gnssIntegrityProxy(),
-    ghostMapsProxy(),
+    ghostMapsProxy({ watcher: ghostMapsWatcher }),
+    intelProxy({ ghostMapsWatcher }),
     keySetupEndpoint(),
   ];
 }
