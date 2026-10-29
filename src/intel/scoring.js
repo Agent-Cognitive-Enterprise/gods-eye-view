@@ -167,11 +167,16 @@ export function scoreEvent(event, now, settings = {}) {
   const verification = verificationOf(event);
   const confidence = confidenceOf(event, verification);
   const baseline = ruleSeverity(event);
-  const severity = boundedModelSeverity(baseline, event.assessment);
+  // A model assessment counts only for the revision it assessed; a newer
+  // revision falls back to rules until it is assessed again.
+  const assessment =
+    event.assessment && event.assessment.revision === event.revision
+      ? event.assessment
+      : null;
+  const severity = boundedModelSeverity(baseline, assessment);
   const escalation =
-    event.assessment?.escalation &&
-    ESCALATION_SCORE[event.assessment.escalation]
-      ? event.assessment.escalation
+    assessment?.escalation && ESCALATION_SCORE[assessment.escalation]
+      ? assessment.escalation
       : escalationOf(event);
   // Claimed severity and impact count in proportion to the evidence for them:
   // an anonymous post claiming thousands dead must not outrank an official
@@ -212,6 +217,7 @@ export function scoreEvent(event, now, settings = {}) {
     critical_qualified: criticalQualified,
     critical_blocked: criticalBlocked,
     evidence_factor: Math.round(evidenceFactor * 100) / 100,
+    model_applied: Boolean(assessment),
     terms,
     weights,
   };

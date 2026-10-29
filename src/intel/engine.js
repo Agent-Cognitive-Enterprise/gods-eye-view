@@ -336,6 +336,7 @@ export function createIntelEngine({ store, now, settings = {} }) {
       critical_qualified: score.critical_qualified,
       critical_blocked: score.critical_blocked,
       evidence_factor: score.evidence_factor,
+      model_applied: score.model_applied,
       score_terms: score.terms,
       score_weights: score.weights,
       lifecycle: life.lifecycle,

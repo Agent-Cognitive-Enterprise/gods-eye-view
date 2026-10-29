@@ -145,6 +145,8 @@ export const AUTOPILOT_DEFAULTS = Object.freeze({
   preemptionConfirmMs: 10_000,
   maxMarkersInView: 200,
   narrationEnabled: false,
+  // Local model assessments (Phase 3); off means rule-based scoring only.
+  localAiEnabled: true,
 });
 
 /** Attention-score weights (spec §5.2). Each term is normalized 0–100. */
