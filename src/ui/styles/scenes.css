@@ -245,7 +245,8 @@ html:not([lang='en']) #scene-panel .scene-controls .scene-btn {
   flex-direction: column;
   gap: 6px;
   max-height: 260px;
-  min-height: 72px;
+  /* Two shot rows stay visible; the panel scrolls when space is short. */
+  min-height: 128px;
   flex: 1;
   overflow-y: auto;
   padding: 4px 2px 6px;
