@@ -26,7 +26,11 @@ import {
   translateKnown,
 } from '../../i18n/index.js';
 import { pointerOwnerName } from '../../data/pointerOwnerNames.js';
-import { formatQuantity } from '../../ui/unitLabels.js';
+import {
+  formatQuantity,
+  quantitySeparator,
+  unitLabel,
+} from '../../ui/unitLabels.js';
 
 export const DIRECTIONS_STEP_OVERLAY_SOURCE_ID = 'directions-step';
 export const DIRECTIONS_STEP_OVERLAY_SOURCE_OPTIONS = Object.freeze({
@@ -131,7 +135,9 @@ export function routeDurationText(seconds) {
   if (minutes < 60) return formatQuantity(minutes, 'min');
   const hours = formatQuantity(Math.floor(minutes / 60), 'h');
   const rest = minutes % 60;
-  return rest ? `${hours}\u00a0${formatQuantity(rest, 'min')}` : hours;
+  if (!rest) return hours;
+  // "1 h 5 min"; Japanese runs the parts together: 1時間5分.
+  return `${hours}${quantitySeparator(unitLabel('h'))}${formatQuantity(rest, 'min')}`;
 }
 
 /** "left", "slightly right", … as it reads inside a maneuver sentence. */
