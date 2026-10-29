@@ -18,7 +18,16 @@ export function createStandaloneTools(options) {
     },
     ...options,
     voice: {
-      supportedProviders: ['openai', 'gemini'],
+      // Local voice (fork feature) is offered only when the server says its
+      // speech services run on this computer.
+      supportedProviders: [
+        'openai',
+        'gemini',
+        ...(globalThis.document?.querySelector?.('meta[name="gev-local-voice"]')
+          ?.content === '1'
+          ? ['local']
+          : []),
+      ],
       panel: true,
       toolCatalog: loadToolCatalog,
       ...options?.voice,

@@ -29,6 +29,7 @@ import {
 } from '../intel/scheduler.js';
 import { wrapCardText } from '../layers/ghostMaps/records.js';
 import { formatQuantity } from './unitLabels.js';
+import { createSpeechPlayer } from '../voice/localAudio.js';
 
 const PANEL_ID = 'intel-panel';
 const LABEL_SOURCE = 'intel-labels';
@@ -83,6 +84,7 @@ const FEED_STATUS_LABELS = Object.freeze({
 });
 const PAUSE_REASONS = Object.freeze({
   manual_input: msg('Paused: you moved the map'),
+  voice: msg('Paused by voice command'),
   camera_owner_changed: msg('Paused: another tool took the camera'),
   operator_selection: msg('Paused: you selected an event'),
   navigation_refused: msg('Paused: the camera is not available'),
@@ -103,6 +105,17 @@ const TERM_LABELS = Object.freeze({
   impact: msg('impact'),
   relevance: msg('relevance'),
 });
+// Spoken (lower-case) verification words for narration and explanations.
+const SPOKEN_VERIFICATION = Object.freeze({
+  unverified: msg('unverified'),
+  corroborated: msg('corroborated'),
+  officially_reported: msg('officially reported'),
+  disputed: msg('disputed'),
+  retracted: msg('retracted'),
+  resolved: msg('resolved'),
+});
+const MAX_NARRATION_CHARS = 420;
+
 const SETTING_CHOICES = Object.freeze([
   ['minimumAttentionScore', msg('MIN'), [60, 70, 80], (v) => formatNumber(v)],
   [
@@ -183,6 +196,11 @@ export function createIntelConsole({
   let data = { events: [], clusters: [], now: now() };
   let feeds = [];
   let ai = null;
+  // Narration (local text-to-speech): offered only when this server has it.
+  let voice = { tts: false };
+  const speech = createSpeechPlayer();
+  const narrated = new Map(); // event id -> revision already narrated
+  let narration = null; // {token, text}
   let settings = {};
   let lastFetchAt = 0;
   let refreshGeneration = 0;
@@ -233,6 +251,19 @@ export function createIntelConsole({
     ui.focus = el(documentRef, 'div', 'intel-focus');
     ui.notice = el(documentRef, 'div', 'intel-notice');
     ui.notice.setAttribute('role', 'status');
+    ui.caption = el(documentRef, 'div', 'intel-caption');
+    ui.caption.hidden = true;
+    ui.caption.setAttribute('aria-live', 'polite');
+    ui.captionText = el(documentRef, 'span', 'intel-caption-text');
+    ui.skip = el(
+      documentRef,
+      'button',
+      'data-toggle-chip intel-skip',
+      t('SKIP'),
+    );
+    ui.skip.type = 'button';
+    ui.skip.addEventListener('click', () => stopNarration());
+    ui.caption.append(ui.captionText, ui.skip);
 
     ui.queueTitle = el(
       documentRef,
@@ -279,6 +310,7 @@ export function createIntelConsole({
       worlds,
       ui.focus,
       ui.notice,
+      ui.caption,
       ui.queueTitle,
       ui.queue,
       ui.settingsTitle,
@@ -514,7 +546,37 @@ export function createIntelConsole({
       changeSettings({ tourWhenIdle: !tourOn }),
     );
     tourRow.append(tourChip);
-    ui.settings.replaceChildren(...rows, critical, tourRow, local);
+    const narrationRow = el(documentRef, 'div', 'intel-setting');
+    if (voice.tts) {
+      narrationRow.append(
+        el(documentRef, 'span', 'intel-setting-label', t('NARRATION')),
+      );
+      const on = settings.narrationEnabled === true;
+      const narrationChip = el(
+        documentRef,
+        'button',
+        'data-toggle-chip',
+        on ? t('ON') : t('OFF'),
+      );
+      narrationChip.type = 'button';
+      narrationChip.classList.toggle('active', on);
+      narrationChip.setAttribute('aria-pressed', String(on));
+      narrationChip.title = t(
+        'Speak a short briefing when Autopilot shows a new event (local speech)',
+      );
+      narrationChip.addEventListener('click', () => {
+        if (on) stopNarration();
+        changeSettings({ narrationEnabled: !on });
+      });
+      narrationRow.append(narrationChip);
+    }
+    ui.settings.replaceChildren(
+      ...rows,
+      critical,
+      tourRow,
+      ...(voice.tts ? [narrationRow] : []),
+      local,
+    );
 
     const relevance = settings.categoryRelevance ?? {};
     const chips = Object.keys(CATEGORY_LABELS).map((category) => {
@@ -891,7 +953,192 @@ export function createIntelConsole({
     });
   }
 
+  const localeLang = () =>
+    String(getLocale() || 'en').startsWith('ru') ? 'ru' : 'en';
+
+  /** A short, grounded briefing: what, how sure, how recent; no speculation. */
+  function narrationText(event, others = 0) {
+    const at = data.now ?? now();
+    const parts = [];
+    if (event.synthetic) parts.push(t('Drill.'));
+    parts.push(
+      `${t(CATEGORY_LABELS[event.category] ?? msg('Event'))}: ${displayTitle(event).text}.`,
+    );
+    parts.push(
+      t('{verification}, confidence {value}.', {
+        verification: t(
+          SPOKEN_VERIFICATION[event.verification] ?? msg('unverified'),
+        ),
+        value: formatNumber(event.confidence, { style: 'percent' }),
+      }),
+    );
+    const sources = event.explanation?.independent_sources ?? 0;
+    parts.push(
+      tn(
+        sources,
+        '{count} independent source.',
+        '{count} independent sources.',
+        {
+          count: formatNumber(sources),
+        },
+      ),
+    );
+    parts.push(
+      t('Updated {age}.', {
+        age: ageText(event.last_meaningful_update_at, at),
+      }),
+    );
+    if (others > 0)
+      parts.push(
+        tn(others, 'One more event nearby.', '{count} more events nearby.', {
+          count: formatNumber(others),
+        }),
+      );
+    const text = parts.join(' ');
+    return text.length > MAX_NARRATION_CHARS
+      ? `${text.slice(0, MAX_NARRATION_CHARS - 1)}…`
+      : text;
+  }
+
+  function stopNarration() {
+    narration = null;
+    speech.stop();
+    if (ui.caption) ui.caption.hidden = true;
+  }
+
+  async function narrate(cluster) {
+    if (!voice.tts || settings.narrationEnabled !== true) return;
+    // Operator speech has priority: no briefing while a voice session runs.
+    if (globalThis.__gevVoiceCommands?.isActive?.()) return;
+    const event = eventsById().get(cluster.event_ids[0]);
+    if (!event || narrated.get(event.event_id) === event.revision) return;
+    narrated.set(event.event_id, event.revision);
+    const text = narrationText(event, cluster.event_ids.length - 1);
+    stopNarration();
+    const token = {};
+    narration = { token, text };
+    ui.captionText.textContent = text;
+    ui.caption.hidden = false;
+    try {
+      const response = await fetchImpl('/api/voice-local/speak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, lang: localeLang() }),
+        signal: abort.signal,
+      });
+      if (!response.ok || narration?.token !== token) return;
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if (narration?.token !== token) return;
+      await speech.play(bytes);
+    } catch {
+      /* narration is optional; the card and caption still show the facts */
+    } finally {
+      if (narration?.token === token) {
+        narration = null;
+        ui.caption.hidden = true;
+      }
+    }
+  }
+
+  /** "Why are we looking at this?" from the deterministic explanation. */
+  function explainText() {
+    const key = selectedId ?? scheduler.current?.key ?? null;
+    const event = key ? eventsById().get(key) : null;
+    if (!event) return t('Nothing is in focus right now.');
+    const reason = scheduler.current?.eventIds.includes(event.event_id)
+      ? t(DECISION_REASONS[lastDecision?.reason] ?? msg('in focus'))
+      : null;
+    return [
+      narrationText(event),
+      reason ? t('Shown because: {reason}.', { reason }) : null,
+      t('Why: {terms}', { terms: whyText(event) }),
+    ]
+      .filter(Boolean)
+      .join(' ');
+  }
+
+  async function sourcesText() {
+    const key = selectedId ?? scheduler.current?.key ?? null;
+    if (!key) return t('Nothing is in focus right now.');
+    if (cardDetail?.event.event_id !== key) await loadDetail(key);
+    const publishers = [
+      ...new Set(
+        (cardDetail?.evidence ?? []).map((item) => item.observation.publisher),
+      ),
+    ].slice(0, 6);
+    return publishers.length
+      ? t('Sources: {list}.', { list: publishers.join(', ') })
+      : t('No sources are listed for this event.');
+  }
+
+  /** Voice command entry for Autopilot (validated action names only). */
+  async function voiceControl(action) {
+    switch (action) {
+      case 'on':
+        if (scheduler.mode === 'off') toggleAutopilot();
+        else if (scheduler.mode === 'paused') resume();
+        return { ok: true, text: t('Autopilot on.') };
+      case 'off':
+        if (scheduler.mode !== 'off') toggleAutopilot();
+        stopNarration();
+        return { ok: true, text: t('Autopilot off.') };
+      case 'pause':
+        pause('voice');
+        return { ok: true, text: t('Autopilot paused.') };
+      case 'resume':
+        resume();
+        return { ok: true, text: t('Autopilot resumed.') };
+      case 'next':
+        if (scheduler.mode !== 'auto')
+          return { ok: false, text: t('Autopilot is not running.') };
+        if (scheduler.current) scheduler.current.startedAt = -Infinity;
+        step();
+        render();
+        return { ok: true, text: t('Next event.') };
+      case 'explain':
+        return { ok: true, text: explainText() };
+      case 'sources':
+        return { ok: true, text: await sourcesText() };
+      default:
+        return {
+          ok: false,
+          text: t('That Autopilot command is not supported.'),
+        };
+    }
+  }
+
+  /** Voice query: filter the queue, show the most significant match. */
+  function findEvents({ categories = [], countries = [], hours } = {}) {
+    const since = Number.isFinite(hours)
+      ? (data.now ?? now()) - hours * 3_600_000
+      : -Infinity;
+    const matches = data.events.filter(
+      (event) =>
+        (!categories.length || categories.includes(event.category)) &&
+        (!countries.length ||
+          countries.includes(event.location?.region_code)) &&
+        event.last_meaningful_update_at >= since,
+    );
+    if (!matches.length)
+      return { ok: true, text: t('No matching events in the queue.') };
+    const top = matches[0];
+    selectEvent(top.event_id, { fly: true, reason: 'voice' });
+    return {
+      ok: true,
+      text: tn(
+        matches.length,
+        'One matching event. Showing: {title}.',
+        '{count} matching events. Showing the most significant: {title}.',
+        {
+          count: formatNumber(matches.length),
+          title: displayTitle(top).text,
+        },
+      ),
+    };
+  }
+
   function pause(reason) {
+    stopNarration();
     if (scheduler.mode !== 'auto') return;
     scheduler = setSchedulerMode(scheduler, 'paused', reason);
     render();
@@ -906,6 +1153,7 @@ export function createIntelConsole({
         return;
       }
       loadDetail(decision.cluster.event_ids[0]);
+      if (decision.reason !== 'tour') void narrate(decision.cluster);
     } else if (decision.type === 'idle') {
       const carto = viewer.camera?.positionCartographic;
       flyTo({
@@ -953,12 +1201,15 @@ export function createIntelConsole({
     render();
   }
 
-  function selectEvent(id, { fly = false } = {}) {
+  function selectEvent(
+    id,
+    { fly = false, reason = 'operator_selection' } = {},
+  ) {
     selectedId = id;
     const event = eventsById().get(id);
     if (fly && event) {
       if (scheduler.mode === 'auto')
-        scheduler = setSchedulerMode(scheduler, 'paused', 'operator_selection');
+        scheduler = setSchedulerMode(scheduler, 'paused', reason);
       const cluster =
         event.location?.lat !== null
           ? {
@@ -998,6 +1249,7 @@ export function createIntelConsole({
   async function setWorld(name) {
     world = name;
     // A different world is a different queue: the operator re-enables Autopilot.
+    stopNarration();
     scheduler = setSchedulerMode(scheduler, 'off');
     selectedId = null;
     cardDetail = null;
@@ -1079,6 +1331,8 @@ export function createIntelConsole({
   async function tick() {
     timer = null;
     if (destroyed) return;
+    if (narration && globalThis.__gevVoiceCommands?.isActive?.())
+      stopNarration();
     if (!documentRef.hidden) {
       await refresh();
       step();
@@ -1103,6 +1357,16 @@ export function createIntelConsole({
       const status = await client.status(abort.signal);
       enabled = status?.enabled === true;
       settings = status?.settings ?? {};
+      const speechStatus = await fetchImpl('/api/voice-local/status', {
+        signal: abort.signal,
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+      voice = {
+        tts:
+          speechStatus?.enabled === true &&
+          speechStatus?.tts?.available === true,
+      };
     } catch {
       enabled = false;
     }
@@ -1140,6 +1404,7 @@ export function createIntelConsole({
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      stopNarration();
       abort.abort();
       clearTimeout(timer);
       unsubscribeHandoff();
@@ -1168,8 +1433,12 @@ export function createIntelConsole({
       events: data.events.length,
       clusters: data.clusters.length,
       selectedId,
+      narrating: narration?.text ?? null,
     }),
     toggleAutopilot,
+    voiceControl,
+    findEvents,
+    narrationText,
     resume,
     startDemo,
   };

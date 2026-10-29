@@ -264,3 +264,17 @@
   font-size: 10px;
   color: var(--text-secondary);
 }
+.intel-caption {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(123, 216, 143, 0.08);
+  border-left: 2px solid #7bd88f;
+  font-size: 10px;
+  line-height: 1.35;
+}
+.intel-caption-text {
+  flex: 1;
+}

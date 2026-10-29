@@ -1676,6 +1676,11 @@
       "./voice/realtime-session"
     ],
     "modules": [
+      "src/voice/localSession.js",
+      "src/voice/localProtocol.js",
+      "src/voice/actionSchemas.js",
+      "src/hudLayoutPolicy.js",
+      "src/voice/localAudio.js",
       "src/voice/realtimeController.js",
       "src/voice/realtimeBackend.js",
       "src/voice/cloudVoiceAuth.js",
@@ -1758,6 +1763,9 @@
       "./standalone/catalog"
     ],
     "modules": [
+      "src/voice/localSession.js",
+      "src/voice/localProtocol.js",
+      "src/voice/localAudio.js",
       "src/ui/placeNames.js",
       "src/cyberSonarScene.js",
       "src/cyberSonar.js",
@@ -3529,6 +3537,7 @@
   "voice-session-controls": {
     "exports": ["./voice/session-controls"],
     "modules": [
+      "src/i18n/marker.js",
       "src/ui/placeNames.js",
       "src/voice/sessionCommands.js",
       "src/voice/session.js",

@@ -1,6 +1,10 @@
+import { msg } from '../i18n/marker.js';
+
 export const VOICE_PROVIDERS = Object.freeze({
   openai: Object.freeze({ label: 'OpenAI' }), // i18n-ignore: provider product name
   gemini: Object.freeze({ label: 'Gemini' }), // i18n-ignore: provider product name
+  // Fork feature: speech, model and voice all run on this computer.
+  local: Object.freeze({ label: msg('Local') }),
 });
 
 /** Optional providers require an explicit host opt-in and an available factory. */

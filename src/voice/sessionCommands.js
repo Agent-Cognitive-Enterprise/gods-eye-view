@@ -75,7 +75,7 @@ export function createVoiceCommands({
         ...supportedProviders.map((name) => {
           const option = doc.createElement('option');
           option.value = name;
-          option.textContent = VOICE_PROVIDERS[name].label;
+          option.textContent = t(VOICE_PROVIDERS[name].label);
           return option;
         }),
       );
