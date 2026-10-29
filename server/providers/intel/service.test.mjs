@@ -258,3 +258,34 @@ test('feature flag and mutation guard', async () => {
   });
   assert.deepEqual(response, { status: 200, body: { enabled: false } });
 });
+
+test('records older than retention are skipped, not re-ingested every restart', async () => {
+  const ingested = [];
+  const runner = createFeedRunner({
+    connector: {
+      id: 'old-feed',
+      provider: 'fixture',
+      url: 'https://example.invalid/',
+      intervalMs: 60_000,
+      staleAfterMs: 3600_000,
+      poll: async () => ({
+        records: [
+          { source_item_id: 'old', occurred_at: T0 - 200 * 24 * 3600_000 },
+          { source_item_id: 'new', occurred_at: T0 - 3600_000 },
+        ],
+      }),
+    },
+    ingest: (records) => {
+      ingested.push(...records);
+      return records.map(() => ({ status: 'new_event' }));
+    },
+    now: () => T0,
+    maxRecordAgeMs: 90 * 24 * 3600_000,
+  });
+  const batch = await runner.pollOnce();
+  assert.deepEqual(
+    ingested.map((r) => r.source_item_id),
+    ['new'],
+  );
+  assert.equal(batch.outcomes.beyond_retention, 1);
+});

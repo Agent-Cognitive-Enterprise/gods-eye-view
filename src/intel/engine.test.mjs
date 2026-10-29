@@ -333,3 +333,44 @@ test('ingestion is deterministic regardless of batch order', () => {
       .map((e) => [e.event_id, e.revision, e.attention_score]);
   assert.deepEqual(ids(a), ids(b));
 });
+
+test('machine-coded (aggregator) reports never corroborate or re-alert', () => {
+  const { engine } = harness();
+  engine.ingest([unrest(1)]);
+  const [result] = engine.ingest([
+    unrest(2, {
+      provider: 'gdelt',
+      publisher: 'GDELT Project (machine-coded)',
+      source_type: 'aggregator',
+      title:
+        'Machine-coded news: protest reported near Example City parliament',
+      summary: 'Automatically coded from 12 news articles about fuel protest.',
+    }),
+  ]);
+  assert.notEqual(result.status, 'material_update');
+  for (const event of engine.activeEvents())
+    assert.equal(event.verification, 'unverified');
+});
+
+test('a GDACS alert-level change is a material update', () => {
+  const { engine } = harness();
+  const gdacs = (level, id) => ({
+    provider: 'gdacs',
+    source_item_id: id,
+    event_key: 'TC1001345',
+    publisher: 'GDACS',
+    source_type: 'primary_official',
+    url: 'https://www.gdacs.org/report.aspx?eventtype=TC&eventid=1001345',
+    category: 'natural_disaster',
+    subtype: 'tropical_cyclone',
+    title: `${level} notification for tropical cyclone EXAMPLE-26`,
+    published_at: T0 - 10 * MIN,
+    location: { lat: 16.4, lon: 81.8, precision: 'region' },
+    metrics: { gdacs_alert: level.toLowerCase() },
+  });
+  engine.ingest([gdacs('Orange', 'TC1001345-1')]);
+  const [result] = engine.ingest([gdacs('Red', 'TC1001345-2')]);
+  assert.equal(result.status, 'material_update');
+  assert.ok(result.reasons.includes('gdacs_alert_changed'));
+  assert.ok(engine.activeEvents()[0].severity >= 95);
+});

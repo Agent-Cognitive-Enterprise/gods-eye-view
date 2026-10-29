@@ -3020,5 +3020,15 @@
   "{count} matching events. Showing the most significant: {title}.": {
     "other": "找到 {count} 個符合事件。正在顯示最重要的：{title}。"
   },
-  "Local": "本機"
+  "Local": "本機",
+  "GDACS disaster alerts": "GDACS 災害警報",
+  "Pacific Tsunami Warning Center": "太平洋海嘯預警中心",
+  "National Tsunami Warning Center": "美國國家海嘯預警中心",
+  "US weather alerts (NWS)": "美國天氣警報（NWS）",
+  "NASA EONET natural events": "NASA EONET 自然事件",
+  "WHO disease outbreak news": "世衛組織疾病爆發新聞",
+  "World Bank inflation": "世界銀行通膨資料",
+  "ReliefWeb disasters": "ReliefWeb 災害",
+  "ACLED conflict data": "ACLED 衝突資料",
+  "GDELT machine-coded news": "GDELT 機器編碼新聞"
 }

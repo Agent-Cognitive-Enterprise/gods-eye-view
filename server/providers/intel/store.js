@@ -279,6 +279,13 @@ export function createSqliteIntelStore({
           )
           .all(cutoff)
           .map((row) => row.event_id);
+        // Machine-coded news is voluminous and of little value once cold.
+        for (const row of db
+          .prepare(
+            'SELECT event_id FROM events WHERE last_meaningful_update_at < ? AND body LIKE \'%"providers":["gdelt"]%\'',
+          )
+          .all(at - 14 * DAY))
+          if (!ids.includes(row.event_id)) ids.push(row.event_id);
         const del = (table) =>
           db.prepare(`DELETE FROM ${table} WHERE event_id = ?`);
         const statements = [

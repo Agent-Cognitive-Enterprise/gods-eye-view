@@ -3,13 +3,29 @@
 // operator sees. A failing feed never stops the others or the engine; "live"
 // is only claimed while the newest observation is actually recent.
 
-import { readResponseJsonCapped } from '../common/http.js';
+import {
+  readResponseBytesCapped,
+  readResponseJsonCapped,
+  readResponseTextCapped,
+} from '../common/http.js';
+import { epochMs } from '../../../src/intel/evidence.js';
 
 const TIMEOUT_MS = 20_000;
 const MAX_BACKOFF_MS = 30 * 60_000;
 const CIRCUIT_FAILURES = 5;
 const CIRCUIT_OPEN_MS = 30 * 60_000;
 const USER_AGENT = 'gods-eye-view-intel/0.1 (local early-warning console)';
+const DAY = 24 * 3600_000;
+
+/** The capped readers return the body, or {tooLarge, text|bytes}; normalise. */
+async function readCapped(reader, response, maxBytes) {
+  const out = await reader(response, maxBytes);
+  if (out && typeof out === 'object' && 'tooLarge' in out) {
+    if (out.tooLarge) throw new Error('response too large');
+    return out.text ?? out.bytes ?? out.body;
+  }
+  return out;
+}
 
 /**
  * Health status from runner state (pure; unit-tested).
@@ -58,6 +74,9 @@ export function createFeedRunner({
   fetchImpl = (...args) => globalThis.fetch(...args),
   log = (...args) => console.warn(...args),
   enabled = true,
+  // Records older than the store's retention would be archived on arrival and
+  // pruned again, then re-ingested as "new" after every restart; skip them.
+  maxRecordAgeMs = 90 * DAY,
 }) {
   const state = {
     disabled: !enabled,
@@ -74,11 +93,25 @@ export function createFeedRunner({
   let running = false;
   let inFlight = null;
 
-  async function fetchJson(url, { maxBytes = 4 * 1024 * 1024 } = {}) {
-    const known = validators.get(url);
+  /**
+   * Bounded GET with conditional-request validators remembered per URL.
+   * `as`: 'json' | 'text' | 'bytes'.
+   */
+  async function fetchBody(
+    url,
+    {
+      maxBytes = 4 * 1024 * 1024,
+      as = 'json',
+      accept = '*/*',
+      timeoutMs = TIMEOUT_MS,
+      conditional = true,
+    } = {},
+  ) {
+    // Unconditional for URLs that change every poll (no validator to keep).
+    const known = conditional ? validators.get(url) : null;
     const response = await fetchImpl(url, {
       headers: {
-        Accept: 'application/json',
+        Accept: accept,
         'User-Agent': USER_AGENT,
         ...(known?.etag ? { 'If-None-Match': known.etag } : {}),
         ...(known?.lastModified
@@ -86,32 +119,60 @@ export function createFeedRunner({
           : {}),
       },
       redirect: 'follow',
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (response.status === 304) return { notModified: true, body: null };
     if (!response.ok) {
       await response.body?.cancel().catch(() => {});
       throw new Error(`HTTP ${response.status}`);
     }
-    const body = await readResponseJsonCapped(response, maxBytes);
-    validators.set(url, {
-      etag: response.headers.get('etag'),
-      lastModified: response.headers.get('last-modified'),
-    });
+    const body =
+      as === 'text'
+        ? await readCapped(readResponseTextCapped, response, maxBytes)
+        : as === 'bytes'
+          ? await readCapped(readResponseBytesCapped, response, maxBytes)
+          : await readResponseJsonCapped(response, maxBytes);
+    if (conditional)
+      validators.set(url, {
+        etag: response.headers.get('etag'),
+        lastModified: response.headers.get('last-modified'),
+      });
     return { notModified: false, body };
   }
+  const fetchJson = (url, options = {}) =>
+    fetchBody(url, { accept: 'application/json', ...options, as: 'json' });
+  const fetchText = (url, options = {}) =>
+    fetchBody(url, { ...options, as: 'text' });
+  const fetchBytes = (url, options = {}) =>
+    fetchBody(url, { ...options, as: 'bytes' });
 
   async function pollOnce() {
     if (state.disabled) return null;
+    // A feed waiting for a key, or barred by its terms, is reported, never polled.
+    if (connector.blockedByTerms || connector.requiresCredentials?.())
+      return null;
     if (inFlight) return inFlight;
     state.last_attempt_at = now();
     inFlight = (async () => {
       try {
-        const result = await connector.poll({ fetchJson, now });
-        const outcome = result.records?.length
-          ? ingest(result.records, { receivedAt: now() })
+        const result = await connector.poll({
+          fetchJson,
+          fetchText,
+          fetchBytes,
+          now,
+        });
+        const cutoff = now() - maxRecordAgeMs;
+        const fresh = (result.records ?? []).filter(
+          (r) =>
+            (epochMs(r.occurred_at) ?? epochMs(r.published_at) ?? Infinity) >=
+            cutoff,
+        );
+        const outcome = fresh.length
+          ? ingest(fresh, { receivedAt: now() })
           : [];
         const counts = {};
+        if (fresh.length < (result.records?.length ?? 0))
+          counts.beyond_retention = result.records.length - fresh.length;
         for (const r of outcome) counts[r.status] = (counts[r.status] ?? 0) + 1;
         state.last_success_at = now();
         state.last_error = null;

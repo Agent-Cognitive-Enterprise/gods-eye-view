@@ -3168,5 +3168,15 @@
     "many": "{count} de eventos coinciden. Mostrando el más importante: {title}.",
     "other": "{count} eventos coinciden. Mostrando el más importante: {title}."
   },
-  "Local": "Local"
+  "Local": "Local",
+  "GDACS disaster alerts": "Alertas de desastres de GDACS",
+  "Pacific Tsunami Warning Center": "Centro de Alerta de Tsunamis del Pacífico",
+  "National Tsunami Warning Center": "Centro Nacional de Alerta de Tsunamis (EE. UU.)",
+  "US weather alerts (NWS)": "Alertas meteorológicas de EE. UU. (NWS)",
+  "NASA EONET natural events": "Eventos naturales de NASA EONET",
+  "WHO disease outbreak news": "Noticias de brotes de la OMS",
+  "World Bank inflation": "Inflación del Banco Mundial",
+  "ReliefWeb disasters": "Desastres de ReliefWeb",
+  "ACLED conflict data": "Datos de conflictos de ACLED",
+  "GDELT machine-coded news": "Noticias codificadas automáticamente de GDELT"
 }

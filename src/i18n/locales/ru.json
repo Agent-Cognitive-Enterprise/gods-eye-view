@@ -3242,5 +3242,15 @@
     "many": "Найдено {count} событий. Показываю самое значимое: {title}.",
     "other": "Найдено {count} события. Показываю самое значимое: {title}."
   },
-  "Local": "Локально"
+  "Local": "Локально",
+  "GDACS disaster alerts": "Оповещения о бедствиях GDACS",
+  "Pacific Tsunami Warning Center": "Тихоокеанский центр предупреждения о цунами",
+  "National Tsunami Warning Center": "Национальный центр предупреждения о цунами (США)",
+  "US weather alerts (NWS)": "Метеопредупреждения США (NWS)",
+  "NASA EONET natural events": "Природные события NASA EONET",
+  "WHO disease outbreak news": "Сообщения ВОЗ о вспышках болезней",
+  "World Bank inflation": "Инфляция (Всемирный банк)",
+  "ReliefWeb disasters": "Бедствия ReliefWeb",
+  "ACLED conflict data": "Данные о конфликтах ACLED",
+  "GDELT machine-coded news": "Автоматически размеченные новости GDELT"
 }

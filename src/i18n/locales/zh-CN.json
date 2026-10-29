@@ -3020,5 +3020,15 @@
   "{count} matching events. Showing the most significant: {title}.": {
     "other": "找到 {count} 个匹配事件。正在显示最重要的：{title}。"
   },
-  "Local": "本地"
+  "Local": "本地",
+  "GDACS disaster alerts": "GDACS 灾害警报",
+  "Pacific Tsunami Warning Center": "太平洋海啸预警中心",
+  "National Tsunami Warning Center": "美国国家海啸预警中心",
+  "US weather alerts (NWS)": "美国天气警报（NWS）",
+  "NASA EONET natural events": "NASA EONET 自然事件",
+  "WHO disease outbreak news": "世卫组织疾病暴发新闻",
+  "World Bank inflation": "世界银行通胀数据",
+  "ReliefWeb disasters": "ReliefWeb 灾害",
+  "ACLED conflict data": "ACLED 冲突数据",
+  "GDELT machine-coded news": "GDELT 机器编码新闻"
 }

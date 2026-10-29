@@ -23,6 +23,20 @@ export function readKmlFromKmz(buffer) {
   const bytes = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
   if (bytes.length >= 5 && bytes.subarray(0, 5).toString('latin1') === '<?xml')
     return bytes.toString('utf8'); // a bare KML
+  return readZipEntry(
+    bytes,
+    (names) =>
+      names.find((n) => /(^|\/)doc\.kml$/i.test(n)) ??
+      names.find((n) => /\.kml$/i.test(n)),
+  );
+}
+
+/**
+ * One entry of a ZIP buffer as UTF-8 text; `choose(names)` picks it. Bounded:
+ * entry count, declared and inflated size.
+ */
+export function readZipEntry(buffer, choose) {
+  const bytes = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
   let eocd = -1;
   for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 65_557); i--)
     if (bytes.readUInt32LE(i) === EOCD) {
@@ -51,10 +65,10 @@ export function readKmlFromKmz(buffer) {
     entries.push({ name, method, compressed, size, local });
     offset += 46 + nameLength + extraLength + commentLength;
   }
-  const kmls = entries.filter((e) => /\.kml$/i.test(e.name));
-  const entry = kmls.find((e) => /(^|\/)doc\.kml$/i.test(e.name)) ?? kmls[0];
-  if (!entry) throw new Error('no KML in archive');
-  if (entry.size > MAX_KML_BYTES) throw new Error('KML too large');
+  const chosen = choose(entries.map((e) => e.name));
+  const entry = entries.find((e) => e.name === chosen);
+  if (!entry) throw new Error('entry not found in archive');
+  if (entry.size > MAX_KML_BYTES) throw new Error('archive entry too large');
   if (bytes.readUInt32LE(entry.local) !== LOCAL)
     throw new Error('corrupt ZIP entry');
   const start =

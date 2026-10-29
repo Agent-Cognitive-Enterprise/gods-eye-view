@@ -276,7 +276,9 @@ export function materialChanges(observation, event, lineage) {
   const independent = !event.lineages.some(
     (known) => known.lineage_key === lineage.lineage_key,
   );
-  if (independent) reasons.push('new_independent_source');
+  // An aggregator echo is not a new source (see scoring.independentLineages).
+  if (independent && observation.source_type !== 'aggregator')
+    reasons.push('new_independent_source');
   if (observation.official && !event.official)
     reasons.push('first_official_report');
   const m = observation.metrics;
@@ -289,6 +291,8 @@ export function materialChanges(observation, event, lineage) {
     reasons.push('magnitude_revised');
   if (m.alert_level && m.alert_level !== e.alert_level)
     reasons.push('alert_level_changed');
+  if (m.gdacs_alert && m.gdacs_alert !== e.gdacs_alert)
+    reasons.push('gdacs_alert_changed');
   if (m.tsunami === true && e.tsunami !== true) reasons.push('tsunami_flag');
   for (const key of IMPACT_METRICS)
     if (Number.isFinite(m[key]) && m[key] > (e[key] ?? 0))

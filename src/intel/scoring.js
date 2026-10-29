@@ -35,6 +35,8 @@ export function ruleSeverity(event) {
   if (Number.isFinite(m.magnitude)) parts.push(clamp((m.magnitude - 3.5) * 20)); // M4.5→20, M6→50, M7.5→80
   if (m.alert_level && ALERT_SEVERITY[m.alert_level])
     parts.push(ALERT_SEVERITY[m.alert_level]);
+  if (m.gdacs_alert && ALERT_SEVERITY[m.gdacs_alert])
+    parts.push(ALERT_SEVERITY[m.gdacs_alert]);
   if (Number.isFinite(m.deaths)) parts.push(peopleScale(m.deaths * 20));
   if (Number.isFinite(m.injured)) parts.push(peopleScale(m.injured * 4));
   if (Number.isFinite(m.affected)) parts.push(peopleScale(m.affected) * 0.9);
@@ -46,9 +48,13 @@ export function ruleSeverity(event) {
   return round(severity);
 }
 
-/** Independent lineages; copies of one report count once. */
+/**
+ * Independent lineages; copies of one report count once, and aggregator-grade
+ * sources (machine-coded news, copy sites) point at reports rather than being
+ * one, so they never corroborate.
+ */
 export function independentLineages(event) {
-  return event.lineages.length;
+  return event.lineages.filter((l) => l.source_type !== 'aggregator').length;
 }
 
 /** Verification state from the event's sources and status reports. */
@@ -57,7 +63,11 @@ export function verificationOf(event) {
   if (event.status_hint === 'resolved') return 'resolved';
   if (event.status_hint === 'disputed') return 'disputed';
   if (event.official) return 'officially_reported';
-  const publishers = new Set(event.lineages.map((l) => l.publisher));
+  const publishers = new Set(
+    event.lineages
+      .filter((l) => l.source_type !== 'aggregator')
+      .map((l) => l.publisher),
+  );
   if (independentLineages(event) >= 2 && publishers.size >= 2)
     return 'corroborated';
   return 'unverified';
@@ -135,8 +145,8 @@ export function impactScore(event, severity) {
   const measured = [m.deaths * 50, m.injured * 5, m.affected, m.displaced]
     .filter(Number.isFinite)
     .map(peopleScale);
-  if (m.alert_level && ALERT_SEVERITY[m.alert_level])
-    measured.push(ALERT_SEVERITY[m.alert_level]);
+  for (const level of [m.alert_level, m.gdacs_alert])
+    if (level && ALERT_SEVERITY[level]) measured.push(ALERT_SEVERITY[level]);
   return round(measured.length ? Math.max(...measured) : severity * 0.6);
 }
 

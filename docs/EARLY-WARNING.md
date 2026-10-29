@@ -18,10 +18,11 @@ Phase 2) the camera; the operator stays in control.
 flowchart LR
   subgraph Feeds["server/providers/intel/connectors"]
     U[USGS M4.5+ GeoJSON]
+    P5[GDACS · PTWC/NTWC · NWS · EONET<br/>WHO DON · World Bank · ReliefWeb · GDELT]
     G[GhostMaps incident KMZ<br/>via existing watcher]
     R[Replay fixtures<br/>synthetic drills]
   end
-  U & G --> FR[Feed runners<br/>timeouts · ETag · backoff · health]
+  U & P5 & G --> FR[Feed runners<br/>timeouts · ETag · backoff · health]
   FR --> N[normalizeObservation<br/>src/intel/evidence.js]
   R --> RW[Replay world<br/>own memory store + sim clock]
   N --> E[Engine<br/>dedupe · lineage · match · material update]
@@ -46,31 +47,32 @@ flowchart LR
   UI -- narration --> TTS
 ```
 
-| Module                                | Owner of                                                                         | Notes                                                       |
-| ------------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `src/intel/taxonomy.js`               | Categories, states, category lifecycle policy, Autopilot defaults, score weights | Ids only; the UI owns display text                          |
-| `src/intel/evidence.js`               | Observation normalization, sanitization, hashing                                 | Source text is inert, length-capped data                    |
-| `src/intel/correlate.js`              | Duplicate detection, event matching, lineage, material-change rules              | Every decision returns reasons ("why grouped")              |
-| `src/intel/scoring.js`                | Severity, confidence, verification, escalation, attention score                  | Severity and confidence reported separately from attention  |
-| `src/intel/lifecycle.js`              | Focus window, marker TTL, fade, archive, retraction                              | Driven by last meaningful update, never by polls or reposts |
-| `src/intel/clustering.js`             | Bounded-diameter clustering, bounds, centroid                                    | Uses `greatCircleKm`; no planar degrees                     |
-| `src/intel/engine.js`                 | Folding observations into canonical events                                       | Clock and store injected                                    |
-| `src/intel/memoryStore.js`            | Reference store contract; replay and test store                                  |                                                             |
-| `src/intel/replay.js`                 | Scenario expansion and replay worlds                                             | A drill never writes the live archive                       |
-| `server/providers/intel/store.js`     | SQLite store (built-in `node:sqlite`)                                            | Retention, corrupt-file recovery, erase                     |
-| `server/providers/intel/feeds.js`     | Polling, bounded HTTP, conditional requests, backoff, circuit breaker, health    |                                                             |
-| `server/providers/intel/connectors/*` | Source mappings                                                                  | USGS, GhostMaps                                             |
-| `server/providers/intel/kmz.js`       | Bounded KMZ/KML reading without a DOM                                            |                                                             |
-| `server/providers/intel/service.js`   | Composition, settings, replay, archive                                           |                                                             |
-| `server/providers/intel/index.js`     | `/api/intel` routes and feature flag                                             |                                                             |
-| `src/intel/scheduler.js`              | Autopilot attention scheduling (pure step function)                              | Deterministic for the same state, input and clock           |
-| `src/intel/framing.js`                | Camera height and centre for a cluster                                           | Spherical cap fit, viewport FOV/aspect, precision floor     |
-| `src/intel/client.js`                 | Same-origin `/api/intel` client                                                  | Injected fetch                                              |
-| `src/ui/intelConsole.js`              | AUTOPILOT panel, markers, overlay labels/cards, Autopilot controller             | Camera claims via the shared navigation owner               |
-| `scripts/qa-autopilot.mjs`            | Browser gate for the console and camera behaviour                                | Real clicks and pointer input                               |
-| `src/intel/assessment.js`             | Model prompt, output schema, strict validation, cache key                        | Evidence fenced as untrusted data                           |
-| `server/providers/intel/localLlm.js`  | Loopback OpenAI-compatible client (KoboldCpp)                                    | No cloud path; busy check; timeout                          |
-| `server/providers/intel/assessor.js`  | Which events the model assesses, when                                            | Serialized cycles, hourly cap                               |
+| Module                                | Owner of                                                                         | Notes                                                                                            |
+| ------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `src/intel/taxonomy.js`               | Categories, states, category lifecycle policy, Autopilot defaults, score weights | Ids only; the UI owns display text                                                               |
+| `src/intel/evidence.js`               | Observation normalization, sanitization, hashing                                 | Source text is inert, length-capped data                                                         |
+| `src/intel/correlate.js`              | Duplicate detection, event matching, lineage, material-change rules              | Every decision returns reasons ("why grouped")                                                   |
+| `src/intel/scoring.js`                | Severity, confidence, verification, escalation, attention score                  | Severity and confidence reported separately from attention                                       |
+| `src/intel/lifecycle.js`              | Focus window, marker TTL, fade, archive, retraction                              | Driven by last meaningful update, never by polls or reposts                                      |
+| `src/intel/clustering.js`             | Bounded-diameter clustering, bounds, centroid                                    | Uses `greatCircleKm`; no planar degrees                                                          |
+| `src/intel/engine.js`                 | Folding observations into canonical events                                       | Clock and store injected                                                                         |
+| `src/intel/memoryStore.js`            | Reference store contract; replay and test store                                  |                                                                                                  |
+| `src/intel/replay.js`                 | Scenario expansion and replay worlds                                             | A drill never writes the live archive                                                            |
+| `server/providers/intel/store.js`     | SQLite store (built-in `node:sqlite`)                                            | Retention, corrupt-file recovery, erase                                                          |
+| `server/providers/intel/feeds.js`     | Polling, bounded HTTP, conditional requests, backoff, circuit breaker, health    |                                                                                                  |
+| `server/providers/intel/connectors/*` | Source mappings                                                                  | USGS, GDACS, PTWC/NTWC, NWS, EONET, WHO, World Bank, ReliefWeb, ACLED (listed), GDELT, GhostMaps |
+| `server/providers/intel/geography.js` | Country / US-state bounds and points from bundled Natural Earth                  | Region-only reports                                                                              |
+| `server/providers/intel/kmz.js`       | Bounded KMZ/KML reading without a DOM                                            |                                                                                                  |
+| `server/providers/intel/service.js`   | Composition, settings, replay, archive                                           |                                                                                                  |
+| `server/providers/intel/index.js`     | `/api/intel` routes and feature flag                                             |                                                                                                  |
+| `src/intel/scheduler.js`              | Autopilot attention scheduling (pure step function)                              | Deterministic for the same state, input and clock                                                |
+| `src/intel/framing.js`                | Camera height and centre for a cluster                                           | Spherical cap fit, viewport FOV/aspect, precision floor                                          |
+| `src/intel/client.js`                 | Same-origin `/api/intel` client                                                  | Injected fetch                                                                                   |
+| `src/ui/intelConsole.js`              | AUTOPILOT panel, markers, overlay labels/cards, Autopilot controller             | Camera claims via the shared navigation owner                                                    |
+| `scripts/qa-autopilot.mjs`            | Browser gate for the console and camera behaviour                                | Real clicks and pointer input                                                                    |
+| `src/intel/assessment.js`             | Model prompt, output schema, strict validation, cache key                        | Evidence fenced as untrusted data                                                                |
+| `server/providers/intel/localLlm.js`  | Loopback OpenAI-compatible client (KoboldCpp)                                    | No cloud path; busy check; timeout                                                               |
+| `server/providers/intel/assessor.js`  | Which events the model assesses, when                                            | Serialized cycles, hourly cap                                                                    |
 
 `src/intel/` is portable (no Node, DOM or Cesium) and is not yet a declared
 package export; the server imports it like the existing GhostMaps catalog.
@@ -332,16 +334,46 @@ app's own binding (localhost by default).
 
 ## Sources (registry)
 
-| Feed                                                                                          | Access                                             | Cadence / latency                                                                                                                                                                                                                | Coverage                        | Licence and attribution                                                                           | Failure modes                                                                                                           | Status              |
-| --------------------------------------------------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| USGS M4.5+ past day (`earthquake.usgs.gov/.../4.5_day.geojson`)                               | Keyless                                            | Polled 60 s with ETag/If-Modified-Since; USGS publishes within minutes, revises later                                                                                                                                            | Global, M4.5+                   | Public domain (U.S. Government); "U.S. Geological Survey"                                         | Timeouts (seen in testing; retried with backoff), revisions, rare deletions (→ retracted)                               | Live                |
-| S2 GhostMaps dated incident products (`kinetic-30d`, `iran-kinetic`) via the existing watcher | Keyless (optional `GITHUB_TOKEN` as for the layer) | Watched every 15 s by the shared watcher; intel re-reads an edition only when its blob changes. Content is a periodic analyst export: newest entry was 3 days old on 29 Oct 2026, and the "Last 30 Days" product ended June 2025 | Mostly USA and Iran/Middle East | CC BY-NC-SA 4.0, "S2 Underground © by S2A1"; non-commercial; processed locally, not redistributed | Dates carry no time zone (`time_zone_known: false`), `NULL` placeholders (dropped), stale exports (archived on arrival) | Live, analyst-grade |
-| Demo replay (`server/providers/intel/fixtures/demo-scenario.json`)                            | Bundled                                            | Simulated clock 1–600×                                                                                                                                                                                                           | Synthetic                       | Synthetic test data; every title starts `[DRILL]`                                                 | —                                                                                                                       | Replay only         |
+| Feed                                                                                          | Access                                             | Cadence / latency                                                                                                                                                                                                                | Coverage                                                                                                 | Licence and attribution                                                                           | Failure modes                                                                                                                           | Status              |
+| --------------------------------------------------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| USGS M4.5+ past day (`earthquake.usgs.gov/.../4.5_day.geojson`)                               | Keyless                                            | Polled 60 s with ETag/If-Modified-Since; USGS publishes within minutes, revises later                                                                                                                                            | Global, M4.5+                                                                                            | Public domain (U.S. Government); "U.S. Geological Survey"                                         | Timeouts (seen in testing; retried with backoff), revisions, rare deletions (→ retracted)                                               | Live                |
+| S2 GhostMaps dated incident products (`kinetic-30d`, `iran-kinetic`) via the existing watcher | Keyless (optional `GITHUB_TOKEN` as for the layer) | Watched every 15 s by the shared watcher; intel re-reads an edition only when its blob changes. Content is a periodic analyst export: newest entry was 3 days old on 29 Oct 2026, and the "Last 30 Days" product ended June 2025 | Mostly USA and Iran/Middle East                                                                          | CC BY-NC-SA 4.0, "S2 Underground © by S2A1"; non-commercial; processed locally, not redistributed | Dates carry no time zone (`time_zone_known: false`), `NULL` placeholders (dropped), stale exports (archived on arrival)                 | Live, analyst-grade |
+| GDACS alerts RSS (`gdacs.org/xml/rss.xml`)                                                    | Keyless                                            | 10 min, ETag; GDACS updates within ~1 h of an event, cyclone episodes every 6 h                                                                                                                                                  | Global; Orange/Red always, Green only EQ/TC/FL/VO; items GDACS marks not current are skipped             | CC BY 4.0 (European Union); "GDACS"                                                               | Automatic model estimates (exposure, not damage); bounding boxes are coarse; long droughts flagged non-current                          | Live                |
+| NOAA PTWC (`PHEBAtom.xml`) and NTWC (`PAAQAtom.xml`)                                          | Keyless                                            | 2 min, conditional; bulletins within minutes of a quake                                                                                                                                                                          | Pacific / US & Canada coasts; Information statements skipped                                             | Public domain (U.S. Government)                                                                   | Each centre has its own event id, so they are separate providers that corroborate; only the latest bulletin is in the feed              | Live                |
+| NWS active alerts (`api.weather.gov/alerts/active?status=actual&severity=Extreme,Severe`)     | Keyless (User-Agent required)                      | 3 min, ETag                                                                                                                                                                                                                      | United States; VTEC event number ties updates; Cancel resolves                                           | Public domain (U.S. Government)                                                                   | Alerts without a polygon use the union of the named states; marine zones without a polygon stay unlocated                               | Live                |
+| NASA EONET v3 open events                                                                     | Keyless                                            | 30 min (no validators)                                                                                                                                                                                                           | Global; storms, wildfires, volcanoes, floods, landslides                                                 | Public domain (NASA)                                                                              | Curated re-publication: lineage is the first upstream source URL; small US wildfires dominate                                           | Live                |
+| WHO Disease Outbreak News (`who.int/api/news/diseaseoutbreaknews`)                            | Keyless                                            | 60 min; days to weeks after detection                                                                                                                                                                                            | Global, last 45 days; country-level                                                                      | WHO website terms (attribution, non-commercial)                                                   | Country names parsed from titles; no event key, reports joined by wording/place/time                                                    | Live                |
+| World Bank CPI inflation (FP.CPI.TOTL.ZG)                                                     | Keyless                                            | Daily; annual statistic, revised a few times a year                                                                                                                                                                              | Countries (aggregates skipped); latest year within 2 years; >= 50 %, or >= 20 % and 2x the 5-year median | CC BY 4.0 (World Bank)                                                                            | A slow structural signal, not an alert; product thresholds                                                                              | Live                |
+| ReliefWeb disasters API v2                                                                    | Approved app name (`GEV_RELIEFWEB_APPNAME`)        | 60 min                                                                                                                                                                                                                           | Global; status alert/current                                                                             | ReliefWeb terms (attribution)                                                                     | Not exercised live: no approved name here (fixture-tested only)                                                                         | Needs a key         |
+| ACLED                                                                                         | Account + key; terms restrict redistribution       | —                                                                                                                                                                                                                                | —                                                                                                        | ACLED terms                                                                                       | Listed for visibility; never polled ("needs a key", then "blocked by terms")                                                            | Not ingested        |
+| GDELT 2.0 event export (opt-in `GEV_INTEL_GDELT=1`)                                           | Keyless                                            | 15 min                                                                                                                                                                                                                           | Global; CAMEO 14 (protest) and 18–20 (violence), >= 5 articles, city-level, event day within 3 days      | Open, citation required                                                                           | Machine coding is frequently wrong (sports, crime and history read as violence): aggregator grade, never corroborates, 14-day retention | Opt-in              |
+| Demo replay (`server/providers/intel/fixtures/demo-scenario.json`)                            | Bundled                                            | Simulated clock 1–600×                                                                                                                                                                                                           | Synthetic                                                                                                | Synthetic test data; every title starts `[DRILL]`                                                 | —                                                                                                                                       | Replay only         |
 
-Pending connectors (Phase 5): GDACS, NASA EONET, NOAA/NHC and national
-agencies, ACLED (requires authorised access), multilingual RSS, The Wire,
-economic series. Each needs the licence/terms/latency check in spec §2.2
-before integration.
+## Feed connectors (Phase 5)
+
+Each connector maps one source to raw observations; the engine does the rest.
+Shared rules:
+
+- Bounded, timed-out fetches (`fetchJson`/`fetchText`/`fetchBytes`) with
+  ETag/If-Modified-Since kept per URL; a feed waiting for a key or barred by
+  its terms is listed with that status and never contacted.
+- Official sources (`primary_official`) keep their feed-native ids as event
+  keys, so revisions update one event and cancellations resolve it.
+- Places come from the source (point, polygon, bounding box); otherwise from
+  bundled Natural Earth country or US-state bounds
+  (`server/providers/intel/geography.js`), never invented.
+- Machine-coded and copy sources are `aggregator` grade: kept as evidence, but
+  never corroboration, never a new-source material update.
+- Records older than the 90-day retention are skipped by the feed runner
+  (otherwise an old export is archived, pruned and re-ingested on every
+  restart).
+- Severity hints are calibrated across feeds: GDACS Red 95 / Orange 80; NWS
+  Extreme 75 and Severe 50 (+5 observed, +5 immediate, -10 for a watch), so a
+  local US weather warning ranks under a humanitarian-scale GDACS alert;
+  tsunami warning 95, threat 90, advisory 75, watch 70.
+- Every feed except GDELT is on by default when the engine is on, and each can
+  be switched off with `GEV_INTEL_<NAME>=0` (`USGS`, `GDACS`, `TSUNAMI`, `NWS`,
+  `EONET`, `WHO`, `WORLDBANK`, `RELIEFWEB`, `ACLED`, `GHOSTMAPS`).
 
 ## Settings (defaults; product choices, not measurements of danger)
 
@@ -415,8 +447,13 @@ injection text stored inert (`[DRILL]` rumour).
   narration. Its category suggestion is shown in the data but not applied.
 - The browser QA gate pauses local AI for its run (camera checks need
   rule-based scores) and restores the setting afterwards.
-- Region-only events need explicit `bounds` to be framed; there is no
-  country-outline lookup yet, so a bare region code stays queue-only.
+- Country-level reports are placed at the centre of the country's home
+  territory (Natural Earth) and labelled approximate; markers there are not
+  incident locations. A bare region code without a resolvable country stays
+  queue-only.
+- ReliefWeb is fixture-tested only (no approved app name here); ACLED is not
+  ingested. Multilingual RSS and The Wire are not integrated: no licence and
+  terms review has been done for them.
 - Event titles are shown in their original language until Phase 3 translation.
 - Headless QA renders with SwiftShader; final visual checks should be repeated
   in a GPU-accelerated browser.

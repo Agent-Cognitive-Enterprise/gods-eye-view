@@ -9,8 +9,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readRequestBody } from '../common/request.js';
+import { acledConnector } from './connectors/acled.js';
+import { eonetConnector } from './connectors/eonet.js';
+import { gdacsConnector } from './connectors/gdacs.js';
+import { gdeltConnector } from './connectors/gdelt.js';
 import { ghostMapsConnector } from './connectors/ghostMaps.js';
+import { nwsConnector } from './connectors/nws.js';
+import { reliefWebConnector } from './connectors/reliefWeb.js';
+import { tsunamiConnector } from './connectors/tsunami.js';
 import { usgsConnector } from './connectors/usgs.js';
+import { whoConnector } from './connectors/who.js';
+import { worldBankConnector } from './connectors/worldBank.js';
 import { createLocalLlm } from './localLlm.js';
 import { createIntelService } from './service.js';
 
@@ -19,6 +28,39 @@ const FIXTURES = path.join(
   'fixtures',
 );
 const MAX_BODY = 16 * 1024;
+
+/**
+ * The feed set for this environment. Public no-key feeds are on unless
+ * GEV_INTEL_<NAME>=0; GDELT (machine-coded news) is opt-in with
+ * GEV_INTEL_GDELT=1; ReliefWeb and ACLED are listed and wait for credentials.
+ */
+export function intelConnectors({ env = process.env, ghostMapsWatcher } = {}) {
+  const on = (name) => env[`GEV_INTEL_${name}`] !== '0';
+  const connectors = [];
+  if (on('USGS')) connectors.push(usgsConnector());
+  if (on('GDACS')) connectors.push(gdacsConnector());
+  if (on('TSUNAMI'))
+    connectors.push(tsunamiConnector('ptwc'), tsunamiConnector('ntwc'));
+  if (on('NWS')) connectors.push(nwsConnector());
+  if (on('EONET')) connectors.push(eonetConnector());
+  if (on('WHO')) connectors.push(whoConnector());
+  if (on('WORLDBANK')) connectors.push(worldBankConnector());
+  if (on('RELIEFWEB'))
+    connectors.push(
+      reliefWebConnector({ appname: env.GEV_RELIEFWEB_APPNAME ?? '' }),
+    );
+  if (on('ACLED'))
+    connectors.push(
+      acledConnector({
+        email: env.GEV_ACLED_EMAIL ?? '',
+        key: env.GEV_ACLED_KEY ?? '',
+      }),
+    );
+  if (env.GEV_INTEL_GDELT === '1') connectors.push(gdeltConnector());
+  if (ghostMapsWatcher && on('GHOSTMAPS'))
+    connectors.push(ghostMapsConnector({ watcher: ghostMapsWatcher }));
+  return connectors;
+}
 
 /** Whether the early-warning feature flag is on. */
 export function intelEnabled(env = process.env) {
@@ -85,9 +127,7 @@ export function intelProxy({
     if (service || !enabled) return service;
     const root = process.cwd();
     const dir = path.join(root, '.gev-cache', 'intel');
-    const connectors = [usgsConnector()];
-    if (ghostMapsWatcher && env.GEV_INTEL_GHOSTMAPS !== '0')
-      connectors.push(ghostMapsConnector({ watcher: ghostMapsWatcher }));
+    const connectors = intelConnectors({ env, ghostMapsWatcher });
     service = createIntelService({
       storeFile: env.GEV_INTEL_DB || path.join(dir, 'intel.sqlite'),
       settingsFile: path.join(dir, 'settings.json'),

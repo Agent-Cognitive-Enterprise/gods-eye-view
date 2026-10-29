@@ -65,7 +65,11 @@ test('evidence is fenced: injected markup cannot open a new evidence element', (
   );
   assert.deepEqual(Object.keys(prompt.evidenceMap), ['e1']);
   assert.match(prompt.messages[0].content, /untrusted/);
-  assert.doesNotMatch(user, /severity_hint/, 'no anchoring on a source suggestion');
+  assert.doesNotMatch(
+    user,
+    /severity_hint/,
+    'no anchoring on a source suggestion',
+  );
   // Layer 2: even an observation that skipped normalization cannot break out.
   const raw = {
     ...store.observationsFor(event.event_id)[0],

@@ -457,6 +457,15 @@ export const DATA_CREDITS = [
       'Shown as published; reports are S2 assessments, not verified fact.',
   },
   {
+    key: 'early-warning-feeds',
+    html:
+      'Early-warning feeds: <a href="https://www.gdacs.org" target="_blank" rel="noopener">GDACS</a> (European Union, CC BY 4.0); ' +
+      'NOAA tsunami warning centres and the U.S. National Weather Service (public domain); ' +
+      'NASA EONET (public domain); World Health Organization Disease Outbreak News; ' +
+      'World Bank World Development Indicators (CC BY 4.0); ' +
+      'optional: ReliefWeb (UN OCHA), The GDELT Project (machine-coded, unverified).',
+  },
+  {
     key: 'drivebc-cctv',
     html:
       'CCTV cameras &amp; frames (British Columbia): ' +

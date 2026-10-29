@@ -17,6 +17,8 @@ import { createAssessor } from './assessor.js';
 import { createFeedRunner } from './feeds.js';
 import { createSqliteIntelStore } from './store.js';
 
+const RETENTION_DAYS = 90;
+
 const PRUNE_EVERY_MS = 6 * 3600_000;
 const MAX_LIST = 500;
 
@@ -127,10 +129,22 @@ export function createIntelService({
   };
   let overrides = readSettings();
   const settings = () => ({ ...AUTOPILOT_DEFAULTS, ...overrides });
-  const store = createSqliteIntelStore({ file: storeFile, now, warn: log });
+  const store = createSqliteIntelStore({
+    file: storeFile,
+    retentionDays: RETENTION_DAYS,
+    now,
+    warn: log,
+  });
   const engine = createIntelEngine({ store, now, settings: settings() });
   const runners = connectors.map((connector) =>
-    createFeedRunner({ connector, ingest: engine.ingest, now, fetchImpl, log }),
+    createFeedRunner({
+      connector,
+      ingest: engine.ingest,
+      now,
+      fetchImpl,
+      log,
+      maxRecordAgeMs: RETENTION_DAYS * 24 * 3600_000,
+    }),
   );
   let replay = null; // {world, startedAt, speed}
   let pruneTimer = null;
