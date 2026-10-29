@@ -71,8 +71,7 @@ export class PanelChrome {
         variant: this.hud.getVariant(),
       }),
       scheduleCockpitLayout: () => this.cockpitView?.scheduleContextLayout(),
-      syncPanelCollapseButton: (panel) =>
-        this._syncRailPanelCollapseButton(panel),
+      syncPanelCollapseButton: (panel) => this._syncPanelCollapseButton(panel),
       readDisplayScrollTop: () =>
         this._displayPortalScrollRestoreOwner === 'standard'
           ? this._standardDisplayScrollTop
@@ -290,10 +289,6 @@ export class PanelChrome {
 
   _scheduleLeftPanelLayout(options0) {
     return this._panelLayout._scheduleLeftPanelLayout(options0);
-  }
-
-  _syncRailPanelCollapseButton(panelEl) {
-    this._syncPanelCollapseButton(panelEl);
   }
 
   _syncPanelCollapseButton(panelEl) {

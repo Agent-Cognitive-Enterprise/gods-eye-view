@@ -2,15 +2,6 @@
 
 ## [Unreleased]
 
-- Remove the Radio icon from the Context panel header, along with the compact
-  Radio player it opened. Radio stays in Context as its own section, with one
-  Enable control and full playback. Cockpit's compact Radio is unchanged.
-
-- Make the Context panel easier to read: the Contacts / Space Missions modes
-  are one segmented control, labels and guidance are larger and higher
-  contrast, the standby hint is plain text instead of a dashed box, and the
-  panel no longer draws a glow halo.
-
 ## [0.3.0] — 2026-10-27 — Street Level, On Your Phone, in Your Language
 
 - Show a Street Level view facing 359.5° or more as 0°. The viewer caption

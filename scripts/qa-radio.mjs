@@ -81,8 +81,6 @@ function check(name, ok, detail = '') {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Native pick buffers and clustered overlay entries settle on rendered frames,
-// not on wall-clock sleeps, particularly with software rendering.
 // Radio lives only inside Context; a user reaches its controls by expanding
 // Context and then Radio. Returns the prior collapse state so a step can put
 // the panels back for the scenarios that follow.
@@ -109,6 +107,8 @@ async function restoreRadioPanels(page, prior) {
   }, prior);
 }
 
+// Native pick buffers and clustered overlay entries settle on rendered frames,
+// not on wall-clock sleeps, particularly with software rendering.
 async function settleRadioFrames(page) {
   await page.evaluate(() => new Promise((resolve, reject) => {
     const scene = window.__godsEyeView.viewer.scene;
