@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { readRequestBody } from '../common/request.js';
 import { ghostMapsConnector } from './connectors/ghostMaps.js';
 import { usgsConnector } from './connectors/usgs.js';
+import { createLocalLlm } from './localLlm.js';
 import { createIntelService } from './service.js';
 
 const FIXTURES = path.join(
@@ -92,6 +93,11 @@ export function intelProxy({
       settingsFile: path.join(dir, 'settings.json'),
       connectors,
       scenarios: loadScenarios(),
+      // Loopback-only local model; GEV_LLM_DISABLED=1 keeps scoring rule-based.
+      llm:
+        env.GEV_LLM_DISABLED === '1'
+          ? null
+          : createLocalLlm({ baseUrl: env.GEV_LLM_BASE_URL }),
     });
     return service;
   };
@@ -163,6 +169,7 @@ export function intelProxy({
         });
       }
       if (route === '/feeds') return json(res, 200, { feeds: svc.feeds() });
+      if (route === '/ai') return json(res, 200, svc.aiStatus());
       if (route === '/settings') return json(res, 200, svc.settings());
       if (route === '/replay')
         return json(res, 200, { replay: svc.replayStatus() });
@@ -187,6 +194,10 @@ export function intelProxy({
     if (route === '/replay' && req.method === 'DELETE') {
       svc.stopReplay();
       return json(res, 200, { replay: null });
+    }
+    if (route === '/ai/assess' && req.method === 'POST') {
+      const outcome = await svc.assessNow();
+      return json(res, 200, { outcome, ai: svc.aiStatus() });
     }
     const poll = /^\/feeds\/([a-z0-9-]{1,40})\/poll$/.exec(route);
     if (poll && req.method === 'POST') {

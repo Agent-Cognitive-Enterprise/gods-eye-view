@@ -13,6 +13,7 @@ import {
   CATEGORIES,
   SCORE_WEIGHTS,
 } from '../../../src/intel/taxonomy.js';
+import { createAssessor } from './assessor.js';
 import { createFeedRunner } from './feeds.js';
 import { createSqliteIntelStore } from './store.js';
 
@@ -37,7 +38,7 @@ export function sanitizeSettings(input = {}) {
   num('normalPreemptionMargin', 0, 100);
   num('preemptionConfirmMs', 0, 120_000);
   num('maxMarkersInView', 10, 2000);
-  for (const key of ['autopilotEnabled', 'narrationEnabled'])
+  for (const key of ['autopilotEnabled', 'narrationEnabled', 'localAiEnabled'])
     if (typeof input[key] === 'boolean') out[key] = input[key];
   if (input.categoryRelevance && typeof input.categoryRelevance === 'object') {
     out.categoryRelevance = {};
@@ -105,6 +106,7 @@ export function createIntelService({
   fetchImpl,
   log = (...args) => console.warn(...args),
   scenarios = {},
+  llm = null,
 } = {}) {
   const readSettings = () => {
     if (!settingsFile) return {};
@@ -126,6 +128,20 @@ export function createIntelService({
   let replay = null; // {world, startedAt, speed}
   let pruneTimer = null;
   let started = false;
+  // Local model (Phase 3): bounded assessments for the live world and any
+  // running drill. Without a model, or while paused, scores stay rule-based.
+  const assessor = llm
+    ? createAssessor({
+        llm,
+        now,
+        log,
+        enabled: () => settings().localAiEnabled !== false,
+        worlds: () =>
+          [world('live'), replay ? world('replay') : null]
+            .filter(Boolean)
+            .map((w) => ({ ...w, name: w.kind })),
+      })
+    : null;
 
   function world(name) {
     if (name !== 'replay') return { engine, store, now: now(), kind: 'live' };
@@ -202,11 +218,13 @@ export function createIntelService({
       }, PRUNE_EVERY_MS);
       pruneTimer.unref?.();
       for (const runner of runners) runner.start();
+      assessor?.start();
     },
     stop() {
       started = false;
       clearInterval(pruneTimer);
       for (const runner of runners) runner.stop();
+      assessor?.stop();
     },
     close() {
       this.stop();
@@ -219,6 +237,9 @@ export function createIntelService({
         .listEvents(filter, { limit })
         .map((e) => publicEvent(engine.evaluate(e))),
     feeds: () => runners.map((runner) => runner.health()),
+    aiStatus: () =>
+      assessor?.status() ?? { state: 'not_configured', enabled: false },
+    assessNow: () => assessor?.cycle() ?? null,
     pollFeed: (id) => runners.find((r) => r.id === id)?.pollOnce() ?? null,
     settings,
     updateSettings(input) {
@@ -282,6 +303,7 @@ export function createIntelService({
         replay: this.replayStatus(),
         settings: settings(),
         scenarios: Object.keys(scenarios),
+        ai: assessor?.status() ?? { state: 'not_configured', enabled: false },
       };
     },
   };
