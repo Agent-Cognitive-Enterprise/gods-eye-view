@@ -1,7 +1,8 @@
 # Early-warning event engine (fork feature)
 
-Status: **Phases 0–3 implemented (event engine, evidence store, AUTOPILOT
-console and camera scheduler, local Qwen assessments); Phases 4–6 pending.** Off unless
+Status: **Phases 0–4 implemented (event engine, evidence store, AUTOPILOT
+console and camera scheduler, local Qwen assessments, local voice and
+narration); Phases 5–6 pending.** Off unless
 `GEV_INTEL_ENABLED=1`. This document is the architecture decision record and
 operator reference for the Global Early-Warning Autopilot specification
 (29 October 2026). It states what exists today; nothing listed as pending is
@@ -36,7 +37,13 @@ flowchart LR
   E --> AS[Assessor<br/>select · fence · validate]
   AS <--> Q[Local Qwen via KoboldCpp<br/>loopback only, 1 at a time]
   AS --> SC
-  AP -. Phase 4 .-> V[Local STT/TTS sidecars]
+  V[Local voice provider<br/>src/voice/localSession.js] --> VS[/api/voice-local]
+  VS --> STT[whisper.cpp server<br/>127.0.0.1:8791]
+  VS --> Q
+  VS --> TTS[Piper<br/>local process]
+  V --> RUN[Existing action runner<br/>gevActions]
+  V --> UI
+  UI -- narration --> TTS
 ```
 
 | Module                                | Owner of                                                                         | Notes                                                       |
@@ -223,6 +230,69 @@ across the drill and USGS feed with 0 rejections. Routes: `GET /api/intel/ai`
 (status, model, queue, counts, last rejection) and host-only
 `POST /api/intel/ai/assess` (run a cycle now).
 
+## Local voice and narration (Phase 4)
+
+KoboldCpp here has no audio, transcription or TTS enabled, so speech runs in
+separate local services, installed into the runtime folder only by
+`Install-GEV-Voice.ps1` (pinned URLs, SHA-256 verified):
+
+| Part           | What                                                                                                                         | Notes                                                                                                      |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Speech-to-text | whisper.cpp `b5454` CPU build, `whisper-server` on `127.0.0.1:8791`, model `ggml-base-q5_1` (`small` installed as an option) | Started and stopped with the autopilot instance. The GPU is fully used by Qwen, so Whisper runs on the CPU |
+| Model          | The same KoboldCpp Qwen, its own client instance                                                                             | A voice session claims the model: the assessor stops before its next job                                   |
+| Text-to-speech | Piper 2023.11.14-2, voices `en_US-amy-medium`, `ru_RU-irina-medium`                                                          | One short process per utterance, raw PCM wrapped as WAV, bounded text and output                           |
+
+Licences: whisper.cpp, the Whisper models and Piper are MIT. The voices are
+local-use only: `amy` follows the Mycroft mimic3 dataset licence and `irina`
+(RHVoice) states its licence as unknown; neither is in this repository.
+
+Routes (`/api/voice-local`, off unless `GEV_LOCAL_VOICE=1`): `GET /status`;
+host-only `POST /transcribe` (16 kHz WAV), `POST /turn` (text, language,
+screen context) and `POST /session`; `POST /speak` (any viewer, one synthesis at
+a time, small queue) for narration. The STT and model addresses must be
+loopback; there is no remote fallback. When enabled, the page carries
+`<meta name="gev-local-voice">` and only then offers **Local** in the voice
+provider list beside OpenAI and Gemini.
+
+Turn protocol (`src/voice/localProtocol.js`): the model answers with
+schema-constrained JSON — `language` (en/ru), a short `reply`, and at most three
+`calls`. Calls may name nine existing app actions (fly to a place, zoom, whole
+globe, layer on/off, track/stop tracking, frame overhead, visual style, move
+camera — the full set is too slow to prompt on this machine) or the two
+Autopilot tools (`autopilot_control`: on, off, pause, resume, next, explain,
+sources; `find_events`: categories, ISO country codes, hours). Every call's
+arguments are validated against that action's own schema; one invalid call
+rejects the whole reply, which is retried once with the errors and otherwise
+refused. App actions run through the existing action runner (so camera moves
+take the navigation authority and pause Autopilot like any other owner);
+Autopilot tools run in the console. Screen context (camera, current event,
+top titles) is passed as fenced data.
+
+Browser adapter (`src/voice/localSession.js`) implements the common session
+contract. Capture uses the app's existing AudioWorklet (16 kHz on the audio
+thread), with an energy detector for open mic (1.1 s of silence ends an
+utterance) and push-to-talk on a 500 ms Space hold. Our own reply pauses
+open-mic capture; new speech or a Space hold stops it at once
+(`interruption`, `completion: interrupted`). Microphones need a secure context,
+so voice input works on the host computer (`localhost`), not from other
+devices on the network.
+
+Narration (NARRATION rule, off by default, shown only when Piper is
+available): when Autopilot starts a new alert shot (never a tour stop), a short
+grounded briefing — drill marker, category and title, verification and
+confidence, independent sources, age, nearby events — is spoken in the UI
+language (Russian or English) with a caption and a SKIP button, at most once
+per event revision. It never plays while a voice session is active, and stops
+at once when Autopilot pauses (map drag, other camera owner), on world change
+and on teardown.
+
+Measured here, per stage: transcription 1.6–2.6 s, a warm model turn about 4 s
+(about 10–20 s when the prompt cache is cold or an assessment is still
+running), speech 0.5–1 s. In the headless browser gate, where the globe renders
+on the CPU, a full spoken turn took 40–55 s because Whisper, Qwen and the
+renderer share six cores; Qwen fills the 8 GB GPU, which leaves no room for
+GPU Whisper.
+
 ## Evidence contract (summary)
 
 Connectors emit raw records; `normalizeObservation` validates them into:
@@ -307,27 +377,28 @@ Run: `node --test src/intel/*.test.mjs server/providers/intel/*.test.mjs`
 (also part of `npm test`), plus `node scripts/qa-autopilot.mjs` against a
 running server.
 
-| Spec scenario                                               | Covered by                                                         | Result                                     |
-| ----------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------ |
-| A01 one verified event                                      | `engine.test.mjs`, `scheduler.test.mjs`, `qa-autopilot`            | pass (flight, 40 km framing, dwell)        |
-| A02 two events ~300 km                                      | `clustering.test.mjs`, `scheduler.test.mjs` (framing)              | pass                                       |
-| A03 continents apart                                        | `clustering.test.mjs`, `scheduler.test.mjs`                        | pass (separate shots, rotation)            |
-| A04 179°E / 179°W                                           | clustering and framing tests, `qa-autopilot` (Fiji shot)           | pass                                       |
-| A05 syndicated copies                                       | `engine.test.mjs`, demo replay (Lima)                              | pass                                       |
-| A06 republished every minute                                | `engine.test.mjs`, demo replay                                     | pass                                       |
-| A07 material development, evacuation                        | `engine.test.mjs`, demo replay                                     | pass                                       |
-| A08 hysteresis / oscillation                                | `scheduler.test.mjs`                                               | pass                                       |
-| A09 critical arrival                                        | `scheduler.test.mjs`, `qa-autopilot`                               | pass (interrupts once)                     |
-| A10 sensational single source                               | engine, service and scheduler tests                                | pass (capped, cannot interrupt)            |
-| A11 manual override                                         | `scheduler.test.mjs`, `qa-autopilot` (real mouse drag)             | pass (pauses until RESUME)                 |
-| A12 fade and archive                                        | `engine.test.mjs`                                                  | pass                                       |
-| A13 feed offline / stale                                    | `service.test.mjs`                                                 | pass                                       |
-| A14 KoboldCpp stops during inference                        | `localLlm.test.mjs` (hung generation → timeout)                    | pass (offline, rule scores kept)           |
-| A15 malformed JSON, fake evidence ids, invented coordinates | `assessment.test.mjs`, `localLlm.test.mjs`                         | pass (rejected, source data unchanged)     |
-| A16–A17 local voice                                         | —                                                                  | pending (Phase 4)                          |
-| A18 no remote AI requests                                   | `localLlm.test.mjs` (loopback-only URLs, remote base URLs refused) | pass for the model; voice pending          |
-| A19 restart / hidden tab                                    | `scheduler.test.mjs` (no backlog); store reopens on restart        | pass (unit); hidden-tab browser QA pending |
-| A20 upstream change check                                   | —                                                                  | pending (Phase 6)                          |
+| Spec scenario                                               | Covered by                                                                                              | Result                                                                |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| A01 one verified event                                      | `engine.test.mjs`, `scheduler.test.mjs`, `qa-autopilot`                                                 | pass (flight, 40 km framing, dwell)                                   |
+| A02 two events ~300 km                                      | `clustering.test.mjs`, `scheduler.test.mjs` (framing)                                                   | pass                                                                  |
+| A03 continents apart                                        | `clustering.test.mjs`, `scheduler.test.mjs`                                                             | pass (separate shots, rotation)                                       |
+| A04 179°E / 179°W                                           | clustering and framing tests, `qa-autopilot` (Fiji shot)                                                | pass                                                                  |
+| A05 syndicated copies                                       | `engine.test.mjs`, demo replay (Lima)                                                                   | pass                                                                  |
+| A06 republished every minute                                | `engine.test.mjs`, demo replay                                                                          | pass                                                                  |
+| A07 material development, evacuation                        | `engine.test.mjs`, demo replay                                                                          | pass                                                                  |
+| A08 hysteresis / oscillation                                | `scheduler.test.mjs`                                                                                    | pass                                                                  |
+| A09 critical arrival                                        | `scheduler.test.mjs`, `qa-autopilot`                                                                    | pass (interrupts once)                                                |
+| A10 sensational single source                               | engine, service and scheduler tests                                                                     | pass (capped, cannot interrupt)                                       |
+| A11 manual override                                         | `scheduler.test.mjs`, `qa-autopilot` (real mouse drag)                                                  | pass (pauses until RESUME)                                            |
+| A12 fade and archive                                        | `engine.test.mjs`                                                                                       | pass                                                                  |
+| A13 feed offline / stale                                    | `service.test.mjs`                                                                                      | pass                                                                  |
+| A14 KoboldCpp stops during inference                        | `localLlm.test.mjs` (hung generation → timeout)                                                         | pass (offline, rule scores kept)                                      |
+| A15 malformed JSON, fake evidence ids, invented coordinates | `assessment.test.mjs`, `localLlm.test.mjs`                                                              | pass (rejected, source data unchanged)                                |
+| A16 Russian speech command                                  | `localVoice.test.mjs`, `scripts/qa-local-voice.mjs` (fake microphone playing Piper Russian)             | pass (transcribed, `fly_to_location`, camera at Paris, Russian reply) |
+| A17 narration interrupted by the operator                   | `localVoice.test.mjs`, `qa-local-voice` (map drag)                                                      | pass (playback and caption stop at once)                              |
+| A18 no remote AI requests                                   | `localLlm.test.mjs`, `localVoice.test.mjs` (server and adapter), `qa-local-voice` (browser network log) | pass                                                                  |
+| A19 restart / hidden tab                                    | `scheduler.test.mjs` (no backlog); store reopens on restart                                             | pass (unit); hidden-tab browser QA pending                            |
+| A20 upstream change check                                   | —                                                                                                       | pending (Phase 6)                                                     |
 
 Additional: two protests in one city stay separate; retraction authority;
 nationwide reports without points; malformed records; batch-order
@@ -336,7 +407,10 @@ injection text stored inert (`[DRILL]` rumour).
 
 ## Known limitations
 
-- Narration and voice are Phase 4; the panel does not offer them.
+- Voice input works only on the host computer (browsers allow microphones on
+  `localhost` or HTTPS); other devices can hear narration.
+- Explanations and system messages are spoken in the UI language, model
+  replies in the speaker's language.
 - The model's summary is English only; Russian summaries come with Phase 4
   narration. Its category suggestion is shown in the data but not applied.
 - The browser QA gate pauses local AI for its run (camera checks need
