@@ -163,4 +163,20 @@ test('legacy base shots of an applied append pack show their built-in names', as
   assert.notEqual(displayShotTitle(title), title);
   // Without the pack marker the same title in another scene stays as typed.
   assert.equal(displayShotTitle(title, shot, { id: 'scene-user' }), title);
+  // A marker with shotBindings still localizes the shot bound to the title
+  // (a typed one stays as typed: shotTitleProvenance.test.mjs).
+  const boundScene = {
+    id: 'bhote-koshi-nepal-scene',
+    appliedShotPacks: [
+      {
+        id: pack.id,
+        version: pack.version,
+        shotBindings: { [title]: shot.id },
+      },
+    ],
+  };
+  assert.equal(
+    displayShotTitle(title, shot, boundScene),
+    displayShotTitle(title),
+  );
 });

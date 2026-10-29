@@ -1070,7 +1070,7 @@ export function displaySceneTitle(scene) {
 export function displayShotTitle(title, shot = undefined, scene = undefined) {
   const text = typeof title === 'string' ? title : '';
   const fromRecipe = shot
-    ? Boolean(shot.sourcePackId) || recipeDeclaresShotTitle(scene, text)
+    ? Boolean(shot.sourcePackId) || recipeDeclaresShotTitle(scene, text, shot)
     : true;
   if (fromRecipe && BUILTIN_SHOT_TITLES.has(text)) return t(text);
   const numbered = /^Shot ([1-9]\d*)$/.exec(text);
@@ -1081,8 +1081,10 @@ export function displayShotTitle(title, shot = undefined, scene = undefined) {
  * Whether the built-in recipe behind a scene declares a shot with this title:
  * its own keyframes, or the legacy base shots an applied append pack wrote
  * (those carry no sourcePackId, see SceneDirector._bootstrapLegacyShotPacks).
+ * A pack marker with shotBindings vouches only for the shot bound to the
+ * title, so a later shot typed with the same title stays as typed.
  */
-function recipeDeclaresShotTitle(scene, title) {
+function recipeDeclaresShotTitle(scene, title, shot) {
   const declares = (cameraPath) =>
     Boolean(cameraPath?.some((keyframe) => keyframe?.title === title));
   const recipe = scene?.id ? getSceneRecipeById(scene.id) : null;
@@ -1090,9 +1092,11 @@ function recipeDeclaresShotTitle(scene, title) {
   const packs = Array.isArray(scene?.appliedShotPacks)
     ? scene.appliedShotPacks
     : [];
-  return packs.some((entry) =>
-    declares(
-      getSceneAppendRecipeById(entry?.id)?.legacySceneBootstrap?.cameraPath,
-    ),
+  return packs.some(
+    (entry) =>
+      declares(
+        getSceneAppendRecipeById(entry?.id)?.legacySceneBootstrap?.cameraPath,
+      ) &&
+      (!entry.shotBindings || entry.shotBindings[title] === shot?.id),
   );
 }
