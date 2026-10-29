@@ -658,7 +658,6 @@ test('narrow-screen rails pin every hosted panel glow inside its panel box', () 
     'data-panel',
     'scene-panel',
     'cctv-panel',
-    'global-context-panel',
   ]) {
     assert.match(
       css,

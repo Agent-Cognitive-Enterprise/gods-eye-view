@@ -227,13 +227,9 @@ test('Cockpit Escape handling precedes form-control shortcut suppression and foc
   );
 });
 
-test('Cockpit shortcut failures do not leak and open Radio owns the first Escape', () => {
+test('Cockpit shortcut failures do not leak and open utilities own the first Escape', () => {
   const keydown = cockpitKeyDown.toString();
   assert.ok(keydown, 'Cockpit keyboard handler is missing');
-  assert.match(
-    keydown,
-    /document\s*\.getElementById\('context-radio-dock'\)\s*\?\.classList\.contains\('disclosure-open'\)/,
-  );
   assert.match(keydown, /#cockpit-utility-controls \[aria-expanded="true"\]/);
   assert.match(
     keydown,
@@ -898,7 +894,7 @@ test('Cockpit Radio station changes preserve first-person camera ownership', () 
   );
   assert.match(
     radioBindings,
-    /listen\(this\._contextRadioMiniNextBtn, 'click', \(\) => cycleRadio\(1\)\)/,
+    /listen\(this\._radioNextBtn, 'click', \(\) => cycleRadio\(1\)\)/,
   );
   assert.match(
     radioBindings,

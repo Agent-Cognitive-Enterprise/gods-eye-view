@@ -374,7 +374,7 @@ test('an overlay with NO class to watch still disarms the launcher', () => {
   assert.match(covered, /\} catch \{\s*\n\s*return false;\s*\n\s*\}/);
 });
 
-test('one ESC does one thing — the radio disclosure stops the launcher outright', () => {
+test('one ESC does one thing — a Cockpit utility disclosure stops the launcher outright', () => {
   const ui = fs.readFileSync(
     new URL('./ui/radioBindings.js', import.meta.url),
     'utf8',
@@ -384,8 +384,8 @@ test('one ESC does one thing — the radio disclosure stops the launcher outrigh
   // disclosure's earlier capture handler closed the disclosure and the launcher
   // dismissed itself off the same key. The earlier listener is the only one that
   // can stop the later one — and only the immediate form does it.
-  const radioEsc = ui.slice(ui.indexOf("event.key !== 'Escape' ||"));
-  const claim = radioEsc.slice(0, radioEsc.indexOf('setRadioDisclosure(false'));
+  const utilityEsc = ui.slice(ui.indexOf('if (!displayOpen && !radioOpen) return;'));
+  const claim = utilityEsc.slice(0, utilityEsc.indexOf('setCockpitDisclosure(kind, false'));
   assert.match(claim, /event\.preventDefault\(\);/);
   assert.match(claim, /event\.stopImmediatePropagation\(\);/);
   assert.doesNotMatch(
