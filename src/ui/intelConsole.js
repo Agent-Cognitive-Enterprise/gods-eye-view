@@ -57,7 +57,7 @@ const PAN_WAIT_MS = 2_500;
 const SETTLE_WAIT_MS = 4_000;
 const TILE_POLL_MS = 200;
 // Globe tiles kept in memory while Autopilot runs (Cesium's default is 100).
-const TILE_CACHE = 1_000;
+const TILE_CACHE = 300;
 const DEMO_SPEED = 30;
 // Per-browser memory of ON / OFF / PAUSED across page reloads.
 const MODE_STORAGE_KEY = 'gev.intel.autopilotMode';

@@ -180,7 +180,7 @@ shot's own tiles have loaded (at most 4 s), the camera holds for
 `pullBackHoldMs` (10 s; alerts 1.5×), then every `pullBackStepMs` (5 s) zooms
 straight out by an equal ratio, keeping the event centred, until the whole
 globe fits with space around it, at least one step before the next move.
-While Autopilot runs, the globe keeps up to 1,000 tiles in memory and preloads
+While Autopilot runs, the globe keeps up to 300 tiles in memory and preloads
 neighbouring tiles; the app's own values return when it stops. Any drag or
 wheel input still pauses Autopilot, and the zoom-out never counts as input.
 Each browser remembers ON / OFF / PAUSED across reloads (`localStorage`).
@@ -236,11 +236,14 @@ machine translation; queue rows show an AI badge.
 Scheduling: every 15 s, one cycle at a time (a manual trigger joins the
 running cycle); up to three events per cycle, highest attention first,
 active and at least 40 or camera-eligible, not yet assessed for this
-revision, model and prompt version; at most 120 generations an hour. A cycle
-is skipped while KoboldCpp reports another client's work (its `idle=0` for
-six seconds after our own request is ignored). A timeout or connection
-failure marks the model offline until the next probe (60 s) and leaves all
-scores rule-based.
+revision, model and prompt version; a revised event at most every 20 min
+(rule-based in between); at most 40 generations an hour. A cycle is skipped
+while KoboldCpp reports another client's work (its `idle=0` for six seconds
+after our own request is ignored). A timeout or connection failure marks the
+model offline until the next probe (60 s) and leaves all scores rule-based;
+after a timeout the abandoned generation is stopped (`/api/extra/abort`),
+assessments rest for 5 min, and that event revision waits 30 min before a
+retry (an earlier version retried it every cycle, keeping the GPU busy).
 
 Measured on this machine: about 13–19 s per assessment; 45 live assessments
 across the drill and USGS feed with 0 rejections. Routes: `GET /api/intel/ai`

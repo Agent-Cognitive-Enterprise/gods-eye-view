@@ -7,6 +7,10 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **Lower background load.** After a model timeout the abandoned KoboldCpp
+  generation is stopped, assessments rest 5 min and the event waits 30 min;
+  revised events are re-assessed at most every 20 min; at most 40
+  generations an hour (was 120); Autopilot tile cache 300 (was 1,000).
 - **Camera moves.** Turn the globe at the current height, then descend;
   stepped zoom-out to a whole-globe view after each shot (ZOOM OUT rule);
   waits for map tiles before descending and before the hold, a larger tile

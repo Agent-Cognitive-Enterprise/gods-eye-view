@@ -17,6 +17,13 @@ const CYCLE_MS = 15_000;
 const PROBE_EVERY_MS = 60_000;
 const MAX_CACHE = 2_000;
 const MIN_ATTENTION_FOR_AI = 40;
+// After a failed generation (usually a timeout on a busy GPU) the model gets
+// a rest, and that event revision is not tried again for a while.
+const FAILURE_PAUSE_MS = 5 * 60_000;
+const FAILED_RETRY_MS = 30 * 60_000;
+// A frequently revised event (US weather alerts) is re-assessed at most this
+// often; in between its score is rule-based.
+const REASSESS_GAP_MS = 20 * 60_000;
 
 /**
  * @param {{llm: object, worlds: () => Array<{name: string, engine: object,
@@ -29,7 +36,7 @@ export function createAssessor({
   enabled,
   now = () => Date.now(),
   perCycle = 3,
-  hourlyCap = 120,
+  hourlyCap = 40,
   log = (...args) => console.warn(...args),
 }) {
   const cache = new Map(); // cache key -> {ok, at, errors?}
@@ -41,6 +48,7 @@ export function createAssessor({
   let pending = 0;
   let lastCycleAt = null;
   let lastRejection = null;
+  let pausedUntil = 0;
 
   const remember = (key, value) => {
     cache.set(key, value);
@@ -59,8 +67,9 @@ export function createAssessor({
           continue;
         if (event.verification === 'retracted') continue;
         if (
-          event.assessment?.revision === event.revision &&
-          event.assessment?.model === model
+          event.assessment?.model === model &&
+          (event.assessment.revision === event.revision ||
+            now() - (event.assessment.assessed_at ?? 0) < REASSESS_GAP_MS)
         )
           continue;
         const prompt = buildAssessmentPrompt(
@@ -69,7 +78,9 @@ export function createAssessor({
           { exercise: world.name === 'replay' },
         );
         const key = assessmentCacheKey(event, prompt.digest, model);
-        if (cache.has(key)) continue;
+        const seen = cache.get(key);
+        if (seen && !(seen.failed && now() - seen.at >= FAILED_RETRY_MS))
+          continue;
         out.push({ world, event, prompt, key });
       }
     }
@@ -128,6 +139,7 @@ export function createAssessor({
     )
       status = await llm.probe();
     if (status.status !== 'online') return 'offline';
+    if (now() < pausedUntil) return 'backing_off';
     const model = status.model;
     const queue = candidates(model);
     pending = queue.length;
@@ -146,6 +158,8 @@ export function createAssessor({
         await assessOne(job, model);
       } catch (error) {
         counts.failed += 1;
+        remember(job.key, { ok: false, failed: true, at: now() });
+        pausedUntil = now() + FAILURE_PAUSE_MS;
         log(
           `[intel] local model failed for ${job.event.event_id}: ${error.message}`,
         );
@@ -206,6 +220,7 @@ export function createAssessor({
         queue_length: pending,
         last_cycle_at: lastCycleAt,
         last_rejection: lastRejection,
+        backoff_until: pausedUntil > now() ? pausedUntil : null,
         prompt_version: PROMPT_VERSION,
         ...counts,
       };

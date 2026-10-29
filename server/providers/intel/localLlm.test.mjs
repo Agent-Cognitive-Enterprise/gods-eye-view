@@ -181,6 +181,46 @@ test('A14: the model server stopping mid-generation times out to rule-based scor
   assert.ok(server.urls.every((u) => u.startsWith('http://127.0.0.1:5001/')));
 });
 
+test('a timeout stops the abandoned generation and rests the model', async () => {
+  let clock = T0;
+  const server = fakeServer({
+    chat: (init, n) =>
+      n === 1
+        ? new Promise((_, reject) =>
+            init.signal.addEventListener(
+              'abort',
+              () => reject(init.signal.reason),
+              { once: true },
+            ),
+          )
+        : goodReply,
+  });
+  const llm = createLocalLlm({
+    baseUrl: BASE,
+    fetchImpl: server.fetchImpl,
+    now: () => clock,
+    timeoutMs: 50,
+  });
+  const service = createIntelService({ now: () => clock, llm, log: () => {} });
+  service.engine.ingest([unrest], { receivedAt: T0 });
+  assert.equal(await service.assessNow(), 'failed');
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  assert.ok(
+    server.urls.includes('http://127.0.0.1:5001/api/extra/abort'),
+    'the abandoned generation is stopped',
+  );
+  clock += 2 * 60_000; // the server answers probes again
+  assert.equal(await service.assessNow(), 'backing_off');
+  assert.ok(service.aiStatus().backoff_until > clock);
+  clock += 5 * 60_000;
+  assert.equal(await service.assessNow(), 'ok');
+  assert.equal(server.completions(), 1, 'the failed revision waits');
+  clock += 30 * 60_000;
+  assert.equal(await service.assessNow(), 'ok');
+  assert.equal(server.completions(), 2, 'retried once the wait is over');
+  assert.equal(service.aiStatus().assessed, 1);
+});
+
 test('busy elsewhere: no request competes with the operator’s own generation', async () => {
   const server = fakeServer({ perf: { queue: 1, idle: 0 } });
   const service = serviceWith(server);

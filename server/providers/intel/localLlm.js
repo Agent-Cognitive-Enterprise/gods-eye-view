@@ -157,6 +157,15 @@ export function createLocalLlm({
           ? 'timeout'
           : String(error?.message || error).slice(0, 160);
       state.last_error = message;
+      // KoboldCpp keeps generating after the client gives up; stop the
+      // abandoned generation (ours: we checked it was idle before sending).
+      if (message === 'timeout')
+        fetchImpl(`${origin(state.base_url)}/api/extra/abort`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+          signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+        }).catch(() => {});
       // A dead server shows as offline until the next probe finds it again.
       if (
         message === 'timeout' ||
