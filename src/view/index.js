@@ -20,7 +20,6 @@ export const STYLE_URL_NAMES = Object.freeze({
   thermal: 'flir',
   anime: 'anime',
   noir: 'noir',
-  snow: 'snow',
 });
 
 const STYLES_BY_URL_NAME = Object.freeze(
