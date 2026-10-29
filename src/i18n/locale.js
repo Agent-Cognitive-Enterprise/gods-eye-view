@@ -13,6 +13,7 @@ export const LOCALES = Object.freeze([
   'es',
   'it',
   'ru',
+  'uk',
   'zh-CN',
   'zh-Hant',
 ]);
@@ -23,6 +24,7 @@ export const LOCALE_NAMES = Object.freeze({
   es: 'Español',
   it: 'Italiano',
   ru: 'Русский',
+  uk: 'Українська',
   'zh-CN': '中文（简体）',
   'zh-Hant': '中文（繁體）',
 });
