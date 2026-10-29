@@ -155,10 +155,22 @@ test('bootstrap shots of a built-in scene localize without a source pack', () =>
   );
   if (!scene) return;
   for (const { title } of bootstrap.cameraPath) {
-    // The upgrade copies these keyframes into the scene without sourcePackId.
+    // The upgrade copies these keyframes into the scene without sourcePackId
+    // and binds each title to its shot in the pack marker.
+    const upgraded = {
+      id: scene.id,
+      appliedShotPacks: [
+        { id: append.id, version: 1, shotBindings: { [title]: 'shot-old' } },
+      ],
+    };
     assert.equal(
-      displayShotTitle(title, { id: 'shot-old', title }, { id: scene.id }),
+      displayShotTitle(title, { id: 'shot-old', title }, upgraded),
       displayShotTitle(title),
+    );
+    // Another shot the operator gave the same title stays as typed.
+    assert.equal(
+      displayShotTitle(title, { id: 'shot-user', title }, upgraded),
+      title,
     );
     // The same title in an operator's own scene stays as typed.
     assert.equal(
