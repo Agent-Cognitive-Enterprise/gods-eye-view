@@ -919,3 +919,19 @@ test('ramp and lane wording stays localized after choosing the maneuver form', (
     );
   }
 });
+
+test('the reroute tooltip keeps German mode nouns capitalized', (t) => {
+  t.after(() => setLocale('en'));
+  const title = (id) =>
+    directionsRowControls(idle).chips.find((chip) => chip.id === id).title;
+  assert.equal(title('mode-foot'), 'Walk — reroute for walk');
+  setLocale('de');
+  assert.equal(
+    title('mode-foot'),
+    'Zu Fuß – Route im Modus „Zu Fuß“ neu berechnen',
+  );
+  assert.equal(
+    title('mode-bike'),
+    'Fahrrad – Route im Modus „Fahrrad“ neu berechnen',
+  );
+});

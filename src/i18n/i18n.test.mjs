@@ -36,6 +36,9 @@ test('normalizeLocale folds regional variants and rejects unshipped tags', () =>
   assert.equal(normalizeLocale('uk'), 'uk');
   assert.equal(normalizeLocale('uk-UA'), 'uk');
   assert.equal(normalizeLocale('en_GB'), 'en');
+  assert.equal(normalizeLocale('de'), 'de');
+  assert.equal(normalizeLocale('de-AT'), 'de');
+  assert.equal(normalizeLocale('de_CH'), 'de');
   assert.equal(normalizeLocale('fr'), 'fr');
   assert.equal(normalizeLocale('fr-CA'), 'fr');
   assert.equal(normalizeLocale('FR_be'), 'fr');
@@ -77,7 +80,7 @@ test('resolveLocale: ?lang= wins, then the stored choice, then browser languages
     resolveLocale({
       location: { search: '?lang=xx' },
       storage: memoryStorage(),
-      languages: ['de-DE', 'ru-RU'],
+      languages: ['ko-KR', 'ru-RU'],
     }),
     'ru',
   );
@@ -85,7 +88,15 @@ test('resolveLocale: ?lang= wins, then the stored choice, then browser languages
     resolveLocale({
       location: { search: '' },
       storage: memoryStorage(),
-      languages: ['de'],
+      languages: ['de-DE', 'ru-RU'],
+    }),
+    'de',
+  );
+  assert.equal(
+    resolveLocale({
+      location: { search: '' },
+      storage: memoryStorage(),
+      languages: ['ko'],
     }),
     'en',
   );
