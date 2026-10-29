@@ -172,7 +172,7 @@ test('a preset explicitly selected in Cyber survives exit and resets for re-entr
   assert.equal(owner._preCyberStyle, 'noir');
   owner._setHudVariant('minimal', { applyVisualDefaults: true });
   assert.equal(hud.getVariant(), 'minimal');
-  assert.equal(owner.activeStyle, 'snow');
+  assert.equal(owner.activeStyle, 'anime');
   assert.equal(owner._preCyberStyle, null);
   assert.equal(owner._cyberStyleUserSelected, false);
 
@@ -208,7 +208,7 @@ test('an authoritative same-Cyber reset clears local preset ownership', (t) => {
   assert.equal(owner._preCyberStyle, null);
   assert.equal(owner._cyberStyleUserSelected, false);
   owner._setHudVariant('minimal', { applyVisualDefaults: true });
-  assert.equal(owner.activeStyle, 'snow');
+  assert.equal(owner.activeStyle, 'anime');
 });
 
 test('Display and voice HUD routes preserve explicit Cyber entry and exit authority', async (t) => {
@@ -239,12 +239,12 @@ test('Display and voice HUD routes preserve explicit Cyber entry and exit author
   hudLayout.dispatchEvent(new Event('change'));
   assert.equal(display.hud.getVariant(), 'cyber');
   assert.equal(display.owner.activeStyle, 'thermal');
-  snowButton.dispatchEvent(new Event('click'));
-  assert.equal(display.owner.activeStyle, 'snow');
+  animeButton.dispatchEvent(new Event('click'));
+  assert.equal(display.owner.activeStyle, 'anime');
   hudLayout.value = 'minimal';
   hudLayout.dispatchEvent(new Event('change'));
   assert.equal(display.hud.getVariant(), 'minimal');
-  assert.equal(display.owner.activeStyle, 'snow');
+  assert.equal(display.owner.activeStyle, 'anime');
   controls.destroy();
 
   const voice = makeOwner();
@@ -265,11 +265,11 @@ test('Display and voice HUD routes preserve explicit Cyber entry and exit author
   assert.equal(voice.owner.activeStyle, 'thermal');
   const selected = await runVoiceAction('set_visual_style', { style: 'anime' });
   assert.equal(selected.ok, true);
-  assert.equal(voice.owner.activeStyle, 'snow');
+  assert.equal(voice.owner.activeStyle, 'anime');
   const exited = await runVoiceAction('set_hud', { layout: 'minimal' });
   assert.equal(exited.ok, true);
   assert.equal(voice.hud.getVariant(), 'minimal');
-  assert.equal(voice.owner.activeStyle, 'snow');
+  assert.equal(voice.owner.activeStyle, 'anime');
 });
 
 test('scope choice and expanded feather survive every HUD layout and both restore paths', async (t) => {

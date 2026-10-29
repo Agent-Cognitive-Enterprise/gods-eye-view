@@ -90,35 +90,35 @@ probability of about 255 in 256 (many of them already fail as base64url).
 
 ## Field registry (top level)
 
-| #   | State key                    | Type  | Default     | Encoding                                                |
-| --- | ---------------------------- | ----- | ----------- | ------------------------------------------------------- |
-| 1   | `view.kind`                  | enum  | see below   | 0 place, 1 thing                                        |
-| 2   | `lat`                        | coord | 0           | zigzag of degrees × 10⁴                                 |
-| 3   | `lon`                        | coord | 0           | zigzag of degrees × 10⁴                                 |
-| 4   | `alt`                        | sint  | 800         | whole metres                                            |
-| 5   | `heading`                    | angle | 0           | whole degrees, see angles                               |
-| 6   | `pitch`                      | sint  | −35         | whole degrees                                           |
-| 7   | `roll`                       | angle | 0           | whole degrees                                           |
-| 8   | `sharedAtMs`                 | epoch | none        | zigzag seconds since 2026-01-01T00:00:00Z               |
-| 9   | booleans                     | flags | 0           | bit set when the value differs from default             |
-| 10  | `layerState.enabledLayerIds` | LEN   | none        | layer bitset, see layers                                |
-| 11  | `layerState.options`         | LEN   | none        | packed option triples, see layers                       |
-| 12  | `panelState`                 | LEN   | none        | packed panel entries, see panels                        |
-| 13  | thing                        | LEN   | none        | sub-message, see thing views                            |
-| 14  | `style`                      | enum  | `normal`    | normal, retro, surveillance, thermal, anime, noir, snow |
-| 15  | `mapStack`                   | enum  | `photoreal` | photoreal, bing-aerial, bing-labels, esri-imagery, osm  |
-| 16  | `hudVariant`                 | enum  | style       | tactical, operator (retired), minimal, cyber            |
-| 17  | `bloomIntensity`             | uint  | style       |                                                         |
-| 18  | `bloomVersion`               | uint  | 2           |                                                         |
-| 19  | `sharpenIntensity`           | uint  | style       |                                                         |
-| 20  | `detectionMode`              | enum  | style       | OFF, SPARSE, BALANCED, DENSE                            |
-| 21  | `detectionDensity`           | uint  | style       | one of 0, 25, 50, 75, 100                               |
-| 22  | `detectionAllocation`        | enum  | style       | ELASTIC, WEIGHTED                                       |
-| 23  | `detectionFadePct`           | uint  | style       | 0–40                                                    |
-| 24  | `detectionOutsideOpacityPct` | uint  | style       | 0–100                                                   |
-| 25  | `scopeFeatherPct`            | uint  | 100         | 0–200                                                   |
-| 26  | `scopeTerminusPct`           | uint  | none        | 94–100; absent is the adaptive terminus                 |
-| 27  | `styleParams`                | LEN   | style       | packed `(token, value × 100)` pairs                     |
+| #   | State key                    | Type  | Default     | Encoding                                                          |
+| --- | ---------------------------- | ----- | ----------- | ----------------------------------------------------------------- |
+| 1   | `view.kind`                  | enum  | see below   | 0 place, 1 thing                                                  |
+| 2   | `lat`                        | coord | 0           | zigzag of degrees × 10⁴                                           |
+| 3   | `lon`                        | coord | 0           | zigzag of degrees × 10⁴                                           |
+| 4   | `alt`                        | sint  | 800         | whole metres                                                      |
+| 5   | `heading`                    | angle | 0           | whole degrees, see angles                                         |
+| 6   | `pitch`                      | sint  | −35         | whole degrees                                                     |
+| 7   | `roll`                       | angle | 0           | whole degrees                                                     |
+| 8   | `sharedAtMs`                 | epoch | none        | zigzag seconds since 2026-01-01T00:00:00Z                         |
+| 9   | booleans                     | flags | 0           | bit set when the value differs from default                       |
+| 10  | `layerState.enabledLayerIds` | LEN   | none        | layer bitset, see layers                                          |
+| 11  | `layerState.options`         | LEN   | none        | packed option triples, see layers                                 |
+| 12  | `panelState`                 | LEN   | none        | packed panel entries, see panels                                  |
+| 13  | thing                        | LEN   | none        | sub-message, see thing views                                      |
+| 14  | `style`                      | enum  | `normal`    | normal, retro, surveillance, thermal, anime, noir, snow (retired) |
+| 15  | `mapStack`                   | enum  | `photoreal` | photoreal, bing-aerial, bing-labels, esri-imagery, osm            |
+| 16  | `hudVariant`                 | enum  | style       | tactical, operator (retired), minimal, cyber                      |
+| 17  | `bloomIntensity`             | uint  | style       |                                                                   |
+| 18  | `bloomVersion`               | uint  | 2           |                                                                   |
+| 19  | `sharpenIntensity`           | uint  | style       |                                                                   |
+| 20  | `detectionMode`              | enum  | style       | OFF, SPARSE, BALANCED, DENSE                                      |
+| 21  | `detectionDensity`           | uint  | style       | one of 0, 25, 50, 75, 100                                         |
+| 22  | `detectionAllocation`        | enum  | style       | ELASTIC, WEIGHTED                                                 |
+| 23  | `detectionFadePct`           | uint  | style       | 0–40                                                              |
+| 24  | `detectionOutsideOpacityPct` | uint  | style       | 0–100                                                             |
+| 25  | `scopeFeatherPct`            | uint  | 100         | 0–200                                                             |
+| 26  | `scopeTerminusPct`           | uint  | none        | 94–100; absent is the adaptive terminus                           |
+| 27  | `styleParams`                | LEN   | style       | packed `(token, value × 100)` pairs                               |
 
 Field 1 absent means `thing` when field 13 is present and `place` otherwise,
 so v1 never writes it; a later view kind writes its code.

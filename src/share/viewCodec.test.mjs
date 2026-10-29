@@ -450,7 +450,8 @@ test('defaults travel as frozen meanings that match today’s app defaults', () 
     SHARE_VIEW_ENUMS.hudVariant.filter((variant) => variant !== 'operator'),
     [...HUD_LAYOUTS],
   );
-  assert.deepEqual(SHARE_VIEW_ENUMS.style, [...VIEW_STYLES]);
+  // Snow is retired; its code stays reserved (see the retired-style test).
+  assert.deepEqual(SHARE_VIEW_ENUMS.style, [...VIEW_STYLES, 'snow']);
   assert.deepEqual(SHARE_VIEW_ENUMS.mapStack, [...VIEW_MAPS]);
   assert.deepEqual(SHARE_VIEW_ENUMS.detectionAllocation, [
     ...ALLOCATION_STRATEGIES,
