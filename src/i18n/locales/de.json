@@ -2935,5 +2935,8 @@
   "Reset map to north up": "Karte nach Norden ausrichten",
   "Reset map bearing to north": "Kartenausrichtung auf Norden zurücksetzen",
   "Cyclone request timed out": "Zeitüberschreitung bei der Wirbelsturm-Abfrage",
-  "Malformed cyclone snapshot": "Fehlerhafter Wirbelsturm-Snapshot"
+  "Malformed cyclone snapshot": "Fehlerhafter Wirbelsturm-Snapshot",
+  "STALE · Roads: {source} · Flow: cached TomTom tiles": "VERALTET · Straßen: {source} · Verkehrsfluss: TomTom-Kacheln aus dem Cache",
+  "routing busy — too many routes at once": "Routing-Dienst ausgelastet – zu viele Routen gleichzeitig",
+  "route proxy error": "Fehler des Routen-Proxys"
 }
