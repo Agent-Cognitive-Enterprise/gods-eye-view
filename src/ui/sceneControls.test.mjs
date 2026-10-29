@@ -169,6 +169,37 @@ test('Scene controls render the supplied selection and running/download states',
   }
 });
 
+test('Authoring disables idle actions that would do nothing', () => {
+  const f = fixture();
+  try {
+    assert.equal(f.elements.start.textContent, 'PLAY');
+    assert.equal(f.elements.start.disabled, false);
+    assert.equal(f.elements.update.disabled, false);
+    assert.equal(f.elements.panel.classList.contains('has-shots'), true);
+
+    f.state.selectedShotId = null;
+    f.owner.setButtons(false);
+    assert.equal(f.elements.update.disabled, true);
+    assert.equal(f.elements.start.disabled, false);
+
+    f.state.scenes[0].shots = [];
+    f.owner.setButtons(false);
+    assert.equal(f.elements.start.disabled, true);
+    assert.equal(f.elements.next.disabled, true);
+    assert.equal(f.elements.capture.disabled, false);
+    assert.equal(f.elements.panel.classList.contains('has-shots'), false);
+
+    f.state.scenes = [];
+    f.state.selectedSceneId = null;
+    f.owner.setButtons(false);
+    assert.equal(f.elements.delete.disabled, true);
+    assert.equal(f.elements.capture.disabled, true);
+    assert.equal(f.elements.new.disabled, false);
+  } finally {
+    f.restore();
+  }
+});
+
 test('Scene controls dispatch explicit actions and revoke replaced shot-row listeners', () => {
   const f = fixture();
   try {

@@ -1,6 +1,6 @@
 # Director authoring and file sharing
 
-Open Scenes and select a scene and shot. Existing capture, update, playback and
+Open Authoring and select a scene and shot. Existing capture, update, playback and
 whole-project export controls remain available. Authored scene content, source
 links, assets and contributor credit are preserved.
 

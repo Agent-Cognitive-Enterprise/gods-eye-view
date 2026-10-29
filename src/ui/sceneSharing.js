@@ -181,17 +181,24 @@ export function mountSceneSharing(
   bar.dataset.directorAuthoring = '';
   bar.className = 'scene-controls';
   const entries = [
-    [t('EDIT DETAILS'), edit],
-    [t('SHARE SCENE'), share],
+    [t('EDIT DETAILS'), t('Edit the scene title and description'), edit],
+    [t('SHARE SCENE'), t('Share this scene as a link or file'), share],
   ];
   const removers = [];
-  for (const [text, fn] of entries) {
-    const b = createActionButton({ label: text, className: 'scene-btn' });
+  for (const [text, title, fn] of entries) {
+    const b = createActionButton({
+      label: text,
+      title,
+      className: 'scene-btn',
+    });
     b.addEventListener('click', fn);
     removers.push(() => b.removeEventListener('click', fn));
     bar.append(b);
   }
-  (panel.querySelector?.('.scene-panel-inner') || panel).appendChild(bar);
+  // Beside EXPORT / IMPORT, under SAVE & SHARE.
+  const fileRow = panel.querySelector?.('.scene-file-controls');
+  if (fileRow) fileRow.after(bar);
+  else (panel.querySelector?.('.scene-panel-inner') || panel).appendChild(bar);
   return () => {
     for (const remove of removers) remove();
     bar.remove();
