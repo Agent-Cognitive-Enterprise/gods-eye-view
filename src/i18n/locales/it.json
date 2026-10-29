@@ -3004,5 +3004,7 @@
   "Begin with a clean globe": "Inizia con un globo pulito",
   "Don't show this again": "Non mostrare più",
   "ESC to dismiss": "ESC per chiudere",
-  "Tip: the GEV MIC button in the dock lets you talk to the map.": "Suggerimento: il pulsante GEV MIC nel dock ti permette di parlare con la mappa."
+  "Tip: the GEV MIC button in the dock lets you talk to the map.": "Suggerimento: il pulsante GEV MIC nel dock ti permette di parlare con la mappa.",
+  "Malformed cyclone snapshot": "Snapshot dei cicloni non valido",
+  "Cyclone request timed out": "La richiesta dei cicloni è andata in timeout"
 }
