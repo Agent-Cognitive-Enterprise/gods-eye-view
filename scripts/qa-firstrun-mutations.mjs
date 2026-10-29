@@ -177,7 +177,7 @@ const MUTATIONS = [
   {
     // Anchored past the call so it lands on the Cockpit utility disclosure's
     // Escape claim and nowhere else.
-    defect: 'a Cockpit utility disclosure returns to stopPropagation, so one ESC does two things',
+    defect: 'a Cockpit utility disclosure returns to stopPropagation, so later document listeners also act on its ESC',
     file: 'radio',
     from: "      event.stopImmediatePropagation();\n      const kind = displayOpen ? 'display' : 'radio';",
     to: "      event.stopPropagation();\n      const kind = displayOpen ? 'display' : 'radio';",

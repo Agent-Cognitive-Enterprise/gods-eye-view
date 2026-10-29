@@ -439,7 +439,7 @@ test('Cockpit owns a focused shared Display portal and compact Radio controls', 
   assert.ok(cockpitRadio, 'Cockpit compact Radio controls are missing');
   assert.doesNotMatch(
     cockpitRadio[0],
-    /context-radio-details-btn|radio-filter|radio-tuner/,
+    /radio-filter|radio-tuner/,
   );
   assert.match(
     css,

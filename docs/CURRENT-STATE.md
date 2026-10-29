@@ -246,8 +246,8 @@ red hover border in both map and cockpit, so clipping does not hide the highligh
 Cyber's map-side right rail opens one panel at a time while keeping collapsed
 launchers available. Display, CCTV and Context scroll their contents inside fixed
 headers and decorative frames. The narrow-screen rail remains scrollable to reach
-each panel. Radio retains the shared nested Context player and compact
-header disclosure, without relocating playback controls on theme changes.
+each panel. Radio retains the shared nested Context player without relocating
+playback controls on theme changes.
 
 Voice help/error popups and Location/Visual Presets pins extend beyond their
 Cyber frames without being clipped: the shapes decorate non-interactive
@@ -2986,15 +2986,10 @@ down | auth-failed` (plus the unchanged `missing-key`/`unsupported`) with
 >   stacking. Narrow mobile Cockpit
 >   viewports suppress the legacy layer stack, peripheral HUD, and secondary
 >   Context/briefing panes so the flight instruments and primary controls remain
->   unobstructed. Outside Cockpit, Radio starts collapsed while off. When Context
->   is collapsed, its Radio header icon opens compact controls whose explicit
->   Enable/Disable action owns power; stable close and full-panel buttons own
->   compact dismissal and one-way detailed expansion independently. When Context
->   is already expanded, that same icon skips the floating compact card, expands
->   the embedded Radio section, scrolls it into view, and moves keyboard focus to
->   its disclosure control. The detailed panel's normal accordion control owns
->   its collapse. Compact/detailed state and playback continuity remain shared.
->   Radio volume in the full, compact, and Cockpit surfaces, plus Space Mission
+>   unobstructed. Outside Cockpit, Radio starts collapsed while off and lives
+>   only in its section inside Context; the detailed panel's normal accordion
+>   control owns its disclosure and its Enable/Disable action owns power.
+>   Radio volume in the full and Cockpit surfaces, plus Space Mission
 >   replay speed, use Display / Sharpen's muted 3px rail, circular cyan thumb,
 >   glow, and mono value treatment. Their larger transparent hit areas, keyboard
 >   focus indication, ranges, disabled states, and mission speed scale remain
@@ -4770,13 +4765,6 @@ synchronous playback-control observers run, so reentrant voice cleanup cannot
 overwrite a released stream with a stale paused state. Layer
 destruction likewise retains an enabled manager entry when module disable or
 destroy fails semantically, preventing an active orphan and allowing retry.
-When Context is collapsed, explicitly activating its Radio header icon reveals
-the compact transport; hover and focus alone do not open it. When Context is
-expanded, the icon instead expands and scrolls to the embedded Radio section.
-Its accessible label, controlled region, and expanded state keep describing the
-current route throughout enabling, enabled, disabling, and uncertain lifecycle
-renders. Both routes preserve Radio power, playback, station, filter, and volume
-state.
 
 Bundled datasets live in `src/data/local_data/` with per-folder provenance READMEs; they are lazily loaded via `src/data/localGeojsonCore.js` (Vite `?url` assets) when toggled on.
 

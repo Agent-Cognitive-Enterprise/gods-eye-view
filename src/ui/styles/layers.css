@@ -989,8 +989,11 @@
 #global-context-panel .panel-glow {
   display: none;
 }
-/* Its section titles (Context, Radio) stay legible over bright imagery. */
-#global-context-panel .panel-title {
+/* Expanded, its section titles (Context, Radio) stay legible over bright
+   imagery. Cyber keeps its own red titles; collapsed launchers match siblings. */
+:root:not([data-ui-theme='cyber'])
+  #global-context-panel:not(.collapsed)
+  .panel-title {
   color: var(--text-secondary);
 }
 .global-context-panel-inner {

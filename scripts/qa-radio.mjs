@@ -83,6 +83,32 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Native pick buffers and clustered overlay entries settle on rendered frames,
 // not on wall-clock sleeps, particularly with software rendering.
+// Radio lives only inside Context; a user reaches its controls by expanding
+// Context and then Radio. Returns the prior collapse state so a step can put
+// the panels back for the scenarios that follow.
+async function revealRadioControls(page, targetId) {
+  const prior = await page.evaluate(async (id) => {
+    const manager = window.__godsEyeView.styleManager;
+    const collapsed = (panelId) => document.getElementById(panelId).classList.contains('collapsed');
+    const state = { context: collapsed('global-context-panel'), radio: collapsed('radio-panel') };
+    manager.setPanelCollapsed('global-context-panel', false, { explicit: true });
+    manager.setPanelCollapsed('radio-panel', false, { explicit: true });
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    document.getElementById(id).scrollIntoView({ block: 'nearest' });
+    return state;
+  }, targetId);
+  await page.waitForSelector(`#${targetId}`, { visible: true });
+  return prior;
+}
+
+async function restoreRadioPanels(page, prior) {
+  await page.evaluate(({ context, radio }) => {
+    const manager = window.__godsEyeView.styleManager;
+    manager.setPanelCollapsed('radio-panel', radio);
+    manager.setPanelCollapsed('global-context-panel', context);
+  }, prior);
+}
+
 async function settleRadioFrames(page) {
   await page.evaluate(() => new Promise((resolve, reject) => {
     const scene = window.__godsEyeView.viewer.scene;
@@ -285,13 +311,16 @@ async function main() {
       window.__godsEyeView.styleManager.setPanelCollapsed('global-context-panel', true);
     });
 
+    const enablePanels = await revealRadioControls(page, 'radio-enable-btn');
     const enableStartedAt = Date.now();
-    await page.$eval('#radio-enable-btn', (button) => button.click());
+    await page.click('#radio-enable-btn');
     await page.waitForFunction(() => {
       const state = window.__godsEyeView.dataManager.layers.get('radio').module.getUIState();
       return state.enabled && !state.loading && state.stationCount === 750;
     });
     const enableElapsedMs = Date.now() - enableStartedAt;
+    // Later scenarios start from the collapsed rail this step began with.
+    await restoreRadioPanels(page, enablePanels);
     const initial = await page.evaluate(() => {
       const module = window.__godsEyeView.dataManager.layers.get('radio').module;
       const state = module.getUIState();
@@ -320,7 +349,7 @@ async function main() {
     check('750-station catalog renders within the browser budget', initial.state.stationCount === 750 && enableElapsedMs < 5000, `${enableElapsedMs}ms`);
     check('enable does not autoplay', initial.plays === 0 && initial.state.audioState === 'stopped');
     check(
-      'detailed Radio power control reflects the layer manager while the panel is collapsed',
+      'Radio power control reflects the layer manager after the panels collapse again',
       initial.enablePressed === 'true',
     );
     check('dynamic canonical and genre categories reach the UI', initial.filterOptions >= 10, `${initial.filterOptions} options`);
@@ -1537,7 +1566,7 @@ async function main() {
       JSON.stringify(directoryRefreshContinuity),
     );
     await page.select('#radio-filter', 'news');
-    check('collapsed Radio power enables Radio without forcing Context open', !initial.panelExpanded && !initial.contextExpanded && initial.nestedInContext);
+    check('enabled Radio stays nested in Context and leaves both panels collapsed', !initial.panelExpanded && !initial.contextExpanded && initial.nestedInContext);
     check('full Play is available before a station is selected', !initial.state.selected && initial.fullPlayEnabled && initial.fullPlayLabel === 'Play nearest radio station');
 
     const multiExpandedPanelLayout = await page.evaluate(async () => {
@@ -2326,13 +2355,15 @@ async function main() {
       window.__qaFirstPlayFlyToCalls = [];
       window.__qaFirstPlayOriginalFlyTo = camera.flyTo;
       camera.flyTo = (options) => window.__qaFirstPlayFlyToCalls.push(options);
-      document.getElementById('radio-play-btn').focus();
     });
-    await page.$eval('#radio-play-btn', (button) => button.click());
+    const firstPlayPanels = await revealRadioControls(page, 'radio-play-btn');
+    await page.focus('#radio-play-btn');
+    await page.click('#radio-play-btn');
     await page.waitForFunction(() => {
       const state = window.__godsEyeView.dataManager.layers.get('radio').module.getUIState();
       return state.audioState === 'playing' || state.audioState === 'error';
     });
+    await restoreRadioPanels(page, firstPlayPanels);
     const postMicroDragPlayback = await page.evaluate(async () => {
       const mod = window.__godsEyeView.dataManager.layers.get('radio').module;
       let state = mod.getUIState();
