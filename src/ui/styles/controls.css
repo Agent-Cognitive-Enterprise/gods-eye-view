@@ -81,6 +81,23 @@
   white-space: nowrap;
 }
 
+/* Side panel titles read like the command dock's labels: one type for every
+   panel, collapsed or open, and bright enough to read over the globe. */
+:is(#left-panel-stack, #right-context-rail)
+  :is(.panel-header > .panel-title, .pp-header-label) {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 500;
+  letter-spacing: 0.13rem;
+  text-transform: uppercase;
+}
+
+:root:not([data-ui-theme='cyber'])
+  :is(#left-panel-stack, #right-context-rail)
+  :is(.panel-header > .panel-title, .pp-header-label, .panel-collapse-btn) {
+  color: rgba(206, 232, 239, 0.72);
+}
+
 /* A longer translated title in a collapsed rail launcher tightens its
    tracking rather than pushing the disclosure button out of the card. */
 html:not([lang='en'])
@@ -109,6 +126,8 @@ html:not([lang='en'])
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1;
+  /* A long title or a header action must not squeeze the toggle. */
+  flex-shrink: 0;
   cursor: pointer;
   transition:
     background-color var(--transition-fast),
@@ -116,15 +135,70 @@ html:not([lang='en'])
     color var(--transition-fast);
 }
 
-/* A long translated title must not squeeze the toggle into a sliver. */
-html:not([lang='en']) .panel-collapse-btn {
-  flex-shrink: 0;
-}
-
 .panel-collapse-btn:hover {
   border-color: var(--glass-border-hover);
   color: var(--text-primary);
   background: rgba(255, 255, 255, 0.07);
+}
+
+/* A side panel answers the pointer as the command dock does: a blue edge,
+   a soft glow and an accent title. */
+:root:not([data-ui-theme='cyber'])
+  :is(#left-panel-stack, #right-context-rail)
+  :is(
+    .data-panel-inner,
+    .scene-panel-inner,
+    .cctv-panel-inner,
+    .radio-panel-inner,
+    .weather-panel-inner,
+    .recent-imagery-panel-inner,
+    .street-level-panel-inner,
+    .global-context-panel-inner,
+    #pp-toggles:not(.collapsed),
+    #pp-toggles.collapsed > .pp-header-row
+  ) {
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+:root:not([data-ui-theme='cyber'])
+  :is(#left-panel-stack, #right-context-rail)
+  :is(
+    .data-panel-inner,
+    .scene-panel-inner,
+    .cctv-panel-inner,
+    .radio-panel-inner,
+    .weather-panel-inner,
+    .recent-imagery-panel-inner,
+    .street-level-panel-inner,
+    .global-context-panel-inner,
+    #pp-toggles:not(.collapsed),
+    #pp-toggles.collapsed > .pp-header-row
+  ):hover {
+  border-color: rgba(0, 212, 255, 0.55);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(0, 212, 255, 0.08) inset,
+    0 0 1rem rgba(0, 212, 255, 0.12);
+}
+
+:root:not([data-ui-theme='cyber'])
+  :is(#left-panel-stack, #right-context-rail)
+  :is(
+    .data-panel-inner,
+    .scene-panel-inner,
+    .cctv-panel-inner,
+    .radio-panel-inner,
+    .weather-panel-inner,
+    .recent-imagery-panel-inner,
+    .street-level-panel-inner,
+    .global-context-panel-inner,
+    #pp-toggles:not(.collapsed),
+    #pp-toggles.collapsed > .pp-header-row
+  ):hover
+  :is(.panel-title, .pp-header-label, .panel-collapse-btn) {
+  color: var(--accent);
 }
 
 /* ── Button Grid ──────────────────────────────── */
@@ -431,17 +505,26 @@ html:not([lang='en']) .panel-collapse-btn {
 }
 
 #pp-toggles .pp-header-label {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 1.4px;
   color: var(--text-dim);
 }
 
+/* Display's title and toggle sit where the other panels' do: 14px of panel
+   padding plus a 4px header inset. The cyber theme sets its own insets. */
+:root:not([data-ui-theme='cyber']) #pp-toggles.collapsed > .pp-header-row {
+  padding: 8px 18px;
+}
+
+:root:not([data-ui-theme='cyber'])
+  #pp-toggles:not(.collapsed)
+  > .pp-header-row {
+  padding: 0 10px;
+}
+
 #pp-toggles > .pp-header-row .pp-collapse-btn {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 13px;
   padding: 0;
 }
 

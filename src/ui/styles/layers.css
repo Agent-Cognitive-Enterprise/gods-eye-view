@@ -58,7 +58,7 @@
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   border-radius: var(--panel-radius);
-  padding: 14px 16px 12px;
+  padding: 14px 14px 12px;
   backdrop-filter: blur(24px) saturate(1.4);
   -webkit-backdrop-filter: blur(24px) saturate(1.4);
   box-shadow:
@@ -249,10 +249,12 @@
   box-sizing: border-box;
   justify-content: center;
   overflow: visible;
-  padding: 8px 10px 8px 14px;
+  padding: 8px 14px;
 }
 #right-context-rail #global-context-panel.collapsed .panel-header {
   margin: 0;
+  /* Room for the radio button between the title and the toggle. */
+  gap: 8px;
 }
 #right-context-rail.layout-focus {
   height: var(--right-stack-max-height);
@@ -1002,7 +1004,7 @@
   display: flex;
   min-height: 0;
   flex-direction: column;
-  padding: 14px 16px 12px;
+  padding: 14px 14px 12px;
   border: 1px solid var(--glass-border);
   border-radius: var(--panel-radius);
   background: var(--glass-bg);
