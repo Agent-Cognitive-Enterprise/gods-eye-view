@@ -3048,7 +3048,6 @@
   "Events by attention score": "Eventos por puntuación de atención",
   "CAMERA RULES": "REGLAS DE CÁMARA",
   "FEEDS": "FUENTES",
-  "Local AI: not connected · rule-based scoring": "IA local: no conectada · puntuación por reglas",
   "HISTORY": "HISTORIAL",
   "AUTOPILOT OFF": "AUTOPILOTO APAGADO",
   "AUTOPILOT ON": "AUTOPILOTO ACTIVO",
@@ -3096,5 +3095,16 @@
   "Event service unavailable": "Servicio de eventos no disponible",
   "AUTOPILOT": "AUTOPILOTO",
   "Active events": "Eventos activos",
-  "Watching the drill started on the host computer": "Viendo el simulacro iniciado en el equipo anfitrión"
+  "Watching the drill started on the host computer": "Viendo el simulacro iniciado en el equipo anfitrión",
+  "AI": "IA",
+  "LOCAL AI": "IA LOCAL",
+  "Let the local model assess events (scores stay rule-based when off)": "Dejar que el modelo local evalúe los eventos (sin él, la puntuación es por reglas)",
+  "Local AI: {model} · ready · {count} assessed": "IA local: {model} · lista · {count} evaluados",
+  "Local AI: {model} · working · {count} assessed": "IA local: {model} · trabajando · {count} evaluados",
+  "Local AI: paused · rule-based scoring": "IA local: en pausa · puntuación por reglas",
+  "Local AI: not configured · rule-based scoring": "IA local: no configurada · puntuación por reglas",
+  "Local AI: offline · rule-based scoring": "IA local: sin conexión · puntuación por reglas",
+  "Local AI ({model}): {summary}": "IA local ({model}): {summary}",
+  "Gap: {text}": "Laguna: {text}",
+  "Title: machine translation": "Título: traducción automática"
 }

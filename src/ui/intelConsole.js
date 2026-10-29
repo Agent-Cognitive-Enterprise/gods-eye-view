@@ -12,7 +12,14 @@
  * Nothing runs while the tab is hidden; on return one step catches up.
  */
 import * as Cesium from 'cesium';
-import { formatNumber, formatRelativeTime, msg, t, tn } from '../i18n/index.js';
+import {
+  formatNumber,
+  formatRelativeTime,
+  getLocale,
+  msg,
+  t,
+  tn,
+} from '../i18n/index.js';
 import { createIntelClient } from '../intel/client.js';
 import { frameCluster, GLOBAL_VIEW_HEIGHT } from '../intel/framing.js';
 import {
@@ -127,6 +134,14 @@ export function ageText(ms, now) {
   return formatRelativeTime(-Math.round(hours / 24), 'day');
 }
 
+/** `koboldcpp/Qwen3.6-35B-A3B-Q4_K_M` → `Qwen3.6-35B-A3B`. */
+export function modelName(id) {
+  const name = String(id ?? '')
+    .split('/')
+    .pop();
+  return name.replace(/[-_.]Q\d[\w]*$/i, '') || '?';
+}
+
 /** The three largest score contributions, for "why this event?". */
 export function whyText(event) {
   const terms = [...(event.explanation?.attention ?? [])]
@@ -166,6 +181,7 @@ export function createIntelConsole({
   let world = 'live';
   let data = { events: [], clusters: [], now: now() };
   let feeds = [];
+  let ai = null;
   let settings = {};
   let lastFetchAt = 0;
   let timer = null;
@@ -241,12 +257,7 @@ export function createIntelConsole({
       t('FEEDS'),
     );
     ui.feeds = el(documentRef, 'ul', 'intel-feeds');
-    ui.ai = el(
-      documentRef,
-      'div',
-      'intel-muted',
-      t('Local AI: not connected · rule-based scoring'),
-    );
+    ui.ai = el(documentRef, 'div', 'intel-muted intel-ai');
 
     const historyRow = el(documentRef, 'div', 'intel-row');
     ui.historyButton = el(
@@ -384,7 +395,7 @@ export function createIntelConsole({
       );
       const main = el(documentRef, 'span', 'intel-queue-main');
       main.append(
-        el(documentRef, 'span', 'intel-queue-title', event.title),
+        el(documentRef, 'span', 'intel-queue-title', displayTitle(event).text),
         el(
           documentRef,
           'span',
@@ -409,6 +420,7 @@ export function createIntelConsole({
         ),
       );
       if (event.synthetic) badges.append(badge(t('DRILL'), 'v-drill'));
+      if (event.model_applied) badges.append(badge(t('AI'), 'v-ai'));
       if (event.escalation === 'increasing')
         badges.append(badge('▲', 'v-rising'));
       button.append(score, main, badges);
@@ -462,7 +474,26 @@ export function createIntelConsole({
       changeSettings({ criticalInterruptThreshold: allow ? 101 : 95 }),
     );
     critical.append(chip);
-    ui.settings.replaceChildren(...rows, critical);
+    const local = el(documentRef, 'div', 'intel-setting');
+    local.append(el(documentRef, 'span', 'intel-setting-label', t('LOCAL AI')));
+    const aiOn = settings.localAiEnabled !== false;
+    const aiChip = el(
+      documentRef,
+      'button',
+      'data-toggle-chip',
+      aiOn ? t('ON') : t('OFF'),
+    );
+    aiChip.type = 'button';
+    aiChip.classList.toggle('active', aiOn);
+    aiChip.setAttribute('aria-pressed', String(aiOn));
+    aiChip.title = t(
+      'Let the local model assess events (scores stay rule-based when off)',
+    );
+    aiChip.addEventListener('click', () =>
+      changeSettings({ localAiEnabled: !aiOn }),
+    );
+    local.append(aiChip);
+    ui.settings.replaceChildren(...rows, critical, local);
 
     const relevance = settings.categoryRelevance ?? {};
     const chips = Object.keys(CATEGORY_LABELS).map((category) => {
@@ -486,6 +517,46 @@ export function createIntelConsole({
       return button;
     });
     ui.categories.replaceChildren(...chips);
+  }
+
+  /**
+   * The title in the reader's language: a local-model translation when the
+   * source language differs and one exists (flagged), else the original.
+   */
+  function displayTitle(event) {
+    const assessment = event.model_applied ? event.assessment : null;
+    const lang = String(getLocale() || 'en').slice(0, 2);
+    const source = String(event.language || 'und').slice(0, 2);
+    const translated =
+      lang === 'ru'
+        ? assessment?.title_ru
+        : lang === 'en'
+          ? assessment?.title_en
+          : null;
+    if (translated && source !== lang)
+      return { text: translated, translated: true };
+    return { text: event.title, translated: false };
+  }
+
+  function renderAi() {
+    const state = ai?.state ?? 'not_configured';
+    const values = {
+      model: modelName(ai?.model),
+      count: formatNumber(ai?.assessed ?? 0),
+    };
+    const text =
+      state === 'online'
+        ? t('Local AI: {model} · ready · {count} assessed', values)
+        : state === 'busy'
+          ? t('Local AI: {model} · working · {count} assessed', values)
+          : state === 'paused'
+            ? t('Local AI: paused · rule-based scoring')
+            : state === 'not_configured'
+              ? t('Local AI: not configured · rule-based scoring')
+              : t('Local AI: offline · rule-based scoring');
+    ui.ai.textContent = text;
+    ui.ai.title = ai?.last_error ?? '';
+    ui.ai.dataset.state = state;
   }
 
   function renderFeeds() {
@@ -537,6 +608,7 @@ export function createIntelConsole({
     ui.notice.textContent = notice;
     renderQueue();
     renderFeeds();
+    renderAi();
     renderMarkers();
     renderCard();
   }
@@ -588,10 +660,11 @@ export function createIntelConsole({
       ),
       variant: 'label',
       paintLane: 'ambient-label',
-      title: `${formatNumber(event.attention_score)} · ${event.title}`.slice(
-        0,
-        80,
-      ),
+      title:
+        `${formatNumber(event.attention_score)} · ${displayTitle(event).text}`.slice(
+          0,
+          80,
+        ),
       details: [
         [
           t(VERIFICATION_LABELS[event.verification] ?? msg('UNVERIFIED')),
@@ -666,6 +739,29 @@ export function createIntelConsole({
       cardDetail?.event.event_id === event.event_id
         ? attributionOf(cardDetail)
         : null;
+    const assessment = event.model_applied ? event.assessment : null;
+    if (assessment) {
+      details.push(
+        ...wrapCardText(
+          t('Local AI ({model}): {summary}', {
+            model: modelName(assessment.model),
+            summary: assessment.summary,
+          }),
+          60,
+          3,
+        ),
+      );
+      if (assessment.uncertainties?.[0])
+        details.push(
+          ...wrapCardText(
+            t('Gap: {text}', { text: assessment.uncertainties[0] }),
+            60,
+            1,
+          ),
+        );
+    }
+    if (displayTitle(event).translated)
+      details.push(t('Title: machine translation'));
     if (attribution) details.push(...wrapCardText(attribution, 60, 2));
     if (link) details.push(t('Source ↗ · click card to open'));
     const card = {
@@ -673,7 +769,7 @@ export function createIntelConsole({
       variant: 'card',
       selected: true,
       interactive: Boolean(link),
-      title: event.title.slice(0, 90),
+      title: displayTitle(event).text.slice(0, 90),
       details,
       accent: CATEGORY_COLORS[event.category] ?? '#cccccc',
       priority: Number.MAX_SAFE_INTEGER,
@@ -925,12 +1021,14 @@ export function createIntelConsole({
     if (!force && now() - lastFetchAt < interval) return;
     lastFetchAt = now();
     try {
-      const [events, feedList] = await Promise.all([
+      const [events, feedList, aiStatus] = await Promise.all([
         client.events(world, abort.signal),
         client.feeds(abort.signal),
+        client.ai(abort.signal).catch(() => null),
       ]);
       data = events;
       feeds = feedList.feeds;
+      ai = aiStatus;
     } catch (error) {
       if (abort.signal.aborted) return;
       if (error.code === 'no_replay' && world === 'replay') {

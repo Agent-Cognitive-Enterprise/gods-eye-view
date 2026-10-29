@@ -2910,7 +2910,6 @@
   "Events by attention score": "依關注分數排列的事件",
   "CAMERA RULES": "鏡頭規則",
   "FEEDS": "資料來源",
-  "Local AI: not connected · rule-based scoring": "本機 AI：未連線 · 依規則評分",
   "HISTORY": "歷史",
   "AUTOPILOT OFF": "自動駕駛 關",
   "AUTOPILOT ON": "自動駕駛 開",
@@ -2954,5 +2953,16 @@
   "Event service unavailable": "事件服務無法使用",
   "AUTOPILOT": "自動駕駛",
   "Active events": "進行中的事件",
-  "Watching the drill started on the host computer": "正在觀看主機上啟動的演練"
+  "Watching the drill started on the host computer": "正在觀看主機上啟動的演練",
+  "AI": "模型",
+  "LOCAL AI": "本機 AI",
+  "Let the local model assess events (scores stay rule-based when off)": "讓本機模型評估事件（關閉時依規則評分）",
+  "Local AI: {model} · ready · {count} assessed": "本機 AI：{model} · 就緒 · 已評估 {count} 個",
+  "Local AI: {model} · working · {count} assessed": "本機 AI：{model} · 處理中 · 已評估 {count} 個",
+  "Local AI: paused · rule-based scoring": "本機 AI：已暫停 · 依規則評分",
+  "Local AI: not configured · rule-based scoring": "本機 AI：未設定 · 依規則評分",
+  "Local AI: offline · rule-based scoring": "本機 AI：離線 · 依規則評分",
+  "Local AI ({model}): {summary}": "本機 AI（{model}）：{summary}",
+  "Gap: {text}": "缺口：{text}",
+  "Title: machine translation": "標題：機器翻譯"
 }

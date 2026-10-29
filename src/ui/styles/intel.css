@@ -203,6 +203,20 @@
   border-color: #c792ea;
   color: #c792ea;
 }
+.intel-badge.v-ai {
+  border-color: #7bd88f;
+  color: #7bd88f;
+}
+.intel-ai[data-state='online']::before,
+.intel-ai[data-state='busy']::before {
+  content: '● ';
+  color: #7bd88f;
+}
+.intel-ai[data-state='offline']::before,
+.intel-ai[data-state='refused_non_loopback']::before {
+  content: '● ';
+  color: #ff5a5a;
+}
 .intel-badge.v-rising {
   border: none;
   color: #ff5a5a;

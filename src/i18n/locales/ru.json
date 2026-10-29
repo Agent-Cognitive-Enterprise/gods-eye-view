@@ -3117,7 +3117,6 @@
   "Events by attention score": "События по оценке внимания",
   "CAMERA RULES": "ПРАВИЛА КАМЕРЫ",
   "FEEDS": "ЛЕНТЫ",
-  "Local AI: not connected · rule-based scoring": "Локальный ИИ: не подключён · оценка по правилам",
   "HISTORY": "ИСТОРИЯ",
   "AUTOPILOT OFF": "АВТОПИЛОТ ВЫКЛ",
   "AUTOPILOT ON": "АВТОПИЛОТ ВКЛ",
@@ -3167,5 +3166,16 @@
   "Event service unavailable": "Служба событий недоступна",
   "AUTOPILOT": "АВТОПИЛОТ",
   "Active events": "Активные события",
-  "Watching the drill started on the host computer": "Показываются учения, запущенные на основном компьютере"
+  "Watching the drill started on the host computer": "Показываются учения, запущенные на основном компьютере",
+  "AI": "ИИ",
+  "LOCAL AI": "ЛОКАЛЬНЫЙ ИИ",
+  "Let the local model assess events (scores stay rule-based when off)": "Разрешить локальной модели оценивать события (без неё — оценка по правилам)",
+  "Local AI: {model} · ready · {count} assessed": "Локальный ИИ: {model} · готов · оценено: {count}",
+  "Local AI: {model} · working · {count} assessed": "Локальный ИИ: {model} · работает · оценено: {count}",
+  "Local AI: paused · rule-based scoring": "Локальный ИИ: пауза · оценка по правилам",
+  "Local AI: not configured · rule-based scoring": "Локальный ИИ: не настроен · оценка по правилам",
+  "Local AI: offline · rule-based scoring": "Локальный ИИ: нет связи · оценка по правилам",
+  "Local AI ({model}): {summary}": "Локальный ИИ ({model}): {summary}",
+  "Gap: {text}": "Пробел: {text}",
+  "Title: machine translation": "Заголовок: машинный перевод"
 }

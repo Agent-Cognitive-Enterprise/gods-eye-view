@@ -29,6 +29,7 @@ export function createIntelClient({ fetchImpl }) {
     detail: (id, name, signal) =>
       call(`/events/${encodeURIComponent(id)}${world(name)}`, { signal }),
     feeds: (signal) => call('/feeds', { signal }),
+    ai: (signal) => call('/ai', { signal }),
     archive: (limit = 20, signal) =>
       call(`/archive?limit=${limit}`, { signal }),
     updateSettings: (settings) =>

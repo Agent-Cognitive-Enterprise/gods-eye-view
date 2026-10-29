@@ -2910,7 +2910,6 @@
   "Events by attention score": "按关注分数排列的事件",
   "CAMERA RULES": "镜头规则",
   "FEEDS": "数据源",
-  "Local AI: not connected · rule-based scoring": "本地 AI：未连接 · 基于规则评分",
   "HISTORY": "历史",
   "AUTOPILOT OFF": "自动驾驶 关",
   "AUTOPILOT ON": "自动驾驶 开",
@@ -2954,5 +2953,16 @@
   "Event service unavailable": "事件服务不可用",
   "AUTOPILOT": "自动驾驶",
   "Active events": "活动事件",
-  "Watching the drill started on the host computer": "正在观看主机上启动的演练"
+  "Watching the drill started on the host computer": "正在观看主机上启动的演练",
+  "AI": "模型",
+  "LOCAL AI": "本地 AI",
+  "Let the local model assess events (scores stay rule-based when off)": "让本地模型评估事件（关闭时按规则评分）",
+  "Local AI: {model} · ready · {count} assessed": "本地 AI：{model} · 就绪 · 已评估 {count} 个",
+  "Local AI: {model} · working · {count} assessed": "本地 AI：{model} · 处理中 · 已评估 {count} 个",
+  "Local AI: paused · rule-based scoring": "本地 AI：已暂停 · 基于规则评分",
+  "Local AI: not configured · rule-based scoring": "本地 AI：未配置 · 基于规则评分",
+  "Local AI: offline · rule-based scoring": "本地 AI：离线 · 基于规则评分",
+  "Local AI ({model}): {summary}": "本地 AI（{model}）：{summary}",
+  "Gap: {text}": "缺口：{text}",
+  "Title: machine translation": "标题：机器翻译"
 }
