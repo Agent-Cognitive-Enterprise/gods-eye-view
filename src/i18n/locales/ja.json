@@ -1085,6 +1085,7 @@
   "LIVE · Roads: {source} · No flow roads in view": "ライブ · 道路：{source} · 表示範囲に交通流のある道路なし",
   "LIVE · Roads: {source} · Flow {percent}%": "ライブ · 道路：{source} · 交通流 {percent}%",
   "SIMULATED · Roads: {source} · Flow {percent}%": "シミュレーション · 道路：{source} · 交通流 {percent}%",
+  "STALE · Roads: {source} · Flow: cached TomTom tiles": "更新遅延 · 道路：{source} · 交通流：キャッシュのTomTomタイル",
   "Syncing flow · Roads: OpenStreetMap · Flow: TomTom · Unmatched: simulated": "交通流を同期中 · 道路：OpenStreetMap · 交通流：TomTom · 未一致：シミュレーション",
   "LIVE · Roads: OpenStreetMap · Flow: TomTom · {percent}% cov · Unmatched: simulated": "ライブ · 道路：OpenStreetMap · 交通流：TomTom · カバー率 {percent}% · 未一致：シミュレーション",
   "LIVE · Roads: OpenStreetMap · Flow: TomTom · {percent}% cov": "ライブ · 道路：OpenStreetMap · 交通流：TomTom · カバー率 {percent}%",
@@ -2863,5 +2864,7 @@
   "Begin with a clean globe": "まっさらな地球儀から始める",
   "Don't show this again": "今後表示しない",
   "ESC to dismiss": "Escで閉じる",
-  "Tip: the GEV MIC button in the dock lets you talk to the map.": "ヒント：ドックの［マイク］ボタンで地図に話しかけられます。"
+  "Tip: the GEV MIC button in the dock lets you talk to the map.": "ヒント：ドックの［マイク］ボタンで地図に話しかけられます。",
+  "routing busy — too many routes at once": "ルート検索サービスが混雑しています。同時に要求されたルートが多すぎます",
+  "route proxy error": "ルート検索プロキシでエラーが発生しました"
 }
