@@ -149,6 +149,18 @@ inside the cluster on screen without starting a new shot. Camera timing uses
 the wall clock even when a drill replays faster. Nothing runs while the tab
 is hidden; on return a single step catches up (no backlog).
 
+Tour: when nothing qualifies as an alert (and after an alert's dwell when
+nothing else does), the camera slowly visits other active, cooling or fading
+events in turn, 45 s each (`tourDwellMs`), least recently toured first, each
+once before any repeats. Tour stops need a location, confidence at least the
+camera minimum, a score of at least 40 (`tourMinimumScore`), an enabled
+category, and must not be retracted, resolved or disputed. Tour shots are
+labelled "tour · nothing urgent right now", never count as presented alerts
+(an event toured past can still raise its own alert), and give way at once to
+anything that qualifies. The TOUR rule (`tourWhenIdle`, on by default) turns it
+off, restoring the single still global view. The card says why an event is not
+an alert: too little evidence, past its focus window, or a filtered category.
+
 Framing: the cluster's spherical radius plus 35 % padding is fitted to the
 smaller half field of view at the current aspect ratio, with a floor set by
 the least precise member (point 40 km, city 80 km, region 600 km, country
@@ -268,6 +280,7 @@ before integration.
 `minimumDwellMs 30000`, `repeatFocusCooldownMs 1800000`,
 `criticalInterruptThreshold 95`, `normalPreemptionMargin 15`,
 `preemptionConfirmMs 10000`, `maxMarkersInView 200`, `narrationEnabled false`,
+`tourWhenIdle true`, `tourDwellMs 45000`, `tourMinimumScore 40`, `localAiEnabled true`,
 `categoryRelevance` (0 disables a category for the camera), `weights`.
 Stored in `.gev-cache/intel/settings.json`; `DELETE /api/intel/settings`
 resets. Category lifecycle defaults are in `src/intel/taxonomy.js`.
