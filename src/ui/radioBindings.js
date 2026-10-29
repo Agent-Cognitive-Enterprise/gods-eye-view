@@ -9,13 +9,6 @@ import {
 /** Bind Radio input using a RadioControls receiver and supplied actions. */
 export function bindRadioControls() {
   if (!this._radioPanel) return;
-  // The markup's placeholder option is the station-tag "All"; markup cannot
-  // carry the 'radio tag' context the loaded list uses, so set it here.
-  const allTagOption = this._radioFilter?.querySelector?.(
-    'option[value="all"]',
-  );
-  if (allTagOption)
-    allTagOption.textContent = t('All', { context: 'radio tag' });
   const tunerListenerOptions = {};
   const setRadioDisclosure = (expanded, { returnFocus = false } = {}) => {
     if (this.destroyed) return;

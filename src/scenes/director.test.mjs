@@ -17,8 +17,7 @@ import test from 'node:test';
 import { LayerLifecycle } from '../data/lifecycle.js';
 import { SceneDirector } from './director.js';
 import { SCENE_TRACKING_PARAM_KEYS } from './scenePolicy.js';
-import { SCENE_RECIPES, displayShotTitle, getSceneAppendRecipeById } from './recipes.js';
-import { setLocale } from '../i18n/index.js';
+import { SCENE_RECIPES, getSceneAppendRecipeById } from './recipes.js';
 
 const NEPAL_ORIGINAL_SHOT_TITLES = [
   'Global Incident Context',
@@ -713,6 +712,10 @@ test('a legacy three-shot Nepal browser project bootstraps to the current 25-sho
     assert.deepEqual(scene.shots.slice(0, 3).map(({ camera }) => camera), originalCameras);
     assert.equal(scene.appliedShotPacks[0].id, 'bhote-koshi-nepal-evidence-pack');
     assert.equal(scene.appliedShotPacks[0].version, 18);
+    // displayShotTitle trusts these bindings to localize the bootstrap shots.
+    for (const shot of scene.shots.slice(0, 8)) {
+      assert.equal(scene.appliedShotPacks[0].shotBindings[shot.title], shot.id);
+    }
     assert.equal(director._selectedSceneId, scene.id);
     assert.equal(director._selectedShotId, scene.shots[0].id);
   } finally {
@@ -2019,24 +2022,4 @@ test('a caught run failure resolves as run-failed, not success (#971)', async ()
       { started: false, reason: 'run-failed' },
     );
   } finally { console.warn = warn; await director.destroy(); restore(); }
-});
-
-test('a user shot whose title matches an applied pack title keeps the typed title', () => {
-  const { director, restore } = makeDirector({ project: legacyThreeShotNepalProjectFixture() });
-  try {
-    const scene = director._project.scenes[0];
-    setLocale('ru');
-    // The bootstrap-rebuilt shot (no sourcePackId, bound by the pack marker) still localizes.
-    const bootstrap = scene.shots[0];
-    assert.equal(bootstrap.sourcePackId, undefined);
-    assert.notEqual(displayShotTitle(bootstrap.title, bootstrap, scene), bootstrap.title);
-    // A shot the operator added and named like a pack shot shows as typed.
-    for (const title of ['Final view', 'Global Incident Context']) {
-      const userShot = { id: `user-shot-${title}`, title };
-      assert.equal(displayShotTitle(title, userShot, scene), title);
-    }
-  } finally {
-    setLocale('en');
-    restore();
-  }
 });

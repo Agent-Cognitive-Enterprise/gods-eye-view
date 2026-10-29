@@ -2286,6 +2286,16 @@ fetching, trailing-24-hour filtering and partial-success caching are unchanged.
 > SCOPE toggle + FEATHER slider, hash keys `sc`/`scf`) — it is NOT the
 > six zero-intensity style stages anymore (those are disabled; see the
 > history note in `_initStages`). Hidden tabs stop the render loop.
+> AIS vessels no longer hold the loop while enabled (2026-09-30): vessels move
+> only when a poll lands, so the layer requests a frame for every forced pass
+> (new data, selection), leaves one trailing frame when the camera moved inside
+> the 800 ms visibility cadence, and holds `ais-vessels` only while focus
+> emphasis animates or any vessel stays dimmed under a live focus target. The
+> trailing frame goes through the layer's injectable runtime clock and is
+> cancelled on disable, destroy and reset (`renderGovernor.test.mjs` pins the
+> no-self-wake invariant). The 80 ms focus pass also skips hidden sprites whose
+> focus state is at rest (`spriteFocusAtRest`), since advancing them changes
+> nothing; with a 12k worldwide feed that is most of the fleet.
 > The scope's OUTSIDE terminus is **altitude-adaptive** (2026-08-17): 0.94
 > at/above **10 Mm**, so
 > faint stars survive in the corners of a TRUE full-globe view, fading quickly
@@ -3772,7 +3782,7 @@ test:track` 43 tracking invariants · headless QA harnesses under
 
 ### Interface localization (October 2026)
 
-Shipped locales: **en** (source and fallback), **es**, **fr**, **ru**, **zh-CN** and **zh-Hant**. The code lives in
+Shipped locales: **en** (source and fallback), **es**, **fr**, **it**, **pt** (Brazilian Portuguese), **ru**, **uk**, **zh-CN** and **zh-Hant**. The code lives in
 `src/i18n/`. How to mark UI text: [`docs/I18N.md`](./I18N.md); translator workflow:
 [`docs/TRANSLATORS.md`](./TRANSLATORS.md).
 
@@ -3783,7 +3793,7 @@ Shipped locales: **en** (source and fallback), **es**, **fr**, **ru**, **zh-CN**
   value). English has no catalog; every other locale is
   `src/i18n/locales/<code>.json`, and a missing entry falls back to English.
 - **Locale choice.** `?lang=` → stored choice (`gev:locale:v1`) →
-  `navigator.languages` → English. Chinese tags default to `zh-CN`; Traditional Chinese tags
+  `navigator.languages` → English. Any `pt` tag (`pt-BR`, `pt-PT`) selects `pt`. Chinese tags default to `zh-CN`; Traditional Chinese tags
   select `zh-Hant`. Explicit `Hans` selects `zh-CN` regardless of region. `?lang=` is not stored, and share links drop
   it, so a recipient keeps their own language. The globe picker in the
   bottom-right corner (`src/ui/localePicker.js`) stores the choice, drops
