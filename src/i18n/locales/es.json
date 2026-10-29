@@ -3106,5 +3106,10 @@
   "Local AI: offline · rule-based scoring": "IA local: sin conexión · puntuación por reglas",
   "Local AI ({model}): {summary}": "IA local ({model}): {summary}",
   "Gap: {text}": "Laguna: {text}",
-  "Title: machine translation": "Título: traducción automática"
+  "Title: machine translation": "Título: traducción automática",
+  "tour · nothing urgent right now": "recorrido · nada urgente ahora",
+  "TOUR": "RECORRIDO",
+  "When nothing is urgent, slowly visit other active events in turn": "Cuando nada es urgente, visitar despacio y por turnos otros eventos activos",
+  "Past its focus window: not an alert": "Fuera de su ventana de foco: no es una alerta",
+  "Category filtered out of Autopilot": "Categoría excluida del autopiloto"
 }

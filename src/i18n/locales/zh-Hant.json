@@ -2964,5 +2964,10 @@
   "Local AI: offline · rule-based scoring": "本機 AI：離線 · 依規則評分",
   "Local AI ({model}): {summary}": "本機 AI（{model}）：{summary}",
   "Gap: {text}": "缺口：{text}",
-  "Title: machine translation": "標題：機器翻譯"
+  "Title: machine translation": "標題：機器翻譯",
+  "tour · nothing urgent right now": "巡覽 · 目前沒有緊急事件",
+  "TOUR": "巡覽",
+  "When nothing is urgent, slowly visit other active events in turn": "沒有緊急事件時，依序緩慢瀏覽其他進行中的事件",
+  "Past its focus window: not an alert": "已過關注時段：不是警報",
+  "Category filtered out of Autopilot": "此類別已從自動駕駛中排除"
 }

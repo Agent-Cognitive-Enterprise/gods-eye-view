@@ -3177,5 +3177,10 @@
   "Local AI: offline · rule-based scoring": "Локальный ИИ: нет связи · оценка по правилам",
   "Local AI ({model}): {summary}": "Локальный ИИ ({model}): {summary}",
   "Gap: {text}": "Пробел: {text}",
-  "Title: machine translation": "Заголовок: машинный перевод"
+  "Title: machine translation": "Заголовок: машинный перевод",
+  "tour · nothing urgent right now": "обзор · сейчас ничего срочного",
+  "TOUR": "ОБЗОР",
+  "When nothing is urgent, slowly visit other active events in turn": "Когда нет ничего срочного, по очереди спокойно показывать другие активные события",
+  "Past its focus window: not an alert": "Окно внимания прошло: это не тревога",
+  "Category filtered out of Autopilot": "Категория исключена из автопилота"
 }

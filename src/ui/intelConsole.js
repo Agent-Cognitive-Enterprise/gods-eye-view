@@ -93,6 +93,7 @@ const DECISION_REASONS = Object.freeze({
   clearly_higher_priority: msg('clearly higher priority'),
   critical_interrupt: msg('critical interruption'),
   current_no_longer_eligible: msg('previous focus expired'),
+  tour: msg('tour · nothing urgent right now'),
 });
 const TERM_LABELS = Object.freeze({
   severity: msg('severity'),
@@ -184,6 +185,7 @@ export function createIntelConsole({
   let ai = null;
   let settings = {};
   let lastFetchAt = 0;
+  let refreshGeneration = 0;
   let timer = null;
   let scheduler = createSchedulerState();
   let lastDecision = null;
@@ -493,7 +495,26 @@ export function createIntelConsole({
       changeSettings({ localAiEnabled: !aiOn }),
     );
     local.append(aiChip);
-    ui.settings.replaceChildren(...rows, critical, local);
+    const tourRow = el(documentRef, 'div', 'intel-setting');
+    tourRow.append(el(documentRef, 'span', 'intel-setting-label', t('TOUR')));
+    const tourOn = settings.tourWhenIdle !== false;
+    const tourChip = el(
+      documentRef,
+      'button',
+      'data-toggle-chip',
+      tourOn ? t('ON') : t('OFF'),
+    );
+    tourChip.type = 'button';
+    tourChip.classList.toggle('active', tourOn);
+    tourChip.setAttribute('aria-pressed', String(tourOn));
+    tourChip.title = t(
+      'When nothing is urgent, slowly visit other active events in turn',
+    );
+    tourChip.addEventListener('click', () =>
+      changeSettings({ tourWhenIdle: !tourOn }),
+    );
+    tourRow.append(tourChip);
+    ui.settings.replaceChildren(...rows, critical, tourRow, local);
 
     const relevance = settings.categoryRelevance ?? {};
     const chips = Object.keys(CATEGORY_LABELS).map((category) => {
@@ -733,8 +754,18 @@ export function createIntelConsole({
       details.unshift(t('SYNTHETIC DRILL · not a real event'));
     if (event.critical_blocked)
       details.push(t('Held below critical: not corroborated'));
-    if (!event.camera_eligible)
-      details.push(t('Candidate only: too little evidence for the camera'));
+    if (!event.camera_eligible) {
+      // Say why it is not an alert: evidence, age or the operator's filter.
+      const note =
+        event.confidence < (settings.minimumCameraConfidence ?? 0.35)
+          ? msg('Candidate only: too little evidence for the camera')
+          : event.lifecycle !== 'active'
+            ? msg('Past its focus window: not an alert')
+            : settings.categoryRelevance?.[event.category] === 0
+              ? msg('Category filtered out of Autopilot')
+              : msg('not a camera target');
+      details.push(t(note));
+    }
     const attribution =
       cardDetail?.event.event_id === event.event_id
         ? attributionOf(cardDetail)
@@ -1020,12 +1051,17 @@ export function createIntelConsole({
     const interval = world === 'replay' ? REPLAY_REFRESH_MS : REFRESH_MS;
     if (!force && now() - lastFetchAt < interval) return;
     lastFetchAt = now();
+    const requested = world;
+    const generation = ++refreshGeneration;
     try {
       const [events, feedList, aiStatus] = await Promise.all([
-        client.events(world, abort.signal),
+        client.events(requested, abort.signal),
         client.feeds(abort.signal),
         client.ai(abort.signal).catch(() => null),
       ]);
+      // A slower response for another world, or an older request, must not
+      // overwrite what is now on screen (e.g. live data landing after DEMO).
+      if (requested !== world || generation !== refreshGeneration) return;
       data = events;
       feeds = feedList.feeds;
       ai = aiStatus;

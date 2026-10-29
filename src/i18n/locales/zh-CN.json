@@ -2964,5 +2964,10 @@
   "Local AI: offline · rule-based scoring": "本地 AI：离线 · 基于规则评分",
   "Local AI ({model}): {summary}": "本地 AI（{model}）：{summary}",
   "Gap: {text}": "缺口：{text}",
-  "Title: machine translation": "标题：机器翻译"
+  "Title: machine translation": "标题：机器翻译",
+  "tour · nothing urgent right now": "巡览 · 目前没有紧急事件",
+  "TOUR": "巡览",
+  "When nothing is urgent, slowly visit other active events in turn": "没有紧急事件时，依次缓慢浏览其他活动事件",
+  "Past its focus window: not an alert": "已过关注窗口：不是警报",
+  "Category filtered out of Autopilot": "此类别已从自动驾驶中排除"
 }
