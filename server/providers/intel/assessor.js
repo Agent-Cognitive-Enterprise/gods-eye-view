@@ -11,6 +11,7 @@ import {
   buildAssessmentPrompt,
   validateAssessment,
 } from '../../../src/intel/assessment.js';
+import { foregroundActive } from './llmGate.js';
 
 const CYCLE_MS = 15_000;
 const PROBE_EVERY_MS = 60_000;
@@ -117,6 +118,8 @@ export function createAssessor({
   async function runCycle() {
     lastCycleAt = now();
     if (!enabled()) return 'disabled';
+    // A voice conversation has the model (and its prompt cache) to itself.
+    if (foregroundActive(now())) return 'foreground';
     let status = llm.status();
     if (status.status === 'refused_non_loopback') return 'refused';
     if (
@@ -133,6 +136,8 @@ export function createAssessor({
       if (done >= perCycle || !enabled()) break;
       while (recent.length && now() - recent[0] > 3_600_000) recent.shift();
       if (recent.length >= hourlyCap) return 'hourly_cap';
+      // Checked before every job: a voice turn waits for at most one assessment.
+      if (foregroundActive(now())) return 'foreground';
       if (await llm.busy()) {
         counts.skipped_busy += 1;
         return 'busy_elsewhere';

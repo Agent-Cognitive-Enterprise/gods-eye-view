@@ -234,3 +234,40 @@ test('our own just-finished generation is not mistaken for someone else’s', as
   clock += 10_000;
   assert.equal(await llm.busy(), true, 'idle=0 later is another client');
 });
+
+test('a voice claim stops the assessor between jobs, not only between cycles', async () => {
+  const { claimForeground, releaseForeground } = await import('./llmGate.js');
+  const server = fakeServer({
+    chat: () => {
+      claimForeground(60_000); // the operator starts talking mid-cycle
+      return goodReply;
+    },
+  });
+  const llm = createLocalLlm({
+    baseUrl: BASE,
+    fetchImpl: server.fetchImpl,
+    now: () => T0,
+  });
+  const service = createIntelService({ now: () => T0, llm, log: () => {} });
+  service.engine.ingest(
+    [
+      unrest,
+      {
+        ...unrest,
+        source_item_id: 'b',
+        title: 'Port strike halts terminals',
+        entities: ['port'],
+        location: { lat: 10, lon: 10, precision: 'city' },
+      },
+    ],
+    { receivedAt: T0 },
+  );
+  releaseForeground();
+  assert.equal(await service.assessNow(), 'foreground');
+  assert.equal(
+    server.completions(),
+    1,
+    'the second job waited for the operator',
+  );
+  releaseForeground();
+});
