@@ -1822,6 +1822,7 @@
       "src/app/surfaceServices.js",
       "src/app/tools.js",
       "src/ui/intelConsole.js",
+      "src/ui/dockAutoHide.js",
       "src/intel/client.js",
       "src/intel/framing.js",
       "src/intel/scheduler.js",

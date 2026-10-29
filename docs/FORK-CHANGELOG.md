@@ -12,6 +12,9 @@ number there.
   waits for map tiles before descending and before the hold, a larger tile
   cache and sibling preloading while Autopilot runs; the Autopilot state is
   remembered per browser across reloads.
+- **Auto-hiding bottom controls.** The command dock and the corner row fade
+  after 4 s idle and return on any key or at the bottom edge; the map
+  attribution moves to the bottom edge while they are hidden.
 - **Phase 6, operations and upstream integration.** Offline mode
   (`GEV_INTEL_OFFLINE=1`); `GEV_INTEL_DB` now moves settings with the store;
   `scripts/smoke-autopilot.mjs` smoke test; `scripts/upstream-check.mjs`

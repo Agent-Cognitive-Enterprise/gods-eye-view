@@ -36,13 +36,13 @@ history is never rewritten.
 
 New files are fork-only (`src/intel/`, `server/providers/intel/`,
 `server/providers/localVoice/`, `src/voice/local*.js`, `src/ui/intelConsole.js`,
-`src/ui/styles/intel.css`, the fork docs and workflows). Upstream files the
+`src/ui/styles/intel.css`, `src/ui/dockAutoHide.js`, the fork docs and workflows). Upstream files the
 fork edits are the merge surface; keep these edits additive and small:
 
 | File                                                                                         | Fork change                                                                |
 | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | `server/providers/local.js`                                                                  | Registers the intel and local-voice plugins; shares the GhostMaps watcher. |
-| `src/app/tools.js`, `src/standalone/tools.js`                                                | Mounts the Autopilot console; offers the `local` voice provider.           |
+| `src/app/tools.js`, `src/standalone/tools.js`                                                | Mounts the Autopilot console and dock auto-hide; offers `local` voice.     |
 | `src/ui/templates/context.html`, `style.css`                                                 | Panel shell and stylesheet import.                                         |
 | `src/voice/commands.js`, `src/voice/providerCapabilities.js`, `src/voice/sessionCommands.js` | Local voice provider entry and label.                                      |
 | `scripts/package-boundaries.json`                                                            | Owned-module entries for the new modules.                                  |

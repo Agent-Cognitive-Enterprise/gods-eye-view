@@ -4,6 +4,7 @@ import { initDrawTool } from '../annotations/drawTool.js';
 import { initGeoFileImport } from '../ui/geoFileImport.js';
 import { initImageryBoxTool } from '../ui/imageryBoxTool.js';
 import { createRecentImageryPanel } from '../ui/recentImagery.js';
+import { createDockAutoHide } from '../ui/dockAutoHide.js';
 import { createIntelConsole } from '../ui/intelConsole.js';
 import * as worldOverlay from '../overlays/worldOverlay.js';
 import * as pickRegistry from '../data/pickRegistry.js';
@@ -127,6 +128,9 @@ export function createApplicationTools({
     if (window.__gevIntel === intelConsole) delete window.__gevIntel;
     intelConsole.destroy();
   });
+  // Bottom controls fade when idle; a key press or the bottom edge recalls them.
+  const dockAutoHide = createDockAutoHide();
+  defer(() => dockAutoHide.destroy());
   if (startChrome)
     defer(startChrome({ loadingScreen, styleManager, dataManager, signal }));
   // Idle render governor: flips the scene into requestRenderMode whenever

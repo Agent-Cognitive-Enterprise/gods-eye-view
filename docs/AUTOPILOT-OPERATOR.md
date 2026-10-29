@@ -55,6 +55,13 @@ The autopilot instance's environment is set in `gev-common.ps1`
   the queue. Cards show sources, verification, confidence and age.
 - When nothing qualifies as an alert, **TOUR** visits other active events
   (`tourWhenIdle`).
+- Camera moves turn the globe first, then descend; after each shot the
+  camera zooms out in steps to the whole globe (**ZOOM OUT**,
+  `pullBackEnabled`). Each browser remembers ON / OFF / PAUSED across reloads.
+- The bottom controls (locations, voice, visual presets, POWER UP, language)
+  hide after 4 s idle; any key or moving the pointer to the bottom edge
+  brings them back. They stay visible while hovered or while a tray is open,
+  and are never hidden on touch-only devices.
 - Voice: pick the **Local** provider and hold Space to talk (English or
   Russian). Microphones work only on this PC: browsers allow them on
   `localhost` or HTTPS, not on `http://<LAN address>`. Firefox works on

@@ -278,3 +278,23 @@
 .intel-caption-text {
   flex: 1;
 }
+
+/* Auto-hiding bottom controls (src/ui/dockAutoHide.js). The dock keeps its
+   own transform (centring) and opacity transition. */
+#corner-actions {
+  transition:
+    opacity 0.35s ease,
+    visibility 0.35s ease;
+}
+body.gev-dock-hidden #command-dock,
+body.gev-dock-hidden #corner-actions {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+#cesium-credits {
+  transition: bottom 0.35s ease;
+}
+body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode) #cesium-credits {
+  bottom: 6px !important;
+}
