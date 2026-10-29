@@ -18,7 +18,13 @@
 
 import * as Cesium from 'cesium';
 import { roadLabel } from '../../data/routeSteps.js';
-import { t, msg, formatNumber, translateKnown } from '../../i18n/index.js';
+import {
+  t,
+  msg,
+  formatNumber,
+  getLocale,
+  translateKnown,
+} from '../../i18n/index.js';
 import { pointerOwnerName } from '../../data/pointerOwnerNames.js';
 import { formatQuantity } from '../../ui/unitLabels.js';
 
@@ -395,6 +401,16 @@ export function normalizeDirectionsParams(params = {}) {
 }
 
 /**
+ * A travel-mode word inside a sentence: lower case, except in German, where
+ * the words are nouns and keep their capital ("Auto", "Fahrrad").
+ * @param {string} word Translated mode word.
+ * @returns {string}
+ */
+function modeWordInSentence(word) {
+  return getLocale() === 'de' ? word : word.toLowerCase();
+}
+
+/**
  * Row chips for a given state. Pure so the chip logic is testable without a DOM.
  * @param {{mode:string, armed:null|'a'|'b', a:object|null, b:object|null, status:string, route:object|null}} state
  * @returns {{chips: object[], legend: object[]}}
@@ -409,7 +425,7 @@ export function directionsRowControls(state) {
     state: mode === id ? 'active' : 'idle',
     title: t('{mode} — reroute for {modeLower}', {
       mode: t(spec.word),
-      modeLower: t(spec.word).toLowerCase(),
+      modeLower: modeWordInSentence(t(spec.word)),
     }),
     params: { mode: id },
   }));

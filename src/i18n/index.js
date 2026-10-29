@@ -16,6 +16,7 @@ import {
   normalizeLocale,
   writeStoredLocale,
 } from './locale.js';
+import de from './locales/de.json' with { type: 'json' };
 import es from './locales/es.json' with { type: 'json' };
 import fr from './locales/fr.json' with { type: 'json' };
 import it from './locales/it.json' with { type: 'json' };
@@ -26,6 +27,7 @@ import zhCN from './locales/zh-CN.json' with { type: 'json' };
 import zhHant from './locales/zh-Hant.json' with { type: 'json' };
 
 const CATALOGS = Object.freeze({
+  de,
   es,
   fr,
   it,

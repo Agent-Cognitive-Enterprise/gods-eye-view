@@ -10,6 +10,7 @@ export const DEFAULT_LOCALE = 'en';
 /** Shipped locales; order does not matter. Adding one: docs/TRANSLATORS.md. */
 export const LOCALES = Object.freeze([
   'en',
+  'de',
   'es',
   'fr',
   'it',
@@ -23,6 +24,7 @@ export const LOCALES = Object.freeze([
 /** Each locale named in its own language, for the selector. */
 export const LOCALE_NAMES = Object.freeze({
   en: 'English',
+  de: 'Deutsch',
   es: 'Español',
   fr: 'Français',
   it: 'Italiano',
@@ -38,6 +40,7 @@ const RTL_LOCALES = Object.freeze([]);
 
 /**
  * Map any language tag to a shipped locale: 'ru-RU' and 'RU' → 'ru',
+  'de',
  * 'pt-BR' and 'pt-PT' → 'pt' (Brazilian Portuguese),
  * 'zh', 'zh-CN' and 'zh-Hans-SG' → 'zh-CN';
  * 'zh-Hant', 'zh-TW', 'zh-HK' and 'zh-MO' → 'zh-Hant'.
