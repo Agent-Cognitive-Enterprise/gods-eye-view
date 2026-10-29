@@ -11,6 +11,7 @@ export const DEFAULT_LOCALE = 'en';
 export const LOCALES = Object.freeze([
   'en',
   'es',
+  'it',
   'ru',
   'uk',
   'zh-CN',
@@ -21,6 +22,7 @@ export const LOCALES = Object.freeze([
 export const LOCALE_NAMES = Object.freeze({
   en: 'English',
   es: 'Español',
+  it: 'Italiano',
   ru: 'Русский',
   uk: 'Українська',
   'zh-CN': '中文（简体）',
