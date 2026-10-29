@@ -297,3 +297,122 @@ test('framing: antimeridian group centres near 180°; region needs bounds', () =
   assert.equal(argentina.kind, 'region');
   assert.ok(argentina.height > 2_000_000);
 });
+
+// ---------------------------------------------------------------- tour
+const cooling = (id, lat, lon, score, extra = {}) =>
+  event(id, lat, lon, score, {
+    lifecycle: 'cooling',
+    camera_eligible: false,
+    confidence: 0.85,
+    verification: 'officially_reported',
+    category: 'natural_disaster',
+    ...extra,
+  });
+
+function runTour(events, steps, tourSettings = {}) {
+  let state = setSchedulerMode(createSchedulerState(), 'auto');
+  const log = [];
+  for (const { at, update } of steps) {
+    const current = update ? update(events) : events;
+    const out = stepScheduler(state, {
+      now: T0 + at,
+      events: current,
+      clusters: clusterEvents(
+        current.filter((e) => e.camera_eligible && e.attention_score >= 70),
+      ),
+      settings: {
+        ...settings,
+        tourWhenIdle: true,
+        tourDwellMs: 45 * SEC,
+        ...tourSettings,
+      },
+    });
+    state = out.state;
+    log.push({
+      at,
+      ...out.decision,
+      key: out.decision.cluster?.event_ids.join('+'),
+    });
+  }
+  return { state, log };
+}
+
+const quiet = [
+  cooling('a', 10, 10, 55),
+  cooling('b', -30, 140, 50),
+  cooling('c', 50, -100, 45),
+];
+
+test('tour: with nothing urgent, every active event is visited once before any repeats', () => {
+  const { log } = runTour(quiet, every(15 * SEC, 13));
+  const stops = log
+    .filter((d) => d.type === 'fly')
+    .map((d) => [d.at / SEC, d.key, d.reason]);
+  assert.deepEqual(stops, [
+    [0, 'a', 'tour'],
+    [45, 'b', 'tour'],
+    [90, 'c', 'tour'],
+    [135, 'a', 'tour'],
+    [180, 'b', 'tour'],
+  ]);
+});
+
+test('tour: a qualifying alert takes over at once, and touring never hid it', () => {
+  const alert = (events) => [
+    ...events.filter((e) => e.event_id !== 'a'),
+    event('a', 10, 10, 90, { lifecycle: 'active', confidence: 0.85 }),
+  ];
+  const { log } = runTour(quiet, [
+    { at: 0 }, // tour visits a
+    { at: 10 * SEC, update: alert }, // a becomes an alert while on screen
+  ]);
+  assert.deepEqual(
+    log.map((d) => [d.type, d.reason, d.key]),
+    [
+      ['fly', 'tour', 'a'],
+      ['fly', 'highest_priority', 'a'],
+    ],
+  );
+});
+
+test('tour: after an alert dwell with nothing else urgent, it tours on instead of freezing', () => {
+  const events = [
+    event('alert', 0, 0, 90, { lifecycle: 'active', confidence: 0.85 }),
+    ...quiet,
+  ];
+  const { log } = runTour(events, [{ at: 0 }, { at: 31 * SEC }]);
+  assert.deepEqual(
+    log.map((d) => [d.reason, d.key]),
+    [
+      ['highest_priority', 'alert'],
+      ['tour', 'a'],
+    ],
+  );
+});
+
+test('tour: off means one still global view, as before', () => {
+  const { log } = runTour(quiet, every(15 * SEC, 3), { tourWhenIdle: false });
+  assert.deepEqual(
+    log.map((d) => d.type),
+    ['idle', 'none', 'none'],
+  );
+});
+
+test('tour: retracted, low-confidence, filtered, weak and unlocated events are skipped', () => {
+  const skipped = [
+    cooling('r', 1, 1, 80, { verification: 'retracted' }),
+    cooling('d', 2, 2, 80, { verification: 'disputed' }),
+    cooling('low', 3, 3, 80, { confidence: 0.2 }),
+    cooling('cat', 4, 4, 80, { category: 'civil_unrest' }),
+    cooling('weak', 5, 5, 20),
+    cooling('nowhere', null, null, 80),
+    cooling('archived', 6, 6, 80, { lifecycle: 'archived' }),
+  ];
+  const { log } = runTour(skipped, every(15 * SEC, 2), {
+    categoryRelevance: { civil_unrest: 0 },
+  });
+  assert.deepEqual(
+    log.map((d) => d.type),
+    ['idle', 'none'],
+  );
+});

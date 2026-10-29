@@ -14,8 +14,12 @@
 //  - clusters that have waited get bounded fairness credit, so a distant
 //    high-priority cluster eventually gets airtime without stale content
 //    dominating;
-//  - with nothing eligible the camera returns once to a still global view.
+//  - with nothing eligible, the tour (when on) slowly visits other active
+//    events in turn, each once before any repeats; tour shots never count as
+//    presented alerts and give way at once to anything that qualifies;
+//  - with the tour off, the camera returns once to a still global view.
 
+import { clusterEvents } from './clustering.js';
 import { AUTOPILOT_DEFAULTS } from './taxonomy.js';
 
 const FAIRNESS_POINTS_PER_MIN = 0.5;
@@ -30,6 +34,7 @@ export function createSchedulerState() {
     current: null, // {key, eventIds, revisions, score, critical, startedAt, interrupted}
     presented: {}, // eventId -> {at, revision}
     waitingSince: {}, // cluster key -> first time it was eligible and unshown
+    toured: {}, // eventId -> last tour visit (separate from alert cooldown)
     challenger: null, // {key, since}
     lastFlightAt: null,
     idle: false,
@@ -48,6 +53,24 @@ function inCooldown(cluster, eventsById, state, now, cooldownMs) {
     const revision = eventsById.get(id)?.revision ?? 0;
     return revision <= seen.revision && now - seen.at < cooldownMs;
   });
+}
+
+const TOUR_LIFECYCLES = new Set(['active', 'cooling', 'fading']);
+const TOUR_EXCLUDED = new Set(['retracted', 'resolved', 'disputed']);
+
+/** Clusters worth an ambient tour visit: located, credible, not filtered out. */
+export function tourClusters(events, s) {
+  const usable = events.filter(
+    (e) =>
+      TOUR_LIFECYCLES.has(e.lifecycle) &&
+      !TOUR_EXCLUDED.has(e.verification) &&
+      (e.confidence ?? 0) >= s.minimumCameraConfidence &&
+      (e.attention_score ?? 0) >= s.tourMinimumScore &&
+      s.categoryRelevance?.[e.category] !== 0 &&
+      ((e.location?.lat !== null && e.location?.lat !== undefined) ||
+        e.location?.bounds),
+  );
+  return clusterEvents(usable, { diameterKm: s.groupingRadiusKm });
 }
 
 function isCritical(cluster, eventsById, threshold) {
@@ -131,12 +154,56 @@ export function stepScheduler(state, { now, clusters, events, settings = {} }) {
     decision: { type: 'hold', reason },
   });
 
+  // Tour bookkeeping and the next stop: least recently toured first, then the
+  // most important, never the cluster already on screen.
+  next.toured ??= {};
+  for (const id of Object.keys(next.toured))
+    if (!eventsById.has(id)) delete next.toured[id];
+  const nextTourStop = () => {
+    if (!s.tourWhenIdle) return null;
+    const lastVisit = (c) =>
+      Math.max(...c.event_ids.map((id) => next.toured[id] ?? -Infinity));
+    return (
+      tourClusters(events, s)
+        .filter((c) => !holds(c) && (c.framing !== 'region' || c.bounds))
+        .sort(
+          (a, b) =>
+            lastVisit(a) - lastVisit(b) ||
+            b.top_score - a.top_score ||
+            (clusterKey(a) < clusterKey(b) ? -1 : 1),
+        )[0] ?? null
+    );
+  };
+  const tour = (cluster) => {
+    next.current = {
+      key: clusterKey(cluster),
+      eventIds: [...cluster.event_ids],
+      score: cluster.top_score,
+      critical: false,
+      startedAt: now,
+      interrupted: false,
+      tour: true,
+    };
+    for (const id of cluster.event_ids) next.toured[id] = now;
+    next.challenger = null;
+    next.lastFlightAt = now;
+    next.idle = false;
+    return { state: next, decision: { type: 'fly', cluster, reason: 'tour' } };
+  };
+  const idle = (reason) => {
+    next.current = null;
+    if (next.idle)
+      return { state: next, decision: { type: 'none', reason: 'idle' } };
+    next.idle = true;
+    return { state: next, decision: { type: 'idle', reason } };
+  };
+
   // Keep the current shot's score in step with its live data.
   // Ranks can shift inside the cluster on screen; it is still the same shot
   // while it contains the event the shot was anchored on.
   const holds = (cluster) =>
     Boolean(next.current) && cluster.event_ids.includes(next.current.key);
-  const live = next.current && eligible.find(holds);
+  const live = next.current && !next.current.tour && eligible.find(holds);
   if (next.current && live) {
     next.current.score = live.top_score;
     // Whatever changes while a cluster is on screen has been seen: a revision
@@ -148,19 +215,25 @@ export function stepScheduler(state, { now, clusters, events, settings = {} }) {
       };
   }
 
+  const elapsed = next.current ? now - next.current.startedAt : 0;
+  const sinceFlight = now - (next.lastFlightAt ?? -Infinity);
+
   if (!next.current) {
     if (fresh.length) return fly(fresh[0], 'highest_priority');
-    if (next.idle)
-      return { state: next, decision: { type: 'none', reason: 'idle' } };
-    next.idle = true;
-    return {
-      state: next,
-      decision: { type: 'idle', reason: 'nothing_eligible' },
-    };
+    const stop = nextTourStop();
+    if (stop) return tour(stop);
+    return idle('nothing_eligible');
   }
 
-  const elapsed = now - next.current.startedAt;
-  const sinceFlight = now - (next.lastFlightAt ?? -Infinity);
+  // A tour shot gives way at once to anything that qualifies as an alert.
+  if (next.current.tour) {
+    if (fresh.length && sinceFlight >= MIN_FLIGHT_GAP_MS)
+      return fly(fresh[0], 'highest_priority');
+    if (!s.tourWhenIdle) return idle('nothing_eligible');
+    if (elapsed < s.tourDwellMs) return hold('tour_dwell');
+    const stop = nextTourStop();
+    return stop ? tour(stop) : hold('tour_dwell');
+  }
   const others = fresh.filter((c) => !holds(c));
 
   // A qualified critical cluster may cut a dwell short, once per dwell.
@@ -180,14 +253,10 @@ export function stepScheduler(state, { now, clusters, events, settings = {} }) {
 
   const best = others[0];
   if (!best) {
-    if (!live) {
-      next.current = null;
-      next.idle = true;
-      return {
-        state: next,
-        decision: { type: 'idle', reason: 'current_no_longer_eligible' },
-      };
-    }
+    // Nothing else qualifies: continue as a tour after the dwell.
+    const stop = nextTourStop();
+    if (stop) return tour(stop);
+    if (!live) return idle('current_no_longer_eligible');
     return hold('nothing_else_eligible');
   }
   // The current shot is still eligible and strong: a challenger must clearly

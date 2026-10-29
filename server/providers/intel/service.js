@@ -38,7 +38,14 @@ export function sanitizeSettings(input = {}) {
   num('normalPreemptionMargin', 0, 100);
   num('preemptionConfirmMs', 0, 120_000);
   num('maxMarkersInView', 10, 2000);
-  for (const key of ['autopilotEnabled', 'narrationEnabled', 'localAiEnabled'])
+  num('tourDwellMs', 15_000, 600_000);
+  num('tourMinimumScore', 0, 100);
+  for (const key of [
+    'autopilotEnabled',
+    'narrationEnabled',
+    'localAiEnabled',
+    'tourWhenIdle',
+  ])
     if (typeof input[key] === 'boolean') out[key] = input[key];
   if (input.categoryRelevance && typeof input.categoryRelevance === 'object') {
     out.categoryRelevance = {};

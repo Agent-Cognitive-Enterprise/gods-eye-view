@@ -145,6 +145,10 @@ export const AUTOPILOT_DEFAULTS = Object.freeze({
   preemptionConfirmMs: 10_000,
   maxMarkersInView: 200,
   narrationEnabled: false,
+  // Ambient tour of other active events while nothing qualifies as an alert.
+  tourWhenIdle: true,
+  tourDwellMs: 45_000,
+  tourMinimumScore: 40,
   // Local model assessments (Phase 3); off means rule-based scoring only.
   localAiEnabled: true,
 });
