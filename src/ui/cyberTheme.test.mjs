@@ -56,7 +56,7 @@ function styleOwner(t, initialVariant = 'cyber') {
     setVariant: (value) => {
       // Normalize like the real HUD so retired layouts fall back.
       variant = normalizeHudLayout(value);
-      applyHudUiTheme(root, value);
+      applyHudUiTheme(root, variant);
     },
     setMode: (value) => calls.push(['mode', value]),
     onStyleChange: (value) => calls.push(['style', value]),
