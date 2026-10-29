@@ -1071,7 +1071,7 @@ export function displayShotTitle(title, shot = undefined, scene = undefined) {
   const fromRecipe = shot
     ? Boolean(shot.sourcePackId) ||
       recipeDeclaresShotTitle(scene?.id, text) ||
-      shotPackDeclaresBaseTitle(scene, text)
+      shotPackBindsShot(scene, text, shot)
     : true;
   if (fromRecipe && BUILTIN_SHOT_TITLES.has(text)) return t(text);
   const numbered = /^Shot ([1-9]\d*)$/.exec(text);
@@ -1079,21 +1079,22 @@ export function displayShotTitle(title, shot = undefined, scene = undefined) {
 }
 
 /**
- * Whether a shot pack that upgraded this scene declares the title for one of
- * its legacy base shots. The upgrade rebuilds those shots without a
- * sourcePackId (see SceneDirector._bootstrapLegacyShotPacks), so the pack's
- * own shots in the scene vouch for them.
- * @param {{shots?: Array<{sourcePackId?: string}>}} [scene]
+ * Whether a shot pack applied to this scene binds this title to this exact
+ * shot. The legacy upgrade rebuilds the base shots without a sourcePackId
+ * (see SceneDirector._bootstrapLegacyShotPacks), but the pack marker records
+ * their ids, so a user shot that only shares the title is not vouched for.
+ * @param {{appliedShotPacks?: Array<{shotBindings?: Object<string, string>}>}} [scene]
  * @param {string} title
+ * @param {{id?: string}} shot
  * @returns {boolean}
  */
-function shotPackDeclaresBaseTitle(scene, title) {
-  const shots = Array.isArray(scene?.shots) ? scene.shots : [];
-  return SCENE_APPEND_RECIPES.some(
-    (pack) =>
-      pack.legacySceneBootstrap?.cameraPath?.some(
-        (keyframe) => keyframe?.title === title,
-      ) && shots.some((item) => item?.sourcePackId === pack.id),
+function shotPackBindsShot(scene, title, shot) {
+  const packs = Array.isArray(scene?.appliedShotPacks)
+    ? scene.appliedShotPacks
+    : [];
+  return (
+    Boolean(shot?.id) &&
+    packs.some((pack) => pack?.shotBindings?.[title] === shot.id)
   );
 }
 

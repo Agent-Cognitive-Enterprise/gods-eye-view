@@ -151,12 +151,25 @@ test('the base shots of a scene the Nepal pack upgraded localize', () => {
   setLocale('de');
   const title = pack.legacySceneBootstrap.cameraPath[0].title;
   const base = { id: 'shot-base', title };
+  // A user shot renamed to the same built-in title is not the bound one.
+  const renamed = { id: 'shot-user', title };
   const upgraded = {
     id: 'scene-upgraded',
-    shots: [base, { id: 'shot-pack', title: 'x', sourcePackId: pack.id }],
+    shots: [
+      base,
+      { id: 'shot-pack', title: 'x', sourcePackId: pack.id },
+      renamed,
+    ],
+    appliedShotPacks: [
+      { id: pack.id, version: 1, shotBindings: { [title]: base.id } },
+    ],
   };
-  assert.equal(displayShotTitle(title, base, upgraded), displayShotTitle(title));
+  assert.equal(
+    displayShotTitle(title, base, upgraded),
+    displayShotTitle(title),
+  );
   assert.notEqual(displayShotTitle(title), title);
+  assert.equal(displayShotTitle(title, renamed, upgraded), title);
   // The same title in a scene no pack touched stays as typed.
   assert.equal(
     displayShotTitle(title, base, { id: 'scene-user', shots: [base] }),
