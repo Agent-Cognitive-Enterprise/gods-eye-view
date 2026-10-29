@@ -467,7 +467,6 @@
       "src/styles/thermal.js",
       "src/styles/anime.js",
       "src/styles/noir.js",
-      "src/styles/snow.js",
       "src/i18n/marker.js"
     ],
     "external": ["cesium"]
@@ -733,7 +732,6 @@
       "src/styles/anime.js",
       "src/styles/noir.js",
       "src/styles/retro.js",
-      "src/styles/snow.js",
       "src/styles/surveillance.js",
       "src/styles/thermal.js",
       "src/ui/applicationShell.js",
@@ -855,7 +853,8 @@
       "src/ui/layerNames.js",
       "src/ui/statusText.js",
       "src/ui/statusBadge.js",
-      "src/scopeMaskPolicy.js"
+      "src/scopeMaskPolicy.js",
+      "src/visualStylePolicy.js"
     ],
     "external": ["cesium"]
   },
@@ -976,7 +975,8 @@
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
       "src/i18n/locales/zh-Hant.json",
-      "src/ui/unitLabels.js"
+      "src/ui/unitLabels.js",
+      "src/visualStylePolicy.js"
     ],
     "external": ["cesium"]
   },
@@ -2356,7 +2356,6 @@
       "src/styles/anime.js",
       "src/styles/noir.js",
       "src/styles/retro.js",
-      "src/styles/snow.js",
       "src/styles/surveillance.js",
       "src/styles/thermal.js",
       "src/ui/applicationShell.js",
@@ -2750,7 +2749,8 @@
       "src/voice/geminiCaptureWorklet.js",
       "src/ui/statusBadge.js",
       "src/sceneCommandRelease.js",
-      "src/scopeMaskPolicy.js"
+      "src/scopeMaskPolicy.js",
+      "src/visualStylePolicy.js"
     ],
     "external": [
       "hls.js",
@@ -3479,7 +3479,6 @@
       "src/styles/anime.js",
       "src/styles/noir.js",
       "src/styles/retro.js",
-      "src/styles/snow.js",
       "src/styles/surveillance.js",
       "src/styles/thermal.js",
       "src/ui/applicationShortcuts.js",
@@ -3504,7 +3503,8 @@
       "src/i18n/locales/zh-CN.json",
       "src/i18n/locales/zh-Hant.json",
       "src/scopeMaskPolicy.js",
-      "src/ui/displayControls.js"
+      "src/ui/displayControls.js",
+      "src/visualStylePolicy.js"
     ],
     "external": ["cesium"]
   },
@@ -4101,7 +4101,6 @@
       "src/styles/anime.js",
       "src/styles/noir.js",
       "src/styles/retro.js",
-      "src/styles/snow.js",
       "src/styles/surveillance.js",
       "src/styles/thermal.js",
       "src/view/index.js",
@@ -4110,7 +4109,8 @@
       "src/data/idSwitches.js",
       "src/data/detectionPolicy.js",
       "src/scopeMaskPolicy.js",
-      "src/i18n/marker.js"
+      "src/i18n/marker.js",
+      "src/visualStylePolicy.js"
     ],
     "external": []
   },
@@ -4218,7 +4218,8 @@
       "src/tools/views.js",
       "src/tools/globePanel.js",
       "src/tools/queries/panelRequest.js",
-      "src/geoDistance.js"
+      "src/geoDistance.js",
+      "src/visualStylePolicy.js"
     ],
     "external": ["satellite.js"]
   },
@@ -4319,7 +4320,8 @@
       "src/view/index.js",
       "src/data/idSwitches.js",
       "src/data/layerState.js",
-      "src/data/layerStateTokenReservations.json"
+      "src/data/layerStateTokenReservations.json",
+      "src/visualStylePolicy.js"
     ],
     "external": []
   },
