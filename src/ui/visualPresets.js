@@ -18,12 +18,6 @@ export const STYLES = {
 };
 
 /**
- * Styles the app no longer offers. A share link, scene or shot that names one
- * opens on Normal instead of keeping whatever style was already showing.
- */
-export const RETIRED_STYLES = Object.freeze(['snow']);
-
-/**
  * The tactical detection look: Dense at 75%.
  *
  * Owner playtest 2026-08-18: "detection mode… 75% weighted, with the 16% fade

@@ -31,9 +31,9 @@ import {
 } from '../data/detectionPolicy.js';
 import { clampScopeFeatherPct } from '../scopeMaskPolicy.js';
 import { VIEW_STYLES } from '../view/index.js';
+import { RETIRED_STYLES } from '../visualStylePolicy.js';
 import {
   GLOBAL_POST_DEFAULTS,
-  RETIRED_STYLES,
   STYLE_PRESET_DEFAULTS,
   STYLES,
 } from '../ui/visualPresets.js';

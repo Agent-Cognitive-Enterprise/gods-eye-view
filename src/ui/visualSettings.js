@@ -1,6 +1,7 @@
 import { clampScopeFeatherPct } from '../scopeMaskPolicy.js';
 import { syncScopeControls } from './displayControls.js';
-import { RETIRED_STYLES, STYLE_STATUS_LABELS } from './visualPresets.js';
+import { STYLE_STATUS_LABELS } from './visualPresets.js';
+import { RETIRED_STYLES } from '../visualStylePolicy.js';
 import { syncSegmentedControl } from './segmentedControl.js';
 import { t } from '../i18n/index.js';
 import { UiLifetime } from './uiLifetime.js';
