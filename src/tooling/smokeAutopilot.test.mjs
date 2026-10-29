@@ -84,3 +84,33 @@ test('required services, a broken API or a running drill are handled', async () 
     'operator drill untouched',
   );
 });
+
+test('feeds still on their first poll are waited for, not reported degraded', async () => {
+  let polls = 0;
+  const routes = { ...HEALTHY };
+  const { fetchImpl } = server(routes);
+  const wrapped = async (url, init) => {
+    if (new URL(url).pathname === '/api/intel/feeds') {
+      polls += 1;
+      const feeds =
+        polls < 3
+          ? [
+              {
+                id: 'gdacs-alerts',
+                status: 'degraded',
+                last_success_at: null,
+                last_error: null,
+              },
+            ]
+          : [{ id: 'gdacs-alerts', status: 'healthy', last_success_at: 1 }];
+      return { status: 200, text: async () => JSON.stringify({ feeds }) };
+    }
+    return fetchImpl(url, init);
+  };
+  const result = await smoke(
+    { url: 'http://x', feedWaitMs: 100, feedWaitStepMs: 1 },
+    wrapped,
+  );
+  assert.equal(result.checks.find((c) => c.name === 'feeds').level, 'pass');
+  assert.equal(polls, 3);
+});

@@ -41,7 +41,14 @@ function parseArgs(argv) {
 
 /** Run the checks against `base`; `fetchImpl` is injectable for tests. */
 export async function smoke(
-  { url, requireAi = false, requireVoice = false, drill = true },
+  {
+    url,
+    requireAi = false,
+    requireVoice = false,
+    drill = true,
+    feedWaitMs = 30_000,
+    feedWaitStepMs = 2_000,
+  },
   fetchImpl = globalThis.fetch,
 ) {
   const checks = [];
@@ -93,7 +100,18 @@ export async function smoke(
   if (!enabled) return summarize(checks);
 
   await step('feeds', async () => {
-    const { status, body } = await request('/api/intel/feeds');
+    // Right after a start, first polls are still running (no success, no
+    // error yet); give them a moment rather than reporting them degraded.
+    const firstPoll = (f) =>
+      f.status === 'degraded' && !f.last_success_at && !f.last_error;
+    let status;
+    let body;
+    for (let waited = 0; ; waited += feedWaitStepMs) {
+      ({ status, body } = await request('/api/intel/feeds'));
+      if (status !== 200 || !Array.isArray(body?.feeds)) break;
+      if (!body.feeds.some(firstPoll) || waited >= feedWaitMs) break;
+      await new Promise((resolve) => setTimeout(resolve, feedWaitStepMs));
+    }
     if (status !== 200 || !Array.isArray(body?.feeds))
       return record('feeds', 'fail', `HTTP ${status}`);
     const by = {};
