@@ -17,15 +17,19 @@ import {
   writeStoredLocale,
 } from './locale.js';
 import es from './locales/es.json' with { type: 'json' };
+import it from './locales/it.json' with { type: 'json' };
 import pt from './locales/pt.json' with { type: 'json' };
 import ru from './locales/ru.json' with { type: 'json' };
+import uk from './locales/uk.json' with { type: 'json' };
 import zhCN from './locales/zh-CN.json' with { type: 'json' };
 import zhHant from './locales/zh-Hant.json' with { type: 'json' };
 
 const CATALOGS = Object.freeze({
   es,
+  it,
   pt,
   ru,
+  uk,
   'zh-CN': zhCN,
   'zh-Hant': zhHant,
 });

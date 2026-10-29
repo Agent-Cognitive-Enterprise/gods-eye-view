@@ -33,10 +33,14 @@ function memoryStorage(initial = {}) {
 test('normalizeLocale folds regional variants and rejects unshipped tags', () => {
   assert.equal(normalizeLocale('ru-RU'), 'ru');
   assert.equal(normalizeLocale(' RU '), 'ru');
+  assert.equal(normalizeLocale('uk'), 'uk');
+  assert.equal(normalizeLocale('uk-UA'), 'uk');
   assert.equal(normalizeLocale('en_GB'), 'en');
   assert.equal(normalizeLocale('pt-BR'), 'pt');
   assert.equal(normalizeLocale('pt_PT'), 'pt');
   assert.equal(normalizeLocale('xx'), null);
+  assert.equal(normalizeLocale('it-IT'), 'it');
+  assert.equal(normalizeLocale('it_CH'), 'it');
   // Explicit script tags take precedence over regional defaults.
   assert.equal(normalizeLocale('zh'), 'zh-CN');
   assert.equal(normalizeLocale('zh-CN'), 'zh-CN');
@@ -156,6 +160,22 @@ test('tn() picks the Portuguese one, many and other forms', () => {
   assert.equal(label(1), 'ATIVAR · 1 CHAVE PENDENTE');
   assert.equal(label(3), 'ATIVAR · 3 CHAVES PENDENTES');
   assert.equal(label(1_000_000), 'ATIVAR · 1000000 DE CHAVES PENDENTES');
+});
+
+test('tn() picks the four Ukrainian plural forms', () => {
+  const label = (count) =>
+    tn(
+      count,
+      'POWER UP · {count} KEY WAITING',
+      'POWER UP · {count} KEYS WAITING',
+    );
+  setLocale('uk');
+  assert.match(label(1), / 1 КЛЮЧ(?![А-ЯҐЄІЇ])/);
+  assert.match(label(3), / 3 КЛЮЧІ(?![А-ЯҐЄІЇ])/);
+  assert.match(label(5), / 5 КЛЮЧІВ(?![А-ЯҐЄІЇ])/);
+  assert.match(label(11), / 11 КЛЮЧІВ(?![А-ЯҐЄІЇ])/);
+  assert.match(label(21), / 21 КЛЮЧ(?![А-ЯҐЄІЇ])/);
+  assert.match(label(1.5), / 1\.5 КЛЮЧА(?![А-ЯҐЄІЇ])/);
 });
 
 test('t() context separates identical English with different meanings', () => {
