@@ -294,14 +294,14 @@ Choose a first-run mission, or try these in order. The GIFs show Google Photorea
 
 ![Tracking the ISS along its orbital path as it crosses over Ukraine](docs/media/14-iss-over-ukraine.gif)
 
-6. **Switch the optics.** Tap `1`–`7` — CRT, NVG, FLIR — and the whole live planet re-renders through a different sensor.
+6. **Switch the optics.** Tap `1`–`6` — CRT, NVG, FLIR — and the whole live planet re-renders through a different sensor.
 
 ![Cycling a dense live globe through CRT, FLIR, and NVG in one continuous view](docs/media/01-style-sweep.gif)
 
 7. **Talk to it** _(needs an OpenAI key)_: _"Take me to LAX and select the nearest airborne aircraft."_
 8. **Come home.** Hit **Reset Globe** — or just say _"zoom out to a globe view."_
 
-**Keyboard:** `1`–`7` visual styles · `H` HUD · `D` detection · `C` cockpit · `` ` `` frame rate · `Esc` out. Trackpad pinch zooms the globe.
+**Keyboard:** `1`–`6` visual styles · `H` HUD · `D` detection · `C` cockpit · `` ` `` frame rate · `Esc` out. Trackpad pinch zooms the globe.
 
 ---
 

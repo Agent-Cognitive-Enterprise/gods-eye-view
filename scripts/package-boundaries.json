@@ -964,7 +964,8 @@
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
       "src/i18n/locales/zh-Hant.json",
-      "src/ui/unitLabels.js"
+      "src/ui/unitLabels.js",
+      "src/visualStylePolicy.js"
     ],
     "external": ["cesium"]
   },
