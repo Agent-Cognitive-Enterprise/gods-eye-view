@@ -220,6 +220,9 @@ html:not([lang='en']) #scene-panel .scene-controls .scene-btn {
 /* The file row is housekeeping; it stays quieter than the steps above. */
 #scene-panel .scene-file-controls .scene-btn {
   font-size: 9px;
+  /* Room for one long translated word (IMPORTIEREN, ІМПОРТУВАТИ) per line. */
+  padding: 8px 4px;
+  letter-spacing: 0.6px;
   background: transparent;
 }
 
