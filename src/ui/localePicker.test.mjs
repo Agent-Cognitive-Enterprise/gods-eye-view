@@ -43,7 +43,7 @@ test('the current language comes first, the rest by their own names', () => {
         nativeNames: LOCALE_NAMES,
       }),
     ),
-    ['ru', 'uk', 'de', 'en', 'es', 'fr', 'it', 'pt', 'zh-CN', 'zh-Hant'],
+    ['ru', 'uk', 'de', 'en', 'es', 'fr', 'it', 'pt', 'zh-CN', 'zh-Hant', 'ja'],
   );
   assert.deepEqual(
     codes(
@@ -53,7 +53,7 @@ test('the current language comes first, the rest by their own names', () => {
         nativeNames: LOCALE_NAMES,
       }),
     ),
-    ['es', 'de', 'en', 'fr', 'it', 'pt', 'ru', 'uk', 'zh-CN', 'zh-Hant'],
+    ['es', 'de', 'en', 'fr', 'it', 'pt', 'ru', 'uk', 'zh-CN', 'zh-Hant', 'ja'],
   );
   assert.deepEqual(
     codes(
@@ -63,7 +63,7 @@ test('the current language comes first, the rest by their own names', () => {
         nativeNames: LOCALE_NAMES,
       }),
     ),
-    ['en', 'de', 'es', 'fr', 'it', 'pt', 'ru', 'uk', 'zh-CN', 'zh-Hant'],
+    ['en', 'de', 'es', 'fr', 'it', 'pt', 'ru', 'uk', 'zh-CN', 'zh-Hant', 'ja'],
   );
   const rows = buildLocaleOptions({
     locales: MANY,

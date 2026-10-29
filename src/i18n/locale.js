@@ -14,6 +14,7 @@ export const LOCALES = Object.freeze([
   'es',
   'fr',
   'it',
+  'ja',
   'pt',
   'ru',
   'uk',
@@ -28,6 +29,7 @@ export const LOCALE_NAMES = Object.freeze({
   es: 'Español',
   fr: 'Français',
   it: 'Italiano',
+  ja: '日本語',
   pt: 'Português (Brasil)',
   ru: 'Русский',
   uk: 'Українська',
@@ -40,7 +42,7 @@ const RTL_LOCALES = Object.freeze([]);
 
 /**
  * Map any language tag to a shipped locale: 'ru-RU' and 'RU' → 'ru',
-  'de',
+ * 'de-AT' and 'de_CH' → 'de', 'ja-JP' → 'ja',
  * 'pt-BR' and 'pt-PT' → 'pt' (Brazilian Portuguese),
  * 'zh', 'zh-CN' and 'zh-Hans-SG' → 'zh-CN';
  * 'zh-Hant', 'zh-TW', 'zh-HK' and 'zh-MO' → 'zh-Hant'.
