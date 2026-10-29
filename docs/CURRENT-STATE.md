@@ -1176,7 +1176,8 @@ The panel is titled Authoring and is laid out in four labelled steps: SCENE
 (picker on its own row, NEW SCENE, DELETE), SHOTS (+ CAPTURE SHOT, UPDATE SHOT,
 the numbered shot list and a select/rename hint), PREVIEW (PLAY, STOP, NEXT) and
 SAVE & SHARE (EXPORT, IMPORT, RUN LOG, then the EDIT DETAILS / SHARE SCENE row).
-Every action has a tooltip, and the status line is a polite live region. Outside
+Every button in the panel's step rows has a tooltip, and the status line is a
+polite live region. Outside
 playback a button that would do nothing is disabled: DELETE and CAPTURE SHOT
 without a scene, UPDATE SHOT without a selected shot, PLAY and NEXT on a scene
 with no shots. During playback everything but STOP stays disabled as before.

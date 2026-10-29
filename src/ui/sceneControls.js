@@ -272,6 +272,7 @@ export class SceneControls {
     ])
       remove();
     if (this.elements.shots) this.elements.shots.textContent = '';
+    this.elements.panel?.classList.toggle('has-shots', false);
     presentSceneRuntime(this.elements.runtime, '');
     this.setPlaybackActive(false);
   }

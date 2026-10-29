@@ -1,6 +1,6 @@
 /* ── Scene Director Panel ───────────────────── */
 #scene-panel {
-  --panel-expanded-width: 372px;
+  --panel-expanded-width: 360px;
   /* Secondary text in Authoring: dimmer than labels, but legible on the globe. */
   --scene-quiet: rgba(232, 234, 237, 0.62);
   position: fixed;
@@ -179,6 +179,9 @@ html:not([lang='en']) #scene-panel .scene-controls .scene-btn {
 .scene-btn {
   flex: 1;
   min-width: 72px;
+}
+
+#scene-panel .scene-btn {
   font-size: 10px;
   padding: 8px 10px;
 }
@@ -206,21 +209,16 @@ html:not([lang='en']) #scene-panel .scene-controls .scene-btn {
   margin-top: 2px;
 }
 
-/* One primary action per step: CAPTURE SHOT and PLAY. */
-.scene-btn-primary:not(:disabled) {
+/* One primary action per step: CAPTURE SHOT and PLAY. The panel id keeps
+   this above Cyber's shared button surface. */
+#scene-panel .scene-btn-primary:not(:disabled) {
   color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 55%, transparent);
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
-#scene-capture-btn {
-  flex: 2 1 0;
-}
-
 /* The file row is housekeeping; it stays quieter than the steps above. */
-.scene-file-controls .scene-btn {
-  flex: 1 1 0;
-  min-width: 0;
+#scene-panel .scene-file-controls .scene-btn {
   font-size: 9px;
   background: transparent;
 }

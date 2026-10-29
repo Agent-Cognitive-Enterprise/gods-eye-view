@@ -3081,7 +3081,7 @@
   "Add the current view, style and layers as the next shot": "Добавить текущий вид, стиль и слои следующим кадром",
   "Replace the selected shot with the current view": "Заменить выбранный кадр текущим видом",
   "Click a shot to select it, double-click to rename.": "Щёлкните кадр, чтобы выбрать его, дважды — чтобы переименовать.",
-  "scene|PLAY": "ВОСПРОИЗВЕСТИ",
+  "scene|PLAY": "ПУСК",
   "Play the whole scene from its first shot": "Воспроизвести всю сцену с первого кадра",
   "Stop playback (Esc)": "Остановить воспроизведение (Esc)",
   "Play only the shot after the selected one": "Воспроизвести только кадр после выбранного",
