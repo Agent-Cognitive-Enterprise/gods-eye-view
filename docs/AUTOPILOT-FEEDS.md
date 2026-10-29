@@ -16,7 +16,7 @@ in [EARLY-WARNING.md](EARLY-WARNING.md#sources-registry). Status as of
 | NASA EONET                   | Worldwide open storms, wildfires, volcanoes, floods, landslides                                                                    | Curated secondary           |
 | WHO Disease Outbreak News    | Worldwide outbreak reports (last 45 days), country level                                                                           | Official                    |
 | World Bank inflation         | Countries with very high or sharply rising annual consumer inflation                                                               | Official statistic (annual) |
-| S2 GhostMaps incidents       | Dated incident exports (mostly USA, Iran/Middle East); analyst compilation                                                         | Analyst                     |
+| S2 GhostMaps incidents       | Dated incident exports (mostly USA, Iran/Middle East); analyst compilation. Tour stops only, never alerts                          | Analyst                     |
 
 ## Available but not active
 

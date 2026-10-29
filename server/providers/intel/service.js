@@ -50,6 +50,7 @@ export function sanitizeSettings(input = {}) {
     'localAiEnabled',
     'tourWhenIdle',
     'pullBackEnabled',
+    'tourAnalystIncidents',
   ])
     if (typeof input[key] === 'boolean') out[key] = input[key];
   if (input.categoryRelevance && typeof input.categoryRelevance === 'object') {

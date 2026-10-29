@@ -58,14 +58,29 @@ function inCooldown(cluster, eventsById, state, now, cooldownMs) {
 const TOUR_LIFECYCLES = new Set(['active', 'cooling', 'fading']);
 const TOUR_EXCLUDED = new Set(['retracted', 'resolved', 'disputed']);
 
+// Analyst-compiled incidents (S2 GhostMaps) are single-source and score low
+// by design; as tour stops they need only this much confidence.
+const ANALYST_TOUR_MIN_CONFIDENCE = 0.25;
+
+/** Every source of the event is an analyst compilation. */
+export const isAnalystIncident = (e) =>
+  (e.lineages?.length ?? 0) > 0 &&
+  e.lineages.every((l) => l.source_type === 'analyst');
+
 /** Clusters worth an ambient tour visit: located, credible, not filtered out. */
 export function tourClusters(events, s) {
+  const credible = (e) =>
+    ((e.confidence ?? 0) >= s.minimumCameraConfidence &&
+      (e.attention_score ?? 0) >= s.tourMinimumScore) ||
+    // Shown, labelled unverified, as tour stops only: never an alert.
+    (s.tourAnalystIncidents !== false &&
+      isAnalystIncident(e) &&
+      (e.confidence ?? 0) >= ANALYST_TOUR_MIN_CONFIDENCE);
   const usable = events.filter(
     (e) =>
       TOUR_LIFECYCLES.has(e.lifecycle) &&
       !TOUR_EXCLUDED.has(e.verification) &&
-      (e.confidence ?? 0) >= s.minimumCameraConfidence &&
-      (e.attention_score ?? 0) >= s.tourMinimumScore &&
+      credible(e) &&
       s.categoryRelevance?.[e.category] !== 0 &&
       ((e.location?.lat !== null && e.location?.lat !== undefined) ||
         e.location?.bounds),

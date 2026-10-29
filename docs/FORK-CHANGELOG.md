@@ -12,6 +12,8 @@ number there.
   waits for map tiles before descending and before the hold, a larger tile
   cache and sibling preloading while Autopilot runs; the Autopilot state is
   remembered per browser across reloads.
+- **S2 incidents in the tour.** Analyst-compiled incidents are tour stops
+  (labelled unverified, never alerts); `tourAnalystIncidents`.
 - **Auto-hiding bottom controls.** The command dock and the corner row fade
   after 4 s idle and return on any key or at the bottom edge; the map
   attribution moves to the bottom edge while they are hidden.

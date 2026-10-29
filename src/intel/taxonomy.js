@@ -149,6 +149,8 @@ export const AUTOPILOT_DEFAULTS = Object.freeze({
   tourWhenIdle: true,
   tourDwellMs: 45_000,
   tourMinimumScore: 40,
+  // Analyst incidents (S2) as tour stops despite low confidence and score.
+  tourAnalystIncidents: true,
   // After a shot settles: hold, then zoom out in steps until the whole globe
   // is in view; the next flight turns the globe first, then zooms in.
   pullBackEnabled: true,

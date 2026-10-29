@@ -163,7 +163,10 @@ nothing else does), the camera slowly visits other active, cooling or fading
 events in turn, 45 s each (`tourDwellMs`), least recently toured first, each
 once before any repeats. Tour stops need a location, confidence at least the
 camera minimum, a score of at least 40 (`tourMinimumScore`), an enabled
-category, and must not be retracted, resolved or disputed. Tour shots are
+category, and must not be retracted, resolved or disputed. Analyst-compiled
+incidents (every source an analyst compilation, i.e. S2 GhostMaps) are tour
+stops from confidence 0.25 regardless of score (`tourAnalystIncidents`, on by
+default); their cards show them as unverified, and they never become alerts. Tour shots are
 labelled "tour · nothing urgent right now", never count as presented alerts
 (an event toured past can still raise its own alert), and give way at once to
 anything that qualifies. The TOUR rule (`tourWhenIdle`, on by default) turns it
@@ -395,7 +398,7 @@ Shared rules:
 `criticalInterruptThreshold 95`, `normalPreemptionMargin 15`,
 `preemptionConfirmMs 10000`, `maxMarkersInView 200`, `narrationEnabled false`,
 `tourWhenIdle true`, `tourDwellMs 45000`, `tourMinimumScore 40`, `localAiEnabled true`,
-`pullBackEnabled true`, `pullBackHoldMs 10000`, `pullBackStepMs 5000`,
+`tourAnalystIncidents true`, `pullBackEnabled true`, `pullBackHoldMs 10000`, `pullBackStepMs 5000`,
 `categoryRelevance` (0 disables a category for the camera), `weights`.
 Stored in `.gev-cache/intel/settings.json`; `DELETE /api/intel/settings`
 resets. Category lifecycle defaults are in `src/intel/taxonomy.js`.

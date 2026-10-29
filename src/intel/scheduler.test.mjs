@@ -11,6 +11,7 @@ import {
 import {
   createSchedulerState,
   setSchedulerMode,
+  isAnalystIncident,
   stepScheduler,
 } from './scheduler.js';
 
@@ -421,6 +422,44 @@ test('tour: retracted, low-confidence, filtered, weak and unlocated events are s
     log.map((d) => d.type),
     ['idle', 'none'],
   );
+});
+
+test('tour: analyst incidents (S2) are tour stops despite low scores, never alerts', () => {
+  const analyst = (id, lat, lon, extra = {}) =>
+    cooling(id, lat, lon, 33, {
+      category: 'armed_conflict',
+      confidence: 0.33,
+      verification: 'unverified',
+      lineages: [{ source_type: 'analyst', provider: 'ghostmaps' }],
+      ...extra,
+    });
+  const events = [
+    analyst('s2', 42.2, -85.2),
+    cooling('weakNews', 10, 10, 33, {
+      confidence: 0.33,
+      lineages: [{ source_type: 'news' }],
+    }),
+    analyst('mixed', 20, 20, {
+      lineages: [{ source_type: 'analyst' }, { source_type: 'news' }],
+    }),
+    analyst('junk', 30, 30, { confidence: 0.1 }),
+    analyst('gone', 40, 40, { verification: 'retracted' }),
+  ];
+  const { log } = runTour(events, every(45 * SEC, 3));
+  assert.deepEqual(
+    log.map((d) => [d.type, d.reason, d.key]),
+    [
+      ['fly', 'tour', 's2'],
+      ['hold', 'tour_dwell', undefined],
+      ['hold', 'tour_dwell', undefined],
+    ],
+  );
+  const off = runTour(events, every(15 * SEC, 1), {
+    tourAnalystIncidents: false,
+  });
+  assert.equal(off.log[0].type, 'idle');
+  assert.equal(isAnalystIncident(events[0]), true);
+  assert.equal(isAnalystIncident({ lineages: [] }), false);
 });
 
 test('pull-back: whole globe fits the smaller field of view with space around it', () => {
