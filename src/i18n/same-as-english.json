@@ -169,9 +169,6 @@
     "{source} HTTP {status}",
     "{speed} kn",
     "{type}  SPD: {speed}  HDG: {heading}",
-    "{value} KM",
-    "{value} KM/H",
-    "{value} KM/S",
     "ΔE",
     "ΔN",
     "▲ {frp} MW"
