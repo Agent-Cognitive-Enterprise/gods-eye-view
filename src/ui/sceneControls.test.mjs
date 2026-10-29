@@ -184,7 +184,16 @@ test('Authoring disables idle actions that would do nothing', () => {
     assert.equal(f.elements.update.disabled, true);
     assert.equal(f.elements.start.disabled, false);
 
+    // PLAY and NEXT run on into the following scenes, so an empty selected
+    // scene beside one with shots keeps them available.
     f.state.scenes[0].shots = [];
+    f.state.scenes.push({ id: 'scene-b', title: 'B', shots: [{ id: 'b1' }] });
+    f.owner.setButtons(false);
+    assert.equal(f.elements.start.disabled, false);
+    assert.equal(f.elements.next.disabled, false);
+    assert.equal(f.elements.update.disabled, true);
+
+    f.state.scenes.pop();
     f.owner.setButtons(false);
     assert.equal(f.elements.start.disabled, true);
     assert.equal(f.elements.next.disabled, true);

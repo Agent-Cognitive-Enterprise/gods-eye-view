@@ -220,7 +220,11 @@ export class SceneControls {
     const shots = scene?.shots ?? [];
     presentSceneButtons(this.elements, running, state.hasRun, {
       hasScene: !!scene,
-      shotCount: shots.length,
+      // PLAY and NEXT run on into the following scenes.
+      playableShots: (state.scenes ?? []).reduce(
+        (total, item) => total + (item.shots?.length ?? 0),
+        0,
+      ),
       hasSelectedShot: shots.some((shot) => shot.id === state.selectedShotId),
     });
     this.elements.panel?.classList.toggle('has-shots', shots.length > 0);

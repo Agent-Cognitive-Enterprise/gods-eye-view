@@ -173,22 +173,24 @@ export function presentSceneSelection(element, selectedShotId) {
 }
 
 /**
- * Everything but STOP is off while a scene plays. Otherwise a button is off
- * when it would do nothing: DELETE and CAPTURE SHOT without a scene, UPDATE
- * SHOT without a selected shot, PLAY and NEXT on a scene with no shots.
+ * While a scene plays, the authoring and file actions here are off and STOP
+ * is on. Otherwise a button is off when it would do nothing: DELETE and
+ * CAPTURE SHOT without a scene, UPDATE SHOT without a selected shot, PLAY and
+ * NEXT when no scene in the project has a shot (both continue into the
+ * following scenes).
  */
 export function presentSceneButtons(
   elements,
   running,
   hasRun,
-  { hasScene = true, shotCount = 1, hasSelectedShot = true } = {},
+  { hasScene = true, playableShots = 1, hasSelectedShot = true } = {},
 ) {
   const idleOff = {
     delete: !hasScene,
     capture: !hasScene,
     update: !hasSelectedShot,
-    start: shotCount === 0,
-    next: shotCount === 0,
+    start: playableShots === 0,
+    next: playableShots === 0,
   };
   for (const name of [
     'start',

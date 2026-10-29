@@ -42,7 +42,7 @@ field definitions. This is a basic draft editor, not a node graph or path editor
 SHARE SCENE exports only the selected scene. Download scene JSON preserves its
 camera, timing, layers, anchors, manifests, interactions and attribution, but
 contains no asset bytes. The recipient needs the referenced source registrations
-and files. Existing EXPORT PRESETS continues to export the entire project.
+and files. EXPORT (formerly EXPORT PRESETS) continues to export the entire project.
 
 For a bundle, select the declared pack files or a folder, then Download asset
 bundle. Folder paths match a manifest path either directly or after removing the

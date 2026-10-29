@@ -1176,12 +1176,14 @@ The panel is titled Authoring and is laid out in four labelled steps: SCENE
 (picker on its own row, NEW SCENE, DELETE), SHOTS (+ CAPTURE SHOT, UPDATE SHOT,
 the numbered shot list and a select/rename hint), PREVIEW (PLAY, STOP, NEXT) and
 SAVE & SHARE (EXPORT, IMPORT, RUN LOG, then the EDIT DETAILS / SHARE SCENE row).
-Every button in the panel's step rows has a tooltip, and the status line is a
-polite live region. Outside
-playback a button that would do nothing is disabled: DELETE and CAPTURE SHOT
-without a scene, UPDATE SHOT without a selected shot, PLAY and NEXT on a scene
-with no shots. During playback everything but STOP stays disabled as before.
-PLAY uses the `scene|PLAY` catalog entry, apart from the radio's PLAY.
+Every button in the step rows has a tooltip, and the status line is a polite
+live region. Outside playback a button that would do nothing is disabled:
+DELETE and CAPTURE SHOT without a scene, UPDATE SHOT without a selected shot,
+PLAY and NEXT when no scene in the project has a shot (both continue into the
+following scenes). During playback the authoring and file actions stay disabled
+and STOP is enabled, as before; RUN LOG follows the last run, and EDIT DETAILS /
+SHARE SCENE keep their own checks. PLAY uses the `scene|PLAY` catalog entry,
+apart from the radio's PLAY.
 
 Director clock listeners, interaction observers and scene release failures no
 longer leave the director inconsistent, and a phase error is kept when cleanup

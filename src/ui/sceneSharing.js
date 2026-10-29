@@ -181,8 +181,12 @@ export function mountSceneSharing(
   bar.dataset.directorAuthoring = '';
   bar.className = 'scene-controls';
   const entries = [
-    [t('EDIT DETAILS'), t('Edit the scene title and description'), edit],
-    [t('SHARE SCENE'), t('Share this scene as a link or file'), share],
+    [t('EDIT DETAILS'), t('Edit anchors, data packs and shot details'), edit],
+    [
+      t('SHARE SCENE'),
+      t('Download this scene as JSON or an asset bundle'),
+      share,
+    ],
   ];
   const removers = [];
   for (const [text, title, fn] of entries) {
