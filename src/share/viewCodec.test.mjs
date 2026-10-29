@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   LAYER_STATE_REGISTRY,
+  LAYER_STATE_TOKEN_ALPHABET,
   LAYER_STATE_TOKEN_RESERVATIONS,
   REGISTERED_LAYER_IDS,
   createDefaultLayerState,
@@ -558,7 +559,6 @@ test('the field registry is well formed and permanent', () => {
       ...common,
       styleParams: { contrastAmt: 1.2, grainAmt: 0.5, vignetteAmt: 0.5 },
     },
-    snow: { ...common, styleParams: { density: 0.6, wind: 0.5 } },
   });
   assert.deepEqual(
     SHARE_VIEW_ENTITY_KINDS.map((e) => [e.code, e.kind]),
@@ -973,6 +973,29 @@ test('enum names outside the code tables travel as text', () => {
   assert.deepEqual(result.unknownFields, [
     { scope: 'enum:style', code: 'sepia' },
   ]);
+});
+
+test('links to the retired Snow style open as Normal', () => {
+  const snowCode = SHARE_VIEW_ENUMS.style.indexOf('snow');
+  assert.equal(snowCode, 6, 'a retired code is never reused');
+  const params = new WireWriter()
+    .varint(LAYER_STATE_TOKEN_ALPHABET.indexOf('d'))
+    .varint(90)
+    .varint(LAYER_STATE_TOKEN_ALPHABET.indexOf('w'))
+    .varint(20)
+    .finish();
+  for (const writeStyle of [
+    (writer) => writer.uintField(14, snowCode),
+    (writer) => writer.textField(14, 'snow'),
+  ]) {
+    const writer = new WireWriter();
+    writer.bytes.push(1);
+    writeStyle(writer);
+    writer.bytesField(27, params);
+    const { state, unknownFields } = decodeOk(hashOf(writer.finish()));
+    assert.deepEqual(state, normalizeShareViewState({}));
+    assert.equal(unknownFields, undefined);
+  }
 });
 
 /* ---------------- integrity ---------------- */

@@ -166,7 +166,7 @@ for it.) In v1:
 | thermal      | sensitivity 0.85, bloom 0.2, mode 0.33, pixelation 1, palette 0 |
 | anime        | saturation 1, edgeThick 0.5                                     |
 | noir         | contrastAmt 1.2, grainAmt 0.5, vignetteAmt 0.5                  |
-| snow         | density 0.6, wind 0.5                                           |
+| snow         | retired: decodes as normal; its parameters are dropped          |
 
 These are frozen like every other default: the codec reads them from the
 app's tables today, and a test pins them, so if a table moves the old values
@@ -345,7 +345,9 @@ the app that can open it.
    values in the codec (see Style defaults). The same applies
    to `SHARE_VIEW_LAYER_OPTION_ABSENT` and the panel defaults.
 4. **Codes are append-only.** Enum lists, entity kinds, flag bits, panel
-   numbers and style parameter tokens only grow.
+   numbers and style parameter tokens only grow. A style the app no longer
+   offers keeps its code: `snow` (6) is retired, so a link that names it
+   opens as Normal and the parameters written for it are dropped.
 5. **Add, don't change.** A new setting takes the next free field number
    (28 onwards; fields 1–15 have one-byte tags and are all taken). A new
    boolean takes the next flag bit instead, which costs nothing when it is at
