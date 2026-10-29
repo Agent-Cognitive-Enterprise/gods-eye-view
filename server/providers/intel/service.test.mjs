@@ -4,7 +4,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createFeedRunner, feedStatus, nextDelayMs } from './feeds.js';
-import { intelEnabled, intelProxy, isLocalMutation } from './index.js';
+import {
+  intelConnectors,
+  intelEnabled,
+  intelProxy,
+  isLocalMutation,
+} from './index.js';
 import { createIntelService, sanitizeSettings } from './service.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -257,6 +262,34 @@ test('feature flag and mutation guard', async () => {
     handler({ url: '/status', method: 'GET', headers: {} }, res);
   });
   assert.deepEqual(response, { status: 200, body: { enabled: false } });
+});
+
+test('A18: offline mode lists no feed and a full drill makes no network request', async () => {
+  assert.deepEqual(intelConnectors({ env: { GEV_INTEL_OFFLINE: '1' } }), []);
+  const requests = [];
+  let now = T0;
+  const service = createIntelService({
+    scenarios: { demo },
+    connectors: intelConnectors({ env: { GEV_INTEL_OFFLINE: '1' } }),
+    now: () => now,
+    fetchImpl: async (url) => {
+      requests.push(String(url));
+      throw new Error('network blocked');
+    },
+  });
+  service.start();
+  try {
+    service.startReplay('demo', { speed: 1 });
+    for (let minute = 0; minute <= 40; minute += 5) {
+      now = T0 + minute * MIN;
+      service.listEvents('replay');
+    }
+    assert.ok(service.listEvents('replay').events.length > 3);
+    assert.deepEqual(service.feeds(), []);
+  } finally {
+    service.stop();
+  }
+  assert.deepEqual(requests, []);
 });
 
 test('records older than retention are skipped, not re-ingested every restart', async () => {

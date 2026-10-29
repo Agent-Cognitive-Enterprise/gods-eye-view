@@ -1,0 +1,166 @@
+# Weekly upstream integration proposal (docs/FORK-MAINTENANCE.md).
+#
+# 1. propose (write token, no upstream code executed): fetch upstream,
+#    fast-forward the fork's `main` mirror when it has not diverged, run the
+#    git-only merge check, then either push a `sync/upstream-<sha>` merge
+#    branch and open a pull request into the integration branch, or open an
+#    issue listing the conflicting files.
+# 2. verify (read-only token, no secrets): fork-autopilot.yml on the merge
+#    candidate; this is where upstream code first runs.
+# 3. report: comment the CI result on the pull request.
+#
+# Nothing is merged or deployed automatically. Scheduled runs use the default
+# branch's copy of this file; see the maintenance doc for the branch setting.
+# Pushing upstream commits that touch .github/workflows needs a token with
+# the `workflows` scope: set UPSTREAM_SYNC_TOKEN (fine-grained, this fork
+# only: contents, pull requests, issues, workflows) or such syncs are
+# reported as blocked.
+
+name: Upstream sync
+
+on:
+  schedule:
+    - cron: '23 4 * * 1'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Integration branch that receives the proposal
+        default: feature/global-early-warning-autopilot
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_URL: https://github.com/bilawalsidhu/gods-eye-view.git
+  TARGET: ${{ inputs.target || 'feature/global-early-warning-autopilot' }}
+
+jobs:
+  propose:
+    name: Propose upstream merge
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    outputs:
+      branch: ${{ steps.propose.outputs.branch }}
+      status: ${{ steps.check.outputs.status }}
+    env:
+      GH_TOKEN: ${{ secrets.UPSTREAM_SYNC_TOKEN || github.token }}
+    steps:
+      - name: Check out the integration branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ env.TARGET }}
+          fetch-depth: 0
+          token: ${{ secrets.UPSTREAM_SYNC_TOKEN || github.token }}
+
+      - name: Use Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.14.0
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream "$UPSTREAM_URL"
+          git remote set-url --push upstream DISABLED
+          git fetch --no-tags upstream main
+          git fetch --no-tags origin main
+
+      - name: Fast-forward the main mirror
+        run: |
+          if git merge-base --is-ancestor origin/main upstream/main; then
+            if [ "$(git rev-parse origin/main)" != "$(git rev-parse upstream/main)" ]; then
+              git push origin upstream/main:refs/heads/main \
+                || echo "::warning::main mirror not updated (a token with the workflows scope may be needed)"
+            fi
+          else
+            echo "::warning::origin/main has diverged from upstream/main; it is no longer a clean mirror and was left untouched"
+          fi
+
+      # Runs the integration branch's own script (trusted); git only.
+      - name: Merge check
+        id: check
+        run: |
+          set +e
+          node scripts/upstream-check.mjs --upstream upstream/main --branch HEAD --json --summary report.md > report.json
+          code=$?
+          set -e
+          status=$(node -e "console.log(require('./report.json').status)")
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+          if [ "$code" != 0 ] && [ "$code" != 2 ]; then exit "$code"; fi
+
+      - name: Push the merge candidate and open a pull request
+        id: propose
+        if: steps.check.outputs.status == 'clean'
+        run: |
+          short=$(git rev-parse --short=8 upstream/main)
+          branch="sync/upstream-$short"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git merge --no-ff --no-edit -m "Merge upstream/main ($short) into $TARGET" upstream/main
+          if ! git push origin "$branch"; then
+            echo "::error::could not push $branch (upstream changed workflow files? set UPSTREAM_SYNC_TOKEN)"
+            exit 1
+          fi
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          if [ -z "$(gh pr list --head "$branch" --state open --json number --jq '.[].number')" ]; then
+            {
+              echo "Automated upstream integration candidate. Review, wait for **Fork Autopilot CI** (commented below), then merge manually. Deploy only with the explicit deployment step in docs/FORK-MAINTENANCE.md."
+              echo
+              cat report.md
+            } > body.md
+            gh pr create --base "$TARGET" --head "$branch" --title "Upstream sync: merge upstream/main $short" --body-file body.md
+          fi
+
+      - name: Report conflicts in an issue
+        if: steps.check.outputs.status == 'conflicts'
+        run: |
+          title="Upstream sync: merge conflicts with $(git rev-parse --short=8 upstream/main)"
+          {
+            echo "upstream/main cannot be merged into \`$TARGET\` automatically. Resolve deliberately (docs/FORK-MAINTENANCE.md, manual sync), rerun the gates and keep a rollback point."
+            echo
+            cat report.md
+          } > body.md
+          existing=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file body.md
+          else
+            gh issue create --title "$title" --body-file body.md
+          fi
+
+  verify:
+    name: Verify the candidate
+    needs: propose
+    if: needs.propose.outputs.branch != ''
+    permissions:
+      contents: read
+    uses: ./.github/workflows/fork-autopilot.yml
+    with:
+      ref: ${{ needs.propose.outputs.branch }}
+
+  report:
+    name: Comment the CI result
+    needs: [propose, verify]
+    if: always() && needs.propose.outputs.branch != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RESULT: ${{ needs.verify.result }}
+      BRANCH: ${{ needs.propose.outputs.branch }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Comment on the pull request
+        run: |
+          gh pr comment "$BRANCH" --repo "$GITHUB_REPOSITORY" \
+            --body "Fork Autopilot CI on this candidate: **$RESULT** ([run]($RUN_URL)). Not merged or deployed automatically."

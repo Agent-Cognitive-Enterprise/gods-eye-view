@@ -1,0 +1,188 @@
+# Fork CI for the early-warning Autopilot (docs/FORK-MAINTENANCE.md).
+# Additive to ci.yml: the same gates plus a dependency audit, the Autopilot
+# and voice suites, an offline browser drill and a Windows production smoke
+# test. Read-only token, no secrets: it also runs, through workflow_call, on
+# upstream-merge candidates proposed by upstream-sync.yml.
+
+name: Fork Autopilot CI
+
+on:
+  push:
+    branches:
+      - feature/global-early-warning-autopilot
+      - release/autopilot
+  pull_request:
+    branches:
+      - feature/global-early-warning-autopilot
+      - release/autopilot
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: Commit, branch or tag to verify
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-autopilot-${{ inputs.ref || github.ref }}
+  cancel-in-progress: true
+
+env:
+  GEV_REQUIRE_ALLOCATION_GATE: '0'
+
+jobs:
+  verify:
+    name: Gates, audit and Autopilot tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: '1'
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.14.0
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Run setup policy checks
+        run: npm run doctor -- --json
+
+      - name: Check adopted formatting
+        run: npm run format:check
+
+      - name: Check package boundaries
+        run: npm run check:boundaries
+
+      - name: Autopilot, feeds, local AI and local voice tests
+        run: >-
+          node --test src/intel/*.test.mjs server/providers/intel/*.test.mjs
+          server/providers/localVoice/*.test.mjs src/voice/localVoice.test.mjs
+          src/tooling/upstreamCheck.test.mjs src/tooling/smokeAutopilot.test.mjs
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Build production bundle
+        run: npm run build
+
+  autopilot-browser:
+    name: Autopilot browser drill (offline)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Offline Autopilot: drills and the archive only; no feed, model or
+      # voice service is contacted, so results do not depend on the world.
+      GEV_INTEL_ENABLED: '1'
+      GEV_INTEL_OFFLINE: '1'
+      GEV_LLM_DISABLED: '1'
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+
+      - name: Use Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.14.0
+          cache: npm
+
+      - name: Install locked dependencies and headless Chrome
+        run: npm ci
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Start the preview server
+        env:
+          GEV_INTEL_DB: ${{ runner.temp }}/intel/intel.sqlite
+        run: |
+          npx vite preview --host 127.0.0.1 --port 4174 --strictPort > preview.log 2>&1 &
+          for attempt in $(seq 1 90); do
+            curl -sf http://127.0.0.1:4174/ > /dev/null && exit 0
+            sleep 2
+          done
+          cat preview.log
+          exit 1
+
+      - name: Smoke test
+        run: node scripts/smoke-autopilot.mjs --url http://127.0.0.1:4174
+
+      - name: Autopilot drill in the browser
+        run: node scripts/qa-autopilot.mjs --url http://127.0.0.1:4174 --out qa-artifacts/autopilot
+
+      - name: Preview server log
+        if: failure()
+        run: cat preview.log
+
+      - name: Upload drill evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: autopilot-drill-evidence
+          path: qa-artifacts/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  windows-smoke:
+    name: Windows production smoke test
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: '1'
+      GEV_INTEL_ENABLED: '1'
+      GEV_INTEL_OFFLINE: '1'
+      GEV_LLM_DISABLED: '1'
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+
+      - name: Use Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.14.0
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Autopilot and local voice tests
+        run: node --test src/intel/*.test.mjs server/providers/intel/*.test.mjs server/providers/localVoice/*.test.mjs src/voice/localVoice.test.mjs
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Start the preview server and run the smoke test
+        shell: pwsh
+        run: |
+          $env:GEV_INTEL_DB = Join-Path $env:RUNNER_TEMP 'intel\intel.sqlite'
+          $server = Start-Process -FilePath node -ArgumentList 'node_modules/vite/bin/vite.js','preview','--host','127.0.0.1','--port','4174','--strictPort' -RedirectStandardOutput preview.log -RedirectStandardError preview.err -PassThru -NoNewWindow
+          $ready = $false
+          foreach ($attempt in 1..90) {
+            try { Invoke-WebRequest -UseBasicParsing http://127.0.0.1:4174/ | Out-Null; $ready = $true; break } catch { Start-Sleep -Seconds 2 }
+          }
+          if (-not $ready) { Get-Content preview.log, preview.err; exit 1 }
+          node scripts/smoke-autopilot.mjs --url http://127.0.0.1:4174
+          $code = $LASTEXITCODE
+          Stop-Process -Id $server.Id -Force
+          exit $code

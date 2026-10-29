@@ -6398,3 +6398,21 @@ the container healthy. Checks time out after 10 seconds, with a 30-second
 startup grace period and three consecutive failures before reporting unhealthy.
 This reports app HTTP availability, not individual provider health, and does not
 configure automatic restarts.
+
+## Fork: early-warning Autopilot (Agent-Cognitive-Enterprise fork only)
+
+This section describes fork-only behaviour; upstream builds do not include it.
+With `GEV_INTEL_ENABLED=1` the server runs an early-warning engine under
+`/api/intel`: official and curated feeds (USGS, GDACS, NOAA tsunami centres,
+US NWS, NASA EONET, WHO Disease Outbreak News, World Bank inflation, S2
+GhostMaps incidents; ReliefWeb and GDELT optional; ACLED listed only) are
+normalised into evidence, folded into events with copy and lineage detection,
+scored, aged out of view and kept in a local SQLite archive. The AUTOPILOT
+panel in the right rail shows the queue, markers and source cards, and can fly
+the camera between qualifying events, yielding to any operator input. A local
+OpenAI-compatible model on loopback (KoboldCpp) may assess events within
+validated bounds, and an optional local voice provider (whisper.cpp, the same
+model, Piper) takes spoken commands and narrates. `GEV_INTEL_OFFLINE=1` runs
+drills and the archive without contacting any feed. Off by default; see
+`docs/EARLY-WARNING.md`, `docs/AUTOPILOT-OPERATOR.md`,
+`docs/AUTOPILOT-FEEDS.md` and `docs/FORK-MAINTENANCE.md`.

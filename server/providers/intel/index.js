@@ -33,8 +33,11 @@ const MAX_BODY = 16 * 1024;
  * The feed set for this environment. Public no-key feeds are on unless
  * GEV_INTEL_<NAME>=0; GDELT (machine-coded news) is opt-in with
  * GEV_INTEL_GDELT=1; ReliefWeb and ACLED are listed and wait for credentials.
+ * GEV_INTEL_OFFLINE=1 contacts no feed at all: drills and the stored archive
+ * only (CI, demonstrations, air-gapped use).
  */
 export function intelConnectors({ env = process.env, ghostMapsWatcher } = {}) {
+  if (env.GEV_INTEL_OFFLINE === '1') return [];
   const on = (name) => env[`GEV_INTEL_${name}`] !== '0';
   const connectors = [];
   if (on('USGS')) connectors.push(usgsConnector());
@@ -126,7 +129,11 @@ export function intelProxy({
   const ensure = () => {
     if (service || !enabled) return service;
     const root = process.cwd();
-    const dir = path.join(root, '.gev-cache', 'intel');
+    // GEV_INTEL_DB moves the whole state (store and settings), so a second
+    // instance, CI or a smoke run never shares an operator's settings.
+    const dir = env.GEV_INTEL_DB
+      ? path.dirname(path.resolve(env.GEV_INTEL_DB))
+      : path.join(root, '.gev-cache', 'intel');
     const connectors = intelConnectors({ env, ghostMapsWatcher });
     service = createIntelService({
       storeFile: env.GEV_INTEL_DB || path.join(dir, 'intel.sqlite'),

@@ -403,7 +403,35 @@ node scripts/qa-autopilot.mjs --url http://localhost:4174
 Open the app, find AUTOPILOT at the top of the right rail, press DEMO DRILL
 and then AUTOPILOT ON.
 
+## Operations and upstream integration (Phase 6)
+
+- **Offline mode** (`GEV_INTEL_OFFLINE=1`): no feed is contacted; drills and
+  the stored archive work as usual. Used by CI and for demonstrations.
+- **Separate state**: `GEV_INTEL_DB` moves both the store and the settings
+  file, so a second instance or a test run never shares an operator's
+  settings.
+- **Smoke test**: `scripts/smoke-autopilot.mjs` (Windows: `Test-GEV.ps1`)
+  checks the page, the API, a short drill (skipped if one is running), the
+  local model and voice; environment problems are warnings unless required.
+- **Merge check**: `scripts/upstream-check.mjs` merges upstream in a
+  temporary worktree and reports conflicts by area (A20), optionally with the
+  gates.
+- **CI**: `.github/workflows/fork-autopilot.yml` (gates, audit, Autopilot and
+  voice suites, offline browser drill on a production build, Windows
+  production smoke). **Sync**: `.github/workflows/upstream-sync.yml` proposes
+  upstream merges as pull requests verified by that CI.
+- **Deployment**: `Deploy-GEV.ps1` only (CI green, fast-forward, gates, smoke,
+  rollback).
+
+Guides: [FORK-MAINTENANCE.md](FORK-MAINTENANCE.md) (branches, sync, CI,
+deployment), [AUTOPILOT-OPERATOR.md](AUTOPILOT-OPERATOR.md) (Windows setup and
+troubleshooting), [AUTOPILOT-FEEDS.md](AUTOPILOT-FEEDS.md) (supported feeds
+and known gaps), [AUTOPILOT-QA.md](AUTOPILOT-QA.md) (acceptance results and
+reliability review), [FORK-CHANGELOG.md](FORK-CHANGELOG.md).
+
 ## Tests and acceptance mapping
+
+Current results per scenario: [AUTOPILOT-QA.md](AUTOPILOT-QA.md).
 
 Run: `node --test src/intel/*.test.mjs server/providers/intel/*.test.mjs`
 (also part of `npm test`), plus `node scripts/qa-autopilot.mjs` against a
