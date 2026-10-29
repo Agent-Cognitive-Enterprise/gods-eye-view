@@ -2953,5 +2953,6 @@
   "Could not start the drill": "无法启动演练",
   "Event service unavailable": "事件服务不可用",
   "AUTOPILOT": "自动驾驶",
-  "Active events": "活动事件"
+  "Active events": "活动事件",
+  "Watching the drill started on the host computer": "正在观看主机上启动的演练"
 }

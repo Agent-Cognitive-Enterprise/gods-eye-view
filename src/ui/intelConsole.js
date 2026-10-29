@@ -883,6 +883,19 @@ export function createIntelConsole({
       notice = '';
       await setWorld('replay');
     } catch (error) {
+      // Another device on the network cannot start a drill (it is shared
+      // server state), but it may watch one the host computer started.
+      if (error.status === 403) {
+        const running = await client
+          .replay(abort.signal)
+          .then((r) => r?.replay)
+          .catch(() => null);
+        if (running) {
+          notice = t('Watching the drill started on the host computer');
+          await setWorld('replay');
+          return;
+        }
+      }
       notice =
         error.status === 403
           ? t('The drill can only be started on the host computer')

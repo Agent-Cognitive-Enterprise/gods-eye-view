@@ -3095,5 +3095,6 @@
   "Could not start the drill": "No se pudo iniciar el simulacro",
   "Event service unavailable": "Servicio de eventos no disponible",
   "AUTOPILOT": "AUTOPILOTO",
-  "Active events": "Eventos activos"
+  "Active events": "Eventos activos",
+  "Watching the drill started on the host computer": "Viendo el simulacro iniciado en el equipo anfitrión"
 }

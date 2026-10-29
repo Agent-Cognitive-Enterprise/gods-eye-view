@@ -37,5 +37,6 @@ export function createIntelClient({ fetchImpl }) {
     startReplay: (scenario, speed) =>
       call('/replay', { method: 'POST', body: { scenario, speed } }),
     stopReplay: () => call('/replay', { method: 'DELETE', body: {} }),
+    replay: (signal) => call('/replay', { signal }),
   };
 }

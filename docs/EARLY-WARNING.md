@@ -124,6 +124,12 @@ any other owner, manual input or a queue selection pauses Autopilot with a
 visible reason until RESUME. It never retakes the camera on its own. Settings
 changes and the drill are host-only (loopback) like the API.
 
+On a server shared with the local network, every device runs Autopilot in its
+own browser (the camera is per viewer) and can follow the live queue. Another
+device cannot start a drill or change camera rules (both are shared server
+state, host-only); pressing DEMO DRILL there joins a drill the host computer
+already started.
+
 Scheduling rules: a shot holds for the minimum dwell; only a qualified
 critical cluster (official or corroborated, confidence at least 0.7, score
 at or above the critical threshold) can cut it short, once per dwell and no

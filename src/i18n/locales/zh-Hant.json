@@ -2953,5 +2953,6 @@
   "Could not start the drill": "無法啟動演練",
   "Event service unavailable": "事件服務無法使用",
   "AUTOPILOT": "自動駕駛",
-  "Active events": "進行中的事件"
+  "Active events": "進行中的事件",
+  "Watching the drill started on the host computer": "正在觀看主機上啟動的演練"
 }
