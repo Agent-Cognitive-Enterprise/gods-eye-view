@@ -1652,7 +1652,6 @@
   "Thermal": "サーマル",
   "Anime": "アニメ",
   "Noir": "ノワール",
-  "Snow": "雪",
   "Current cockpit vision style: {style}. Activate for next style.": "現在のコックピットビジョンスタイル：{style}。押すと次のスタイルに切り替わります。",
   "Current style: {style} — click for next": "現在のスタイル：{style}。クリックで次へ",
   "Collapse Contact panel": "コンタクトパネルを折りたたむ",
@@ -2641,7 +2640,6 @@
   "Simulate FLIR-style thermal contrast. Turn up Ironbow for color.": "FLIR風の熱コントラストを再現します。色を付けるにはIronbowを上げてください。",
   "Apply bright cel-shaded color and illustrated outlines.": "明るいセルシェーディングの色と輪郭線を適用します。",
   "Apply high-contrast monochrome film-noir grading.": "コントラストの強いモノクロのフィルムノワール調に仕上げます。",
-  "Add a cold, snowy whiteout treatment to the scene.": "冷たい雪のホワイトアウト効果をシーンに加えます。",
   "MAP SOURCE": "マップソース",
   "Map source": "マップソース",
   "Style": "スタイル",
@@ -2866,5 +2864,7 @@
   "ESC to dismiss": "Escで閉じる",
   "Tip: the GEV MIC button in the dock lets you talk to the map.": "ヒント：ドックの［マイク］ボタンで地図に話しかけられます。",
   "routing busy — too many routes at once": "ルート検索サービスが混雑しています。同時に要求されたルートが多すぎます",
-  "route proxy error": "ルート検索プロキシでエラーが発生しました"
+  "route proxy error": "ルート検索プロキシでエラーが発生しました",
+  "Malformed cyclone snapshot": "サイクロンのスナップショットの形式が不正です",
+  "Cyclone request timed out": "サイクロンのリクエストがタイムアウトしました"
 }
