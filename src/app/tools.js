@@ -4,6 +4,10 @@ import { initDrawTool } from '../annotations/drawTool.js';
 import { initGeoFileImport } from '../ui/geoFileImport.js';
 import { initImageryBoxTool } from '../ui/imageryBoxTool.js';
 import { createRecentImageryPanel } from '../ui/recentImagery.js';
+import { createIntelConsole } from '../ui/intelConsole.js';
+import * as worldOverlay from '../overlays/worldOverlay.js';
+import * as pickRegistry from '../data/pickRegistry.js';
+import { isPointerFree } from '../data/inputOwnership.js';
 import { initGevVoiceCommands } from '../voice/gevRealtime.js';
 import { installViews, isEmbeddedInline } from './embed.js';
 import { installScopeMask, destroyScopeMask } from '../scopeMask.js';
@@ -105,6 +109,24 @@ export function createApplicationTools({
       imageryBoxTool?.destroy();
     });
   }
+  // Early-warning Autopilot (fork feature). Inert unless the server reports
+  // /api/intel enabled; camera claims go through the shared navigation owner.
+  const intelConsole = createIntelConsole({
+    viewer,
+    navigation: styleManager,
+    overlayHost: {
+      setEntries: worldOverlay.setOverlayEntries,
+      setVisible: worldOverlay.setOverlaySourceVisible,
+      clearSource: worldOverlay.clearOverlaySource,
+    },
+    picking: pickRegistry,
+    pointer: { isPointerFree },
+  });
+  window.__gevIntel = intelConsole;
+  defer(() => {
+    if (window.__gevIntel === intelConsole) delete window.__gevIntel;
+    intelConsole.destroy();
+  });
   if (startChrome)
     defer(startChrome({ loadingScreen, styleManager, dataManager, signal }));
   // Idle render governor: flips the scene into requestRenderMode whenever

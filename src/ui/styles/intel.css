@@ -1,0 +1,252 @@
+/* Early-warning AUTOPILOT console (fork feature): a right-rail readout laid out
+   by the rail like RECENT IMAGERY; only the body scrolls. The rail itself is
+   pointer-events: none, so the panel opts back in like its neighbours. */
+#right-context-rail > #intel-panel {
+  position: relative;
+  inset: auto;
+  flex: 0 0 auto;
+  width: 100%;
+  max-height: 100%;
+  pointer-events: auto;
+}
+#right-context-rail > #intel-panel:not(.collapsed) {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 1;
+  min-height: 0;
+}
+.intel-panel-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  max-height: 100%;
+  box-sizing: border-box;
+  padding: 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--panel-radius);
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+#intel-panel .panel-glow {
+  position: absolute;
+  inset: -18px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 159, 67, 0.16) 0%,
+    transparent 65%
+  );
+  filter: blur(16px);
+  opacity: 0.25;
+  pointer-events: none;
+}
+#intel-panel[data-autopilot='auto'] .panel-glow {
+  opacity: 0.6;
+}
+#intel-panel .panel-header {
+  flex: 0 0 auto;
+}
+#intel-panel-count {
+  color: var(--text-secondary);
+  font: 9px var(--font-mono);
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+#intel-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  max-height: calc(var(--right-stack-max-height, 60svh) - 64px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 212, 255, 0.46) transparent;
+  font: 11px var(--font-sans);
+  color: var(--text-primary);
+}
+#intel-panel.collapsed #intel-panel-body,
+#intel-panel.collapsed #intel-panel-count,
+#intel-panel[hidden],
+#intel-panel [hidden] {
+  display: none !important;
+}
+#intel-panel.collapsed .panel-title {
+  font-size: 8px;
+}
+.intel-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.intel-mode-btn.active {
+  border-color: #ff9f43;
+  color: #ffcf9e;
+  box-shadow: 0 0 10px rgba(255, 159, 67, 0.35);
+}
+.intel-mode-text,
+.intel-muted {
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1.35;
+}
+.intel-focus {
+  padding: 6px 8px;
+  border-left: 2px solid #ff9f43;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+}
+.intel-focus-title {
+  font-weight: 600;
+  line-height: 1.3;
+}
+.intel-notice:empty {
+  display: none;
+}
+.intel-notice {
+  color: #ffcf9e;
+  font-size: 10px;
+}
+.intel-section {
+  margin-top: 4px;
+}
+.intel-queue,
+.intel-feeds,
+.intel-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.intel-queue-btn {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: start;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 6px;
+  border: 1px solid transparent;
+  border-left: 3px solid var(--intel-accent, #ccc);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.intel-queue-btn:hover,
+.intel-queue-btn:focus-visible {
+  border-color: var(--glass-border-hover);
+  outline: none;
+}
+.intel-queue-row.focused .intel-queue-btn {
+  background: rgba(255, 159, 67, 0.12);
+}
+.intel-queue-row.selected .intel-queue-btn {
+  border-color: var(--accent);
+}
+.intel-score {
+  font: 600 12px var(--font-mono);
+  color: var(--intel-accent, #ccc);
+}
+.intel-queue-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.intel-queue-title {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.3;
+}
+.intel-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.intel-badge {
+  padding: 1px 4px;
+  border-radius: 4px;
+  font: 8px var(--font-mono);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.intel-badge.v-officially_reported {
+  border-color: #e8eaed;
+  color: #e8eaed;
+}
+.intel-badge.v-corroborated {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.intel-badge.v-unverified,
+.intel-badge.v-disputed {
+  border-color: #ffcf6e;
+  color: #ffcf6e;
+  border-style: dashed;
+}
+.intel-badge.v-drill {
+  border-color: #c792ea;
+  color: #c792ea;
+}
+.intel-badge.v-rising {
+  border: none;
+  color: #ff5a5a;
+}
+.intel-setting {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.intel-setting-label {
+  width: 56px;
+  color: var(--text-secondary);
+  font: 9px var(--font-mono);
+}
+.intel-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.intel-category.active {
+  border-color: var(--intel-accent);
+}
+.intel-feed {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+.intel-feed.s-healthy::before {
+  content: '● ';
+  color: #7bd88f;
+}
+.intel-feed.s-degraded::before,
+.intel-feed.s-stale::before {
+  content: '● ';
+  color: #ffcf6e;
+}
+.intel-feed.s-offline::before,
+.intel-feed.s-requires_credentials::before,
+.intel-feed.s-blocked_by_terms::before,
+.intel-feed.s-disabled::before {
+  content: '● ';
+  color: #ff5a5a;
+}
+.intel-history-row {
+  font-size: 10px;
+  color: var(--text-secondary);
+}

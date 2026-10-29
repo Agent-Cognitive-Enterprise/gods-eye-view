@@ -32,7 +32,8 @@ export function sanitizeSettings(input = {}) {
   num('groupingRadiusKm', 25, 5000);
   num('minimumDwellMs', 5_000, 600_000);
   num('repeatFocusCooldownMs', 0, 24 * 3600_000);
-  num('criticalInterruptThreshold', 50, 100);
+  // 101 disables critical interruptions (no score reaches it).
+  num('criticalInterruptThreshold', 50, 101);
   num('normalPreemptionMargin', 0, 100);
   num('preemptionConfirmMs', 0, 120_000);
   num('maxMarkersInView', 10, 2000);
