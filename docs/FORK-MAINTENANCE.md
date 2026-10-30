@@ -102,10 +102,11 @@ prefer upstream's structure and re-apply the fork's small hook, then rerun
 every gate. `git merge --abort` returns to the rollback point at any time
 before the merge commit.
 
-Upstream's six newer locales (`de`, `fr`, `it`, `ja`, `pt`, `uk`) arrive
-without the fork's strings: after the merge, `npm run i18n` lists them and the
-catalog tests fail until they are translated (278 strings as of upstream
-423ca3ca). `--gates quick` does not run those tests; `--gates full` does.
+Each locale upstream ships needs the fork's strings too: after a merge,
+`npm run i18n` lists what is missing and the catalog tests fail until it is
+translated. `--gates quick` does not run those tests; `--gates full` does. The
+fork's strings in `de`, `fr`, `it`, `ja`, `pt` and `uk` were added in the sync
+with upstream 423ca3ca and have not had a native speaker's review.
 
 ## Automated sync (`.github/workflows/upstream-sync.yml`)
 

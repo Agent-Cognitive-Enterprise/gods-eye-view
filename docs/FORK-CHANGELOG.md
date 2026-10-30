@@ -7,6 +7,12 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **Upstream sync to 423ca3ca.** Brings German, French, Italian, Brazilian
+  Portuguese, Ukrainian and Japanese, CCTV view thinning, AIS vessels that let
+  the scene idle, Vite 6.4.4 and Puppeteer 25.16.0, and the Context panel
+  cleanup; removes the Operator HUD layout, the Snow preset and the Radio icon
+  in the Context header. The fork's 263 strings are translated into the six
+  new languages (not yet reviewed by native speakers).
 - **Air & Sea, Phase E (branch `feature/air-sea-monitor`).** Hardening after
   four adversarial reviews. False signals: a first sighting or edge jitter is
   no passage, a stalled feed is missing coverage, anomaly noise is floored at
