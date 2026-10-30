@@ -10,10 +10,12 @@ on:
   push:
     branches:
       - feature/global-early-warning-autopilot
+      - feature/air-sea-monitor
       - release/autopilot
   pull_request:
     branches:
       - feature/global-early-warning-autopilot
+      - feature/air-sea-monitor
       - release/autopilot
   workflow_dispatch:
   workflow_call:
@@ -75,6 +77,9 @@ jobs:
           node --test src/intel/*.test.mjs server/providers/intel/*.test.mjs
           server/providers/localVoice/*.test.mjs src/voice/localVoice.test.mjs
           src/tooling/upstreamCheck.test.mjs src/tooling/smokeAutopilot.test.mjs
+
+      - name: Air and sea monitoring tests
+        run: node --test src/airsea/*.test.mjs server/providers/airsea/*.test.mjs
 
       - name: Run unit tests
         run: npm test
@@ -177,6 +182,10 @@ jobs:
 
       - name: Autopilot and local voice tests
         run: node --test src/intel/*.test.mjs server/providers/intel/*.test.mjs server/providers/localVoice/*.test.mjs src/voice/localVoice.test.mjs
+
+      # SQLite history files and zip outlines behave differently on Windows.
+      - name: Air and sea monitoring tests
+        run: node --test src/airsea/*.test.mjs server/providers/airsea/*.test.mjs
 
       - name: Build production bundle
         run: npm run build
