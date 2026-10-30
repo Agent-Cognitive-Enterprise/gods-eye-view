@@ -2984,6 +2984,8 @@
   "Point the map at the globe first": "请先将地图对准地球",
   "{place} saved: {position}": "{place}已保存：{position}",
   "AT MAP CENTRE": "设为地图中心",
+  "Autopilot is not available here.": "此处无法使用自动驾驶。",
+  "Paused: opened from a shared view": "已暂停：从共享视图打开",
   "{up}/{total} up": "{up}/{total} 正常",
   "Feeds up": "正常的数据源",
   "Autopilot on: click to stop": "自动驾驶已开启：点击停止",

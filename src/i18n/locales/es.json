@@ -3126,6 +3126,8 @@
   "Point the map at the globe first": "Primero apunta el mapa al globo",
   "{place} saved: {position}": "{place} guardado: {position}",
   "AT MAP CENTRE": "EN EL CENTRO DEL MAPA",
+  "Autopilot is not available here.": "El piloto automático no está disponible aquí.",
+  "Paused: opened from a shared view": "En pausa: abierto desde una vista compartida",
   "{up}/{total} up": "{up}/{total} activas",
   "Feeds up": "Fuentes activas",
   "Autopilot on: click to stop": "Piloto automático activo: clic para detener",

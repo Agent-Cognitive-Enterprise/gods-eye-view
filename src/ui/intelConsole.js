@@ -158,6 +158,7 @@ const PAUSE_REASONS = Object.freeze({
   camera_owner_changed: msg('Paused: another tool took the camera'),
   operator_selection: msg('Paused: you selected an event'),
   navigation_refused: msg('Paused: the camera is not available'),
+  shared_view: msg('Paused: opened from a shared view'),
 });
 const DECISION_REASONS = Object.freeze({
   highest_priority: msg('highest priority'),
@@ -310,6 +311,8 @@ export function createIntelConsole({
   let claiming = false;
   let flightSeq = 0;
   let pullBackTimers = [];
+  let tileTimers = []; // waits for tiles inside a two-stage flight
+  let ownFlight = false; // the camera flight in progress is this console's
   let storedMode = null; // last mode written to storage
   let modeRestored = false; // nothing is written before the stored mode is read
   let notice = '';
@@ -1255,8 +1258,15 @@ export function createIntelConsole({
           duration,
           maximumHeight,
           easingFunction: Cesium.EasingFunction.QUADRATIC_IN_OUT,
-          complete,
+          complete: () => {
+            ownFlight = false;
+            complete?.();
+          },
+          cancel: () => {
+            ownFlight = false;
+          },
         });
+        ownFlight = true;
         return true;
       });
     } finally {
@@ -1283,7 +1293,7 @@ export function createIntelConsole({
     const check = () => {
       if (destroyed) return;
       if (viewLoaded() || Date.now() >= until) done();
-      else pullBackTimers.push(setTimeout(check, TILE_POLL_MS));
+      else tileTimers.push(setTimeout(check, TILE_POLL_MS));
     };
     check();
   }
@@ -1363,6 +1373,23 @@ export function createIntelConsole({
   function cancelPullBack() {
     for (const id of pullBackTimers) clearTimeout(id);
     pullBackTimers = [];
+  }
+
+  /**
+   * Stop everything this console is doing to the camera: the flight in
+   * progress (only when it is ours), a pending second stage, tile waits and
+   * zoom-out steps. Pausing, switching off, a drag or another camera owner
+   * must leave the camera where the user has it.
+   */
+  function cancelFlights() {
+    flightSeq += 1;
+    cancelPullBack();
+    for (const id of tileTimers) clearTimeout(id);
+    tileTimers = [];
+    if (ownFlight) {
+      ownFlight = false;
+      viewer.camera?.cancelFlight?.();
+    }
   }
 
   /**
@@ -1543,6 +1570,8 @@ export function createIntelConsole({
 
   /** Voice command entry for Autopilot (validated action names only). */
   async function voiceControl(action) {
+    if (!enabled)
+      return { ok: false, text: t('Autopilot is not available here.') };
     switch (action) {
       case 'on':
         if (scheduler.mode === 'off') toggleAutopilot();
@@ -1579,6 +1608,8 @@ export function createIntelConsole({
 
   /** Voice query: filter the queue, show the most significant match. */
   function findEvents({ categories = [], countries = [], hours } = {}) {
+    if (!enabled)
+      return { ok: false, text: t('Autopilot is not available here.') };
     const since = Number.isFinite(hours)
       ? (data.now ?? now()) - hours * 3_600_000
       : -Infinity;
@@ -1609,6 +1640,7 @@ export function createIntelConsole({
 
   function pause(reason) {
     stopNarration();
+    cancelFlights();
     if (scheduler.mode !== 'auto') return;
     scheduler = setSchedulerMode(scheduler, 'paused', reason);
     render();
@@ -1664,6 +1696,7 @@ export function createIntelConsole({
       scheduler,
       scheduler.mode === 'off' ? 'auto' : 'off',
     );
+    if (scheduler.mode === 'off') cancelFlights();
     lastDecision = null;
     if (scheduler.mode === 'auto') {
       selectedId = null;
@@ -1686,6 +1719,7 @@ export function createIntelConsole({
     selectedId = id;
     const event = eventsById().get(id);
     if (fly && event) {
+      cancelFlights();
       if (scheduler.mode === 'auto')
         scheduler = setSchedulerMode(scheduler, 'paused', reason);
       const cluster =
@@ -1879,7 +1913,30 @@ export function createIntelConsole({
     const restored = readStoredMode(storage);
     modeRestored = true;
     if (restored && restored.mode !== scheduler.mode && !destroyed) {
-      scheduler = setSchedulerMode(scheduler, restored.mode, restored.reason);
+      // A shared view or an embedding page owns the opening camera: a
+      // remembered ON comes back paused there (RESUME continues).
+      const sharedView = (() => {
+        try {
+          const loc = globalThis.location;
+          const has = (text) => new URLSearchParams(text).has('lat');
+          return (
+            has(loc?.search ?? '') ||
+            has(String(loc?.hash ?? '').replace(/^#/, '')) ||
+            globalThis.parent !== globalThis
+          );
+        } catch {
+          return true;
+        }
+      })();
+      const mode =
+        restored.mode === 'auto' && sharedView ? 'paused' : restored.mode;
+      scheduler = setSchedulerMode(
+        scheduler,
+        mode,
+        mode === 'paused' && restored.mode === 'auto'
+          ? 'shared_view'
+          : restored.reason,
+      );
       if (scheduler.mode === 'auto') step();
     }
     render();
@@ -1892,7 +1949,7 @@ export function createIntelConsole({
     destroy() {
       if (destroyed) return;
       destroyed = true;
-      cancelPullBack();
+      cancelFlights();
       if (bufferingSaved && viewer.scene?.globe)
         Object.assign(viewer.scene.globe, bufferingSaved);
       stopNarration();

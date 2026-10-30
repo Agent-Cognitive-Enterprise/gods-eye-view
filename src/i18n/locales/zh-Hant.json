@@ -2984,6 +2984,8 @@
   "Point the map at the globe first": "請先將地圖對準地球",
   "{place} saved: {position}": "{place}已儲存：{position}",
   "AT MAP CENTRE": "設為地圖中心",
+  "Autopilot is not available here.": "此處無法使用自動駕駛。",
+  "Paused: opened from a shared view": "已暫停：從共享檢視開啟",
   "{up}/{total} up": "{up}/{total} 正常",
   "Feeds up": "正常的資料來源",
   "Autopilot on: click to stop": "自動駕駛已開啟：點擊停止",

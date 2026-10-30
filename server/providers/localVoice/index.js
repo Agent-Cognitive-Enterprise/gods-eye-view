@@ -9,6 +9,17 @@ import { readRequestBodyCapped } from '../common/request.js';
 import { GEV_REALTIME_TOOLS } from '../openai/tools.js';
 import { claimForeground, releaseForeground } from '../intel/llmGate.js';
 import { isLocalMutation } from '../intel/index.js';
+
+/** No Origin (same-origin GET-less tools) or one naming this host. */
+function sameOrigin(req) {
+  const origin = req.headers?.origin;
+  if (!origin) return true;
+  try {
+    return new URL(origin).host === req.headers.host;
+  } catch {
+    return false;
+  }
+}
 import { createLocalLlm, loopbackBaseUrl } from '../intel/localLlm.js';
 import {
   LOCAL_TURN_PROMPT_VERSION,
@@ -243,6 +254,14 @@ export function localVoiceProxy({
       return json(res, 405, { error: 'method_not_allowed' });
 
     if (route === '/speak') {
+      // LAN viewers of this app may hear narration, but another website must
+      // not drive Piper: JSON only (a cross-site page then needs a CORS
+      // preflight, which is never granted) and no foreign Origin.
+      if (
+        !/^application\/json\b/i.test(String(req.headers['content-type'] ?? ''))
+      )
+        return json(res, 415, { error: 'json_only' });
+      if (!sameOrigin(req)) return json(res, 403, { error: 'cross_origin' });
       const body = await readJson(req);
       if (!body) return json(res, 400, { error: 'bad_json' });
       try {
