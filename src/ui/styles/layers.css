@@ -58,7 +58,7 @@
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   border-radius: var(--panel-radius);
-  padding: 14px 14px 12px;
+  padding: 14px 16px 12px;
   backdrop-filter: blur(24px) saturate(1.4);
   -webkit-backdrop-filter: blur(24px) saturate(1.4);
   box-shadow:
@@ -253,8 +253,6 @@
 }
 #right-context-rail #global-context-panel.collapsed .panel-header {
   margin: 0;
-  /* Room for the radio button between the title and the toggle. */
-  gap: 8px;
 }
 #right-context-rail.layout-focus {
   height: var(--right-stack-max-height);
@@ -991,19 +989,12 @@
 #global-context-panel .panel-glow {
   display: none;
 }
-/* Expanded, its section titles (Context, Radio) stay legible over bright
-   imagery. Cyber keeps its own red titles; collapsed launchers match siblings. */
-:root:not([data-ui-theme='cyber'])
-  #global-context-panel:not(.collapsed)
-  .panel-title {
-  color: var(--text-secondary);
-}
 .global-context-panel-inner {
   position: relative;
   display: flex;
   min-height: 0;
   flex-direction: column;
-  padding: 14px 14px 12px;
+  padding: 14px 16px 12px;
   border: 1px solid var(--glass-border);
   border-radius: var(--panel-radius);
   background: var(--glass-bg);
@@ -1012,6 +1003,15 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(24px) saturate(1.4);
   -webkit-backdrop-filter: blur(24px) saturate(1.4);
+}
+
+/* Data Layers and Context share the 14px side padding of the other default
+   theme panels, so every title and toggle sits 19px from its edge. Cyber
+   keeps its own gutters. */
+:root:not([data-ui-theme='cyber'])
+  :is(.data-panel-inner, .global-context-panel-inner) {
+  padding-right: 14px;
+  padding-left: 14px;
 }
 .global-context-actions {
   display: grid;

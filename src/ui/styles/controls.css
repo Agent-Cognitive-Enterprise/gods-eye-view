@@ -86,28 +86,92 @@
 :is(#left-panel-stack, #right-context-rail)
   :is(.panel-header > .panel-title, .pp-header-label) {
   font-family: var(--font-mono);
-  font-size: 0.58rem;
-  font-weight: 500;
-  letter-spacing: 0.13rem;
+  font-size: var(--dock-label-font-size);
+  font-weight: var(--dock-label-font-weight);
+  letter-spacing: var(--dock-label-letter-spacing);
   text-transform: uppercase;
+}
+
+/* A hovered panel sets --rail-label-hover on itself (see below); its own
+   header picks it up. Radio sits inside Context and keeps its own colour. */
+:root:not([data-ui-theme='cyber'])
+  :is(#left-panel-stack, #right-context-rail)
+  :is(
+    .panel-header > .panel-title,
+    .pp-header-label,
+    :is(.panel-header, .pp-header-row) > .panel-collapse-btn
+  ) {
+  color: var(--rail-label-hover, var(--dock-label-color));
+}
+
+#radio-panel {
+  --rail-label-hover: initial;
+}
+
+/* A title never pushes its toggle out of the card: one that does not fit
+   ends in an ellipsis. Cyber draws a marker left of the title, which a clip
+   would cut, and keeps its own header layout. */
+:root:not([data-ui-theme='cyber'])
+  :is(#left-panel-stack, #right-context-rail)
+  :is(.panel-header > .panel-title, .pp-header-label) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A collapsed launcher is 176px wide and its divider has no room to draw,
+   so the header drops it and packs closer. English titles such as Recent
+   Imagery then fit whole. Only the rail's own launchers: Radio, nested in
+   Context, keeps its divider. */
+:root:not([data-ui-theme='cyber'])
+  :is(#left-panel-stack, #right-context-rail)
+  > .panel-collapsible.collapsed
+  > [class$='-panel-inner']
+  > .panel-header,
+:root:not([data-ui-theme='cyber'])
+  :is(#left-panel-stack, #right-context-rail)
+  > #pp-toggles.collapsed
+  > .pp-header-row {
+  gap: 8px;
 }
 
 :root:not([data-ui-theme='cyber'])
   :is(#left-panel-stack, #right-context-rail)
-  :is(.panel-header > .panel-title, .pp-header-label, .panel-collapse-btn) {
-  color: rgba(206, 232, 239, 0.72);
+  > .panel-collapsible.collapsed
+  > [class$='-panel-inner']
+  > .panel-header
+  > .panel-divider,
+:root:not([data-ui-theme='cyber'])
+  :is(#left-panel-stack, #right-context-rail)
+  > #pp-toggles.collapsed
+  > .pp-header-row
+  > .panel-divider {
+  display: none;
 }
 
-/* A longer translated title in a collapsed rail launcher tightens its
-   tracking rather than pushing the disclosure button out of the card. */
+:root:not([data-ui-theme='cyber'])
+  :is(#left-panel-stack, #right-context-rail)
+  > .panel-collapsible.collapsed
+  > [class$='-panel-inner']
+  > .panel-header
+  > .panel-collapse-btn,
+:root:not([data-ui-theme='cyber'])
+  :is(#left-panel-stack, #right-context-rail)
+  > #pp-toggles.collapsed
+  > .pp-header-row
+  > .panel-collapse-btn {
+  margin-left: auto;
+}
+
+/* Translated titles run longer (Aktuelle Bilddaten), so a collapsed rail
+   launcher sets them in compact type rather than pushing the disclosure
+   button out of the card or cutting the word short. */
 html:not([lang='en'])
-  #right-context-rail
+  :is(#left-panel-stack, #right-context-rail)
   .panel-collapsible.collapsed
   .panel-title {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  letter-spacing: 1.5px;
+  font-size: 8px;
+  letter-spacing: 1px;
 }
 
 .panel-divider {
@@ -141,64 +205,42 @@ html:not([lang='en'])
   background: rgba(255, 255, 255, 0.07);
 }
 
-/* A side panel answers the pointer as the command dock does: a blue edge,
-   a soft glow and an accent title. */
-:root:not([data-ui-theme='cyber'])
-  :is(#left-panel-stack, #right-context-rail)
-  :is(
-    .data-panel-inner,
-    .scene-panel-inner,
-    .cctv-panel-inner,
-    .radio-panel-inner,
-    .weather-panel-inner,
-    .recent-imagery-panel-inner,
-    .street-level-panel-inner,
-    .global-context-panel-inner,
-    #pp-toggles:not(.collapsed),
-    #pp-toggles.collapsed > .pp-header-row
-  ) {
-  transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease;
-}
+/* A side panel answers the pointer as the command dock's trays do: a
+   brighter edge and an accent title and toggle. Touch screens have no hover,
+   so a tap must not leave a panel lit. */
+@media (hover: hover) and (pointer: fine) {
+  :root:not([data-ui-theme='cyber'])
+    :is(#left-panel-stack, #right-context-rail)
+    :where(
+      .data-panel-inner,
+      .scene-panel-inner,
+      .cctv-panel-inner,
+      .weather-panel-inner,
+      .recent-imagery-panel-inner,
+      .street-level-panel-inner,
+      .global-context-panel-inner,
+      #pp-toggles:not(.collapsed),
+      #pp-toggles.collapsed > .pp-header-row
+    ) {
+    transition: border-color var(--transition-fast);
+  }
 
-:root:not([data-ui-theme='cyber'])
-  :is(#left-panel-stack, #right-context-rail)
-  :is(
-    .data-panel-inner,
-    .scene-panel-inner,
-    .cctv-panel-inner,
-    .radio-panel-inner,
-    .weather-panel-inner,
-    .recent-imagery-panel-inner,
-    .street-level-panel-inner,
-    .global-context-panel-inner,
-    #pp-toggles:not(.collapsed),
-    #pp-toggles.collapsed > .pp-header-row
-  ):hover {
-  border-color: rgba(0, 212, 255, 0.55);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(0, 212, 255, 0.08) inset,
-    0 0 1rem rgba(0, 212, 255, 0.12);
-}
-
-:root:not([data-ui-theme='cyber'])
-  :is(#left-panel-stack, #right-context-rail)
-  :is(
-    .data-panel-inner,
-    .scene-panel-inner,
-    .cctv-panel-inner,
-    .radio-panel-inner,
-    .weather-panel-inner,
-    .recent-imagery-panel-inner,
-    .street-level-panel-inner,
-    .global-context-panel-inner,
-    #pp-toggles:not(.collapsed),
-    #pp-toggles.collapsed > .pp-header-row
-  ):hover
-  :is(.panel-title, .pp-header-label, .panel-collapse-btn) {
-  color: var(--accent);
+  :root:not([data-ui-theme='cyber'])
+    :is(#left-panel-stack, #right-context-rail)
+    :where(
+      .data-panel-inner,
+      .scene-panel-inner,
+      .cctv-panel-inner,
+      .weather-panel-inner,
+      .recent-imagery-panel-inner,
+      .street-level-panel-inner,
+      .global-context-panel-inner,
+      #pp-toggles:not(.collapsed),
+      #pp-toggles.collapsed > .pp-header-row
+    ):hover {
+    --rail-label-hover: var(--accent);
+    border-color: var(--glass-border-hover);
+  }
 }
 
 /* ── Button Grid ──────────────────────────────── */
@@ -521,11 +563,21 @@ html:not([lang='en'])
 }
 
 #pp-toggles > .pp-header-row .pp-collapse-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  font-size: 12px;
+  padding: 0;
+}
+
+/* In the default theme Display's toggle matches the other panels' 22px. */
+:root:not([data-ui-theme='cyber'])
+  #pp-toggles
+  > .pp-header-row
+  .pp-collapse-btn {
   width: 22px;
   height: 22px;
-  border-radius: 6px;
   font-size: 13px;
-  padding: 0;
 }
 
 #pp-toggles.collapsed {
