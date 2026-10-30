@@ -131,7 +131,12 @@ export function gdeltConnector({ url = GDELT_LAST_UPDATE } = {}) {
       const exportUrl = String(listing)
         .split('\n')
         .map((line) => line.trim().split(/\s+/)[2])
-        .find((u) => /\/gdeltv2\/\d{14}\.export\.CSV\.zip$/.test(u ?? ''));
+        // Only GDELT's own host: the listing must not point the fetch elsewhere.
+        .find((u) =>
+          /^https?:\/\/data\.gdeltproject\.org\/gdeltv2\/\d{14}\.export\.CSV\.zip$/.test(
+            u ?? '',
+          ),
+        );
       if (!exportUrl) throw new Error('no GDELT export listed');
       if (exportUrl === lastExport) return { records: [], notModified: true };
       const { body: zip } = await fetchBytes(
@@ -144,10 +149,12 @@ export function gdeltConnector({ url = GDELT_LAST_UPDATE } = {}) {
       const csv = readZipEntry(zip, (names) =>
         names.find((n) => /\.export\.CSV$/i.test(n)),
       );
-      lastExport = exportUrl;
       const records = gdeltCsvToRecords(csv);
       return {
         records,
+        commit: () => {
+          lastExport = exportUrl;
+        },
         latestObservationAt:
           gdeltTime(/(\d{14})\.export/.exec(exportUrl)?.[1]) ?? 0,
       };

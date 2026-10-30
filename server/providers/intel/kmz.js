@@ -4,6 +4,7 @@
 // on archive entries, inflated size, placemark count and field length. Markup
 // is reduced to text by the existing pure GhostMaps helpers and never executed.
 
+import { elements } from './connectors/xml.js';
 import zlib from 'node:zlib';
 import {
   htmlToText,
@@ -85,11 +86,9 @@ export function readZipEntry(buffer, choose) {
 }
 
 const tag = (xml, name) => {
-  const match = new RegExp(`<${name}\\b[^>]*>([\\s\\S]*?)</${name}>`, 'i').exec(
-    xml,
-  );
-  if (!match) return null;
-  const inner = match[1].trim();
+  const [first] = elements(xml, name, 1);
+  if (!first) return null;
+  const inner = first.inner.trim();
   const cdata = /^<!\[CDATA\[([\s\S]*?)\]\]>$/.exec(inner);
   return cdata ? cdata[1] : inner;
 };
@@ -100,10 +99,10 @@ const tag = (xml, name) => {
  */
 export function readPlacemarks(kml, { max = MAX_PLACEMARKS } = {}) {
   const out = [];
-  const pattern = /<Placemark\b([^>]*)>([\s\S]*?)<\/Placemark>/gi;
-  let match;
-  while ((match = pattern.exec(kml)) && out.length < max) {
-    const body = match[2];
+  // Linear scan (a lazy regex is quadratic on unclosed tags in a hostile file).
+  for (const element of elements(kml, 'Placemark', max * 4)) {
+    if (out.length >= max) break;
+    const body = element.inner;
     const point = /<Point\b[\s\S]*?<coordinates>([^<]*)<\/coordinates>/i.exec(
       body,
     );
@@ -113,7 +112,7 @@ export function readPlacemarks(kml, { max = MAX_PLACEMARKS } = {}) {
     const description = tag(body, 'description') ?? '';
     const { fields, links } = parseDescriptionFields(description);
     out.push({
-      id: /\bid="([^"]{1,80})"/.exec(match[1])?.[1] ?? null,
+      id: /\bid="([^"]{1,80})"/.exec(element.attributes)?.[1] ?? null,
       name: htmlToText(tag(body, 'name') ?? '').slice(0, 200),
       fields,
       links,

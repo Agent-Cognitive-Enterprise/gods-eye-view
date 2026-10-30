@@ -448,11 +448,16 @@ test('GDELT: protest/violence only, enough articles, city-level, recent, aggrega
         return { body: zip };
       },
     });
+  // Not committed (the ingest failed): the same export is fetched again.
   assert.equal((await poll()).records.length, 2);
+  const batch = await poll();
+  assert.equal(batch.records.length, 2);
+  batch.commit();
   assert.equal((await poll()).notModified, true);
-  assert.deepEqual(fetched, [
-    'https://data.gdeltproject.org/gdeltv2/20261029083000.export.CSV.zip',
-  ]);
+  assert.equal(fetched.length, 2);
+  assert.ok(
+    fetched.every((u) => u.startsWith('https://data.gdeltproject.org/')),
+  );
 });
 
 test('feed set: public feeds by default, GDELT opt-in, each can be switched off', () => {

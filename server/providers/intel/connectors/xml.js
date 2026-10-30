@@ -3,13 +3,50 @@
 
 const MAX_ITEMS = 2000;
 
+// ASCII-only lower-casing keeps every index of the original text.
+const asciiLower = (text) => text.replace(/[A-Z]/g, (c) => c.toLowerCase());
+
+/**
+ * Elements named `name` as `{attributes, inner}`, in document order, found
+ * with plain index scans: linear in the text even when tags are unclosed
+ * (a lazy regex rescans to the end from every unclosed open tag). Stops at
+ * the first open tag without a closing tag.
+ */
+export function elements(text, name, max = MAX_ITEMS) {
+  const source = String(text ?? '');
+  const lower = asciiLower(source);
+  const open = `<${asciiLower(name)}`;
+  const close = `</${asciiLower(name)}>`;
+  const out = [];
+  let at = 0;
+  while (out.length < max) {
+    const start = lower.indexOf(open, at);
+    if (start < 0) break;
+    const next = lower[start + open.length];
+    // `<item` must not match `<itemized`.
+    if (next !== undefined && !/[\s>/]/.test(next)) {
+      at = start + open.length;
+      continue;
+    }
+    const headEnd = lower.indexOf('>', start);
+    if (headEnd < 0) break;
+    const attributes = source.slice(start + open.length, headEnd);
+    if (attributes.endsWith('/')) {
+      out.push({ attributes: attributes.slice(0, -1), inner: '' });
+      at = headEnd + 1;
+      continue;
+    }
+    const end = lower.indexOf(close, headEnd + 1);
+    if (end < 0) break;
+    out.push({ attributes, inner: source.slice(headEnd + 1, end) });
+    at = end + close.length;
+  }
+  return out;
+}
+
 /** Top-level repeated blocks (`item`, `entry`) of a feed. */
 export function blocks(xml, tag, max = MAX_ITEMS) {
-  const out = [];
-  const pattern = new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)</${tag}>`, 'gi');
-  let match;
-  while ((match = pattern.exec(xml)) && out.length < max) out.push(match[1]);
-  return out;
+  return elements(xml, tag, max).map((element) => element.inner);
 }
 
 const decode = (text) =>
@@ -23,13 +60,9 @@ const decode = (text) =>
 
 /** Text of the first `<tag>` (namespace prefix included in `tag`), or null. */
 export function tag(xml, name) {
-  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = new RegExp(
-    `<${escaped}\\b[^>]*?(?:/>|>([\\s\\S]*?)</${escaped}>)`,
-    'i',
-  ).exec(xml);
-  if (!match) return null;
-  return decode(match[1] ?? '').trim();
+  const [first] = elements(xml, name, 1);
+  if (!first) return null;
+  return decode(first.inner).trim();
 }
 
 /** An attribute of the first `<tag>`, or null. */

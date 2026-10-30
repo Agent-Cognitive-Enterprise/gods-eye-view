@@ -220,7 +220,10 @@ export function createIntelEngine({ store, now, settings = {} }) {
     const dup = duplicateOf(observation, store.duplicateIndex());
     if (dup.duplicate) {
       const eventId = store.eventForDuplicate(observation);
-      if (eventId) store.noteDuplicate(eventId, observation, dup.reason);
+      // The same record polled again is not news and not a repost: nothing
+      // is written (a feed without 304 would otherwise add a row per poll).
+      if (eventId && dup.reason !== 'same_observation_id')
+        store.noteDuplicate(eventId, observation, dup.reason);
       return { status: 'duplicate', event_id: eventId, reasons: [dup.reason] };
     }
     const found = bestMatch(observation, candidates(observation));

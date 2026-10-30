@@ -132,8 +132,10 @@ export function createFeedRunner({
         : as === 'bytes'
           ? await readCapped(readResponseBytesCapped, response, maxBytes)
           : await readResponseJsonCapped(response, maxBytes);
+    // Staged: kept only once the batch is ingested, so a failed ingest
+    // is fetched again instead of being answered 304 next time.
     if (conditional)
-      validators.set(url, {
+      staged.set(url, {
         etag: response.headers.get('etag'),
         lastModified: response.headers.get('last-modified'),
       });
@@ -146,6 +148,8 @@ export function createFeedRunner({
   const fetchBytes = (url, options = {}) =>
     fetchBody(url, { ...options, as: 'bytes' });
 
+  const staged = new Map(); // validators from the poll in progress
+
   async function pollOnce() {
     if (state.disabled) return null;
     // A feed waiting for a key, or barred by its terms, is reported, never polled.
@@ -154,6 +158,7 @@ export function createFeedRunner({
     if (inFlight) return inFlight;
     state.last_attempt_at = now();
     inFlight = (async () => {
+      staged.clear();
       try {
         const result = await connector.poll({
           fetchJson,
@@ -170,6 +175,10 @@ export function createFeedRunner({
         const outcome = fresh.length
           ? ingest(fresh, { receivedAt: now() })
           : [];
+        // The batch is stored: keep its validators and let the connector
+        // mark what it consumed (product editions, export files).
+        for (const [url, validator] of staged) validators.set(url, validator);
+        result.commit?.();
         const counts = {};
         if (fresh.length < (result.records?.length ?? 0))
           counts.beyond_retention = result.records.length - fresh.length;

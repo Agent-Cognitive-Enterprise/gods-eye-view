@@ -137,12 +137,16 @@ test('GhostMaps connector ingests only new editions and old incidents archive', 
   const first = await connector.poll();
   assert.equal(first.records.length, 2);
   assert.equal(first.latestObservationAt, Date.UTC(2026, 9, 27, 21, 15));
+  // Editions are marked consumed only once the runner stored them.
+  const retry = await connector.poll();
+  assert.equal(retry.records.length, first.records.length);
+  retry.commit();
   const again = await connector.poll();
   assert.equal(again.records.length, 0);
   assert.equal(
     fileReads,
-    1,
-    'the CIP and unchanged editions are never fetched',
+    2,
+    'once, again for the uncommitted retry; never the CIP or a committed edition',
   );
 
   const engine = createIntelEngine({
