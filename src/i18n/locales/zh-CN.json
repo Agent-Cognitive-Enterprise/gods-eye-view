@@ -2987,6 +2987,8 @@
   "Air/sea density unavailable": "空中/海上密度不可用",
   "Loading…": "加载中…",
   "{objects} in {cells} cells": "{cells} 个单元中有 {objects} 个",
+  "{count} not drawn (polar or beyond the cell limit)": "{count} 个未绘制（极地或超出单元上限）",
+  "collected every {minutes} min: this window may be empty": "每 {minutes} 分钟采集一次：此时间窗可能为空",
   "DENSITY": "密度",
   "BOTH": "两者",
   "Count each object once, at its latest position in this window": "每个对象只计一次，取其在此时间窗内的最新位置",

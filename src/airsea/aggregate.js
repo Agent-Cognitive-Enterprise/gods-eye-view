@@ -144,9 +144,12 @@ export function altitudeBand(fix) {
  * ICAO hex or MMSI are one object: the fresher fix wins.
  */
 export function createTrafficTracker({ maxObjects = 200_000 } = {}) {
+  // Insertion order is update order (an update re-inserts), so the oldest
+  // objects are always at the head and eviction never sorts.
   const objects = new Map(); // `${domain}:${id}` -> fix
   const rejected = {}; // reason -> count (diagnostics)
   let reports = 0;
+  let version = 0;
 
   function ingest(fixes, receivedAt) {
     let accepted = 0;
@@ -161,15 +164,15 @@ export function createTrafficTracker({ maxObjects = 200_000 } = {}) {
       const seen = objects.get(key);
       // An older fix (late delivery, a slower provider) never moves an object back.
       if (seen && seen.observedAt >= fix.observedAt) continue;
+      objects.delete(key);
       objects.set(key, fix);
       accepted += 1;
     }
-    if (objects.size > maxObjects) {
-      const oldest = [...objects.entries()]
-        .sort((a, b) => a[1].observedAt - b[1].observedAt)
-        .slice(0, objects.size - maxObjects);
-      for (const [key] of oldest) objects.delete(key);
+    for (const key of objects.keys()) {
+      if (objects.size <= maxObjects) break;
+      objects.delete(key);
     }
+    if (accepted) version += 1;
     return accepted;
   }
 
@@ -192,6 +195,7 @@ export function createTrafficTracker({ maxObjects = 200_000 } = {}) {
     current,
     prune,
     size: () => objects.size,
+    version: () => version,
     diagnostics: () => ({ reports, rejected: { ...rejected } }),
   };
 }
@@ -292,6 +296,9 @@ export function aggregateCells(
   return {
     cells: out,
     total: ranked.reduce((sum, c) => sum + c.uniqueCount, 0),
+    // Objects in cells actually drawn: polar cells and cells beyond the cap
+    // are counted in `total` but not shown.
+    drawn: out.reduce((sum, c) => sum + c.uniqueCount, 0),
     truncated: ranked.length > maxCells,
   };
 }

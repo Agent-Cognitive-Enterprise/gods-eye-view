@@ -3200,6 +3200,8 @@
   "Air/sea density unavailable": "Плотность воздушного и морского движения недоступна",
   "Loading…": "Загрузка…",
   "{objects} in {cells} cells": "{objects} в {cells} ячейках",
+  "{count} not drawn (polar or beyond the cell limit)": "{count} не показано (полярные или сверх лимита ячеек)",
+  "collected every {minutes} min: this window may be empty": "сбор каждые {minutes} мин: это окно может быть пустым",
   "DENSITY": "ПЛОТНОСТЬ",
   "BOTH": "ОБА",
   "Count each object once, at its latest position in this window": "Каждый объект учитывается один раз, по последней позиции в этом окне",

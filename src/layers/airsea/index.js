@@ -147,6 +147,7 @@ export function createTrafficDensityLayer({
   // Whether this row switched the individual-object layer on (and so may
   // switch it off again); a layer the user enabled themselves is left alone.
   let _ownsObjects = false;
+  let _removeVisibilityListener = null;
   let _mode = MODES.includes(read('mode')) ? read('mode') : 'density';
   let _window =
     TRAFFIC_WINDOWS.find((w) => w.id === read('window')) ?? TRAFFIC_WINDOWS[1];
@@ -154,17 +155,30 @@ export function createTrafficDensityLayer({
   const notifyRow = () => _rowListener?.();
   const showDensity = () => _enabled && _mode !== 'objects';
 
-  async function applyObjects() {
-    if (!_manager) return;
-    const want = _enabled && _mode !== 'density';
-    const on = _manager.isEnabled?.(spec.objectsLayerId) === true;
-    if (want && !on) {
-      _ownsObjects = true;
-      await _manager.setEnabled(spec.objectsLayerId, true);
-    } else if (!want && on && _ownsObjects) {
-      _ownsObjects = false;
-      await _manager.setEnabled(spec.objectsLayerId, false);
-    }
+  // Changes to the object layer run one at a time and re-read the wanted
+  // state after each await, so quick mode switches cannot leave it on.
+  let _objectsChain = Promise.resolve();
+  let _selfRequest = false;
+  function applyObjects() {
+    _objectsChain = _objectsChain
+      .catch(() => {})
+      .then(async () => {
+        if (!_manager) return;
+        const want = _enabled && _mode !== 'density';
+        const on = _manager.isEnabled?.(spec.objectsLayerId) === true;
+        if (want === on) return;
+        if (!want && !_ownsObjects) return; // the user's own layer
+        _selfRequest = true;
+        let pending;
+        try {
+          pending = _manager.setEnabled(spec.objectsLayerId, want);
+        } finally {
+          _selfRequest = false;
+        }
+        _ownsObjects = want;
+        await pending;
+      });
+    return _objectsChain;
   }
 
   function setMode(mode) {
@@ -271,6 +285,14 @@ export function createTrafficDensityLayer({
 
     attachDataManager(manager) {
       _manager = manager;
+      // Switching the object layer by hand makes it the user's again: this
+      // row never switches it off afterwards.
+      _removeVisibilityListener = manager.subscribeVisibilityRequests?.(
+        (change) => {
+          if (change?.layerId === spec.objectsLayerId && !_selfRequest)
+            _ownsObjects = false;
+        },
+      );
       scheduleRestore();
     },
 
@@ -352,6 +374,8 @@ export function createTrafficDensityLayer({
     destroy(viewer = _viewer) {
       layer.disable();
       clearTimeout(_restoreTimer);
+      _removeVisibilityListener?.();
+      _removeVisibilityListener = null;
       _removeMoveEnd?.();
       _removeMoveEnd = null;
       if (_primitives) {
@@ -385,9 +409,19 @@ export function createTrafficDensityLayer({
                   ? `: ${t(REASON_TEXT[coverage.reason] ?? coverage.reason)}`
                   : ''),
               t('{objects} in {cells} cells', {
-                objects: formatNumber(_result.total),
+                objects: formatNumber(_result.drawn ?? _result.total),
                 cells: formatNumber(cells),
               }),
+              _result.total > (_result.drawn ?? _result.total)
+                ? t('{count} not drawn (polar or beyond the cell limit)', {
+                    count: formatNumber(_result.total - _result.drawn),
+                  })
+                : null,
+              _result.collection_ms && _window.ms < _result.collection_ms
+                ? t('collected every {minutes} min: this window may be empty', {
+                    minutes: formatNumber(_result.collection_ms / 60_000),
+                  })
+                : null,
               sources,
             ]
               .filter(Boolean)

@@ -265,3 +265,32 @@ test('6/7: an outage reads as missing coverage, never as traffic that vanished',
     'global',
   );
 });
+
+test('review: eviction drops the least recently updated objects without sorting', () => {
+  const tracker = createTrafficTracker({ maxObjects: 3 });
+  tracker.ingest(
+    opensky([
+      state('e00001', 1, 1, NOW - 4000),
+      state('e00002', 2, 2, NOW - 3000),
+      state('e00003', 3, 3, NOW - 2000),
+    ]),
+    NOW,
+  );
+  // e00001 reports again, so e00002 is now the oldest update.
+  tracker.ingest(opensky([state('e00001', 1, 1, NOW - 1000)]), NOW);
+  tracker.ingest(opensky([state('e00004', 4, 4, NOW)]), NOW);
+  const ids = tracker
+    .current('air', NOW, 3600_000)
+    .map((f) => f.id)
+    .sort();
+  assert.deepEqual(ids, ['e00001', 'e00003', 'e00004']);
+});
+
+test('review: objects in cells that are not drawn are reported apart', () => {
+  const { total, drawn } = aggregateCells(
+    opensky([state('f00001', 89.99, 10), state('f00002', 10, 10)]),
+    { resolution: 1, now: NOW },
+  );
+  assert.equal(total, 2);
+  assert.equal(drawn, 1);
+});

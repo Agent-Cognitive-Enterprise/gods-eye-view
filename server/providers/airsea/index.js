@@ -16,7 +16,7 @@ import {
   sourceStatus,
 } from '../../../src/airsea/sources.js';
 import { AISSTREAM_CACHE_MAX, aisStreamRows } from '../vessels/ais-store.js';
-import { trafficSnapshotsSince } from './bus.js';
+import { subscribeTrafficSnapshots, trafficSnapshotsSince } from './bus.js';
 
 export const WINDOWS_MS = Object.freeze([
   15 * 60_000,
@@ -26,19 +26,39 @@ export const WINDOWS_MS = Object.freeze([
 ]);
 const AIS_READ_EVERY_MS = 30_000;
 const RESOLUTIONS = new Set([1, 2, 3, 4]);
+// A density answer is reused while nothing new arrived (and briefly, since
+// ages move): several viewers and camera stops cost one aggregation.
+const CACHE_MS = 30_000;
+// Fine cells only for a bounded view.
+const MAX_FINE_BOX_DEGREES = 60;
 
 /**
- * @param {{now?: () => number, snapshots?: Function, readAisRows?: Function,
- *   aisConfigured?: () => boolean}} [options]
+ * @param {{now?: () => number, snapshots?: Function, subscribe?: Function,
+ *   readAisRows?: Function, aisConfigured?: () => boolean,
+ *   cadenceMs?: Record<string, number>}} [options]
  */
 export function createAirSeaService({
   now = () => Date.now(),
   snapshots = trafficSnapshotsSince,
+  subscribe = subscribeTrafficSnapshots,
   readAisRows = () => aisStreamRows(AISSTREAM_CACHE_MAX),
   aisConfigured = () => Boolean(process.env.AISSTREAM_API_KEY),
+  cadenceMs = {},
 } = {}) {
   const tracker = createTrafficTracker();
   const startedAt = now();
+  const cache = new Map(); // query key -> {version, at, result}
+  // Every snapshot is taken in as it is published (off the publishing
+  // request), so the windows keep filling while no layer is shown.
+  let pending = false;
+  const unsubscribe = subscribe?.(() => {
+    if (pending) return;
+    pending = true;
+    setImmediate(() => {
+      pending = false;
+      sync();
+    });
+  });
   const last = {}; // source id -> {receivedAt, newestFixAt, objects, configured}
   const parseErrors = {};
   let lastSeq = 0;
@@ -101,8 +121,14 @@ export function createAirSeaService({
     const out = {};
     for (const source of TRAFFIC_SOURCES) {
       const seen = last[source.id] ?? null;
+      // A feed is stale only when it misses its collection cadence by half
+      // again, not in the seconds a scheduled fetch takes.
+      const staleAfterMs = Math.max(
+        source.staleAfterMs,
+        1.5 * (cadenceMs[source.id] ?? 0),
+      );
       out[source.id] = {
-        ...sourceStatus(source, seen, t),
+        ...sourceStatus({ ...source, staleAfterMs }, seen, t),
         received_at: seen?.receivedAt ?? null,
         newest_fix_at: seen?.newestFixAt ?? null,
         objects: seen?.objects ?? 0,
@@ -131,10 +157,14 @@ export function createAirSeaService({
     density({ domain, resolution = 2, windowMs = 3600_000, box = null }) {
       sync();
       const t = now();
+      const key = `${domain}|${resolution}|${windowMs}|${box ?? ''}`;
+      const hit = cache.get(key);
+      if (hit && hit.version === tracker.version() && t - hit.at < CACHE_MS)
+        return hit.result;
       const status = statuses();
       const fixes = tracker.current(domain, t, windowMs);
       const result = aggregateCells(fixes, { resolution, now: t, box });
-      return {
+      const answer = {
         domain,
         resolution,
         window_ms: windowMs,
@@ -149,10 +179,20 @@ export function createAirSeaService({
           ).map((s) => [s.id, status[s.id]]),
         ),
         total: result.total,
+        drawn: result.drawn,
         truncated: result.truncated,
+        // How often this server collects the domain's main feed.
+        collection_ms:
+          cadenceMs[domain === 'air' ? 'opensky' : 'aisstream'] ?? null,
         cells: result.cells,
         diagnostics: { ...tracker.diagnostics(), parse_errors: parseErrors },
       };
+      if (cache.size > 32) cache.clear();
+      cache.set(key, { version: tracker.version(), at: t, result: answer });
+      return answer;
+    },
+    close() {
+      unsubscribe?.();
     },
   };
 }
@@ -174,6 +214,7 @@ export function parseBox(value) {
   const [west, south, east, north] = parts;
   if (Math.abs(south) > 90 || Math.abs(north) > 90 || south > north)
     return null;
+  if (Math.abs(west) > 180 || Math.abs(east) > 180) return null;
   return [west, south, east, north];
 }
 
@@ -187,10 +228,16 @@ export function parseBox(value) {
  */
 export function collectionPlan(env = process.env) {
   if (env.GEV_AIRSEA_COLLECT === '0') return [];
-  const oauth = Boolean(
-    (env.OPENSKY_CLIENT_ID && env.OPENSKY_CLIENT_SECRET) ||
-    env.OPENSKY_CREDENTIALS_FILE,
-  );
+  // Credentials count only when the proxy will use them (OPENSKY_AUTH_MODE
+  // anon/basic runs anonymously whatever is configured).
+  const mode = String(env.OPENSKY_AUTH_MODE ?? 'oauth').toLowerCase();
+  const oauth =
+    mode !== 'anon' &&
+    mode !== 'basic' &&
+    Boolean(
+      (env.OPENSKY_CLIENT_ID && env.OPENSKY_CLIENT_SECRET) ||
+      env.OPENSKY_CREDENTIALS_FILE,
+    );
   const minutes = Number(env.GEV_AIRSEA_AIR_MINUTES);
   return [
     {
@@ -198,9 +245,11 @@ export function collectionPlan(env = process.env) {
       everyMs:
         Number.isFinite(minutes) && minutes >= 1
           ? minutes * 60_000
-          : oauth
-            ? 2 * 60_000
-            : 15 * 60_000,
+          : // ~29% of OAuth's 4,000 daily credits; ~48% of the anonymous
+            // 400, leaving the rest to the flights layer.
+            oauth
+            ? 5 * 60_000
+            : 30 * 60_000,
     },
     { path: '/api/military', everyMs: 5 * 60_000 },
     // Opens (or keeps) the one AISStream socket the vessel layer also uses.
@@ -212,11 +261,18 @@ export function collectionPlan(env = process.env) {
 
 function startCollector(server, plan, log = console.warn) {
   const timers = [];
+  // The address the server really listens on: Vite's default `localhost`
+  // is ::1 only on Windows, where 127.0.0.1 is refused.
   const origin = () => {
     const address = server.httpServer?.address?.();
-    return address && typeof address === 'object'
-      ? `http://127.0.0.1:${address.port}`
-      : null;
+    if (!address || typeof address !== 'object') return null;
+    const host =
+      address.family === 'IPv6' || address.family === 6
+        ? `[${address.address === '::' ? '::1' : address.address}]`
+        : address.address === '0.0.0.0'
+          ? '127.0.0.1'
+          : address.address;
+    return `http://${host}:${address.port}`;
   };
   for (const job of plan) {
     const run = async () => {
@@ -241,6 +297,17 @@ function startCollector(server, plan, log = console.warn) {
   return () => timers.forEach((id) => clearTimeout(id));
 }
 
+/** Collection cadence per source id, for staleness and the client's note. */
+function cadence(env) {
+  const plan = collectionPlan(env);
+  const every = (path) =>
+    plan.find((job) => job.path.startsWith(path))?.everyMs;
+  return {
+    opensky: every('/api/flights'),
+    'adsblol-mil': every('/api/military'),
+  };
+}
+
 export function airSeaEnabled(env = process.env) {
   return env.GEV_AIRSEA_ENABLED === '1';
 }
@@ -254,7 +321,7 @@ export function airSeaProxy({ service: supplied, env = process.env } = {}) {
     if (!enabled) return json(res, 404, { enabled: false });
     if (req.method !== 'GET')
       return json(res, 405, { error: 'method_not_allowed' });
-    service ??= createAirSeaService();
+    service ??= createAirSeaService({ cadenceMs: cadence(env) });
     const url = new URL(req.url || '/', 'http://localhost');
     const route = url.pathname.replace(/\/+$/, '') || '/';
     try {
@@ -275,8 +342,15 @@ export function airSeaProxy({ service: supplied, env = process.env } = {}) {
         const box = parseBox(url.searchParams.get('box'));
         // Fine cells only for a bounded view: the whole globe at res 4 is
         // hundreds of thousands of cells.
-        if (resolution >= 4 && !box)
-          return json(res, 400, { error: 'res 4 needs box' });
+        if (resolution >= 4) {
+          if (!box) return json(res, 400, { error: 'res 4 needs box' });
+          const width = (box[2] - box[0] + 360) % 360 || 360;
+          if (
+            width > MAX_FINE_BOX_DEGREES ||
+            box[3] - box[1] > MAX_FINE_BOX_DEGREES
+          )
+            return json(res, 400, { error: 'box too large for res 4' });
+        }
         return json(
           res,
           200,
@@ -292,8 +366,14 @@ export function airSeaProxy({ service: supplied, env = process.env } = {}) {
   const attach = (server) => {
     server.middlewares.use('/api/airsea', handler);
     if (!enabled || supplied) return;
+    // Created now, not on the first request: it must take in every
+    // collected snapshot from the start.
+    service ??= createAirSeaService({ cadenceMs: cadence(env) });
     const stop = startCollector(server, collectionPlan(env));
-    server.httpServer?.once('close', stop);
+    server.httpServer?.once('close', () => {
+      stop();
+      service?.close?.();
+    });
   };
   return {
     name: 'airsea',

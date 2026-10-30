@@ -3129,6 +3129,8 @@
   "Air/sea density unavailable": "Densidad aérea/marítima no disponible",
   "Loading…": "Cargando…",
   "{objects} in {cells} cells": "{objects} en {cells} celdas",
+  "{count} not drawn (polar or beyond the cell limit)": "{count} sin dibujar (polares o más allá del límite de celdas)",
+  "collected every {minutes} min: this window may be empty": "se recoge cada {minutes} min: esta ventana puede estar vacía",
   "DENSITY": "DENSIDAD",
   "BOTH": "AMBOS",
   "Count each object once, at its latest position in this window": "Cuenta cada objeto una vez, en su última posición dentro de esta ventana",

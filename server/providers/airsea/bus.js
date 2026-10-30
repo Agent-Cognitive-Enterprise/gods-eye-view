@@ -4,6 +4,7 @@
 // density adds no upstream request and no second poller.
 
 const latest = new Map(); // provider id -> {body|payload, receivedAt, seq}
+const listeners = new Set();
 let seq = 0;
 
 /**
@@ -17,6 +18,13 @@ export function publishTrafficSnapshot(provider, snapshot) {
     receivedAt: snapshot.receivedAt ?? Date.now(),
     seq,
   });
+  for (const listener of listeners) listener(provider);
+}
+
+/** Called after every snapshot; returns an unsubscribe function. */
+export function subscribeTrafficSnapshots(listener) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
 }
 
 /** Snapshots newer than `afterSeq`, oldest first. */

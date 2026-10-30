@@ -151,14 +151,23 @@ test('collection stays within the shared proxies and the anonymous budget', () =
   assert.deepEqual(
     collectionPlan({}).map((j) => [j.path, j.everyMs]),
     [
-      ['/api/flights', 15 * 60_000],
+      ['/api/flights', 30 * 60_000],
       ['/api/military', 5 * 60_000],
     ],
   );
   assert.equal(
     collectionPlan({ OPENSKY_CLIENT_ID: 'a', OPENSKY_CLIENT_SECRET: 'b' })[0]
       .everyMs,
-    2 * 60_000,
+    5 * 60_000,
+  );
+  // Credentials the proxy will not use do not buy a faster cadence.
+  assert.equal(
+    collectionPlan({
+      OPENSKY_AUTH_MODE: 'anon',
+      OPENSKY_CLIENT_ID: 'a',
+      OPENSKY_CLIENT_SECRET: 'b',
+    })[0].everyMs,
+    30 * 60_000,
   );
   assert.equal(collectionPlan({ AISSTREAM_API_KEY: 'k' }).length, 3);
   assert.deepEqual(collectionPlan({ GEV_AIRSEA_COLLECT: '0' }), []);
@@ -171,4 +180,64 @@ test('view boxes are validated', () => {
   assert.deepEqual(parseBox('170,-30,-170,0'), [170, -30, -170, 0]);
   assert.equal(parseBox('1,2,3'), null);
   assert.equal(parseBox('0,50,10,40'), null);
+  assert.equal(parseBox('-400,-10,400,10'), null);
+});
+
+test('review: snapshots published while hidden all count, not only the last', async () => {
+  const { publishTrafficSnapshot, resetTrafficSnapshots } =
+    await import('./bus.js');
+  resetTrafficSnapshots();
+  const svc = createAirSeaService({
+    now: () => NOW,
+    readAisRows: () => [],
+    aisConfigured: () => false,
+  });
+  try {
+    publishTrafficSnapshot('opensky', {
+      body: states([['ccc001', 10, 10]], NOW - 20 * 60_000),
+      receivedAt: NOW - 20 * 60_000,
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    publishTrafficSnapshot('opensky', {
+      body: states([['ccc002', 20, 20]]),
+      receivedAt: NOW,
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    const result = svc.density({ domain: 'air', windowMs: 24 * 3600_000 });
+    assert.equal(result.total, 2);
+  } finally {
+    svc.close();
+    resetTrafficSnapshots();
+  }
+});
+
+test('review: staleness allows for the collection cadence', () => {
+  const clock = { value: NOW };
+  let seq = 0;
+  const svc = createAirSeaService({
+    now: () => clock.value,
+    snapshots: (after) =>
+      [
+        {
+          provider: 'opensky',
+          body: states([['ddd001', 10, 10]]),
+          receivedAt: NOW,
+          seq: 1,
+        },
+      ].filter((snap) => snap.seq > after && ++seq),
+    subscribe: null,
+    readAisRows: () => [],
+    aisConfigured: () => false,
+    cadenceMs: { opensky: 30 * 60_000 },
+  });
+  // 31 minutes: a scheduled fetch is just due, not a lapsed feed.
+  clock.value = NOW + 31 * 60_000;
+  const result = svc.density({ domain: 'air', windowMs: 3600_000 });
+  assert.equal(result.sources.opensky.status, 'healthy');
+  assert.equal(result.collection_ms, 30 * 60_000);
+  clock.value = NOW + 46 * 60_000;
+  assert.equal(
+    svc.density({ domain: 'air', windowMs: 3600_000 }).sources.opensky.status,
+    'stale',
+  );
 });
