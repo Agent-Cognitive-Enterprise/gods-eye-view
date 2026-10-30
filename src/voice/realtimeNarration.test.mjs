@@ -9,11 +9,7 @@ function controllerFixture({ runner = async () => ({ ok: true }) } = {}) {
   const usage = [];
   const controller = new GevRealtimeController({
     ui: {
-      root: {
-        dataset: {},
-        classList: { remove() {} },
-        querySelectorAll: () => [],
-      },
+      root: { dataset: {}, classList: { remove() {} }, querySelectorAll: () => [] },
       status: { textContent: '' },
       detail: { textContent: '', title: '' },
       errorDetail: { textContent: '' },
@@ -44,20 +40,12 @@ function controllerFixture({ runner = async () => ({ ok: true }) } = {}) {
     event({
       type: 'error',
       event_id: `event_server_${++serverSeq}`,
-      error: {
-        type: 'invalid_request_error',
-        code,
-        message: 'rejected',
-        event_id: clientEventId,
-      },
+      error: { type: 'invalid_request_error', code, message: 'rejected', event_id: clientEventId },
     });
   const progressLine = async (id = 'resp_p', line = 'Heading to Austin.') => {
     assert.equal(controller._turns.speakProgressLine(line), true);
     const request = sent.at(-1);
-    await event({
-      type: 'response.created',
-      response: { id, metadata: { gev: 'progress' } },
-    });
+    await event({ type: 'response.created', response: { id, metadata: { gev: 'progress' } } });
     return request;
   };
   return { controller, sent, statuses, usage, event, rejection, progressLine };
@@ -72,21 +60,10 @@ test('Space barge-in cancels the reply and clears audio; WebRTC truncates, so no
   controller.pendingResponseInstructions = 'queued follow-up';
 
   assert.equal(controller._turns.bargeIn(), true);
-  assert.deepEqual(types(sent), [
-    'response.cancel',
-    'output_audio_buffer.clear',
-  ]);
+  assert.deepEqual(types(sent), ['response.cancel', 'output_audio_buffer.clear']);
   assert.equal(sent[0].response_id, 'resp_1');
-  assert.equal(
-    controller.pendingResponseInstructions,
-    null,
-    'no queued follow-up talks over the user',
-  );
-  assert.equal(
-    controller.isSupersededResponse('resp_1'),
-    true,
-    'late calls from the cut reply are refused',
-  );
+  assert.equal(controller.pendingResponseInstructions, null, 'no queued follow-up talks over the user');
+  assert.equal(controller.isSupersededResponse('resp_1'), true, 'late calls from the cut reply are refused');
 
   // The target may already have finished. The rejection names the client id
   // in error.event_id while the envelope has a different server id.
@@ -99,16 +76,8 @@ test('an unrelated server error with a colliding top-level id is still fatal', a
   const { controller, sent, statuses, event } = controllerFixture();
   await event({ type: 'response.created', response: { id: 'resp_1' } });
   controller._turns.bargeIn();
-  await event({
-    type: 'error',
-    event_id: sent[0].event_id,
-    error: { code: 'server_error', message: 'boom' },
-  });
-  assert.equal(
-    statuses.includes('error'),
-    true,
-    'only error.event_id correlates a client event',
-  );
+  await event({ type: 'error', event_id: sent[0].event_id, error: { code: 'server_error', message: 'boom' } });
+  assert.equal(statuses.includes('error'), true, 'only error.event_id correlates a client event');
 });
 
 test('a rejected progress line releases the waiting reply without an error state', async () => {
@@ -133,44 +102,24 @@ test('progress requests are out of band, bounded, and carry the line only as dat
   assert.ok(PROGRESS_MAX_OUTPUT_TOKENS <= 100);
   assert.deepEqual(response.metadata, { gev: 'progress' });
   assert.equal(response.input[0].content[0].text, line);
-  assert.equal(
-    response.instructions.includes('Capitol'),
-    false,
-    'labels never enter instructions',
-  );
-  assert.equal(
-    controller._turns.speakProgressLine('Another line.'),
-    false,
-    'one line at a time',
-  );
+  assert.equal(response.instructions.includes('Capitol'), false, 'labels never enter instructions');
+  assert.equal(controller._turns.speakProgressLine('Another line.'), false, 'one line at a time');
 });
 
 test('a cancelled progress response never clears a pending Radio handoff', async () => {
   const { controller, sent, event, progressLine, usage } = controllerFixture();
   await progressLine('resp_p');
   // Radio prepared its playback while the line was generating.
-  controller.pendingRadioPlaybackResult = {
-    ok: true,
-    radioPlaybackRequested: true,
-  };
+  controller.pendingRadioPlaybackResult = { ok: true, radioPlaybackRequested: true };
   controller.queueResponseCreate('Say "Turning on the radio."');
   controller._turns.retractProgressLine();
   await event({
     type: 'response.done',
-    response: {
-      id: 'resp_p',
-      status: 'cancelled',
-      metadata: { gev: 'progress' },
-      usage: { input_tokens: 5, output_tokens: 3 },
-    },
+    response: { id: 'resp_p', status: 'cancelled', metadata: { gev: 'progress' }, usage: { input_tokens: 5, output_tokens: 3 } },
   });
   assert.ok(controller.pendingRadioPlaybackResult, 'Radio stays pending');
   assert.equal(sent.at(-1).type, 'response.create');
-  assert.match(
-    sent.at(-1).response.instructions,
-    /Turning on the radio/,
-    'the confirmation is not stranded',
-  );
+  assert.match(sent.at(-1).response.instructions, /Turning on the radio/, 'the confirmation is not stranded');
   assert.equal(usage.length, 1, 'progress usage is still billed');
 });
 
@@ -179,19 +128,8 @@ test('an old progress completion leaves the active in-band response alone', asyn
   await progressLine('resp_p');
   // Server VAD starts a real reply while the line is still generating.
   await event({ type: 'response.created', response: { id: 'resp_real' } });
-  await event({
-    type: 'response.output_audio_transcript.done',
-    response_id: 'resp_p',
-    transcript: 'Heading to Austin.',
-  });
-  await event({
-    type: 'response.done',
-    response: {
-      id: 'resp_p',
-      status: 'completed',
-      metadata: { gev: 'progress' },
-    },
-  });
+  await event({ type: 'response.output_audio_transcript.done', response_id: 'resp_p', transcript: 'Heading to Austin.' });
+  await event({ type: 'response.done', response: { id: 'resp_p', status: 'completed', metadata: { gev: 'progress' } } });
   assert.equal(controller.activeResponseId, 'resp_real');
   assert.equal(controller.responseActive, true);
 });
@@ -202,10 +140,7 @@ test('user speech stops an audible progress line: cancel and clear its audio', a
   await event({ type: 'output_audio_buffer.started', response_id: 'resp_p' });
   sent.length = 0;
   await event({ type: 'input_audio_buffer.speech_started' });
-  assert.deepEqual(types(sent), [
-    'response.cancel',
-    'output_audio_buffer.clear',
-  ]);
+  assert.deepEqual(types(sent), ['response.cancel', 'output_audio_buffer.clear']);
   assert.equal(sent[0].response_id, 'resp_p');
 });
 
@@ -213,21 +148,10 @@ test('a typed command stops an audible progress line too', async () => {
   const { controller, sent, event, progressLine } = controllerFixture();
   await progressLine('resp_p');
   await event({ type: 'output_audio_buffer.started', response_id: 'resp_p' });
-  await event({
-    type: 'response.done',
-    response: {
-      id: 'resp_p',
-      status: 'completed',
-      metadata: { gev: 'progress' },
-    },
-  });
+  await event({ type: 'response.done', response: { id: 'resp_p', status: 'completed', metadata: { gev: 'progress' } } });
   sent.length = 0;
   controller.sendTextCommand('go to Paris');
-  assert.equal(
-    types(sent)[0],
-    'output_audio_buffer.clear',
-    'playback still owned after generation ended',
-  );
+  assert.equal(types(sent)[0], 'output_audio_buffer.clear', 'playback still owned after generation ended');
 });
 
 test('a finished tool lets a heard line finish, and playback ownership outlives response.done', async () => {
@@ -235,35 +159,12 @@ test('a finished tool lets a heard line finish, and playback ownership outlives 
   await progressLine('resp_p');
   await event({ type: 'output_audio_buffer.started', response_id: 'resp_p' });
   controller._turns.retractProgressLine();
-  assert.equal(
-    types(sent).includes('response.cancel'),
-    false,
-    'audible lines are not cut',
-  );
+  assert.equal(types(sent).includes('response.cancel'), false, 'audible lines are not cut');
   controller.queueResponseCreate('Speak the say line.');
-  assert.equal(
-    types(sent).filter((t) => t === 'response.create').length,
-    1,
-    'follow-up waits for generation',
-  );
-  await event({
-    type: 'response.done',
-    response: {
-      id: 'resp_p',
-      status: 'completed',
-      metadata: { gev: 'progress' },
-    },
-  });
-  assert.equal(
-    types(sent).filter((t) => t === 'response.create').length,
-    2,
-    'follow-up after the line',
-  );
-  assert.equal(
-    controller._turns.canNarrate(),
-    false,
-    'still playing: no new line',
-  );
+  assert.equal(types(sent).filter((t) => t === 'response.create').length, 1, 'follow-up waits for generation');
+  await event({ type: 'response.done', response: { id: 'resp_p', status: 'completed', metadata: { gev: 'progress' } } });
+  assert.equal(types(sent).filter((t) => t === 'response.create').length, 2, 'follow-up after the line');
+  assert.equal(controller._turns.canNarrate(), false, 'still playing: no new line');
   await event({ type: 'output_audio_buffer.stopped', response_id: 'resp_p' });
   assert.equal(controller._turns.progressResponse, null);
 });
@@ -279,22 +180,13 @@ test('an unheard line is cancelled when its tool finishes', async () => {
 test('Radio handoff phases block barge-in and narration: prepared, reserved and starting playback', async () => {
   const { controller, sent, event } = controllerFixture();
   await event({ type: 'response.created', response: { id: 'resp_r' } });
-  await event({
-    type: 'response.done',
-    response: { id: 'resp_r', status: 'completed' },
-  });
+  await event({ type: 'response.done', response: { id: 'resp_r', status: 'completed' } });
   await event({ type: 'output_audio_buffer.started', response_id: 'resp_r' });
   const radio = controller._radio;
   const phases = [
-    () => {
-      radio.pendingRadioPlaybackResult = { ok: true };
-    },
-    () => {
-      radio.radioVisibilityOffPending = true;
-    },
-    () => {
-      radio.radioHandoffInFlight = true;
-    },
+    () => { radio.pendingRadioPlaybackResult = { ok: true }; },
+    () => { radio.radioVisibilityOffPending = true; },
+    () => { radio.radioHandoffInFlight = true; },
   ];
   for (const enter of phases) {
     radio.pendingRadioPlaybackResult = null;
@@ -316,12 +208,7 @@ test('caption transcription is metered with the served transcription model', asy
     type: 'conversation.item.input_audio_transcription.completed',
     item_id: 'item_u',
     transcript: 'take me to Tokyo',
-    usage: {
-      type: 'tokens',
-      input_tokens: 1000,
-      input_token_details: { audio_tokens: 1000 },
-      output_tokens: 10,
-    },
+    usage: { type: 'tokens', input_tokens: 1000, input_token_details: { audio_tokens: 1000 }, output_tokens: 10 },
   });
   const after = controller.costTracker.state().totalUsd;
   assert.ok(Math.abs(after - before - (1000 * 3 + 10 * 5) / 1_000_000) < 1e-12);
@@ -336,8 +223,7 @@ test('tools report start, progress and finish to narration; Radio stays silent',
     },
   });
   controller._turns.narration = {
-    toolStarted: (id, info) =>
-      calls.push(['start', id, info.name, info.narrate, info.label]),
+    toolStarted: (id, info) => calls.push(['start', id, info.name, info.narrate, info.label]),
     progress: (id, update) => calls.push(['progress', id, update.step]),
     toolFinished: (id) => calls.push(['finish', id]),
     preamble: () => calls.push(['preamble']),
@@ -346,11 +232,7 @@ test('tools report start, progress and finish to narration; Radio stays silent',
     audible() {},
     quiet() {},
   };
-  await event({
-    type: 'response.output_audio_transcript.delta',
-    response_id: 'resp_t',
-    delta: 'Finding ',
-  });
+  await event({ type: 'response.output_audio_transcript.delta', response_id: 'resp_t', delta: 'Finding ' });
   await event({
     type: 'response.function_call_arguments.done',
     response_id: 'resp_t',
