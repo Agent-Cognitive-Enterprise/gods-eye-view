@@ -219,14 +219,19 @@ export function isConsequence(observation, event) {
  * joins that report's lineage: syndicated copies are one source, not many.
  */
 export function lineageFor(observation, priorObservations) {
+  // Priors may carry the lineage they were resolved into (`resolved_lineage`,
+  // from their stored link): a copy's later revision joins the original's
+  // lineage, not the copy's own key.
+  const resolved = (prior) => prior.resolved_lineage ?? prior.lineage_key;
   if (observation.derived_from) {
     const origin = priorObservations.find(
       (prior) =>
         prior.url === observation.derived_from ||
-        prior.lineage_key === observation.derived_from,
+        prior.lineage_key === observation.derived_from ||
+        resolved(prior) === observation.derived_from,
     );
     return {
-      lineage_key: origin?.lineage_key ?? observation.derived_from,
+      lineage_key: origin ? resolved(origin) : observation.derived_from,
       copy_of: origin?.observation_id ?? null,
       reason: 'declared_origin',
     };
@@ -236,7 +241,7 @@ export function lineageFor(observation, priorObservations) {
   for (const prior of priorObservations) {
     if (prior.lineage_key === observation.lineage_key)
       return {
-        lineage_key: prior.lineage_key,
+        lineage_key: resolved(prior),
         copy_of: prior.observation_id,
         reason: 'same_lineage',
       };
@@ -245,7 +250,7 @@ export function lineageFor(observation, priorObservations) {
     const bodySim = similarity(bodyTokens, tokensOf(prior));
     if (titleSim >= COPY_SIMILARITY && bodySim >= COPY_SIMILARITY)
       return {
-        lineage_key: prior.lineage_key,
+        lineage_key: resolved(prior),
         copy_of: prior.observation_id,
         reason: 'near_identical_text',
       };

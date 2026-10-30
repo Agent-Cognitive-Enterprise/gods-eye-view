@@ -55,7 +55,13 @@ export function ruleSeverity(event) {
  * one, so they never corroborate.
  */
 export function independentLineages(event) {
-  return event.lineages.filter((l) => l.source_type !== 'aggregator').length;
+  // One outlet's several articles (or an agency's successive bulletins
+  // without a stable URL) are one source: count publishers, not lineages.
+  return new Set(
+    event.lineages
+      .filter((l) => l.source_type !== 'aggregator')
+      .map((l) => l.publisher || l.lineage_key),
+  ).size;
 }
 
 /** Verification state from the event's sources and status reports. */
@@ -202,10 +208,15 @@ export function scoreEvent(event, now, settings = {}) {
     impact: round(impactScore(event, severity) * evidenceFactor),
     relevance: clamp(settings.categoryRelevance?.[event.category] ?? 100),
   };
+  // A weighted mean: operator weights (each 0-1) change the balance between
+  // terms, never the 0-100 scale the thresholds are set on.
   let attention = 0;
-  for (const [term, value] of Object.entries(terms))
+  let weightSum = 0;
+  for (const [term, value] of Object.entries(terms)) {
     attention += (weights[term] ?? 0) * value;
-  attention = round(attention);
+    weightSum += weights[term] ?? 0;
+  }
+  attention = weightSum > 0 ? round(clamp(attention / weightSum)) : 0;
 
   const criticalQualified =
     (verification === 'officially_reported' ||

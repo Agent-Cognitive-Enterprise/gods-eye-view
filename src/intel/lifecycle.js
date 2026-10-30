@@ -23,8 +23,14 @@ export function markerTtlMs(event, overrides = {}) {
     ...overrides[event.category],
   };
   let ttl = policy.markerTtlMs ?? OPEN_ENDED_TTL_MS;
-  if (Number.isFinite(event.valid_until))
-    ttl = Math.max(0, event.valid_until - event.last_meaningful_update_at);
+  // An authoritative expiry caps the marker, but only while it is still
+  // ahead of the latest meaningful update: news after the stated expiry
+  // (casualties reported once a warning lapsed) keeps the category lifetime.
+  if (
+    Number.isFinite(event.valid_until) &&
+    event.valid_until > event.last_meaningful_update_at
+  )
+    ttl = event.valid_until - event.last_meaningful_update_at;
   return ttl;
 }
 
