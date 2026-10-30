@@ -82,13 +82,16 @@
 }
 
 /* Side panel titles read like the command dock's labels: one type for every
-   panel, collapsed or open, and bright enough to read over the globe. */
+   panel, collapsed or open, and bright enough to read over the globe. The
+   dock's type is in rem, but a collapsed launcher is a fixed 176px, so the
+   rail caps it at its 16px-root size: a larger browser font must not cut
+   Recent Imagery short. */
 :is(#left-panel-stack, #right-context-rail)
   :is(.panel-header > .panel-title, .pp-header-label) {
   font-family: var(--font-mono);
-  font-size: var(--dock-label-font-size);
+  font-size: min(var(--dock-label-font-size), 9.28px);
   font-weight: var(--dock-label-font-weight);
-  letter-spacing: var(--dock-label-letter-spacing);
+  letter-spacing: min(var(--dock-label-letter-spacing), 2.08px);
   text-transform: uppercase;
 }
 
@@ -165,11 +168,15 @@
 
 /* Translated titles run longer (Aktuelle Bilddaten), so a collapsed rail
    launcher sets them in compact type rather than pushing the disclosure
-   button out of the card or cutting the word short. */
-html:not([lang='en'])
+   button out of the card or cutting the word short. Chinese and Japanese
+   titles fit at full size and stay at or above their 9px floor (cjk.css);
+   Radio, nested in Context, is not a launcher. */
+html:not([lang='en']):not(:lang(zh)):not(:lang(ja))
   :is(#left-panel-stack, #right-context-rail)
-  .panel-collapsible.collapsed
-  .panel-title {
+  > .panel-collapsible.collapsed
+  > [class$='-panel-inner']
+  > .panel-header
+  > .panel-title {
   font-size: 8px;
   letter-spacing: 1px;
 }

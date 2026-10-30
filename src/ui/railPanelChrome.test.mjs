@@ -9,7 +9,10 @@ const clean = (selector) =>
     .replace(/\s+/g, ' ')
     .trim();
 const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(
-  ([, selector, body]) => ({ selector: clean(selector), body }),
+  ([, selector, body]) => ({
+    selector: clean(selector),
+    body: body.replace(/\/\*[\s\S]*?\*\//g, ''),
+  }),
 );
 const railRules = rules.filter(({ selector }) =>
   selector.includes('#left-panel-stack, #right-context-rail'),
@@ -94,6 +97,47 @@ test('collapsed launchers on both rails keep titles inside the card', () => {
   );
   assert.ok(translated, 'translated collapsed titles must fit on both rails');
   assert.match(translated.body, /font-size:\s*8px/);
+  // Chinese and Japanese titles fit at full size; 8px would put them under
+  // the 9px CJK floor in cjk.css.
+  assert.match(translated.selector, /:not\(:lang\(zh\)\):not\(:lang\(ja\)\)/);
+  // Only the rail's own launchers: Radio, nested in Context, keeps its type.
+  assert.match(
+    translated.selector,
+    /#right-context-rail\) > \.panel-collapsible\.collapsed > \[class\$='-panel-inner'\] > \.panel-header > \.panel-title$/,
+  );
+});
+
+test('a collapsed launcher drops its divider so English titles fit whole', () => {
+  const launcher = (tail) =>
+    railRules.filter(({ selector }) =>
+      selector
+        .split(/,(?![^(]*\))/)
+        .some((part) =>
+          part
+            .trim()
+            .endsWith(
+              `.collapsed > [class$='-panel-inner'] > .panel-header${tail}`,
+            ),
+        ),
+    );
+  const [header] = launcher('');
+  const [divider] = launcher(' > .panel-divider');
+  const [toggle] = launcher(' > .panel-collapse-btn');
+  assert.match(header?.body || '', /gap:\s*8px/, 'the launcher header gap');
+  assert.match(divider?.body || '', /display:\s*none/, 'the launcher divider');
+  assert.match(
+    toggle?.body || '',
+    /margin-left:\s*auto/,
+    'the launcher toggle',
+  );
+  const button = rules.find(
+    ({ selector }) => selector === '.panel-collapse-btn',
+  );
+  assert.match(
+    button?.body || '',
+    /flex-shrink:\s*0/,
+    'a long title must not squeeze the toggle',
+  );
 });
 
 test('the default theme geometry change leaves cyber gutters alone', () => {
@@ -122,13 +166,21 @@ test('rail titles and dock labels share one set of label tokens', () => {
   const rail = railRules.find(({ body }) =>
     /--dock-label-font-size/.test(body),
   );
-  for (const body of [dock?.body, rail?.body]) {
-    assert.match(body || '', /font-size:\s*var\(--dock-label-font-size\)/);
-    assert.match(
-      body || '',
-      /letter-spacing:\s*var\(--dock-label-letter-spacing\)/,
-    );
-  }
+  assert.match(dock?.body || '', /font-size:\s*var\(--dock-label-font-size\)/);
+  assert.match(
+    dock?.body || '',
+    /letter-spacing:\s*var\(--dock-label-letter-spacing\)/,
+  );
+  // The dock's rem type, capped at its 16px-root size: a collapsed launcher
+  // is a fixed 176px, so a larger browser font must not cut titles short.
+  assert.match(
+    rail?.body || '',
+    /font-size:\s*min\(var\(--dock-label-font-size\),\s*9\.28px\)/,
+  );
+  assert.match(
+    rail?.body || '',
+    /letter-spacing:\s*min\(var\(--dock-label-letter-spacing\),\s*2\.08px\)/,
+  );
 });
 
 test('default theme overrides never reach the cyber theme', () => {
@@ -165,8 +217,13 @@ test('default theme overrides never reach the cyber theme', () => {
 });
 
 test('launcher compaction and header colour stay on the rail panels themselves', () => {
-  const compact = railRules.filter(({ selector }) =>
-    /\.collapsed > \[class\$='-panel-inner'\] > \.panel-header/.test(selector),
+  // The divider, gap and toggle rules; the translated type rule is checked
+  // above.
+  const compact = railRules.filter(
+    ({ selector }) =>
+      /\.collapsed > \[class\$='-panel-inner'\] > \.panel-header/.test(
+        selector,
+      ) && !selector.startsWith('html:'),
   );
   assert.equal(compact.length, 3);
   for (const { selector } of compact) {
