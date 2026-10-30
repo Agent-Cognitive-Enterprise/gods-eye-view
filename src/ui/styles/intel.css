@@ -383,8 +383,14 @@ body.gev-dock-hidden #corner-actions {
 #cesium-credits {
   transition: bottom 0.35s ease;
 }
-body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode) #cesium-credits {
-  bottom: 6px !important;
+/* Specific enough to win over both upstream credit placements, without
+   !important (src/creditAttribution.test.mjs vets these two selectors). */
+body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode) #cesium-credits,
+body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode):has(
+    #intel-hud[data-variant='minimal'].active
+  )
+  #cesium-credits {
+  bottom: 6px;
 }
 
 /* Upper-right corner (fork): no ACTIVE STYLE indicator; the REC readout moves
