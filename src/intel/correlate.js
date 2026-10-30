@@ -309,6 +309,15 @@ export function materialChanges(observation, event, lineage) {
     reasons.push('reported_severity_increased');
   if (observation.status_hint && observation.status_hint !== event.status_hint)
     reasons.push(`status_${observation.status_hint}`);
+  // Air & Sea measurements: a different reading, or a large revision.
+  if (m.observation && m.observation !== e.observation)
+    reasons.push('traffic_observation_changed');
+  if (
+    Number.isFinite(m.change_pct) &&
+    Number.isFinite(e.change_pct) &&
+    Math.abs(m.change_pct - e.change_pct) >= 20
+  )
+    reasons.push('traffic_change_revised');
   const rank = ['unresolved', 'country', 'region', 'city', 'point', 'exact'];
   if (
     rank.indexOf(observation.location.precision) >

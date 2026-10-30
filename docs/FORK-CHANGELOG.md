@@ -7,6 +7,27 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **Air & Sea, Phase D (branch `feature/air-sea-monitor`).** Warning ×
+  traffic correlation: for every active warning area with a stated polygon,
+  passages inside after it took effect against the same hours in earlier
+  weeks (or, until two weeks exist, the hours just before it), with the
+  surrounding ring as the control for time of day and feed-wide swings, an
+  inner ring for possible rerouting, coverage gating and
+  `causeAssessment: unconfirmed`. A new Autopilot feed, "Air & Sea
+  signals", forwards only qualified records: a warning with a clear
+  traffic change becomes one officially reported event carrying both
+  receipts (the warning and the local measurement); severe aviation or
+  maritime warnings on their own; anomaly clusters once a baseline exists.
+  Marine weather alone, TRIAL data and degraded coverage never enter the
+  queue. A followed warning's card is refreshed when traffic returns to
+  normal. While the Autopilot shows such an event, the Warning Areas and
+  traffic (or anomaly) layers are switched on, and switched off again
+  afterwards unless the operator took them over. `/api/airsea/correlations`
+  lists every reading. Engine: one report family (same provider and stable
+  key) may fill in and refresh what it stated itself, never override
+  another source.
+- **CI.** Fork Autopilot CI also runs on `feature/air-sea-monitor`, with an
+  explicit Air & Sea test step on Ubuntu and Windows.
 - **Air & Sea, Phase C (branch `feature/air-sea-monitor`).** Traffic
   footprint: every accepted fix is followed along its great circle (only
   when gap and speed are plausible) into passages per H3 cell and

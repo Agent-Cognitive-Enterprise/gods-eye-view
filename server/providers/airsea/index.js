@@ -14,6 +14,12 @@ import {
 } from '../../../src/airsea/aggregate.js';
 import { evaluateAnomalies } from '../../../src/airsea/anomaly.js';
 import {
+  TRAFFIC_DOMAIN,
+  correlationWindow,
+  evaluateCorrelation,
+  warningZones,
+} from '../../../src/airsea/correlation.js';
+import {
   FOOTPRINT_RULES,
   createFootprintTracker,
 } from '../../../src/airsea/trajectory.js';
@@ -159,6 +165,7 @@ export function createAirSeaService({
   }
 
   /** How often a domain's main feed is expected to deliver a snapshot. */
+  const zoneCache = new Map(); // warning id -> {geometryKey, zones}
   const expectedEvery = (domain) =>
     domain === 'air' ? (cadenceMs.opensky ?? 5 * 60_000) : AIS_READ_EVERY_MS;
 
@@ -286,6 +293,82 @@ export function createAirSeaService({
         passages: cells.reduce((sum, c) => sum + c.passages, 0),
         cells,
       };
+    },
+    /**
+     * Traffic inside each active, geolocated warning area against its
+     * reference and the ring around it (correlation.js). TRIAL data and
+     * warnings without an area are skipped.
+     */
+    correlations(warnings) {
+      if (!history) return [];
+      sync();
+      const t = now();
+      const ranges = new Map(); // one history read per window and grid
+      const range = (domain, resolution, from, to) => {
+        const key = `${domain}|${resolution}|${from}|${to}`;
+        if (!ranges.has(key))
+          ranges.set(key, {
+            cells: history.rangeCells({ domain, resolution, from, to }),
+            coverage: history.rangeCoverage(domain, from, to),
+          });
+        return ranges.get(key);
+      };
+      const out = [];
+      for (const warning of warnings) {
+        const domain = TRAFFIC_DOMAIN[warning.domain];
+        if (!domain || warning.trial || warning.status !== 'active') continue;
+        const geometryKey = JSON.stringify(warning.geometry ?? null);
+        let cached = zoneCache.get(warning.id);
+        if (cached?.geometryKey !== geometryKey) {
+          cached = {
+            geometryKey,
+            zones: (() => {
+              try {
+                return warningZones(warning.geometry, domain);
+              } catch {
+                return null; // geometry h3 cannot read: no area
+              }
+            })(),
+          };
+          zoneCache.set(warning.id, cached);
+        }
+        const zones = cached.zones;
+        if (!zones) continue;
+        const window = correlationWindow(warning, t, history.since(domain));
+        if (!window) continue;
+        const { from, to, pre } = window;
+        const weeks = [];
+        for (let k = 1; k <= 4; k++) {
+          const past = range(
+            domain,
+            zones.resolution,
+            from - k * WEEK_MS,
+            to - k * WEEK_MS,
+          );
+          if (past.coverage.snapshots > 0) weeks.push(past);
+        }
+        out.push(
+          evaluateCorrelation({
+            warning,
+            zones,
+            domain,
+            post: range(domain, zones.resolution, from, to),
+            pre: pre ? range(domain, zones.resolution, pre.from, pre.to) : null,
+            weeks,
+            expectedSnapshots: Math.max(
+              1,
+              Math.round((to - from) / expectedEvery(domain)),
+            ),
+            from,
+            to,
+          }),
+        );
+      }
+      // Forget areas no longer listed.
+      const listed = new Set(warnings.map((w) => w.id));
+      for (const id of zoneCache.keys())
+        if (!listed.has(id)) zoneCache.delete(id);
+      return out;
     },
     /** The last complete hour against the same hour in earlier weeks. */
     anomalies({ domain }) {
@@ -445,9 +528,13 @@ export function airSeaEnabled(env = process.env) {
   return env.GEV_AIRSEA_ENABLED === '1';
 }
 
-/** @param {{service?: object, env?: object}} [options] */
+/**
+ * @param {{service?: object, warnings?: object, hub?: object, env?: object}}
+ *   [options] `hub`: shares the services with the Autopilot (signals.js).
+ */
 export function airSeaProxy({
   service: supplied,
+  hub = null,
   warnings: suppliedWarnings,
   env = process.env,
 } = {}) {
@@ -502,6 +589,14 @@ export function airSeaProxy({
           200,
           service.footprint({ domain, resolution, windowMs }),
         );
+      }
+      if (route === '/correlations') {
+        // Traffic in every active warning area against its reference.
+        if (!service.correlations)
+          return json(res, 404, { error: 'history_disabled' });
+        return json(res, 200, {
+          correlations: service.correlations(ensureWarnings()?.list() ?? []),
+        });
       }
       if (route === '/warning-sources')
         return json(res, 200, { sources: ensureWarnings()?.sources() ?? [] });
@@ -588,7 +683,9 @@ export function airSeaProxy({
     prune.unref?.();
     const stop = startCollector(server, collectionPlan(env));
     ensureWarnings()?.start();
+    const detach = hub?.attach({ service, warnings: ensureWarnings() });
     server.httpServer?.once('close', () => {
+      detach?.();
       stop();
       clearInterval(flush);
       clearInterval(prune);

@@ -126,3 +126,41 @@ and lifecycle: [air-sea-data-providers.md](air-sea-data-providers.md).
 - **Later option.** adsb.lol publishes daily historical archives (ODbL)
   that could seed the baseline instead of waiting two weeks; they are
   large and not fetched.
+
+## Phase D (warning × traffic, Autopilot)
+
+- **Correlation.** `src/airsea/correlation.js`: the cells a warning's
+  polygons reach (H3 4 for sea, 3 for air; one grid coarser for very large
+  areas), one ring around them (buffer) and three more (comparison). The
+  window is whole hours since the warning took effect, at most the last six.
+  Reference: the same hours one to four weeks earlier when two delivered
+  weeks exist, else the same length of time just before the warning (only
+  with a comparison ring, confidence low, and only changes of 60 % or more
+  reach the Autopilot). A change counts when inside moves at least 40 % and
+  at least 40 points more than the comparison ring; a suppression with the
+  rings around it up 25 % or more adds `adjacent_corridor_increase`.
+  Coverage below 75 % of expected snapshots or 70 % of usual objects per
+  snapshot is `inconclusive`. Points and lines have no area and are not
+  correlated.
+- **Autopilot.** `server/providers/airsea/signals.js` builds the records;
+  `server/providers/intel/connectors/airsea.js` reads them in-process
+  through a hub shared by the two server plugins (no network, every
+  10 minutes). Event types map to subtypes: `airspace_warning`,
+  `maritime_warning`, `air_traffic_anomaly`, `sea_traffic_anomaly`,
+  `warning_traffic_correlation`; category `infrastructure_disruption`.
+  Records keep stable content (changes in tens of percent, no clock times
+  in text), so repeat polls are duplicates and one situation stays one
+  event. The measurement is dated by the end of its window, so the event
+  is fresh when the change is measured, not when the warning was issued.
+  Camera framing uses the area's centre (antimeridian-aware) and a
+  precision chosen from its size.
+- **Layers.** `src/layers/airsea/reveal.js` switches on the layers that
+  explain the shown event and switches off only those it switched on.
+- **Local model.** Air & Sea events go through the existing assessment path
+  like every other event: with KoboldCpp healthy the card adds the local
+  model's summary; without it, the deterministic text stands alone. The
+  model never sees or sets geometry.
+- **Today.** History began on 30 October 2026, so the 192 active marine
+  areas currently read `no_reference`; warnings issued from now on get a
+  pre-warning comparison after their first complete hour, and matched
+  baselines start two weeks after history began.

@@ -142,6 +142,7 @@ const FEED_LABELS = Object.freeze({
   'reliefweb-disasters': msg('ReliefWeb disasters'),
   'acled-conflict': msg('ACLED conflict data'),
   'gdelt-events': msg('GDELT machine-coded news'),
+  'airsea-signals': msg('Air & Sea signals'),
 });
 const FEED_STATUS_LABELS = Object.freeze({
   healthy: msg('live'),
@@ -280,6 +281,8 @@ export function createIntelConsole({
   now = () => Date.now(),
   storage = defaultStorage(),
   openExternal = (url) => window.open(url, '_blank', 'noopener,noreferrer'),
+  // Told which event is shown (or null), e.g. to reveal explaining layers.
+  onShownEvent = null,
 }) {
   const client = createIntelClient({ fetchImpl });
   const panel = documentRef.getElementById(PANEL_ID);
@@ -1103,6 +1106,11 @@ export function createIntelConsole({
   function renderCard() {
     const shown = selectedId ?? scheduler.current?.key ?? null;
     const event = shown ? eventsById().get(shown) : null;
+    try {
+      onShownEvent?.(event ?? null);
+    } catch {
+      /* a listener's failure never stops the card */
+    }
     if (
       !event ||
       event.location?.lat === null ||

@@ -29,6 +29,7 @@ import { gnssIntegrityProxy } from './gnssIntegrity.js';
 import { createGhostMapsWatcher, ghostMapsProxy } from './ghostMaps.js';
 import { intelProxy } from './intel/index.js';
 import { airSeaProxy } from './airsea/index.js';
+import { createAirSeaHub } from './airsea/signals.js';
 import { localVoiceProxy } from './localVoice/index.js';
 import { cycloneProxy } from './cyclones.js';
 import { windProxy } from './wind.js';
@@ -40,6 +41,8 @@ import { windProxy } from './wind.js';
 function localProviderPlugins({ realtime, gemini } = {}) {
   // One GhostMaps watcher serves both the map layer and early-warning ingestion.
   const ghostMapsWatcher = createGhostMapsWatcher();
+  // Air & Sea results reach the early-warning Autopilot through one hub.
+  const airSeaHub = createAirSeaHub();
   return [
     openSkyProxy(),
     celestrakProxy(),
@@ -71,8 +74,8 @@ function localProviderPlugins({ realtime, gemini } = {}) {
     firePerimetersProxy(),
     gnssIntegrityProxy(),
     ghostMapsProxy({ watcher: ghostMapsWatcher }),
-    intelProxy({ ghostMapsWatcher }),
-    airSeaProxy(),
+    intelProxy({ ghostMapsWatcher, airSeaHub }),
+    airSeaProxy({ hub: airSeaHub }),
     localVoiceProxy(),
     keySetupEndpoint(),
   ];

@@ -20,6 +20,7 @@ import { tsunamiConnector } from './connectors/tsunami.js';
 import { usgsConnector } from './connectors/usgs.js';
 import { whoConnector } from './connectors/who.js';
 import { worldBankConnector } from './connectors/worldBank.js';
+import { airSeaConnector } from './connectors/airsea.js';
 import { createLocalLlm } from './localLlm.js';
 import { createIntelService } from './service.js';
 
@@ -36,7 +37,11 @@ const MAX_BODY = 16 * 1024;
  * GEV_INTEL_OFFLINE=1 contacts no feed at all: drills and the stored archive
  * only (CI, demonstrations, air-gapped use).
  */
-export function intelConnectors({ env = process.env, ghostMapsWatcher } = {}) {
+export function intelConnectors({
+  env = process.env,
+  ghostMapsWatcher,
+  airSeaHub,
+} = {}) {
   if (env.GEV_INTEL_OFFLINE === '1') return [];
   const on = (name) => env[`GEV_INTEL_${name}`] !== '0';
   const connectors = [];
@@ -62,6 +67,9 @@ export function intelConnectors({ env = process.env, ghostMapsWatcher } = {}) {
   if (env.GEV_INTEL_GDELT === '1') connectors.push(gdeltConnector());
   if (ghostMapsWatcher && on('GHOSTMAPS'))
     connectors.push(ghostMapsConnector({ watcher: ghostMapsWatcher }));
+  // Air & Sea signals (fork): only where the air/sea plugin runs too.
+  if (airSeaHub && env.GEV_AIRSEA_ENABLED === '1' && on('AIRSEA'))
+    connectors.push(airSeaConnector({ hub: airSeaHub }));
   return connectors;
 }
 
@@ -129,10 +137,12 @@ const parseBbox = (value) => {
 };
 
 /**
- * @param {{ghostMapsWatcher?: object, service?: object, env?: object}} [options]
+ * @param {{ghostMapsWatcher?: object, airSeaHub?: object, service?: object,
+ *   env?: object}} [options]
  */
 export function intelProxy({
   ghostMapsWatcher,
+  airSeaHub,
   service: supplied,
   env = process.env,
 } = {}) {
@@ -146,7 +156,7 @@ export function intelProxy({
     const dir = env.GEV_INTEL_DB
       ? path.dirname(path.resolve(env.GEV_INTEL_DB))
       : path.join(root, '.gev-cache', 'intel');
-    const connectors = intelConnectors({ env, ghostMapsWatcher });
+    const connectors = intelConnectors({ env, ghostMapsWatcher, airSeaHub });
     service = createIntelService({
       storeFile: env.GEV_INTEL_DB || path.join(dir, 'intel.sqlite'),
       settingsFile: path.join(dir, 'settings.json'),

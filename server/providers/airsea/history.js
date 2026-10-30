@@ -109,6 +109,14 @@ export function createTrafficHistory({
       `SELECT cell, SUM(passages) AS passages, SUM(minutes) AS minutes FROM hourly
        WHERE domain = ? AND res = ? AND hour >= ? GROUP BY cell`,
     ),
+    sumRange: db.prepare(
+      `SELECT cell, SUM(passages) AS passages FROM hourly
+       WHERE domain = ? AND res = ? AND hour >= ? AND hour < ? GROUP BY cell`,
+    ),
+    coverageRange: db.prepare(
+      `SELECT COALESCE(SUM(snapshots), 0) AS snapshots, COALESCE(SUM(objects), 0) AS objects
+       FROM coverage WHERE domain = ? AND hour >= ? AND hour < ?`,
+    ),
     hour: db.prepare(
       'SELECT cell, passages, minutes FROM hourly WHERE domain = ? AND res = ? AND hour = ?',
     ),
@@ -216,6 +224,21 @@ export function createTrafficHistory({
       return new Map(
         q.hour.all(domain, resolution, hour).map((r) => [r.cell, r.passages]),
       );
+    },
+    /** Passages per cell over whole hours [from, to): Map cell -> passages. */
+    rangeCells({ domain, resolution, from, to }) {
+      flush();
+      return new Map(
+        q.sumRange
+          .all(domain, resolution, hourOf(from), hourOf(to))
+          .map((r) => [r.cell, r.passages]),
+      );
+    },
+    /** Snapshots and objects delivered over whole hours [from, to). */
+    rangeCoverage(domain, from, to) {
+      flush();
+      const row = q.coverageRange.get(domain, hourOf(from), hourOf(to));
+      return { snapshots: row.snapshots, objects: row.objects };
     },
     coverage(domain, hour) {
       flush();

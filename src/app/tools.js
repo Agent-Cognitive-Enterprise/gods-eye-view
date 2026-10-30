@@ -6,6 +6,7 @@ import { initImageryBoxTool } from '../ui/imageryBoxTool.js';
 import { createRecentImageryPanel } from '../ui/recentImagery.js';
 import { createDockAutoHide } from '../ui/dockAutoHide.js';
 import { createIntelConsole } from '../ui/intelConsole.js';
+import { createAirSeaReveal } from '../layers/airsea/reveal.js';
 import * as worldOverlay from '../overlays/worldOverlay.js';
 import * as pickRegistry from '../data/pickRegistry.js';
 import { isPointerFree } from '../data/inputOwnership.js';
@@ -112,7 +113,11 @@ export function createApplicationTools({
   }
   // Early-warning Autopilot (fork feature). Inert unless the server reports
   // /api/intel enabled; camera claims go through the shared navigation owner.
+  // Air & Sea events switch on the layers that explain them while shown.
+  const airSeaReveal = createAirSeaReveal({ manager: dataManager });
+  defer(() => airSeaReveal.destroy());
   const intelConsole = createIntelConsole({
+    onShownEvent: (event) => airSeaReveal.show(event),
     viewer,
     navigation: styleManager,
     overlayHost: {

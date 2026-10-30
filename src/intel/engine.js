@@ -56,6 +56,8 @@ function newEvent(observation, lineage) {
     subtype: observation.subtype,
     title: observation.title,
     summary: observation.summary,
+    // Which lineage stated the summary and each metric (see applyMaterial).
+    summary_source: observation.summary ? lineage.lineage_key : null,
     language: observation.language,
     location: { ...observation.location },
     event_keys: observation.event_key
@@ -81,6 +83,9 @@ function newEvent(observation, lineage) {
     ),
     entities: [...observation.entities],
     metrics: { ...observation.metrics },
+    metric_sources: Object.fromEntries(
+      Object.keys(observation.metrics).map((key) => [key, lineage.lineage_key]),
+    ),
     status_hint: observation.status_hint,
     official: observation.official,
     time_zone_known: observation.time_zone_known,
@@ -135,13 +140,30 @@ function applyMaterial(event, observation, lineage, reasons) {
     if (next.tokens.length < MAX_TOKENS && !next.tokens.includes(token))
       next.tokens.push(token);
 
+  // One report family (same provider and stable key, e.g. an official
+  // warning and the local traffic measurement filed under it) may fill in
+  // what nobody stated and refresh what it stated itself; it never
+  // overrides another source.
+  const family =
+    Boolean(observation.event_key) &&
+    event.event_keys.includes(
+      `${observation.provider}|${observation.event_key}`,
+    );
+  next.metric_sources ??= {};
   // Measured facts: counts only grow; the most authoritative source sets the rest.
   const m = observation.metrics;
   for (const [key, value] of Object.entries(m)) {
     if (['deaths', 'injured', 'affected', 'displaced', 'arrests'].includes(key))
       next.metrics[key] = Math.max(next.metrics[key] ?? 0, value);
-    else if (authority(observation) >= (next.official ? 2 : 0))
+    else if (
+      authority(observation) >= (next.official ? 2 : 0) ||
+      (family &&
+        (next.metrics[key] === undefined ||
+          next.metric_sources[key] === lineage.lineage_key))
+    ) {
       next.metrics[key] = value;
+      next.metric_sources[key] = lineage.lineage_key;
+    }
   }
   // Ending an event (retracted, resolved) or reviving an ended one only
   // counts from an authority or from the claim's own origin. Anyone else's
@@ -170,7 +192,17 @@ function applyMaterial(event, observation, lineage, reasons) {
     next.location = { ...observation.location };
   if (authority(observation) >= authority({ official: event.official })) {
     next.title = observation.title;
-    if (observation.summary) next.summary = observation.summary;
+    if (observation.summary) {
+      next.summary = observation.summary;
+      next.summary_source = lineage.lineage_key;
+    }
+  } else if (
+    family &&
+    observation.summary &&
+    (!next.summary || next.summary_source === lineage.lineage_key)
+  ) {
+    next.summary = observation.summary;
+    next.summary_source = lineage.lineage_key;
   }
   if (observation.subtype && !next.subtype) next.subtype = observation.subtype;
   if (Number.isFinite(observation.valid_until))
