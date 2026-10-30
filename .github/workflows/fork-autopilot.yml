@@ -127,6 +127,12 @@ jobs:
       - name: Smoke test
         run: node scripts/smoke-autopilot.mjs --url http://127.0.0.1:4174
 
+      # Ubuntu 24.04+ runners block the unprivileged user namespaces Chrome's
+      # sandbox needs; allow them on this throwaway runner instead of
+      # launching Chrome without its sandbox.
+      - name: Allow the Chrome sandbox
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
       - name: Autopilot drill in the browser
         run: node scripts/qa-autopilot.mjs --url http://127.0.0.1:4174 --out qa-artifacts/autopilot
 
