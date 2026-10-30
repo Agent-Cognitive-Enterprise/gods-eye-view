@@ -6,6 +6,8 @@ import { Readable } from 'node:stream';
 import { filterTrailing24h, parseFirmsCsv } from '../../src/data/firmsCsv.js';
 import { readResponseTextCapped } from './common/http.js';
 
+const NULL_BODY_STATUSES = new Set([204, 205, 304]);
+
 /**
  * The per-address connection errors behind a fetch failure, or null. Node 24
  * puts the AggregateError directly on `err.cause`; Node 26's fetch wraps it in
@@ -71,19 +73,31 @@ export function fetchIpv4(url, { signal } = {}) {
         agent: false,
       },
       (response) => {
-        const headers = new Headers();
-        for (const [name, value] of Object.entries(response.headers)) {
-          if (Array.isArray(value))
-            value.forEach((item) => headers.append(name, item));
-          else if (value !== undefined) headers.set(name, String(value));
+        // Nothing thrown here may escape: this callback runs outside the
+        // promise, so an exception would be uncaught and crash the server.
+        try {
+          const status = response.statusCode || 500;
+          // A `Response` only represents statuses up to 599; Node never hands
+          // this callback a 1xx.
+          if (status > 599)
+            throw new Error(`FIRMS returned unsupported status ${status}`);
+          const headers = new Headers();
+          for (const [name, value] of Object.entries(response.headers)) {
+            if (Array.isArray(value))
+              value.forEach((item) => headers.append(name, item));
+            else if (value !== undefined) headers.set(name, String(value));
+          }
+          const nullBody = NULL_BODY_STATUSES.has(status);
+          const upstream = new Response(
+            nullBody ? null : Readable.toWeb(response),
+            { status, statusText: response.statusMessage || '', headers },
+          );
+          if (nullBody) response.resume();
+          resolve(upstream);
+        } catch (error) {
+          response.destroy();
+          reject(error);
         }
-        resolve(
-          new Response(Readable.toWeb(response), {
-            status: response.statusCode || 500,
-            statusText: response.statusMessage || '',
-            headers,
-          }),
-        );
       },
     );
     request.on('error', reject);
@@ -201,7 +215,11 @@ export function firmsProxy() {
     const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${encodeURIComponent(key)}/${source}/world/2`;
     const signal = AbortSignal.timeout(60_000);
     const res = await fetchFirms(url, { signal });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      // Release the connection now rather than when the deadline fires.
+      await res.body?.cancel().catch(() => {});
+      throw new Error(`HTTP ${res.status}`);
+    }
     const records = parseFirmsCsv(
       await readResponseTextCapped(res, FIRMS_MAX_RESPONSE_BYTES, signal),
     );
@@ -268,7 +286,10 @@ export function firmsProxy() {
           const res = await fetchFirms(url, {
             signal: AbortSignal.timeout(10_000),
           });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          if (!res.ok) {
+            await res.body?.cancel().catch(() => {});
+            throw new Error(`HTTP ${res.status}`);
+          }
           const body = await res.json();
           const used = Number(body?.current_transactions);
           const limit = Number(body?.transaction_limit);

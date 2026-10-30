@@ -1,12 +1,17 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
-import { filterTrailing24h, parseFirmsCsv } from './firmsCsv.js';
+import { EventEmitter } from 'node:events';
+import dns from 'node:dns/promises';
+import https from 'node:https';
 import net from 'node:net';
+import { Readable } from 'node:stream';
+import { filterTrailing24h, parseFirmsCsv } from './firmsCsv.js';
 import {
   describeFetchError,
   fetchFirms,
   fetchIpv4,
+  isAddressSelectionFailure,
 } from '../../server/providers/firms.js';
 
 const config = fs.readFileSync(new URL('../../server/providers/firms.js', import.meta.url), 'utf8');
@@ -182,13 +187,118 @@ test('the IPv4 retry connects to an IPv4 address only', async (t) => {
   const v4 = await listen('127.0.0.1', 0);
   t.after(() => v4.close());
   const { port } = v4.address();
-  let v6 = null;
+  let v6;
   try {
     v6 = await listen('::1', port);
-    t.after(() => v6.close());
   } catch {
-    // No IPv6 loopback on this host; the IPv4 assertion still holds.
+    t.skip('no IPv6 loopback on this host, so IPv4-only cannot be told apart');
+    return;
+  }
+  t.after(() => v6.close());
+  const order = await dns.lookup('localhost', { all: true });
+  if (order[0]?.family !== 6) {
+    t.skip('localhost resolves IPv4 first here, so IPv4-only cannot be told apart');
+    return;
   }
   await assert.rejects(fetchIpv4(`https://localhost:${port}/`, { signal: AbortSignal.timeout(5_000) }));
   assert.deepEqual(reached, ['127.0.0.1']);
+});
+
+// Answer the IPv4 retry with `status`, invoking the response callback
+// asynchronously as `https.request` does, outside the caller's promise.
+// The returned promise rejects on an uncaught exception, so a regression fails
+// the race at once instead of crashing the test runner.
+function mockIpv4Status(t, status, statusMessage = '') {
+  let crash;
+  const crashed = new Promise((_resolve, reject) => (crash = reject));
+  const onUncaught = (error) =>
+    crash(new Error(`uncaught exception: ${error.message}`));
+  process.on('uncaughtException', onUncaught);
+  t.after(() => process.off('uncaughtException', onUncaught));
+  t.mock.method(https, 'request', (_url, _options, callback) => {
+    const request = new EventEmitter();
+    request.end = () =>
+      setImmediate(() =>
+        callback(
+          Object.assign(Readable.from([]), {
+            statusCode: status,
+            statusMessage,
+            headers: { 'content-type': 'text/csv' },
+          }),
+        ),
+      );
+    return request;
+  });
+  return crashed;
+}
+
+for (const status of [204, 205, 304]) {
+  test(`the IPv4 retry answering null-body status ${status} resolves instead of crashing`, async (t) => {
+    const crashed = mockIpv4Status(t, status);
+    const response = await Promise.race([fetchIpv4(URL_WITH_KEY), crashed]);
+    assert.equal(response.status, status);
+    assert.equal(response.body, null);
+  });
+}
+
+for (const status of [600, 999]) {
+  test(`the IPv4 retry answering out-of-range status ${status} rejects instead of crashing`, async (t) => {
+    const crashed = mockIpv4Status(t, status);
+    await assert.rejects(
+      Promise.race([fetchIpv4(URL_WITH_KEY), crashed]),
+      new RegExp(`unsupported status ${status}`),
+    );
+  });
+}
+
+test('the IPv4 retry answering an invalid reason phrase rejects instead of crashing', async (t) => {
+  const crashed = mockIpv4Status(t, 200, 'OK\x7f');
+  await assert.rejects(Promise.race([fetchIpv4(URL_WITH_KEY), crashed]), TypeError);
+});
+
+// The fixtures above copy Node's error shape; check it against a real fetch so
+// a Node or undici change that stops matching fails here instead of silently
+// disabling the retry. A closed port on `localhost` refuses both addresses.
+test('a real all-addresses connect failure is recognised as address selection', async (t) => {
+  const probe = net.createServer();
+  try {
+    await new Promise((resolve, reject) => probe.once('error', reject).listen(0, '::1', resolve));
+  } catch {
+    t.skip('no IPv6 loopback on this host');
+    return;
+  }
+  const { port } = probe.address();
+  await new Promise((resolve) => probe.close(resolve));
+  const v4 = net.createServer();
+  await new Promise((resolve, reject) => v4.once('error', reject).listen(port, '127.0.0.1', resolve));
+  await new Promise((resolve) => v4.close(resolve));
+  const err = await fetch(`http://localhost:${port}/`).then(() => null, (error) => error);
+  assert.ok(err, 'a closed port refuses the connection');
+  assert.equal(isAddressSelectionFailure(err), true, describeFetchError(err));
+  assert.match(describeFetchError(err), /ECONNREFUSED .*; .*ECONNREFUSED/);
+});
+
+// #68 only stays fixed while both upstream calls go through fetchFirms; the
+// refresh harness injects fetchSource, so guard the call sites directly.
+test('every FIRMS upstream request goes through the IPv4 fallback', async () => {
+  assert.doesNotMatch(config, /await fetch\(/, 'no FIRMS request bypasses fetchFirms');
+  const fetchStart = config.indexOf('  async function fetchSource(key, source) {');
+  assert.notEqual(fetchStart, -1, 'FIRMS fetchSource exists');
+  const fetchSourceText = config.slice(fetchStart, config.indexOf('\n  }', fetchStart) + 4);
+  const calls = [];
+  const response = new Response('latitude,longitude\n');
+  const fetchSource = new Function('fetchFirms', 'readResponseTextCapped', 'parseFirmsCsv',
+    'FIRMS_MAX_RESPONSE_BYTES', 'AbortSignal', 'fetch', `return (${fetchSourceText});`)(
+    async (url, options) => { calls.push(['fetchFirms', url, options.signal]); return response; },
+    async (res, cap, signal) => { calls.push(['read', res, signal]); return 'csv'; },
+    () => [],
+    1024,
+    AbortSignal,
+    () => assert.fail('fetchSource must call fetchFirms, not fetch'),
+  );
+  assert.deepEqual(await fetchSource('SECRET', 'MODIS_NRT'), []);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0][0], 'fetchFirms');
+  assert.ok(calls[0][2] instanceof AbortSignal);
+  assert.deepEqual(calls[1], ['read', response, calls[0][2]], 'the body read shares the request deadline');
 });
