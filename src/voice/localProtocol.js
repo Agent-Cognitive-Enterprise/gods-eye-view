@@ -177,10 +177,12 @@ export function schemaErrors(value, schema, path = '$') {
   }
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     const properties = schema.properties ?? {};
+    // Own keys only: `constructor`, `toString` or `__proto__` must never pass
+    // as declared properties through Object.prototype.
     for (const key of schema.required ?? [])
-      if (!(key in value)) errors.push(`${path}.${key}: required`);
+      if (!Object.hasOwn(value, key)) errors.push(`${path}.${key}: required`);
     for (const [key, child] of Object.entries(value)) {
-      if (properties[key])
+      if (Object.hasOwn(properties, key))
         errors.push(...schemaErrors(child, properties[key], `${path}.${key}`));
       else if (schema.additionalProperties === false)
         errors.push(`${path}.${key}: not allowed`);

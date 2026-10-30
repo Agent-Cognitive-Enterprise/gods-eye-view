@@ -3231,6 +3231,8 @@
   "Point the map at the globe first": "Сначала наведите карту на глобус",
   "{place} saved: {position}": "{place} сохранено: {position}",
   "AT MAP CENTRE": "В ЦЕНТРЕ КАРТЫ",
+  "Autopilot is not available here.": "Автопилот здесь недоступен.",
+  "Paused: opened from a shared view": "Пауза: открыто по общей ссылке",
   "{up}/{total} up": "{up}/{total} работают",
   "Feeds up": "Работающие ленты",
   "Autopilot on: click to stop": "Автопилот включён: нажмите, чтобы остановить",

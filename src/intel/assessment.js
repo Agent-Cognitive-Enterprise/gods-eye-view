@@ -87,6 +87,9 @@ function fenced(text, max) {
   return plainText(text, max).replace(/</g, '‹').replace(/>/g, '›');
 }
 
+/** Fenced text for an attribute value: a quote cannot end the attribute. */
+const fencedAttribute = (text, max) => fenced(text, max).replace(/"/g, 'ʺ');
+
 /**
  * Build chat messages for one event and its newest evidence.
  * @param {object} event Canonical event (engine shape).
@@ -112,7 +115,7 @@ export function buildAssessmentPrompt(
     ).toISOString();
     const attributes = [
       `id="${id}"`,
-      `publisher="${fenced(exercise ? withoutDrillMarkers(observation.publisher) : observation.publisher, 80)}"`,
+      `publisher="${fencedAttribute(exercise ? withoutDrillMarkers(observation.publisher) : observation.publisher, 80)}"`,
       `source_type="${observation.source_type}"`,
       `time="${when}"`,
       `language="${observation.language}"`,
@@ -159,8 +162,18 @@ export function assessmentCacheKey(event, digest, model) {
 }
 
 const URL_PATTERN = /\b(?:https?:\/\/|www\.)\S+/i;
-const COORDINATE_PATTERN =
-  /-?\d{1,3}\.\d{2,}\s*°?\s*[NS]?\s*[,;/ ]\s*-?\d{1,3}\.\d{2,}\s*°?\s*[EW]?/i;
+// Any coordinate form in prose: decimal pairs ("48.856, 2.352"), pairs with
+// hemispheres ("48.9N 2.4E"), degrees and minutes ("48°51'N"), or named
+// latitude/longitude ("lat 48.856 lon 2.352").
+const COORDINATE_PATTERNS = [
+  /-?\d{1,3}\.\d{2,}\s*°?\s*[NS]?\s*[,;/ ]\s*-?\d{1,3}\.\d{2,}\s*°?\s*[EW]?/i,
+  /\b\d{1,3}(?:\.\d+)?\s*°?\s*[NS]\b[\s,;/]*\d{1,3}(?:\.\d+)?\s*°?\s*[EW]\b/i,
+  /\b\d{1,3}\s*°\s*\d{1,2}(?:\.\d+)?\s*['′]/,
+  /\b(?:lat|latitude)\b\s*[:=]?\s*-?\d{1,3}(?:\.\d+)?/i,
+];
+const COORDINATE_PATTERN = {
+  test: (text) => COORDINATE_PATTERNS.some((pattern) => pattern.test(text)),
+};
 
 /** Strip `<think>` blocks and code fences some chat templates emit. */
 export function extractJsonText(text) {

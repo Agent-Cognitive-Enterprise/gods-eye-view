@@ -143,13 +143,21 @@ function applyMaterial(event, observation, lineage, reasons) {
     else if (authority(observation) >= (next.official ? 2 : 0))
       next.metrics[key] = value;
   }
-  // A retraction only counts from an authority or from the claim's own origin.
+  // Ending an event (retracted, resolved) or reviving an ended one only
+  // counts from an authority or from the claim's own origin. Anyone else's
+  // retraction makes it disputed; their "resolved" or a status that would
+  // revive a retracted/resolved event is ignored.
   if (observation.status_hint) {
     const own = event.lineage_keys.includes(lineage.lineage_key);
-    next.status_hint =
-      observation.status_hint === 'retracted' && !observation.official && !own
-        ? 'disputed'
-        : observation.status_hint;
+    const trusted = observation.official || own;
+    const ended = (hint) => hint === 'retracted' || hint === 'resolved';
+    if (trusted) next.status_hint = observation.status_hint;
+    else if (observation.status_hint === 'retracted')
+      next.status_hint = ended(event.status_hint)
+        ? event.status_hint
+        : 'disputed';
+    else if (!ended(observation.status_hint) && !ended(event.status_hint))
+      next.status_hint = observation.status_hint;
   }
   if (observation.official) next.official = true;
   if (
@@ -212,7 +220,10 @@ export function createIntelEngine({ store, now, settings = {} }) {
     const dup = duplicateOf(observation, store.duplicateIndex());
     if (dup.duplicate) {
       const eventId = store.eventForDuplicate(observation);
-      if (eventId) store.noteDuplicate(eventId, observation, dup.reason);
+      // The same record polled again is not news and not a repost: nothing
+      // is written (a feed without 304 would otherwise add a row per poll).
+      if (eventId && dup.reason !== 'same_observation_id')
+        store.noteDuplicate(eventId, observation, dup.reason);
       return { status: 'duplicate', event_id: eventId, reasons: [dup.reason] };
     }
     const found = bestMatch(observation, candidates(observation));
@@ -265,7 +276,12 @@ export function createIntelEngine({ store, now, settings = {} }) {
         reasons: ['consequence_of'],
       };
     }
-    const prior = store.observationsFor(parent.event_id);
+    const prior = store
+      .evidenceFor(parent.event_id)
+      .map(({ observation: o, link }) => ({
+        ...o,
+        resolved_lineage: link?.lineage?.lineage_key ?? o.lineage_key,
+      }));
     const lineage = lineageFor(observation, prior);
     const reasons = materialChanges(observation, parent, lineage);
     const link = {

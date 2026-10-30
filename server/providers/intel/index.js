@@ -107,6 +107,18 @@ function loadScenarios() {
   return scenarios;
 }
 
+const PRIVATE_KEYS = new Set(['homeLocations', 'proximity']);
+
+/** A copy of a response body without the operator's private fields. */
+export function withoutPrivate(value) {
+  if (Array.isArray(value)) return value.map(withoutPrivate);
+  if (!value || typeof value !== 'object') return value;
+  const out = {};
+  for (const [key, inner] of Object.entries(value))
+    if (!PRIVATE_KEYS.has(key)) out[key] = withoutPrivate(inner);
+  return out;
+}
+
 const parseBbox = (value) => {
   const parts = String(value ?? '')
     .split(',')
@@ -170,7 +182,7 @@ export function intelProxy({
     }
   }
 
-  async function handler(req, res) {
+  async function route(req, res, json) {
     const url = new URL(req.url || '/', 'http://local');
     const route = url.pathname.replace(/\/+$/, '') || '/';
     if (route === '/status' && req.method === 'GET')
@@ -263,6 +275,25 @@ export function intelProxy({
       return json(res, 200, { cleared: true });
     }
     return json(res, 405, { error: 'method_not_allowed' });
+  }
+
+  /**
+   * The operator's places, and each event's distance from them, are for
+   * this computer only: LAN viewers get every response without them. Any
+   * failure answers 500 with a fixed code instead of an unhandled rejection
+   * that would stop the dev server.
+   */
+  async function handler(req, res) {
+    const local = isLocalMutation(req);
+    const send = (out, status, payload) =>
+      json(out, status, local ? payload : withoutPrivate(payload));
+    try {
+      return await route(req, res, send);
+    } catch (error) {
+      console.warn('[intel] request failed:', error?.message ?? error);
+      if (!res.headersSent) return json(res, 500, { error: 'internal_error' });
+      res.end();
+    }
   }
 
   const attach = (server) => {

@@ -61,6 +61,7 @@ export function createLocalLlm({
   let finishedAt = null;
   const get = async (url) => {
     const response = await fetchImpl(url, {
+      redirect: 'error',
       signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -143,6 +144,8 @@ export function createLocalLlm({
           chat_template_kwargs: { enable_thinking: false },
         }),
         signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+        // A loopback server must not redirect the prompt off this machine.
+        redirect: 'error',
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const body = await response.json();

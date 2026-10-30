@@ -13,7 +13,7 @@ operator guide: [AUTOPILOT-OPERATOR.md](AUTOPILOT-OPERATOR.md).
 | `origin/main`                            | Clean mirror of `upstream/main`, never a fork-only commit. Fast-forwarded by the sync workflow or by hand. | Sync workflow / maintainer (ff only) |
 | `feature/global-early-warning-autopilot` | Integration branch: all fork features, upstream merged in through reviewed pull requests.                  | Maintainer, reviewed sync PRs        |
 | `release/autopilot`                      | Optional deployable line: fast-forwarded from the integration branch only after Fork Autopilot CI passed.  | Maintainer                           |
-| `sync/upstream-<sha>`                    | Short-lived merge candidates opened by the sync workflow.                                                  | Sync workflow                        |
+| `sync/upstream-<up>-<target>`            | Short-lived merge candidates opened by the sync workflow.                                                  | Sync workflow                        |
 
 Chosen to be the least disruptive to GitHub: `main` stays comparable with
 upstream (clean "N commits behind" in the UI, upstream PRs apply as-is), and
@@ -27,10 +27,10 @@ history is never rewritten.
   `release/autopilot` once it exists). GitHub runs _scheduled_ workflows only
   from the default branch, and `main` must not carry fork files. Until this
   is set, run **Upstream sync** manually (Actions tab, _Run workflow_).
-- Optional secret `UPSTREAM_SYNC_TOKEN`: a fine-grained token limited to this
-  fork with Contents, Pull requests, Issues and Workflows read/write. Without
-  it the built-in token is used, which cannot push upstream commits that
-  change `.github/workflows/`; such syncs fail visibly instead of half-applying.
+- No personal token or secret. The workflow uses only the built-in token,
+  whose pushes start no other workflow, so upstream workflow files never run
+  in this fork with its secrets. When upstream changes `.github/workflows/`,
+  the run opens an issue and that sync is done by hand (manual sync below).
 
 ## Where the fork touches upstream code
 
@@ -108,9 +108,9 @@ Weekly (Monday 04:23 UTC) and on demand:
 
 1. **propose** (write token, no upstream code executed): fetches upstream,
    fast-forwards `main` if it has not diverged, runs the git-only merge check,
-   then either pushes `sync/upstream-<sha>` and opens a pull request into the
+   then either pushes `sync/upstream-<up>-<target>` and opens a pull request into the
    integration branch, or opens/updates an issue listing the conflicting files
-   and their areas.
+   and their areas, or the upstream workflow files that need a manual sync.
 2. **verify** (read-only token, no secrets): runs Fork Autopilot CI on the
    candidate. This is the first point where upstream code executes.
 3. **report**: comments the CI result on the pull request.

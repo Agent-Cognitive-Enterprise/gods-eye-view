@@ -302,3 +302,19 @@ test('session: an unusable model reply is said, nothing runs', async () => {
     /could not understand/,
   );
 });
+
+test('tool arguments: prototype names are not declared properties', async () => {
+  const { schemaErrors } = await import('./localProtocol.js');
+  const schema = {
+    type: 'object',
+    properties: { action: { type: 'string' } },
+    required: ['action'],
+    additionalProperties: false,
+  };
+  const parsed = JSON.parse(
+    '{"action":"on","__proto__":{"x":1},"constructor":5}',
+  );
+  assert.ok(schemaErrors(parsed, schema).length >= 2);
+  assert.ok(schemaErrors({}, schema).some((e) => e.includes('required')));
+  assert.deepEqual(schemaErrors({ action: 'on' }, schema), []);
+});

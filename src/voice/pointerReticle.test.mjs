@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readStylesheet } from '../testSupport/readStylesheet.mjs';
-import { PointerReticle, RETICLE_LINGER_MS, RETICLE_MAX_MS } from './pointerReticle.js';
+import {
+  PointerReticle,
+  RETICLE_LINGER_MS,
+  RETICLE_MAX_MS,
+} from './pointerReticle.js';
 
 const css = readStylesheet(new URL('../../style.css', import.meta.url));
 
@@ -73,10 +77,22 @@ test('reticle: leaves when a tool moves the camera, lingers after a reply', () =
   assert.equal(node.dataset.target, 'ground');
   reticle.handle({ type: 'action-call', name: 'analyst_query', callId: 'c1' });
   reticle.handle({ type: 'action-call', name: 'analyst_query', callId: 'c2' });
-  reticle.handle({ type: 'action-result', name: 'analyst_query', callId: 'c1' });
+  reticle.handle({
+    type: 'action-result',
+    name: 'analyst_query',
+    callId: 'c1',
+  });
   reticle.handle({ type: 'completion' });
-  assert.equal([...timers.values()][0].ms, RETICLE_MAX_MS, 'a sibling call still running keeps it');
-  reticle.handle({ type: 'action-result', name: 'analyst_query', callId: 'c2' });
+  assert.equal(
+    [...timers.values()][0].ms,
+    RETICLE_MAX_MS,
+    'a sibling call still running keeps it',
+  );
+  reticle.handle({
+    type: 'action-result',
+    name: 'analyst_query',
+    callId: 'c2',
+  });
   reticle.handle({ type: 'completion' });
   assert.equal([...timers.values()][0].ms, RETICLE_LINGER_MS);
   fire();

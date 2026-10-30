@@ -8,6 +8,7 @@
 // which talks only to loopback services. Click starts open-mic; holding Space
 // for 500 ms talks while held and interrupts a reply that is playing.
 
+import { shouldHandlePushToTalkKeyDown } from './realtimeInputPolicy.js';
 import { t } from '../i18n/index.js';
 import { createMicCapture, createSpeechPlayer } from './localAudio.js';
 import { AUTOPILOT_TOOL_NAMES } from './localProtocol.js';
@@ -19,13 +20,6 @@ const HOLD_MS = 500;
 export function guessLanguage(text) {
   return /[Ѐ-ӿ]/.test(String(text)) ? 'ru' : 'en';
 }
-
-const editable = (target) =>
-  Boolean(
-    target &&
-    (target.isContentEditable ||
-      /^(?:INPUT|TEXTAREA|SELECT)$/.test(target.tagName ?? '')),
-  );
 
 /**
  * @param {{emit: Function, runAction: Function, signal: AbortSignal,
@@ -232,12 +226,9 @@ export function createLocalSession({
   };
 
   const onKeyDown = (event) => {
-    if (
-      event.code !== 'Space' ||
-      event.repeat ||
-      editable(event.target) ||
-      !active
-    )
+    // The app's own push-to-talk policy: Space only, no modifiers, never
+    // in text entry (inputs, ARIA text widgets and their descendants).
+    if (event.repeat || !shouldHandlePushToTalkKeyDown(event) || !active)
       return;
     clearTimeout(holdTimer);
     holdTimer = setTimeout(() => {

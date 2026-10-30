@@ -162,6 +162,7 @@ export function ghostMapsConnector({
       if (!catalog.commit)
         throw new Error(catalog.error || 'GhostMaps catalog unavailable');
       const records = [];
+      const consumed = []; // [id, version], marked only after ingest
       let latest = 0;
       for (const product of catalog.products.filter((p) =>
         products.includes(p.id),
@@ -176,12 +177,16 @@ export function ghostMapsConnector({
           records.push(record);
           latest = Math.max(latest, record.occurred_at);
         }
-        ingested.set(product.id, product.version);
+        consumed.push([product.id, product.version]);
       }
       return {
         records,
         notModified: records.length === 0,
         latestObservationAt: latest || null,
+        // Called by the runner once the records are stored.
+        commit: () => {
+          for (const [id, version] of consumed) ingested.set(id, version);
+        },
       };
     },
   };

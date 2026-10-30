@@ -11,10 +11,10 @@
 #
 # Nothing is merged or deployed automatically. Scheduled runs use the default
 # branch's copy of this file; see the maintenance doc for the branch setting.
-# Pushing upstream commits that touch .github/workflows needs a token with
-# the `workflows` scope: set UPSTREAM_SYNC_TOKEN (fine-grained, this fork
-# only: contents, pull requests, issues, workflows) or such syncs are
-# reported as blocked.
+# Only the built-in token is used: its pushes start no other workflow, so
+# upstream workflow files never run here with this fork's secrets. Upstream
+# changes to .github/workflows (which that token may not push) are reported
+# in an issue for a manual sync instead.
 
 name: Upstream sync
 
@@ -51,14 +51,13 @@ jobs:
       branch: ${{ steps.propose.outputs.branch }}
       status: ${{ steps.check.outputs.status }}
     env:
-      GH_TOKEN: ${{ secrets.UPSTREAM_SYNC_TOKEN || github.token }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Check out the integration branch
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ env.TARGET }}
           fetch-depth: 0
-          token: ${{ secrets.UPSTREAM_SYNC_TOKEN || github.token }}
 
       - name: Use Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -77,7 +76,7 @@ jobs:
           if git merge-base --is-ancestor origin/main upstream/main; then
             if [ "$(git rev-parse origin/main)" != "$(git rev-parse upstream/main)" ]; then
               git push origin upstream/main:refs/heads/main \
-                || echo "::warning::main mirror not updated (a token with the workflows scope may be needed)"
+                || echo "::warning::main mirror not updated (upstream changed workflow files; sync main by hand)"
             fi
           else
             echo "::warning::origin/main has diverged from upstream/main; it is no longer a clean mirror and was left untouched"
@@ -96,18 +95,36 @@ jobs:
           cat report.md >> "$GITHUB_STEP_SUMMARY"
           if [ "$code" != 0 ] && [ "$code" != 2 ]; then exit "$code"; fi
 
-      - name: Push the merge candidate and open a pull request
-        id: propose
+      # Upstream workflow files are not pushed by a bot: a person syncs them.
+      - name: Detect upstream workflow changes
+        id: workflows
         if: steps.check.outputs.status == 'clean'
         run: |
+          changed=$(git diff --name-only HEAD...upstream/main -- .github/workflows | head -20)
+          if [ -n "$changed" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            { echo "files<<EOF"; echo "$changed"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push the merge candidate and open a pull request
+        id: propose
+        if: steps.check.outputs.status == 'clean' && steps.workflows.outputs.changed != 'true'
+        run: |
           short=$(git rev-parse --short=8 upstream/main)
-          branch="sync/upstream-$short"
+          # Named after both sides: a rerun for the same pair reuses it, a
+          # moved integration branch gets a fresh candidate.
+          branch="sync/upstream-$short-$(git rev-parse --short=8 HEAD)"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            echo "::notice::$branch already proposed"
+            echo "branch=$branch" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           git switch -c "$branch"
           git merge --no-ff --no-edit -m "Merge upstream/main ($short) into $TARGET" upstream/main
           if ! git push origin "$branch"; then
-            echo "::error::could not push $branch (upstream changed workflow files? set UPSTREAM_SYNC_TOKEN)"
+            echo "::error::could not push $branch"
             exit 1
           fi
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
@@ -120,12 +137,22 @@ jobs:
             gh pr create --base "$TARGET" --head "$branch" --title "Upstream sync: merge upstream/main $short" --body-file body.md
           fi
 
-      - name: Report conflicts in an issue
-        if: steps.check.outputs.status == 'conflicts'
+      - name: Report conflicts or workflow changes in an issue
+        if: steps.check.outputs.status == 'conflicts' || steps.workflows.outputs.changed == 'true'
+        env:
+          WORKFLOW_FILES: ${{ steps.workflows.outputs.files }}
         run: |
-          title="Upstream sync: merge conflicts with $(git rev-parse --short=8 upstream/main)"
+          short=$(git rev-parse --short=8 upstream/main)
+          if [ -n "$WORKFLOW_FILES" ]; then
+            title="Upstream sync: workflow changes need a manual sync ($short)"
+            reason="upstream/main merges cleanly but changes GitHub workflow files, which are reviewed and synced by hand (docs/FORK-MAINTENANCE.md, manual sync):"
+          else
+            title="Upstream sync: merge conflicts with $short"
+            reason="upstream/main cannot be merged into \`$TARGET\` automatically. Resolve deliberately (docs/FORK-MAINTENANCE.md, manual sync), rerun the gates and keep a rollback point."
+          fi
           {
-            echo "upstream/main cannot be merged into \`$TARGET\` automatically. Resolve deliberately (docs/FORK-MAINTENANCE.md, manual sync), rerun the gates and keep a rollback point."
+            echo "$reason"
+            if [ -n "$WORKFLOW_FILES" ]; then echo; echo '```'; echo "$WORKFLOW_FILES"; echo '```'; fi
             echo
             cat report.md
           } > body.md

@@ -174,6 +174,9 @@ export function stepScheduler(state, { now, clusters, events, settings = {} }) {
   next.toured ??= {};
   for (const id of Object.keys(next.toured))
     if (!eventsById.has(id)) delete next.toured[id];
+  // Presentation memory only matters for events that still exist.
+  for (const id of Object.keys(next.presented))
+    if (!eventsById.has(id)) delete next.presented[id];
   const nextTourStop = () => {
     if (!s.tourWhenIdle) return null;
     const lastVisit = (c) =>
@@ -251,8 +254,10 @@ export function stepScheduler(state, { now, clusters, events, settings = {} }) {
   }
   const others = fresh.filter((c) => !holds(c));
 
-  // A qualified critical cluster may cut a dwell short, once per dwell.
-  if (elapsed < s.minimumDwellMs) {
+  // A qualified critical cluster may cut a dwell short, once per dwell. A
+  // shot whose cluster stopped qualifying (retracted, past its window) does
+  // not hold the camera for the rest of its dwell.
+  if (elapsed < s.minimumDwellMs && (live || sinceFlight < MIN_FLIGHT_GAP_MS)) {
     const critical = others.find((c) =>
       isCritical(c, eventsById, s.criticalInterruptThreshold),
     );

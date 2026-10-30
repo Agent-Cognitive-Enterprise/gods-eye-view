@@ -156,7 +156,7 @@ export function createSqliteIntelStore({
     putFlag: db.prepare('INSERT INTO flags (recorded_at, body) VALUES (?, ?)'),
     flags: db.prepare('SELECT body FROM flags ORDER BY id'),
     listRecent: db.prepare(
-      'SELECT body FROM events ORDER BY last_meaningful_update_at DESC LIMIT ?',
+      'SELECT body FROM events ORDER BY last_meaningful_update_at DESC',
     ),
     counts: db.prepare(
       `SELECT (SELECT count(*) FROM events) AS events,
@@ -253,10 +253,11 @@ export function createSqliteIntelStore({
     getEvent: (id) => parse(q.getEvent.get(id)),
     revisions: (id) => q.revisions.all(id).map(parse),
     listEvents(filter = {}, { limit = 200 } = {}) {
-      // Filters are applied in JS over a bounded recent window, sharing the
-      // memory store's semantics exactly.
+      // Filters are applied in JS, sharing the memory store's semantics
+      // exactly, over every stored event newest first (streamed, stopping at
+      // the limit; retention bounds the table), so older matches are found.
       const out = [];
-      for (const row of q.listRecent.iterate(Math.max(limit * 20, 2000))) {
+      for (const row of q.listRecent.iterate()) {
         const event = JSON.parse(row.body);
         if (matchesArchiveFilter(event, filter)) out.push(event);
         if (out.length >= limit) break;

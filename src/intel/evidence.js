@@ -208,8 +208,15 @@ export function normalizeObservation(raw, { receivedAt } = {}) {
     ? raw.source_type
     : 'secondary_reporting';
   const url = safeUrl(raw.url);
+  const location = normalizeLocation(raw.location);
+  // The place is part of the content: two generic reports ("Drone strike")
+  // from one publisher in different cities are different observations.
+  const place =
+    location.lat !== null
+      ? `${location.lat.toFixed(2)},${location.lon.toFixed(2)}`
+      : (location.region_code ?? null);
   const contentDigest = stableHash(
-    JSON.stringify([title, summary, metrics, raw.status_hint ?? null]),
+    JSON.stringify([title, summary, metrics, raw.status_hint ?? null, place]),
   );
   const observation = {
     observation_id: `${provider}:${sourceItemId}:${contentDigest}`,
@@ -233,7 +240,7 @@ export function normalizeObservation(raw, { receivedAt } = {}) {
     lineage_key:
       shortId(raw.lineage_key) || url || `${provider}:${sourceItemId}`,
     derived_from: shortId(raw.derived_from),
-    location: normalizeLocation(raw.location),
+    location,
     occurred_at: clamp(occurredAt),
     published_at: clamp(publishedAt),
     received_at: received,
