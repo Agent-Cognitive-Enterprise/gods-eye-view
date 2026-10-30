@@ -411,19 +411,17 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-left {
   --left-stack-base-top: 100px;
 }
 
-/* GSD / ALT / AIS readout moves from the lower right to the lower left, just
-   above the map attribution (which itself drops when the dock hides). */
+/* GSD / ALT / AIS readout: lower right, under the Autopilot panel and on
+   the bottom edge, or just above POWER UP / language while the dock and
+   corner row show. The right rail treats it as an obstacle, so the panel
+   always ends above it and never sits under the corner row. */
 body:not(.cockpit-mode) #intel-hud .hud-bottom-right {
-  right: auto !important;
-  left: 1.5rem !important;
-  bottom: calc(2vh + 5rem + 26px) !important;
+  right: var(--right-rail-x, 52px) !important;
+  bottom: calc(0.9rem + 44px) !important;
   transition: bottom 0.35s ease;
 }
 body.gev-dock-hidden:not(.cockpit-mode) #intel-hud .hud-bottom-right {
-  bottom: 30px !important;
-}
-body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-content {
-  text-align: left !important;
+  bottom: 10px !important;
 }
 body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
   display: none;

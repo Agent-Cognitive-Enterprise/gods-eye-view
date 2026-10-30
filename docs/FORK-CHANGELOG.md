@@ -11,7 +11,8 @@ number there.
   panel with an "N/M up" count and failing feeds listed first; the Autopilot
   panel fills the right column and folds CAMERA RULES away (remembered per
   browser), showing up to 30 events; both side columns start under the
-  title; GSD / ALT / AIS moved to the lower left above the attribution.
+  title; GSD / ALT / AIS sits under the Autopilot panel, on the bottom edge
+  or above POWER UP while the corner row shows, so nothing overlaps.
 - **Autopilot icon.** An aeroplane button first in the top-centre globe
   actions toggles Autopilot (resumes when paused); added at runtime by the
   console, the upstream template is unchanged.
