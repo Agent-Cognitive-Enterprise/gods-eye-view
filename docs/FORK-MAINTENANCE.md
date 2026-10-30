@@ -108,6 +108,11 @@ translated. `--gates quick` does not run those tests; `--gates full` does. The
 fork's strings in `de`, `fr`, `it`, `ja`, `pt` and `uk` were added in the sync
 with upstream 423ca3ca and have not had a native speaker's review.
 
+Upstream also prunes strings it no longer uses, and that merges without a
+conflict even when the fork still uses them: `NEW` was lost this way in the sync
+with a725178e. Restore such a string from the fork's side of the merge, with its
+existing translations.
+
 ## Automated sync (`.github/workflows/upstream-sync.yml`)
 
 Weekly (Monday 04:23 UTC) and on demand:

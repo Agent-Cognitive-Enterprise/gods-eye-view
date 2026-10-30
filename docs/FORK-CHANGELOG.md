@@ -7,6 +7,9 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **Upstream sync to a725178e.** Brings the Authoring panel (Scenes renamed and
+  laid out in steps), one title style for the side panels, the Autostrada del
+  Brennero (A22) webcams and an IPv4 retry for FIRMS.
 - **Upstream sync to 423ca3ca.** Brings German, French, Italian, Brazilian
   Portuguese, Ukrainian and Japanese, CCTV view thinning, AIS vessels that let
   the scene idle, Vite 6.4.4 and Puppeteer 25.16.0, and the Context panel
