@@ -317,3 +317,12 @@ body.gev-dock-hidden #corner-actions {
 body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode) #cesium-credits {
   bottom: 6px !important;
 }
+
+/* Upper-right corner (fork): no ACTIVE STYLE indicator; the REC readout moves
+   up into its place. The cockpit keeps its own layout. */
+#style-indicator {
+  display: none !important;
+}
+body:not(.cockpit-mode) #intel-hud .hud-top-right {
+  top: 32px !important;
+}
