@@ -28,6 +28,7 @@ import { firePerimetersProxy } from './firePerimeters.js';
 import { gnssIntegrityProxy } from './gnssIntegrity.js';
 import { createGhostMapsWatcher, ghostMapsProxy } from './ghostMaps.js';
 import { intelProxy } from './intel/index.js';
+import { airSeaProxy } from './airsea/index.js';
 import { localVoiceProxy } from './localVoice/index.js';
 import { cycloneProxy } from './cyclones.js';
 import { windProxy } from './wind.js';
@@ -71,6 +72,7 @@ function localProviderPlugins({ realtime, gemini } = {}) {
     gnssIntegrityProxy(),
     ghostMapsProxy({ watcher: ghostMapsWatcher }),
     intelProxy({ ghostMapsWatcher }),
+    airSeaProxy(),
     localVoiceProxy(),
     keySetupEndpoint(),
   ];

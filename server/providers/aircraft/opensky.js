@@ -7,6 +7,7 @@ import {
   readResponseTextCapped,
 } from '../common/http.js';
 import { requiredFiniteQueryNumber } from '../common/query.js';
+import { publishTrafficSnapshot } from '../airsea/bus.js';
 // ---------------------------------------------------------------------------
 // OpenSky OAuth2 token + response cache state
 // ---------------------------------------------------------------------------
@@ -406,6 +407,8 @@ async function fetchAdsbLolPointFallback(req) {
         };
         _adsbLolPointCache.delete(cacheKey);
         _adsbLolPointCache.set(cacheKey, record);
+        // Fork: air density reads this snapshot; no extra request.
+        publishTrafficSnapshot('adsblol-regional', { payload: normalized });
         while (_adsbLolPointCache.size > ADSBLOL_POINT_CACHE_MAX) {
           _adsbLolPointCache.delete(_adsbLolPointCache.keys().next().value);
         }
@@ -645,6 +648,8 @@ export function openSkyProxy() {
               );
               _openskyTtlMs = openskyAdaptiveTtlMs(remaining);
               _openskyCooldownUntil = 0;
+              // Fork: air density reads this snapshot; no extra request.
+              publishTrafficSnapshot('opensky', { body, receivedAt: now });
             }
 
             return {

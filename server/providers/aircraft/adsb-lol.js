@@ -2,6 +2,7 @@ import {
   coalesceProxyRequest,
   readResponseTextCapped,
 } from '../common/http.js';
+import { publishTrafficSnapshot } from '../airsea/bus.js';
 
 /**
  * Vite plugin: adsb.lol military aircraft proxy with 12 s response cache.
@@ -128,6 +129,11 @@ export function adsbLolProxy() {
             );
             _cache = body;
             _cacheAt = Date.now();
+            // Fork: air density reads this snapshot; no extra request.
+            publishTrafficSnapshot('adsblol-mil', {
+              body,
+              receivedAt: _cacheAt,
+            });
             _cooldownUntil = 0;
             _cooldownStatus = 0;
             return result(200, body, 'MISS');

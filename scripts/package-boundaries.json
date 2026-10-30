@@ -48,6 +48,7 @@
     "runtime": "node",
     "exports": ["./server/providers/live"],
     "modules": [
+      "server/providers/airsea/bus.js",
       "server/providers/live.js",
       "server/providers/common/http.js",
       "server/providers/common/query.js",
@@ -1763,6 +1764,10 @@
       "./standalone/catalog"
     ],
     "modules": [
+      "src/app/layers/airSeaTraffic.js",
+      "src/layers/airsea/index.js",
+      "src/airsea/aggregate.js",
+      "src/layers/airsea/source.js",
       "src/voice/localSession.js",
       "src/voice/localProtocol.js",
       "src/voice/localAudio.js",
@@ -2658,7 +2663,8 @@
       "pbf",
       "satellite.js",
       "mapillary-js",
-      "@jtarrio/webrtlsdr"
+      "@jtarrio/webrtlsdr",
+      "h3-js"
     ]
   },
   "application-catalog": {
@@ -2669,6 +2675,10 @@
   "application-layer-construction": {
     "exports": ["./application/layers"],
     "modules": [
+      "src/app/layers/airSeaTraffic.js",
+      "src/layers/airsea/index.js",
+      "src/airsea/aggregate.js",
+      "src/layers/airsea/source.js",
       "src/cyberSonar.js",
       "src/data/approxDistance.js",
       "src/data/bhoteKoshiEvent.js",
@@ -3236,7 +3246,8 @@
       "pbf",
       "mgrs",
       "mapillary-js",
-      "@jtarrio/webrtlsdr"
+      "@jtarrio/webrtlsdr",
+      "h3-js"
     ]
   },
   "application-operations": {
@@ -3664,6 +3675,7 @@
   "reference-sources": {
     "exports": ["./sources/reference", "./layers/submarine-cables/source"],
     "modules": [
+      "src/layers/airsea/source.js",
       "src/sources/reference.js",
       "src/layers/earthquakes/source.js",
       "src/layers/earthquakes/records.js",

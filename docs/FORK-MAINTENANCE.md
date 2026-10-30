@@ -36,7 +36,8 @@ history is never rewritten.
 
 New files are fork-only (`src/intel/`, `server/providers/intel/`,
 `server/providers/localVoice/`, `src/voice/local*.js`, `src/ui/intelConsole.js`,
-`src/ui/styles/intel.css`, `src/ui/dockAutoHide.js`, the fork docs and workflows). Upstream files the
+`src/ui/styles/intel.css`, `src/ui/dockAutoHide.js`, `src/airsea/`,
+`src/layers/airsea/`, `server/providers/airsea/`, the fork docs and workflows). Upstream files the
 fork edits are the merge surface; keep these edits additive and small:
 
 | File                                                                                         | Fork change                                                                |
@@ -45,6 +46,10 @@ fork edits are the merge surface; keep these edits additive and small:
 | `src/app/tools.js`, `src/standalone/tools.js`                                                | Mounts the Autopilot console and dock auto-hide; offers `local` voice.     |
 | `src/ui/templates/layer-panels.html`                                                         | FEEDS panel shell at the end of the left stack.                            |
 | `src/ui/leftPanelRail.js`                                                                    | Reads `--left-stack-base-top` (px) before its 26vh default.                |
+| `server/providers/aircraft/opensky.js`, `adsb-lol.js`                                        | One `publishTrafficSnapshot()` call after each cached snapshot (air/sea).  |
+| `src/app/constructCatalog.js`, `src/ui/layerPanel.js`, `src/ui/layerNames.js`                | Air Traffic / Sea Traffic layers, local-only metadata, Air & Sea group.    |
+| `src/sources/reference.js`, `src/app/sourceComposition.js`, `src/voice/layerManifest.js`     | `air-sea` source contract; the two layers listed voice-off.                |
+| `src/creditAttribution.test.mjs`, layer-count tests                                          | Vetted dock-hidden credit selectors; catalog size 35.                      |
 | `src/ui/templates/context.html`, `style.css`                                                 | Panel shell and stylesheet import.                                         |
 | `src/voice/commands.js`, `src/voice/providerCapabilities.js`, `src/voice/sessionCommands.js` | Local voice provider entry and label.                                      |
 | `scripts/package-boundaries.json`                                                            | Owned-module entries for the new modules.                                  |

@@ -7,6 +7,12 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **Air & Sea, Phase A (branch `feature/air-sea-monitor`).** Air Traffic
+  (blue) and Sea Traffic (green) H3 density layers in a new Air & Sea group,
+  fed by the existing OpenSky / adsb.lol / AISStream proxies (no new
+  provider, no extra poller); aircraft counted once across feeds; per-cell
+  ages and feed health; DENSITY / AIRCRAFT|VESSELS / BOTH and 15 min–24 h
+  window chips; background collection while hidden; settings per browser.
 - **Layout.** FEEDS (with the local model's status) moved to a left-stack
   panel with an "N/M up" count and failing feeds listed first; the Autopilot
   panel fills the right column and folds CAMERA RULES away (remembered per
