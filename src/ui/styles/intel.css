@@ -279,6 +279,17 @@
   flex: 1;
 }
 
+/* Autopilot icon among the top-centre globe actions. */
+#intel-autopilot-btn[data-mode='auto'] {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 14px rgba(0, 212, 255, 0.18);
+}
+#intel-autopilot-btn[data-mode='paused'] {
+  border-color: #ffcf6e;
+  color: #ffcf6e;
+}
+
 /* PLACES: one action and the selected place's value under the chips. */
 .intel-place-line {
   display: flex;

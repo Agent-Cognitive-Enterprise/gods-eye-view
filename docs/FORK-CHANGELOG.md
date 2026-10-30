@@ -7,6 +7,9 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **Autopilot icon.** An aeroplane button first in the top-centre globe
+  actions toggles Autopilot (resumes when paused); added at runtime by the
+  console, the upstream template is unchanged.
 - **Cleaner corners.** The ACTIVE STYLE indicator is hidden and the REC
   readout moves up into its place; the upper-left classification / mode /
   summary block and the lower-left MGRS / coordinate readout are hidden (CSS

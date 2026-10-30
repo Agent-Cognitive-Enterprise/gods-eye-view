@@ -53,6 +53,8 @@ The autopilot instance's environment is set in `gev-common.ps1`
   **SKIP**, **DEMO DRILL** (a synthetic replay world; live data is untouched),
   **NARRATION** (spoken briefings via Piper), the feed list with health, and
   the queue. Cards show sources, verification, confidence and age.
+- The aeroplane icon first in the top-centre row also switches Autopilot on
+  and off (blue when on, amber when paused; a click then resumes).
 - When nothing qualifies as an alert, **TOUR** visits other active events
   (`tourWhenIdle`).
 - Camera moves turn the globe first, then descend; after each shot the

@@ -304,6 +304,7 @@ export function createIntelConsole({
   let placeNote = ''; // outcome of the last PLACES action, shown in the row
   let points = null;
   let clickHandler = null;
+  let topButton = null; // Autopilot toggle among the top-centre globe actions
   let history = null; // null = hidden, [] = shown
 
   // ---------------------------------------------------------------- panel DOM
@@ -433,6 +434,36 @@ export function createIntelConsole({
     const modeLabel = t(modeLabels[mode]);
     ui.modeText.textContent = modeLabel;
     panel.dataset.autopilot = mode;
+    if (topButton) {
+      topButton.dataset.mode = mode;
+      topButton.setAttribute('aria-pressed', String(mode !== 'off'));
+      const title = t(
+        mode === 'auto'
+          ? msg('Autopilot on: click to stop')
+          : mode === 'paused'
+            ? msg('Autopilot paused: click to resume')
+            : msg('Autopilot off: click to start'),
+      );
+      topButton.title = title;
+      topButton.setAttribute('aria-label', title);
+    }
+  }
+
+  /** The Autopilot icon in the top-centre row (no change to the template). */
+  function mountTopButton() {
+    const actions = documentRef.getElementById('top-center-actions');
+    if (!actions) return;
+    topButton = el(documentRef, 'button');
+    topButton.id = 'intel-autopilot-btn';
+    topButton.type = 'button';
+    topButton.append(
+      el(documentRef, 'span', 'material-symbols-outlined', 'flight'),
+    );
+    topButton.firstChild.setAttribute('aria-hidden', 'true');
+    topButton.addEventListener('click', () =>
+      scheduler.mode === 'paused' ? resume() : toggleAutopilot(),
+    );
+    actions.prepend(topButton);
   }
 
   function renderWorld() {
@@ -1754,6 +1785,7 @@ export function createIntelConsole({
     buildPanel();
     renderSettings();
     panel.hidden = false;
+    mountTopButton();
     unsubscribeHandoff =
       navigation.subscribeCameraHandoff?.(onHandoff) ?? (() => {});
     const canvas = viewer.scene?.canvas;
@@ -1804,6 +1836,7 @@ export function createIntelConsole({
         canvas?.removeEventListener(type, onCanvasInput);
       documentRef.removeEventListener('visibilitychange', onVisibility);
       clickHandler?.destroy();
+      topButton?.remove();
       picking?.unregisterPickOwner?.('intel');
       overlayHost.setEntries(LABEL_SOURCE, []);
       overlayHost.setEntries(CARD_SOURCE, []);
