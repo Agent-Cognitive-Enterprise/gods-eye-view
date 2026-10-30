@@ -2984,6 +2984,8 @@
   "Point the map at the globe first": "請先將地圖對準地球",
   "{place} saved: {position}": "{place}已儲存：{position}",
   "AT MAP CENTRE": "設為地圖中心",
+  "{up}/{total} up": "{up}/{total} 正常",
+  "Feeds up": "正常的資料來源",
   "Autopilot on: click to stop": "自動駕駛已開啟：點擊停止",
   "Autopilot paused: click to resume": "自動駕駛已暫停：點擊繼續",
   "Autopilot off: click to start": "自動駕駛已關閉：點擊開始",

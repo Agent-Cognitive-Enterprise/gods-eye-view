@@ -14,6 +14,14 @@
   flex-direction: column;
   flex-shrink: 1;
   min-height: 0;
+  /* Use the rail's whole height so the queue shows as many events as fit. */
+  height: var(--right-stack-max-height, 60svh);
+}
+#right-context-rail > #intel-panel:not(.collapsed) > .intel-panel-inner {
+  height: 100%;
+}
+#right-context-rail > #intel-panel:not(.collapsed) #intel-panel-body {
+  flex: 1 1 auto;
 }
 .intel-panel-inner {
   position: relative;
@@ -279,6 +287,56 @@
   flex: 1;
 }
 
+/* CAMERA RULES fold away behind their heading. */
+.intel-rules-toggle {
+  cursor: pointer;
+  user-select: none;
+}
+.intel-rules-toggle:hover,
+.intel-rules-toggle:focus-visible {
+  color: var(--accent);
+  outline: none;
+}
+.intel-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.intel-rules[hidden] {
+  display: none;
+}
+
+/* FEEDS panel in the left stack (feed health at a glance). */
+#left-panel-stack > #intel-feeds-panel {
+  --panel-expanded-width: 360px;
+  position: relative;
+  order: 5;
+  flex: 0 0 auto;
+  width: var(--panel-expanded-width);
+  min-height: 0;
+  pointer-events: auto;
+}
+#intel-feeds-panel[hidden],
+#intel-feeds-panel.collapsed #intel-feeds-body {
+  display: none !important;
+}
+#intel-feeds-panel .panel-glow {
+  display: none;
+}
+#intel-feeds-body {
+  font: 11px var(--font-sans);
+  color: var(--text-primary);
+}
+#intel-feeds-count {
+  color: #7bd88f;
+  font: 9px var(--font-mono);
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+#intel-feeds-count.intel-feeds-down {
+  color: #ff5a5a;
+}
+
 /* Autopilot icon among the top-centre globe actions. */
 #intel-autopilot-btn[data-mode='auto'] {
   border-color: var(--accent);
@@ -344,4 +402,29 @@ body:not(.cockpit-mode) #intel-hud .hud-top-right {
 body:not(.cockpit-mode) #intel-hud .hud-top-left,
 body:not(.cockpit-mode) #intel-hud .hud-bottom-left {
   display: none !important;
+}
+
+/* With the corner readouts hidden, both side columns start just under the
+   title instead of at 26vh (src/ui/leftPanelRail.js reads this; the right
+   rail aligns to the left stack; the title bar stays an obstacle). */
+#left-panel-stack {
+  --left-stack-base-top: 100px;
+}
+
+/* GSD / ALT / AIS readout moves from the lower right to the lower left, just
+   above the map attribution (which itself drops when the dock hides). */
+body:not(.cockpit-mode) #intel-hud .hud-bottom-right {
+  right: auto !important;
+  left: 1.5rem !important;
+  bottom: calc(2vh + 5rem + 26px) !important;
+  transition: bottom 0.35s ease;
+}
+body.gev-dock-hidden:not(.cockpit-mode) #intel-hud .hud-bottom-right {
+  bottom: 30px !important;
+}
+body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-content {
+  text-align: left !important;
+}
+body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
+  display: none;
 }

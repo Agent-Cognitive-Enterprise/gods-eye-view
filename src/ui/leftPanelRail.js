@@ -65,7 +65,13 @@ export function layoutLeftPanelRail({
 
   const viewportHeight = Math.max(1, windowRef.innerHeight);
   const stackRect = stack.getBoundingClientRect();
-  const baseTop = viewportHeight * 0.26;
+  // A theme may raise the lane with --left-stack-base-top (px); 26vh otherwise.
+  const configuredTop = parseFloat(
+    getComputedStyle(stack).getPropertyValue?.('--left-stack-base-top'),
+  );
+  const baseTop = Number.isFinite(configuredTop)
+    ? configuredTop
+    : viewportHeight * 0.26;
   const baseBottomInset = viewportHeight * 0.04;
   const safeGap = viewportHeight * 0.012;
   let obstacleSafeTop = viewportHeight * 0.04;

@@ -7,6 +7,11 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **Layout.** FEEDS (with the local model's status) moved to a left-stack
+  panel with an "N/M up" count and failing feeds listed first; the Autopilot
+  panel fills the right column and folds CAMERA RULES away (remembered per
+  browser), showing up to 30 events; both side columns start under the
+  title; GSD / ALT / AIS moved to the lower left above the attribution.
 - **Autopilot icon.** An aeroplane button first in the top-centre globe
   actions toggles Autopilot (resumes when paused); added at runtime by the
   console, the upstream template is unchanged.

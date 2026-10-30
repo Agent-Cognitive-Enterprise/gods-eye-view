@@ -55,6 +55,9 @@ The autopilot instance's environment is set in `gev-common.ps1`
   the queue. Cards show sources, verification, confidence and age.
 - The aeroplane icon first in the top-centre row also switches Autopilot on
   and off (blue when on, amber when paused; a click then resumes).
+- **FEEDS** (left column) shows each feed's health with failing feeds first
+  and "N/M up" in its header; the local model's state is its last line.
+  **CAMERA RULES** in the Autopilot panel opens and closes from its heading.
 - When nothing qualifies as an alert, **TOUR** visits other active events
   (`tourWhenIdle`).
 - Camera moves turn the globe first, then descend; after each shot the

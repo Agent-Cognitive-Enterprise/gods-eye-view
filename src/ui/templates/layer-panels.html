@@ -179,4 +179,18 @@
     </div>
   </div>
 
+  <!-- Early-warning feed health (fork feature): hidden unless /api/intel reports it enabled. -->
+  <div id="intel-feeds-panel" class="panel-collapsible" data-panel-id="intel-feeds-panel" hidden>
+    <div class="panel-glow"></div>
+    <div class="intel-panel-inner intel-feeds-inner">
+      <div class="panel-header">
+        <span class="panel-title" data-i18n>FEEDS</span>
+        <span id="intel-feeds-count" aria-label="Feeds up" data-i18n-aria-label></span>
+        <span class="panel-divider"></span>
+        <button class="panel-collapse-btn" data-collapse-target="intel-feeds-panel" type="button" title="Collapse panel" data-i18n-title>+</button>
+      </div>
+      <div id="intel-feeds-body"></div>
+    </div>
+  </div>
+
   </div>

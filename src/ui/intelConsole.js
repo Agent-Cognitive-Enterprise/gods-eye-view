@@ -45,7 +45,7 @@ const TICK_MS = 5_000;
 const REFRESH_MS = 10_000;
 const REPLAY_REFRESH_MS = 3_000;
 const MAX_LABELS = 12;
-const MAX_QUEUE_ROWS = 12;
+const MAX_QUEUE_ROWS = 30;
 const FLIGHT_SEC = 3.5;
 // Two-stage move: turn the globe at the current height, then descend.
 const PAN_SEC = 3;
@@ -61,6 +61,15 @@ const TILE_CACHE = 300;
 const DEMO_SPEED = 30;
 // Per-browser memory of ON / OFF / PAUSED across page reloads.
 const MODE_STORAGE_KEY = 'gev.intel.autopilotMode';
+const RULES_STORAGE_KEY = 'gev.intel.rulesOpen';
+// Feed states that mean the source is answering (stale: nothing new lately).
+const FEED_UP = new Set(['healthy', 'stale']);
+// Not polled by design (no key, terms, switched off): neither up nor down.
+const FEED_IDLE = new Set([
+  'requires_credentials',
+  'blocked_by_terms',
+  'disabled',
+]);
 const RESTORABLE_MODES = new Set(['auto', 'paused', 'off']);
 
 function defaultStorage() {
@@ -275,6 +284,10 @@ export function createIntelConsole({
   const panel = documentRef.getElementById(PANEL_ID);
   const body = documentRef.getElementById(`${PANEL_ID}-body`);
   const count = documentRef.getElementById(`${PANEL_ID}-count`);
+  // Feed health lives in its own panel on the left when the page has it.
+  const feedsPanel = documentRef.getElementById('intel-feeds-panel');
+  const feedsBody = documentRef.getElementById('intel-feeds-body');
+  const feedsCount = documentRef.getElementById('intel-feeds-count');
   const abort = new AbortController();
   let destroyed = false;
   let enabled = false;
@@ -301,6 +314,13 @@ export function createIntelConsole({
   let modeRestored = false; // nothing is written before the stored mode is read
   let notice = '';
   let placeSlot = 'home'; // which place the PLACES buttons set
+  let rulesOpen = (() => {
+    try {
+      return storage?.getItem(RULES_STORAGE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  })();
   let placeNote = ''; // outcome of the last PLACES action, shown in the row
   let points = null;
   let clickHandler = null;
@@ -398,6 +418,30 @@ export function createIntelConsole({
     ui.history = el(documentRef, 'ol', 'intel-history');
     ui.history.hidden = true;
 
+    // CAMERA RULES fold away so the queue gets the height; remembered per browser.
+    ui.rules = el(documentRef, 'div', 'intel-rules');
+    ui.rules.append(ui.settings, ui.categories);
+    ui.settingsTitle.classList.add('intel-rules-toggle');
+    ui.settingsTitle.setAttribute('role', 'button');
+    ui.settingsTitle.tabIndex = 0;
+    const toggleRules = () => {
+      rulesOpen = !rulesOpen;
+      try {
+        storage?.setItem(RULES_STORAGE_KEY, rulesOpen ? '1' : '0');
+      } catch {
+        // Not remembered; the toggle still works.
+      }
+      renderRules();
+    };
+    ui.settingsTitle.addEventListener('click', toggleRules);
+    ui.settingsTitle.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        toggleRules();
+      }
+    });
+    renderRules();
+
     body.append(
       mode,
       worlds,
@@ -407,14 +451,12 @@ export function createIntelConsole({
       ui.queueTitle,
       ui.queue,
       ui.settingsTitle,
-      ui.settings,
-      ui.categories,
-      ui.feedsTitle,
-      ui.feeds,
-      ui.ai,
+      ui.rules,
+      ...(feedsBody ? [] : [ui.feedsTitle, ui.feeds, ui.ai]),
       historyRow,
       ui.history,
     );
+    feedsBody?.replaceChildren(ui.feeds, ui.ai);
   }
 
   const eventsById = () => new Map(data.events.map((e) => [e.event_id, e]));
@@ -890,27 +932,52 @@ export function createIntelConsole({
     ui.ai.dataset.state = state;
   }
 
+  function renderRules() {
+    ui.rules.hidden = !rulesOpen;
+    ui.settingsTitle.textContent = `${rulesOpen ? '▾' : '▸'} ${t('CAMERA RULES')}`;
+    ui.settingsTitle.setAttribute('aria-expanded', String(rulesOpen));
+  }
+
   function renderFeeds() {
     const at = now();
+    const watched = feeds.filter((feed) => !FEED_IDLE.has(feed.status));
+    const up = watched.filter((feed) => FEED_UP.has(feed.status)).length;
+    if (feedsCount) {
+      feedsCount.textContent = t('{up}/{total} up', {
+        up: formatNumber(up),
+        total: formatNumber(watched.length),
+      });
+      feedsCount.classList.toggle('intel-feeds-down', up < watched.length);
+    }
+    // Down first, then up, then the ones not polled by design.
+    const rank = (feed) =>
+      FEED_IDLE.has(feed.status) ? 2 : FEED_UP.has(feed.status) ? 1 : 0;
     ui.feeds.replaceChildren(
-      ...feeds.map((feed) => {
-        const row = el(documentRef, 'li', `intel-feed s-${feed.status}`);
-        const status = FEED_STATUS_LABELS[feed.status] ?? msg('unknown');
-        const line = [
-          t(FEED_LABELS[feed.id] ?? msg('Feed')),
-          t(status),
-          feed.latest_observation_at
-            ? t('newest {age}', {
-                age: ageText(feed.latest_observation_at, at),
-              })
-            : null,
-        ]
-          .filter(Boolean)
-          .join(' · ');
-        row.textContent = line;
-        if (feed.last_error) row.title = feed.last_error;
-        return row;
-      }),
+      ...[...feeds]
+        .sort((a, b) => rank(a) - rank(b))
+        .map((feed) => {
+          const row = el(documentRef, 'li', `intel-feed s-${feed.status}`);
+          const status = FEED_STATUS_LABELS[feed.status] ?? msg('unknown');
+          const line = [
+            t(FEED_LABELS[feed.id] ?? msg('Feed')),
+            t(status),
+            feed.latest_observation_at
+              ? t('newest {age}', {
+                  age: ageText(feed.latest_observation_at, at),
+                })
+              : null,
+          ]
+            .filter(Boolean)
+            .join(' · ');
+          // Why a feed is down, in the row itself; the full text on hover.
+          const down = !FEED_UP.has(feed.status) && !FEED_IDLE.has(feed.status);
+          row.textContent =
+            down && feed.last_error
+              ? `${line} · ${String(feed.last_error).slice(0, 60)}`
+              : line;
+          if (feed.last_error) row.title = feed.last_error;
+          return row;
+        }),
     );
   }
 
@@ -1785,6 +1852,7 @@ export function createIntelConsole({
     buildPanel();
     renderSettings();
     panel.hidden = false;
+    if (feedsPanel) feedsPanel.hidden = false;
     mountTopButton();
     unsubscribeHandoff =
       navigation.subscribeCameraHandoff?.(onHandoff) ?? (() => {});
@@ -1837,6 +1905,7 @@ export function createIntelConsole({
       documentRef.removeEventListener('visibilitychange', onVisibility);
       clickHandler?.destroy();
       topButton?.remove();
+      if (feedsPanel) feedsPanel.hidden = true;
       picking?.unregisterPickOwner?.('intel');
       overlayHost.setEntries(LABEL_SOURCE, []);
       overlayHost.setEntries(CARD_SOURCE, []);

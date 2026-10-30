@@ -43,6 +43,8 @@ fork edits are the merge surface; keep these edits additive and small:
 | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | `server/providers/local.js`                                                                  | Registers the intel and local-voice plugins; shares the GhostMaps watcher. |
 | `src/app/tools.js`, `src/standalone/tools.js`                                                | Mounts the Autopilot console and dock auto-hide; offers `local` voice.     |
+| `src/ui/templates/layer-panels.html`                                                         | FEEDS panel shell at the end of the left stack.                            |
+| `src/ui/leftPanelRail.js`                                                                    | Reads `--left-stack-base-top` (px) before its 26vh default.                |
 | `src/ui/templates/context.html`, `style.css`                                                 | Panel shell and stylesheet import.                                         |
 | `src/voice/commands.js`, `src/voice/providerCapabilities.js`, `src/voice/sessionCommands.js` | Local voice provider entry and label.                                      |
 | `scripts/package-boundaries.json`                                                            | Owned-module entries for the new modules.                                  |
