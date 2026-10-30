@@ -7,6 +7,14 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **Air & Sea, Phase B (branch `feature/air-sea-monitor`).** Warning Areas
+  layer: canonical warning records with validated GeoJSON, stated circles,
+  lifecycle (scheduled/active/expired/cancelled, superseded, removed by
+  source) and change history; NWS marine alerts on official zone outlines;
+  Canadian Coast Guard S-124 trial data drawn dashed and labelled TRIAL;
+  FAA NOTAM, EAD, NAIPS, AMSA and other NAVAREA sources listed honestly as
+  permission required or not connected; newest-warnings list with source
+  links and effective times.
 - **Air & Sea, Phase A (branch `feature/air-sea-monitor`).** Air Traffic
   (blue) and Sea Traffic (green) H3 density layers in a new Air & Sea group,
   fed by the existing OpenSky / adsb.lol / AISStream proxies (no new

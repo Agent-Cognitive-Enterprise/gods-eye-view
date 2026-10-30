@@ -35,5 +35,12 @@ export function createAirSeaSource({
     getSources({ signal } = {}) {
       return get('/api/airsea/sources', signal);
     },
+    /** Active and scheduled warning areas, with the state of every source. */
+    getWarnings({ signal } = {}) {
+      return get('/api/airsea/warnings', signal);
+    },
+    getWarning(id, { signal } = {}) {
+      return get(`/api/airsea/warnings/${encodeURIComponent(id)}`, signal);
+    },
   };
 }

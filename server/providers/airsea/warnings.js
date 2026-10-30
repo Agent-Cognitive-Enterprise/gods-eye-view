@@ -1,0 +1,616 @@
+// Warning areas service (fork feature): connectors for the structured,
+// legally usable warning feeds, lifecycle tracking with history, and an
+// honest catalogue of the sources that are not connected (permission,
+// terms or no machine-readable feed). Nothing here scrapes a web page.
+
+import fs from 'node:fs';
+import path from 'node:path';
+import {
+  parseS124Dataset,
+  S124_PARSER_VERSION,
+} from '../../../src/airsea/s124.js';
+import {
+  NEW_WARNING_MS,
+  changeKind,
+  geometryBounds,
+  normalizeWarning,
+  stableHash,
+  warningStatus,
+} from '../../../src/airsea/warnings.js';
+import { readZipTextEntries } from './zip.js';
+
+const USER_AGENT = 'GodsEyeView-fork/early-warning (local research instance)';
+const NWS_PARSER_VERSION = 'nws-marine-1';
+const HISTORY_PER_WARNING = 20;
+const RETAIN_ENDED_MS = 30 * 24 * 3600_000;
+const ZONE_TTL_MS = 14 * 24 * 3600_000;
+// Zone outlines fetched per poll (two at a time); the rest follow next poll.
+const ZONES_PER_POLL = 120;
+
+/**
+ * Every warning source considered, connected or not. `access` says what the
+ * source offers: machine_readable, trial, human_readable or
+ * permission_required. Unconnected sources are never fetched.
+ */
+export const WARNING_SOURCES = Object.freeze([
+  Object.freeze({
+    id: 'nws-marine',
+    short: 'NWS marine',
+    domain: 'marine_weather',
+    title: 'US National Weather Service marine alerts',
+    access: 'machine_readable',
+    connected: true,
+    coverage:
+      'US coastal, offshore and Great Lakes marine forecast zones (zone outlines from api.weather.gov)',
+    url: 'https://www.weather.gov/documentation/services-web-alerts',
+    licence: 'US Government work (public domain)',
+    limitations: [
+      'Marine weather alerts, not navigational warnings or exclusion orders',
+      'Areas are whole forecast zones; the alert may affect part of a zone',
+    ],
+  }),
+  Object.freeze({
+    id: 's124-ccg-trial',
+    short: 'CCG S-124',
+    domain: 'maritime',
+    title: 'Canadian Coast Guard S-124 trial exchange set',
+    access: 'trial',
+    connected: true,
+    coverage:
+      'Canadian waters in the trial set (St. Lawrence, Great Lakes, Arctic)',
+    url: 'https://nis.ccg-gcc.gc.ca/public/rest/messages/en/s124-trial',
+    licence: 'Government of Canada; trial data, not operational or official',
+    limitations: [
+      'TEST DATA: never used for alerts',
+      'Weekly exchange set; dates carry no time zone',
+    ],
+  }),
+  Object.freeze({
+    id: 'faa-notam',
+    short: 'FAA NOTAM',
+    domain: 'aviation',
+    title: 'FAA NOTAM API',
+    access: 'permission_required',
+    connected: false,
+    coverage: 'US airspace and US-issued international NOTAMs',
+    url: 'https://aa.data.faa.gov/data/',
+    licence: 'FAA data agreement required',
+    limitations: ['Automated access needs an approved FAA data agreement'],
+  }),
+  Object.freeze({
+    id: 'eurocontrol-ead',
+    short: 'EAD',
+    domain: 'aviation',
+    title: 'EUROCONTROL European AIS Database',
+    access: 'permission_required',
+    connected: false,
+    coverage: 'European NOTAMs',
+    url: 'https://www.eurocontrol.int/service/european-ais-database',
+    licence: 'Automated access needs an agreement; EAD Basic is for viewing',
+    limitations: ['Not scraped'],
+  }),
+  Object.freeze({
+    id: 'airservices-naips',
+    short: 'NAIPS',
+    domain: 'aviation',
+    title: 'Airservices Australia NAIPS',
+    access: 'permission_required',
+    connected: false,
+    coverage: 'Australian NOTAMs',
+    url: 'https://www.airservices.gov.au/naips/Account/LogOn',
+    licence:
+      'Terms prohibit bots, scripts, scrapers and AI tools without prior written authorisation',
+    limitations: ['Needs written authorisation from Airservices'],
+  }),
+  Object.freeze({
+    id: 'amsa-navarea-x',
+    short: 'AMSA',
+    domain: 'maritime',
+    title: 'AMSA maritime safety information (NAVAREA X)',
+    access: 'permission_required',
+    connected: false,
+    coverage: 'NAVAREA X (Australia)',
+    url: 'https://www.amsa.gov.au/safety-navigation/navigation-systems/maritime-safety-information-database',
+    licence: 'Public pages; no bulk or API licence verified',
+    limitations: ['Not fetched until terms or permission are confirmed'],
+  }),
+  Object.freeze({
+    id: 'navarea-coordinators',
+    short: 'NAVAREA',
+    domain: 'maritime',
+    title: 'Other NAVAREA coordinators (IHO directory)',
+    access: 'human_readable',
+    connected: false,
+    coverage: 'Worldwide, uneven; some areas publish nothing online',
+    url: 'https://iho.int/navigation-warnings-on-the-web',
+    licence: 'Varies by coordinator; no scraping rights assumed',
+    limitations: ['No unified machine-readable feed'],
+  }),
+]);
+
+const NWS_SEVERITY = [
+  [/hurricane|storm warning|special marine|tsunami|typhoon/i, 'danger'],
+  [/gale|hazardous seas|heavy freezing spray|warning/i, 'caution'],
+  [/advisory|statement|watch|outlook/i, 'advisory'],
+];
+
+/** NWS marine alerts (GeoJSON) → drafts; geometry from the alert or its zones. */
+export function nwsMarineDrafts(collection, zoneGeometry) {
+  const drafts = [];
+  for (const feature of collection?.features ?? []) {
+    const p = feature?.properties ?? {};
+    if (!p.id) continue;
+    let geometry = feature.geometry ?? null;
+    let precision = geometry ? 'official' : 'none';
+    let notes = null;
+    if (!geometry) {
+      const polygons = [];
+      let missing = 0;
+      for (const zone of p.affectedZones ?? []) {
+        const g = zoneGeometry(zone);
+        if (g?.type === 'Polygon') polygons.push(g.coordinates);
+        else if (g?.type === 'MultiPolygon') polygons.push(...g.coordinates);
+        else missing += 1;
+      }
+      if (polygons.length) {
+        geometry = { type: 'MultiPolygon', coordinates: polygons };
+        precision = 'official';
+        notes = 'NWS forecast zone outlines';
+      }
+      if (missing)
+        notes = [notes, `${missing} zone outline(s) not loaded yet`]
+          .filter(Boolean)
+          .join('; ');
+    }
+    const event = String(p.event ?? 'Marine alert');
+    drafts.push({
+      id: `nws:${p.id}`,
+      sourceId: 'nws-marine',
+      originalId: p.id,
+      domain: 'marine_weather',
+      warningType: event.toLowerCase().replace(/\s+/g, '_'),
+      authority: p.senderName ?? 'National Weather Service',
+      title: `${event} — ${String(p.areaDesc ?? '').split(';')[0]}`,
+      originalText: [p.headline, p.description, p.instruction]
+        .filter(Boolean)
+        .join('\n\n'),
+      sourceUrl: typeof feature.id === 'string' ? feature.id : p['@id'],
+      publishedAtUtc: p.sent ?? null,
+      effectiveFromUtc: p.onset ?? p.effective ?? null,
+      effectiveUntilUtc: p.ends ?? p.expires ?? null,
+      cancelledAtUtc: p.messageType === 'Cancel' ? (p.sent ?? null) : null,
+      severity: NWS_SEVERITY.find(([re]) => re.test(event))?.[1] ?? 'advisory',
+      geometry,
+      geometryPrecision: precision,
+      geometryNotes: notes,
+      supersedes: (p.references ?? []).map((r) => `nws:${r.identifier}`),
+      fetchedFrom: 'https://api.weather.gov/alerts/active?region_type=marine',
+    });
+  }
+  return drafts;
+}
+
+function nwsZoneId(url) {
+  return /\/zones\/\w+\/([A-Z]{2}Z\d{3})$/.exec(String(url ?? ''))?.[1] ?? null;
+}
+
+/**
+ * @param {{dir: string, fetchImpl?: Function, now?: () => number,
+ *   log?: Function, env?: object}} options
+ */
+export function createWarningService({
+  dir,
+  fetchImpl = (...args) => globalThis.fetch(...args),
+  now = () => Date.now(),
+  log = (...args) => console.warn(...args),
+  env = process.env,
+}) {
+  const file = path.join(dir, 'warnings.json');
+  const zoneDir = path.join(dir, 'zones');
+  const records = new Map(); // id -> stored record
+  const state = {}; // source id -> {last_success_at, last_attempt_at, last_error, failures, validators, count}
+  const zones = new Map(); // zone id -> {geometry, fetchedAt}
+  let dirty = false;
+  const timers = [];
+
+  try {
+    const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
+    for (const record of saved.records ?? []) records.set(record.id, record);
+    Object.assign(state, saved.sources ?? {});
+  } catch {
+    // first run, or an unreadable file: start empty (the feeds refill it)
+  }
+
+  function save() {
+    if (!dirty) return;
+    dirty = false;
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      const tmp = `${file}.tmp`;
+      fs.writeFileSync(
+        tmp,
+        JSON.stringify({
+          version: 1,
+          records: [...records.values()],
+          sources: state,
+        }),
+      );
+      fs.renameSync(tmp, file);
+    } catch (error) {
+      log(`[airsea] could not save warnings: ${error.message}`);
+    }
+  }
+
+  const iso = (ms) => new Date(ms).toISOString();
+
+  /** Store a batch from one source; ends what the source no longer lists. */
+  function apply(sourceId, drafts, { complete, cancels = [], parserVersion }) {
+    const t = now();
+    const seen = new Set();
+    for (const draft of drafts) {
+      const next = normalizeWarning(draft, {
+        receivedAtUtc: iso(t),
+        parserVersion,
+      });
+      if (!next) continue;
+      seen.add(next.id);
+      const previous = records.get(next.id);
+      const kind = changeKind(previous, next, t);
+      const stored = {
+        ...next,
+        firstSeenAtUtc: previous?.firstSeenAtUtc ?? iso(t),
+        lastVerifiedAtUtc: iso(t),
+        // An earlier end or cancellation recorded here is kept.
+        cancelledAtUtc: next.cancelledAtUtc ?? previous?.cancelledAtUtc ?? null,
+        endedAtUtc: previous?.endedAtUtc ?? null,
+        lastChange: kind
+          ? { kind, atUtc: iso(t) }
+          : (previous?.lastChange ?? null),
+        history: [
+          ...(previous?.history ?? []),
+          ...(kind
+            ? [{ atUtc: iso(t), kind, contentHash: next.contentHash }]
+            : []),
+        ].slice(-HISTORY_PER_WARNING),
+      };
+      records.set(next.id, stored);
+      if (kind) dirty = true;
+      for (const older of next.supersedes) end(older, 'superseded', t);
+    }
+    for (const id of cancels) {
+      const record = records.get(id);
+      if (record && !record.cancelledAtUtc) {
+        record.cancelledAtUtc = iso(t);
+        note(record, 'cancelled', t);
+      }
+    }
+    // A complete, successful listing is authoritative: anything of this
+    // source it no longer contains has ended (never because a feed failed).
+    if (complete)
+      for (const record of records.values())
+        if (record.sourceId === sourceId && !seen.has(record.id))
+          end(record.id, 'removed_by_source', t);
+    prune(t);
+  }
+
+  function note(record, kind, t) {
+    record.lastChange = { kind, atUtc: iso(t) };
+    record.history = [...(record.history ?? []), { atUtc: iso(t), kind }].slice(
+      -HISTORY_PER_WARNING,
+    );
+    dirty = true;
+  }
+
+  function end(id, reason, t) {
+    const record = records.get(id);
+    if (!record || record.endedAtUtc || record.cancelledAtUtc) return;
+    record.endedAtUtc = iso(t);
+    record.endReason = reason;
+    note(record, 'expired', t);
+  }
+
+  function prune(t) {
+    for (const [id, record] of records) {
+      const status = warningStatus(record, t);
+      if (status !== 'expired' && status !== 'cancelled') continue;
+      const endedAt = Date.parse(
+        record.endedAtUtc ??
+          record.cancelledAtUtc ??
+          record.effectiveUntilUtc ??
+          '',
+      );
+      if (Number.isFinite(endedAt) && t - endedAt > RETAIN_ENDED_MS) {
+        records.delete(id);
+        dirty = true;
+      }
+    }
+  }
+
+  async function get(url, { accept, validators, timeoutMs = 60_000 } = {}) {
+    const response = await fetchImpl(url, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        Accept: accept ?? '*/*',
+        ...(validators?.etag ? { 'If-None-Match': validators.etag } : {}),
+        ...(validators?.lastModified
+          ? { 'If-Modified-Since': validators.lastModified }
+          : {}),
+      },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    return response;
+  }
+
+  // --- zone outlines (cached on disk for two weeks) -----------------------
+  /** A zone outline from memory or the disk cache, or null. */
+  function cachedZone(id) {
+    if (!zones.has(id)) {
+      try {
+        zones.set(
+          id,
+          JSON.parse(fs.readFileSync(path.join(zoneDir, `${id}.json`), 'utf8')),
+        );
+      } catch {
+        return null;
+      }
+    }
+    return zones.get(id);
+  }
+
+  function zoneGeometry(url) {
+    const id = nwsZoneId(url);
+    return id ? (cachedZone(id)?.geometry ?? null) : null;
+  }
+
+  async function loadZones(urls) {
+    const t = now();
+    const byId = new Map();
+    for (const url of urls) {
+      const id = nwsZoneId(url);
+      if (id && !byId.has(id)) byId.set(id, url);
+    }
+    const wanted = [...byId]
+      .map(([id, url]) => ({ id, url }))
+      .filter(({ id }) => {
+        const cached = cachedZone(id);
+        return !cached || t - cached.fetchedAt > ZONE_TTL_MS;
+      })
+      .slice(0, ZONES_PER_POLL);
+    // Two at a time: a polite pace for api.weather.gov.
+    for (let i = 0; i < wanted.length; i += 2) {
+      await Promise.all(
+        wanted.slice(i, i + 2).map(async ({ url, id }) => {
+          if (!/^https:\/\/api\.weather\.gov\/zones\//.test(url)) return;
+          try {
+            const response = await get(url, {
+              accept: 'application/geo+json',
+              timeoutMs: 20_000,
+            });
+            if (!response.ok) return;
+            const body = await response.json();
+            if (!body?.geometry) return;
+            const entry = { geometry: body.geometry, fetchedAt: t };
+            zones.set(id, entry);
+            fs.mkdirSync(zoneDir, { recursive: true });
+            fs.writeFileSync(
+              path.join(zoneDir, `${id}.json`),
+              JSON.stringify(entry),
+            );
+          } catch {
+            // retried next poll
+          }
+        }),
+      );
+    }
+  }
+
+  // --- connectors ---------------------------------------------------------
+  const connectors = {
+    'nws-marine': {
+      intervalMs: 10 * 60_000,
+      async poll() {
+        const response = await get(
+          'https://api.weather.gov/alerts/active?region_type=marine',
+          {
+            accept: 'application/geo+json',
+          },
+        );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const collection = await response.json();
+        await loadZones(
+          (collection.features ?? []).flatMap(
+            (f) => f.properties?.affectedZones ?? [],
+          ),
+        );
+        apply('nws-marine', nwsMarineDrafts(collection, zoneGeometry), {
+          complete: true,
+          parserVersion: NWS_PARSER_VERSION,
+        });
+        return (collection.features ?? []).length;
+      },
+    },
+    's124-ccg-trial': {
+      intervalMs: 12 * 3600_000,
+      async poll() {
+        const url =
+          'https://nis.ccg-gcc.gc.ca/notice/s124/Canada_S100_Exchange_Set.zip';
+        const response = await get(url, {
+          accept: 'application/zip',
+          validators: state['s124-ccg-trial']?.validators,
+        });
+        if (response.status === 304) return null;
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const length = Number(response.headers.get('content-length'));
+        if (length > 32 * 1024 * 1024)
+          throw new Error('exchange set too large');
+        const bytes = Buffer.from(await response.arrayBuffer());
+        const entries = readZipTextEntries(bytes, {
+          accept: (n) => /DATASET_FILES\/[^/]+\.GML$/i.test(n),
+        });
+        const drafts = [];
+        const cancels = [];
+        for (const { name, text } of entries) {
+          const parsed = parseS124Dataset(text, {
+            sourceId: 's124-ccg-trial',
+            sourceUrl:
+              'https://nis.ccg-gcc.gc.ca/public/rest/messages/en/s124-trial',
+            idPrefix: 's124-ca:',
+            fetchedFrom: `${url}#${name}`,
+          });
+          if (parsed.draft) {
+            parsed.draft.sourceHash = stableHash(text);
+            drafts.push(parsed.draft);
+          }
+          cancels.push(...parsed.cancels);
+        }
+        apply('s124-ccg-trial', drafts, {
+          complete: true,
+          cancels,
+          parserVersion: S124_PARSER_VERSION,
+        });
+        state['s124-ccg-trial'].validators = {
+          etag: response.headers.get('etag'),
+          lastModified: response.headers.get('last-modified'),
+        };
+        return drafts.length;
+      },
+    },
+  };
+
+  async function pollSource(id) {
+    const connector = connectors[id];
+    const s = (state[id] ??= { failures: 0 });
+    s.last_attempt_at = now();
+    try {
+      const count = await connector.poll();
+      s.last_success_at = now();
+      s.last_error = null;
+      s.failures = 0;
+      if (count !== null) s.count = count;
+    } catch (error) {
+      s.failures = (s.failures ?? 0) + 1;
+      s.last_error = String(error?.message ?? error).slice(0, 200);
+      log(`[airsea] ${id} poll failed: ${s.last_error}`);
+    }
+    dirty = true;
+    save();
+  }
+
+  function sourceStatus(source) {
+    if (
+      source.id === 'faa-notam' &&
+      env.FAA_NOTAM_CLIENT_ID &&
+      env.FAA_NOTAM_CLIENT_SECRET
+    )
+      return { status: 'unconfigured', reason: 'adapter_awaiting_api_details' };
+    if (!source.connected)
+      return {
+        status:
+          source.access === 'permission_required'
+            ? 'permission_required'
+            : 'unconfigured',
+        reason: source.access,
+      };
+    const s = state[source.id] ?? {};
+    const interval = connectors[source.id].intervalMs;
+    if (!s.last_success_at)
+      return {
+        status: s.failures ? 'down' : 'stale',
+        reason: s.last_error ?? 'no_poll_yet',
+      };
+    if (s.failures >= 3) return { status: 'down', reason: s.last_error };
+    if (now() - s.last_success_at > interval * 2.5)
+      return { status: 'stale', reason: s.last_error ?? 'no_recent_poll' };
+    if (s.failures) return { status: 'degraded', reason: s.last_error };
+    return source.access === 'trial'
+      ? { status: 'trial', reason: 'test_data' }
+      : { status: 'healthy', reason: null };
+  }
+
+  function summary(record, t) {
+    return {
+      id: record.id,
+      sourceId: record.sourceId,
+      domain: record.domain,
+      warningType: record.warningType,
+      title: record.title,
+      authority: record.authority,
+      status: warningStatus(record, t),
+      severity: record.severity,
+      trial: record.trial,
+      isNew: t - Date.parse(record.firstSeenAtUtc) < NEW_WARNING_MS,
+      lastChange: record.lastChange,
+      publishedAtUtc: record.publishedAtUtc,
+      effectiveFromUtc: record.effectiveFromUtc,
+      effectiveUntilUtc: record.effectiveUntilUtc,
+      geometry: record.geometry,
+      geometryPrecision: record.geometryPrecision,
+      bounds: geometryBounds(record.geometry),
+      sourceUrl: record.sourceUrl,
+    };
+  }
+
+  return {
+    start({ firstDelayMs = 30_000 } = {}) {
+      for (const [id, connector] of Object.entries(connectors)) {
+        const due =
+          (state[id]?.last_success_at ?? 0) + connector.intervalMs - now();
+        const first = setTimeout(
+          () => void pollSource(id),
+          Math.max(firstDelayMs, Math.min(due, connector.intervalMs)),
+        );
+        const every = setInterval(
+          () => void pollSource(id),
+          connector.intervalMs,
+        );
+        first.unref?.();
+        every.unref?.();
+        timers.push(first, every);
+      }
+    },
+    stop() {
+      for (const id of timers) clearTimeout(id);
+      save();
+    },
+    pollSource,
+    sources() {
+      return WARNING_SOURCES.map((source) => ({
+        ...source,
+        ...sourceStatus(source),
+        last_success_at: state[source.id]?.last_success_at ?? null,
+        warnings: [...records.values()].filter((r) => r.sourceId === source.id)
+          .length,
+      }));
+    },
+    list({ domains = null, includeEnded = false } = {}) {
+      const t = now();
+      return [...records.values()]
+        .filter((r) => !domains || domains.includes(r.domain))
+        .map((r) => summary(r, t))
+        .filter(
+          (r) =>
+            includeEnded || r.status === 'active' || r.status === 'scheduled',
+        );
+    },
+    detail(id) {
+      const record = records.get(id);
+      return record
+        ? {
+            ...summary(record, now()),
+            originalText: record.originalText,
+            geometryNotes: record.geometryNotes,
+            provenance: record.provenance,
+            history: record.history,
+            firstSeenAtUtc: record.firstSeenAtUtc,
+            lastVerifiedAtUtc: record.lastVerifiedAtUtc,
+            endedAtUtc: record.endedAtUtc,
+            endReason: record.endReason ?? null,
+            cancelledAtUtc: record.cancelledAtUtc,
+          }
+        : null;
+    },
+    /** For tests and fixtures: apply drafts as a source would. */
+    apply,
+  };
+}

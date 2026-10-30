@@ -81,3 +81,12 @@ observedAt, provider, …}`; fixes with no identity/position, out of range,
   marine weather, and a permission-gated FAA adapter.
 - Upstream conflicts: the catalog/panel/source registration lines, the
   pinned layer counts, and `package.json` (h3-js) are the merge surface.
+
+## Phase B (warning areas)
+
+Connected: NWS active marine alerts with official forecast-zone outlines
+(machine-readable, public domain) and the Canadian Coast Guard S-124 trial
+exchange set (test data, labelled TRIAL, never used for alerts). Catalogued
+but not fetched: FAA NOTAM API, EUROCONTROL EAD, Airservices NAIPS, AMSA
+NAVAREA X, other NAVAREA coordinators. Details per source, geometry rules
+and lifecycle: [air-sea-data-providers.md](air-sea-data-providers.md).

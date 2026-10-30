@@ -16,7 +16,9 @@ import {
   sourceStatus,
 } from '../../../src/airsea/sources.js';
 import { AISSTREAM_CACHE_MAX, aisStreamRows } from '../vessels/ais-store.js';
+import path from 'node:path';
 import { subscribeTrafficSnapshots, trafficSnapshotsSince } from './bus.js';
+import { createWarningService } from './warnings.js';
 
 export const WINDOWS_MS = Object.freeze([
   15 * 60_000,
@@ -313,9 +315,24 @@ export function airSeaEnabled(env = process.env) {
 }
 
 /** @param {{service?: object, env?: object}} [options] */
-export function airSeaProxy({ service: supplied, env = process.env } = {}) {
+export function airSeaProxy({
+  service: supplied,
+  warnings: suppliedWarnings,
+  env = process.env,
+} = {}) {
   const enabled = airSeaEnabled(env) || Boolean(supplied);
   let service = supplied ?? null;
+  let warnings = suppliedWarnings ?? null;
+  const warningsEnabled = env.GEV_AIRSEA_WARNINGS !== '0';
+  const ensureWarnings = () =>
+    (warnings ??= warningsEnabled
+      ? createWarningService({
+          dir: env.GEV_AIRSEA_DIR
+            ? path.resolve(env.GEV_AIRSEA_DIR)
+            : path.join(process.cwd(), '.gev-cache', 'airsea'),
+          env,
+        })
+      : null);
 
   async function handler(req, res) {
     if (!enabled) return json(res, 404, { enabled: false });
@@ -329,6 +346,33 @@ export function airSeaProxy({ service: supplied, env = process.env } = {}) {
         return json(res, 200, { enabled: true, windows_ms: WINDOWS_MS });
       if (route === '/sources')
         return json(res, 200, { sources: service.sources() });
+      if (route === '/warning-sources')
+        return json(res, 200, { sources: ensureWarnings()?.sources() ?? [] });
+      if (route === '/warnings') {
+        const svc = ensureWarnings();
+        if (!svc) return json(res, 404, { error: 'warnings_disabled' });
+        const domains = url.searchParams.get('domain');
+        return json(res, 200, {
+          warnings: svc.list({
+            domains: domains ? domains.split(',').slice(0, 3) : null,
+            includeEnded: url.searchParams.get('include') === 'ended',
+          }),
+          sources: svc.sources(),
+        });
+      }
+      if (route.startsWith('/warnings/')) {
+        const svc = ensureWarnings();
+        let id;
+        try {
+          id = decodeURIComponent(route.slice('/warnings/'.length));
+        } catch {
+          return json(res, 400, { error: 'bad_id' });
+        }
+        const found = id.length <= 160 ? svc?.detail(id) : null;
+        return found
+          ? json(res, 200, found)
+          : json(res, 404, { error: 'unknown_warning' });
+      }
       if (route === '/density') {
         const domain = url.searchParams.get('domain');
         if (domain !== 'air' && domain !== 'sea')
@@ -370,9 +414,11 @@ export function airSeaProxy({ service: supplied, env = process.env } = {}) {
     // collected snapshot from the start.
     service ??= createAirSeaService({ cadenceMs: cadence(env) });
     const stop = startCollector(server, collectionPlan(env));
+    ensureWarnings()?.start();
     server.httpServer?.once('close', () => {
       stop();
       service?.close?.();
+      warnings?.stop();
     });
   };
   return {

@@ -45,6 +45,7 @@ export const LOCAL_ONLY_LAYER_METADATA = Object.freeze([
   // Fork: aggregate air/sea traffic, remembered per browser, not in links.
   Object.freeze({ id: 'air-traffic', disposition: 'local-only' }),
   Object.freeze({ id: 'sea-traffic', disposition: 'local-only' }),
+  Object.freeze({ id: 'warning-areas', disposition: 'local-only' }),
 ]);
 
 /** Serialization metadata for every layer the application catalog constructs. */
