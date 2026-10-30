@@ -374,3 +374,36 @@ test('a GDACS alert-level change is a material update', () => {
   assert.ok(result.reasons.includes('gdacs_alert_changed'));
   assert.ok(engine.activeEvents()[0].severity >= 95);
 });
+
+test('a copy that inherits an official lineage never overwrites official facts', () => {
+  const { engine, at } = harness();
+  engine.ingest([quake({ summary: 'Official USGS summary.' })]);
+  const copy = (n, extra) => ({
+    provider: 'fixture',
+    source_item_id: `copy-${n}`,
+    event_key: 'copy-9',
+    publisher: 'Copy Desk',
+    source_type: 'secondary_reporting',
+    derived_from: quake().url,
+    category: 'natural_disaster',
+    subtype: 'earthquake',
+    title: 'M 6.4 - 20 km S of Example',
+    occurred_at: T0 - 10 * MIN,
+    published_at: T0 + n * MIN,
+    location: { lat: 38.1, lon: 142.5, precision: 'point' },
+    ...extra,
+  });
+  engine.ingest([copy(1, { metrics: { magnitude: 6.4 } })]);
+  at(T0 + 30 * MIN);
+  engine.ingest([
+    copy(2, {
+      summary: 'Unconfirmed reports say thousands dead.',
+      metrics: { magnitude: 7.9, alert_level: 'red', severity_hint: 85 },
+    }),
+  ]);
+  const [event] = engine.activeEvents();
+  assert.equal(event.summary, 'Official USGS summary.');
+  assert.equal(event.metrics.alert_level, 'yellow');
+  assert.equal(event.metrics.magnitude, 6.4);
+  assert.equal(event.metrics.severity_hint, undefined);
+});

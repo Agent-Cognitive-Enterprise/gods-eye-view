@@ -7,6 +7,19 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **Air & Sea, Phase E (branch `feature/air-sea-monitor`).** Hardening after
+  four adversarial reviews. False signals: a first sighting or edge jitter is
+  no passage, a stalled feed is missing coverage, anomaly noise is floored at
+  counting noise, a small reference gives no percentage, and baseline weeks
+  end before the warning began. Warnings: one empty listing ends nothing,
+  re-listed warnings are reinstated, NWS cancellations and reissues are
+  followed, one event per warning chain, resolved when it ends. Engine:
+  ownership by report family, so a copy of an official report cannot rewrite
+  it. Layers: only a person's own on/off is remembered, Autopilot reveals are
+  never saved and respect a layer switched off, stale answers are dropped,
+  and rebuilds are lighter. Server: cached, lighter warning lists, footprint
+  view boxes, hourly correlations, sturdier SQLite, ZIP and download caps,
+  and no error text in 500 answers. See `docs/air-sea-audit.md`.
 - **Air & Sea, Phase D (branch `feature/air-sea-monitor`).** Warning ×
   traffic correlation: for every active warning area with a stated polygon,
   passages inside after it took effect against the same hours in earlier

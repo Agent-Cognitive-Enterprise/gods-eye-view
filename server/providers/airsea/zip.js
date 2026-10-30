@@ -60,12 +60,18 @@ export function readZipTextEntries(
       30 +
       bytes.readUInt16LE(local + 26) +
       bytes.readUInt16LE(local + 28);
+    // Sizes are checked as read, not as declared: a stored entry could
+    // claim 10 bytes and carry megabytes.
+    if (compressed > maxEntryBytes && method === 0)
+      throw new Error(`ZIP entry too large: ${name}`);
     const data = bytes.subarray(start, start + compressed);
     let inflated;
     if (method === 0) inflated = data;
     else if (method === 8)
       inflated = zlib.inflateRawSync(data, { maxOutputLength: maxEntryBytes });
     else throw new Error('unsupported ZIP compression');
+    if (inflated.length > maxEntryBytes)
+      throw new Error(`ZIP entry too large: ${name}`);
     total += inflated.length;
     if (total > maxTotalBytes) throw new Error('ZIP content too large');
     out.push({ name, text: inflated.toString('utf8') });

@@ -195,3 +195,53 @@ test('windows are whole hours after the warning began, with a pre-warning window
     null,
   );
 });
+
+test('areas h3 would misread or that would cost seconds are not correlated', () => {
+  const box = (w, s, e, n) => ({
+    type: 'Polygon',
+    coordinates: [
+      [
+        [w, s],
+        [e, s],
+        [e, n],
+        [w, n],
+        [w, s],
+      ],
+    ],
+  });
+  // Wider than half the globe: h3 would index the complement.
+  assert.equal(warningZones(box(-170, 0, 20, 10), 'sea'), null);
+  // A circle around the pole.
+  const polar = [];
+  for (let i = 0; i <= 36; i++) polar.push([i * 10 - 180, 85]);
+  polar[36] = polar[0];
+  assert.equal(
+    warningZones({ type: 'Polygon', coordinates: [polar] }, 'sea'),
+    null,
+  );
+  // A continent-sized area: rejected from its bounding box, quickly.
+  const started = performance.now();
+  assert.equal(warningZones(box(-60, -40, 60, 40), 'sea'), null);
+  assert.ok(performance.now() - started < 200);
+});
+
+test('a tiny reference is never turned into a percentage', () => {
+  const result = evaluateCorrelation({
+    ...base,
+    post: { cells: cells({ inside: 8 }), coverage: healthy },
+    pre: { cells: cells({ inside: 7 }), coverage: healthy },
+  });
+  assert.equal(result.observation, 'inconclusive');
+  assert.equal(result.reason, 'insufficient_sample');
+});
+
+test('baseline weeks already under the warning are left out', () => {
+  const now = Date.parse('2026-11-20T12:20:00Z');
+  const longRunning = correlationWindow(
+    { effectiveFromUtc: '2026-11-12T00:00:00Z' },
+    now,
+    now - 30 * 24 * HOUR,
+  );
+  // Week 1 back (13 Nov) was already under the warning.
+  assert.deepEqual(longRunning.weeks, [2, 3, 4]);
+});

@@ -115,13 +115,19 @@ test('service: published snapshots become a footprint along each route', () => {
     footprint.cells.length >= 6,
     `${footprint.cells.length} cells along the route`,
   );
+  // One passage per cell entered; the first sighting's cell is no entry.
   assert.ok(
-    footprint.cells.every((c) => c.passages === 1),
-    'one aircraft, one passage per cell',
+    footprint.cells.every((c) => c.passages <= 1),
+    'one aircraft, at most one passage per cell',
+  );
+  assert.equal(
+    footprint.cells.reduce((sum, c) => sum + c.passages, 0),
+    footprint.cells.length - 1,
   );
   const minutes = footprint.cells.reduce((sum, c) => sum + c.minutes, 0);
   assert.ok(Math.abs(minutes - 60) < 0.5, `${minutes} minutes`);
-  assert.equal(footprint.snapshots_in_window, 13);
+  // The first snapshot only introduces the aircraft: 12 brought news.
+  assert.equal(footprint.snapshots_in_window, 12);
   const anomalies = service.anomalies({ domain: 'air' });
   assert.equal(
     anomalies.status === 'coverage_degraded' ||
@@ -130,4 +136,91 @@ test('service: published snapshots become a footprint along each route', () => {
   );
   service.close();
   history.close();
+});
+
+test('a stalled AIS socket is missing coverage, not fewer vessels', () => {
+  let clock = T;
+  const history = createTrafficHistory({ now: () => clock });
+  // The AIS store keeps rows after the socket stops: same rows, old times.
+  let rows = [];
+  const service = createAirSeaService({
+    now: () => clock,
+    snapshots: () => [],
+    subscribe: null,
+    readAisRows: () => rows,
+    aisConfigured: () => true,
+    cadenceMs: {},
+    history,
+  });
+  const vessel = (mmsi, at) => ({
+    mmsi,
+    lat: -33.8,
+    lon: 151.2 + mmsi / 1000,
+    last_position_epoch: at / 1000,
+  });
+  for (let i = 0; i < 10; i++) {
+    clock = T + i * 30_000;
+    // Live for the first four reads, then the socket stalls. AIS times run
+    // over a minute behind the clock: still news, vessel by vessel.
+    if (i < 4) rows = [vessel(1, clock - 90_000), vessel(2, clock - 95_000)];
+    service.density({ domain: 'sea', windowMs: HOUR });
+  }
+  const coverage = history.coverage('sea', T);
+  // The first read only introduces the vessels; the stalled ones add nothing.
+  assert.equal(coverage.snapshots, 3);
+  assert.equal(coverage.objects, 6);
+  service.close();
+  history.close();
+});
+
+test('a corrupt history file is set aside; history starts again', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gev-history-'));
+  const file = path.join(dir, 'traffic.sqlite');
+  fs.writeFileSync(file, 'this is not a database'.repeat(100));
+  const warnings = [];
+  const history = createTrafficHistory({
+    file,
+    now: () => T,
+    warn: (text) => warnings.push(text),
+  });
+  history.add('air', {
+    passages: [{ resolution: 2, cell: 'a', at: T - MIN }],
+    minutes: [],
+  });
+  assert.equal(
+    history.footprint({ domain: 'air', resolution: 2, windowMs: HOUR })[0]
+      .passages,
+    1,
+  );
+  history.close();
+  assert.ok(warnings.some((w) => /moved to/.test(w)));
+  assert.ok(fs.readdirSync(dir).some((name) => name.includes('.corrupt-')));
+});
+
+test('a history file that cannot be opened is left alone; this run keeps it in memory', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gev-history-'));
+  // A directory stands in for a file another process holds: no corruption.
+  const file = path.join(dir, 'traffic.sqlite');
+  fs.mkdirSync(file);
+  const warnings = [];
+  const history = createTrafficHistory({
+    file,
+    now: () => T,
+    warn: (text) => warnings.push(text),
+  });
+  history.add('sea', {
+    passages: [{ resolution: 3, cell: 'a', at: T - MIN }],
+    minutes: [],
+  });
+  assert.equal(
+    history.footprint({ domain: 'sea', resolution: 3, windowMs: HOUR }).length,
+    1,
+  );
+  history.close();
+  assert.ok(warnings.some((w) => /kept in memory/.test(w)));
+  assert.equal(fs.statSync(file).isDirectory(), true);
+  assert.equal(
+    fs.readdirSync(dir).some((name) => name.includes('.corrupt-')),
+    false,
+  );
 });

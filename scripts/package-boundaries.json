@@ -1764,6 +1764,7 @@
       "./standalone/catalog"
     ],
     "modules": [
+      "src/layers/airsea/visibility.js",
       "src/layers/airsea/reveal.js",
       "src/airsea/cellShare.js",
       "src/layers/airsea/anomalies.js",
@@ -2680,6 +2681,7 @@
   "application-layer-construction": {
     "exports": ["./application/layers"],
     "modules": [
+      "src/layers/airsea/visibility.js",
       "src/airsea/cellShare.js",
       "src/layers/airsea/anomalies.js",
       "src/layers/airsea/warnings.js",

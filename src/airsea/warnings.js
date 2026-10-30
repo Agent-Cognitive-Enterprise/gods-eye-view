@@ -47,22 +47,28 @@ const isPosition = (p) =>
   p.length >= 2 &&
   Number.isFinite(p[0]) &&
   Number.isFinite(p[1]) &&
-  Math.abs(p[0]) <= 180 &&
+  Math.abs(p[0]) <= 540 &&
   Math.abs(p[1]) <= 90;
+// Longitudes written past ±180 (common for areas across the dateline) are
+// the same meridians, not errors.
+const wrapLon = (lon) => ((((lon + 180) % 360) + 360) % 360) - 180;
+const position = (p) => [Math.abs(p[0]) <= 180 ? p[0] : wrapLon(p[0]), p[1]];
+const positions = (list) => list.filter(isPosition).map(position);
 
 const samePosition = (a, b) => a[0] === b[0] && a[1] === b[1];
 
 /** A closed linear ring of at least four positions, or null. */
 function cleanRing(ring, notes) {
   if (!Array.isArray(ring)) return null;
-  const positions = ring.filter(isPosition).map((p) => [p[0], p[1]]);
-  if (positions.length !== ring.length) notes.push('invalid_positions_dropped');
-  if (positions.length < 3) return null;
-  if (!samePosition(positions[0], positions.at(-1))) {
-    positions.push([...positions[0]]);
+  const kept = positions(ring);
+  // A ring that lost corners is no longer the area the source stated.
+  if (kept.length !== ring.length) notes.push('invalid_positions_dropped');
+  if (kept.length < 3) return null;
+  if (!samePosition(kept[0], kept.at(-1))) {
+    kept.push([...kept[0]]);
     notes.push('ring_closed');
   }
-  return positions.length >= 4 ? positions : null;
+  return kept.length >= 4 ? kept : null;
 }
 
 function cleanPolygon(rings, notes) {
@@ -84,23 +90,23 @@ export function validateGeometry(geometry) {
     switch (g.type) {
       case 'Point':
         return isPosition(g.coordinates)
-          ? { type: 'Point', coordinates: g.coordinates.slice(0, 2) }
+          ? { type: 'Point', coordinates: position(g.coordinates) }
           : null;
       case 'MultiPoint': {
-        const points = (g.coordinates ?? []).filter(isPosition);
+        const points = positions(g.coordinates ?? []);
         return points.length
           ? { type: 'MultiPoint', coordinates: points }
           : null;
       }
       case 'LineString': {
-        const line = (g.coordinates ?? []).filter(isPosition);
+        const line = positions(g.coordinates ?? []);
         return line.length >= 2
           ? { type: 'LineString', coordinates: line }
           : null;
       }
       case 'MultiLineString': {
         const lines = (g.coordinates ?? [])
-          .map((l) => (Array.isArray(l) ? l.filter(isPosition) : []))
+          .map((l) => (Array.isArray(l) ? positions(l) : []))
           .filter((l) => l.length >= 2);
         return lines.length
           ? { type: 'MultiLineString', coordinates: lines }
@@ -210,6 +216,77 @@ export function continuousRing(ring) {
     out.push([next, lat]);
   }
   return out;
+}
+
+/** Distance of p from segment a-b, in degrees (flat; for simplifying). */
+function segmentDistance(p, a, b) {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const length = dx * dx + dy * dy;
+  const k = length
+    ? Math.max(
+        0,
+        Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / length),
+      )
+    : 0;
+  return Math.hypot(p[0] - (a[0] + k * dx), p[1] - (a[1] + k * dy));
+}
+
+/** Ramer-Douglas-Peucker on one ring or line, iterative. */
+function simplifyLine(points, tolerance, minPoints) {
+  if (points.length <= minPoints) return points;
+  const keep = new Uint8Array(points.length);
+  keep[0] = keep[points.length - 1] = 1;
+  const stack = [[0, points.length - 1]];
+  while (stack.length) {
+    const [from, to] = stack.pop();
+    let worst = -1;
+    let at = -1;
+    for (let i = from + 1; i < to; i++) {
+      const d = segmentDistance(points[i], points[from], points[to]);
+      if (d > worst) {
+        worst = d;
+        at = i;
+      }
+    }
+    if (at > 0 && worst > tolerance) {
+      keep[at] = 1;
+      stack.push([from, at], [at, to]);
+    }
+  }
+  const out = points.filter((_, i) => keep[i]);
+  return out.length >= minPoints ? out : points;
+}
+
+/**
+ * A lighter copy of a geometry for drawing (a coastline-following zone can
+ * carry tens of thousands of corners); the full geometry stays the record.
+ */
+export function simplifyGeometry(g, tolerance = 0.002) {
+  if (!g) return g;
+  const ring = (r) => simplifyLine(r, tolerance, 4);
+  switch (g.type) {
+    case 'LineString':
+      return { ...g, coordinates: simplifyLine(g.coordinates, tolerance, 2) };
+    case 'MultiLineString':
+      return {
+        ...g,
+        coordinates: g.coordinates.map((l) => simplifyLine(l, tolerance, 2)),
+      };
+    case 'Polygon':
+      return { ...g, coordinates: g.coordinates.map(ring) };
+    case 'MultiPolygon':
+      return { ...g, coordinates: g.coordinates.map((p) => p.map(ring)) };
+    case 'GeometryCollection':
+      return {
+        ...g,
+        geometries: g.geometries.map((part) =>
+          simplifyGeometry(part, tolerance),
+        ),
+      };
+    default:
+      return g;
+  }
 }
 
 /** Every position of a geometry, flattened. */
@@ -350,9 +427,11 @@ export function normalizeWarning(draft, { receivedAtUtc, parserVersion }) {
       : 'unknown',
     geometry,
     geometryPrecision: geometry
-      ? GEOMETRY_PRECISIONS.includes(draft.geometryPrecision)
-        ? draft.geometryPrecision
-        : 'approximate'
+      ? notes.includes('invalid_positions_dropped')
+        ? 'approximate'
+        : GEOMETRY_PRECISIONS.includes(draft.geometryPrecision)
+          ? draft.geometryPrecision
+          : 'approximate'
       : 'none',
     geometryNotes:
       [draft.geometryNotes, ...notes].filter(Boolean).join('; ') || null,

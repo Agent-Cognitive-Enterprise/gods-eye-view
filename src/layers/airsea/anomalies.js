@@ -1,6 +1,7 @@
 import * as Cesium from 'cesium';
 import { formatNumber, msg, t } from '../../i18n/index.js';
 import { translateFeedError } from '../../ui/statusText.js';
+import { RESTORE_ORIGIN, trackVisibility } from './visibility.js';
 
 /**
  * Traffic Anomalies layer (fork feature): cells where the last complete hour
@@ -74,6 +75,7 @@ export function createTrafficAnomaliesLayer({
   let _rowListener = null;
   let _restoreTimer = null;
   let _signature = null;
+  let _visibility = null;
   const _domains = new Set(
     (read('domains', 'air,sea') || '')
       .split(',')
@@ -127,9 +129,12 @@ export function createTrafficAnomaliesLayer({
     let tries = 0;
     const attempt = () => {
       _restoreTimer = null;
-      if (_enabled || !_manager) return;
+      if (!_manager) return;
       if (_manager.viewer) {
-        void _manager.setEnabled(ANOMALY_LAYER_ID, true);
+        // Sent even if a reveal switched it on first: it is the operator's.
+        void _manager.setEnabled(ANOMALY_LAYER_ID, true, {
+          origin: RESTORE_ORIGIN,
+        });
         return;
       }
       if (++tries < 60) _restoreTimer = setTimeout(attempt, 500);
@@ -166,6 +171,11 @@ export function createTrafficAnomaliesLayer({
 
     attachDataManager(manager) {
       _manager = manager;
+      // Only a person's own on/off is remembered across reloads.
+      _visibility = trackVisibility(manager, {
+        id: ANOMALY_LAYER_ID,
+        remember: (on) => write('enabled', on ? '1' : '0'),
+      });
       scheduleRestore();
     },
     setRowControlsListener(listener) {
@@ -179,12 +189,10 @@ export function createTrafficAnomaliesLayer({
     },
     enable() {
       _enabled = true;
-      write('enabled', '1');
       if (_primitives) _primitives.show = true;
     },
     disable() {
       _enabled = false;
-      write('enabled', '0');
       if (_primitives) _primitives.show = false;
     },
     async update(_viewerArg, { signal } = {}) {
@@ -212,6 +220,8 @@ export function createTrafficAnomaliesLayer({
     destroy(viewer = _viewer) {
       layer.disable();
       clearTimeout(_restoreTimer);
+      _visibility?.stop();
+      _visibility = null;
       if (_primitives) {
         viewer?.scene?.primitives?.remove(_primitives);
         _primitives = null;

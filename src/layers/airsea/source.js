@@ -36,12 +36,16 @@ export function createAirSeaSource({
       return get('/api/airsea/sources', signal);
     },
     /** Passages and object-minutes per cell along every track in a window. */
-    getFootprint({ domain, resolution, windowMs }, { signal } = {}) {
+    getFootprint(
+      { domain, resolution, windowMs, box = null },
+      { signal } = {},
+    ) {
       const params = new URLSearchParams({
         domain,
         res: String(resolution),
         window: String(windowMs),
       });
+      if (box) params.set('box', box.map((v) => v.toFixed(3)).join(','));
       return get(`/api/airsea/footprint?${params}`, signal);
     },
     /** The last complete hour against the same hour in earlier weeks. */
@@ -49,8 +53,8 @@ export function createAirSeaSource({
       return get(`/api/airsea/anomalies?domain=${domain}`, signal);
     },
     /** Active and scheduled warning areas, with the state of every source. */
-    getWarnings({ signal } = {}) {
-      return get('/api/airsea/warnings', signal);
+    getWarnings({ trial = true, signal } = {}) {
+      return get(`/api/airsea/warnings${trial ? '' : '?trial=0'}`, signal);
     },
     getWarning(id, { signal } = {}) {
       return get(`/api/airsea/warnings/${encodeURIComponent(id)}`, signal);

@@ -3,6 +3,7 @@ import { formatNumber, msg, t } from '../../i18n/index.js';
 import { translateFeedError } from '../../ui/statusText.js';
 import { resolutionForHeight } from '../../airsea/aggregate.js';
 import { sectorRing } from '../../airsea/cellShare.js';
+import { RESTORE_ORIGIN, trackVisibility } from './visibility.js';
 export { createAirSeaSource } from './source.js';
 
 /**
@@ -117,15 +118,60 @@ export function cellAlpha(density, maxDensity) {
   return MIN_ALPHA + (MAX_ALPHA - MIN_ALPHA) * Math.min(1, share);
 }
 
-/** The camera view as [west, south, east, north], or null for the globe. */
-function viewBox(viewer) {
+// The server serves fine cells only for a view up to this size.
+const MAX_BOX_DEGREES = 60;
+// From this resolution on, cells are fetched for the view only.
+const FINE_BOX_RESOLUTION = 3;
+
+/**
+ * The camera view as [west, south, east, north], or null for the globe or a
+ * view too large for fine cells (a tilted camera seeing the horizon).
+ */
+export function viewBox(viewer, maxDegrees = MAX_BOX_DEGREES) {
   const rect = viewer?.camera?.computeViewRectangle?.(
     viewer.scene?.globe?.ellipsoid,
   );
   if (!rect) return null;
   const deg = Cesium.Math.toDegrees;
-  return [deg(rect.west), deg(rect.south), deg(rect.east), deg(rect.north)];
+  const box = [
+    deg(rect.west),
+    deg(rect.south),
+    deg(rect.east),
+    deg(rect.north),
+  ];
+  const width = (box[2] - box[0] + 360) % 360 || 360;
+  return width > maxDegrees || box[3] - box[1] > maxDegrees ? null : box;
 }
+
+/**
+ * Swap a collection's drawing once the new primitive is ready, so a rebuild
+ * never leaves the layer blank for a frame or two.
+ */
+function replacePrimitive(scene, collection, next) {
+  const old = [];
+  for (let i = 0; i < collection.length; i++) old.push(collection.get(i));
+  if (!next) {
+    collection.removeAll();
+    return;
+  }
+  collection.add(next);
+  if (!old.length) return;
+  const done = () => {
+    for (const p of old) if (!p.isDestroyed?.()) collection.remove(p);
+  };
+  if (!scene?.postRender) {
+    done();
+    return;
+  }
+  const stop = scene.postRender.addEventListener(() => {
+    if (next.isDestroyed?.() || next.ready !== false) {
+      stop();
+      done();
+    }
+  });
+}
+// Opacity steps: a count moving by one does not rebuild thousands of cells.
+const ALPHA_STEPS = 12;
 
 /**
  * @param {{domain: 'air'|'sea', source: object, storage?: Storage|null,
@@ -175,7 +221,11 @@ export function createTrafficDensityLayer({
   // switch it off again); a layer the user enabled themselves is left alone.
   let _ownsObjects = false;
   let _removeVisibilityListener = null;
+  let _visibility = null;
   let _removeShareListener = null;
+  // Bumped by view and window changes: an answer for an older request is
+  // dropped instead of shown under the new chips.
+  let _generation = 0;
   let _mode = MODES.includes(read('mode')) ? read('mode') : 'density';
   let _view = read('view') === 'now' ? 'now' : 'traffic';
   const windowFor = (view) => {
@@ -219,7 +269,9 @@ export function createTrafficDensityLayer({
       .then(async () => {
         if (!_manager) return;
         const want = _enabled && _mode !== 'density';
-        const on = _manager.isEnabled?.(spec.objectsLayerId) === true;
+        const on =
+          _visibility?.wants(spec.objectsLayerId) ??
+          _manager.isEnabled?.(spec.objectsLayerId) === true;
         if (want === on) return;
         if (!want && !_ownsObjects) return; // the user's own layer
         _selfRequest = true;
@@ -250,6 +302,7 @@ export function createTrafficDensityLayer({
     const next = TRAFFIC_VIEWS[_view][domain].windows.find((w) => w.id === id);
     if (!next || next === _window) return;
     _window = next;
+    _generation += 1;
     write(`window.${_view}`, id);
     void refresh();
     notifyRow();
@@ -261,6 +314,7 @@ export function createTrafficDensityLayer({
     write('view', view);
     _window = windowFor(view);
     _result = null;
+    _generation += 1;
     publishShare();
     void refresh();
     notifyRow();
@@ -280,16 +334,20 @@ export function createTrafficDensityLayer({
       const owners = share?.shares(c.h3, c.ring).owners ?? [domain];
       return [Math.max(0, owners.indexOf(domain)), owners.length];
     });
+    const max = cells.length ? Math.max(...cells.map(valueOf)) : 0;
+    const alphas = cells.map(
+      (c) => Math.round(cellAlpha(valueOf(c), max) * ALPHA_STEPS) / ALPHA_STEPS,
+    );
     const signature = `${_result?.resolution}|${cells
-      .map((c, i) => `${c.h3}:${c.passages ?? c.uniqueCount}:${slices[i]}`)
+      .map((c, i) => `${c.h3}:${alphas[i]}:${slices[i]}`)
       .join(',')}`;
     if (signature === _signature) return;
     _signature = signature;
-    _primitives.removeAll();
-    if (cells.length) {
-      const max = Math.max(...cells.map(valueOf));
-      const base = Cesium.Color.fromCssColorString(spec.color);
-      _primitives.add(
+    const base = Cesium.Color.fromCssColorString(spec.color);
+    replacePrimitive(
+      _viewer?.scene,
+      _primitives,
+      cells.length &&
         new Cesium.Primitive({
           geometryInstances: cells.map(
             (cell, i) =>
@@ -306,7 +364,7 @@ export function createTrafficDensityLayer({
                 }),
                 attributes: {
                   color: Cesium.ColorGeometryInstanceAttribute.fromColor(
-                    base.withAlpha(cellAlpha(valueOf(cell), max)),
+                    base.withAlpha(alphas[i]),
                   ),
                 },
               }),
@@ -317,8 +375,7 @@ export function createTrafficDensityLayer({
           }),
           allowPicking: false,
         }),
-      );
-    }
+    );
     _viewer?.scene?.requestRender?.();
   }
 
@@ -331,23 +388,28 @@ export function createTrafficDensityLayer({
       const resolution = resolutionFor(
         _viewer?.camera?.positionCartographic?.height,
       );
+      // Fine grids are fetched for the view: follow it.
       if (
         resolution !== _result?.resolution ||
-        (_view === 'now' && resolution >= 4)
+        resolution >= FINE_BOX_RESOLUTION
       )
         void refresh();
     }, 1200);
   }
 
-  /** Re-enable after a reload when this browser left the layer on. */
+  /**
+   * Re-enable after a reload when this browser left the layer on. Sent even
+   * when something else (an Autopilot reveal) switched it on first: the
+   * request makes it the operator's again, so the reveal never takes it away.
+   */
   function scheduleRestore() {
     if (read('enabled') !== '1' || !_manager) return;
     let tries = 0;
     const attempt = () => {
       _restoreTimer = null;
-      if (_enabled || !_manager) return;
+      if (!_manager) return;
       if (_manager.viewer && _manager.registrationsFinalized !== false) {
-        void _manager.setEnabled(layer.id, true);
+        void _manager.setEnabled(layer.id, true, { origin: RESTORE_ORIGIN });
         return;
       }
       if (++tries < 60) _restoreTimer = setTimeout(attempt, 500);
@@ -364,6 +426,11 @@ export function createTrafficDensityLayer({
 
     attachDataManager(manager) {
       _manager = manager;
+      // Only a person's own on/off is remembered across reloads.
+      _visibility = trackVisibility(manager, {
+        id: layer.id,
+        remember: (on) => write('enabled', on ? '1' : '0'),
+      });
       // Switching the object layer by hand makes it the user's again: this
       // row never switches it off afterwards.
       _removeVisibilityListener = manager.subscribeVisibilityRequests?.(
@@ -404,7 +471,6 @@ export function createTrafficDensityLayer({
 
     enable() {
       _enabled = true;
-      write('enabled', '1');
       if (_primitives) _primitives.show = showDensity();
       publishShare();
       void applyObjects();
@@ -416,7 +482,6 @@ export function createTrafficDensityLayer({
       _request?.abort();
       _request = null;
       _enabled = false;
-      write('enabled', '0');
       if (_primitives) _primitives.show = false;
       publishShare();
       void applyObjects();
@@ -428,7 +493,9 @@ export function createTrafficDensityLayer({
       const resolution = resolutionFor(
         _viewer?.camera?.positionCartographic?.height,
       );
-      const box = _view === 'now' && resolution >= 4 ? viewBox(_viewer) : null;
+      const box = resolution >= FINE_BOX_RESOLUTION ? viewBox(_viewer) : null;
+      const generation = _generation;
+      const view = _view;
       _request?.abort();
       const request = new AbortController();
       _request = request;
@@ -436,9 +503,9 @@ export function createTrafficDensityLayer({
       signal?.addEventListener('abort', onAbort, { once: true });
       try {
         const result =
-          _view === 'traffic'
+          view === 'traffic'
             ? await source.getFootprint(
-                { domain, resolution, windowMs: _window.ms },
+                { domain, resolution, windowMs: _window.ms, box },
                 { signal: request.signal },
               )
             : await source.getDensity(
@@ -452,11 +519,17 @@ export function createTrafficDensityLayer({
                 { signal: request.signal },
               );
         if (request.signal.aborted || !_enabled) return false;
+        if (generation !== _generation) {
+          // Asked for another view or window meanwhile: fetch that instead.
+          setTimeout(() => void refresh(), 0);
+          return true;
+        }
         _result = result;
         _lastUpdate = now();
         _lastError = null;
-        render();
+        // Share first, so this render already knows its own slices.
         publishShare();
+        render();
         notifyRow();
         return true;
       } catch (error) {
@@ -476,6 +549,8 @@ export function createTrafficDensityLayer({
       clearTimeout(_restoreTimer);
       _removeVisibilityListener?.();
       _removeVisibilityListener = null;
+      _visibility?.stop();
+      _visibility = null;
       _removeMoveEnd?.();
       _removeMoveEnd = null;
       _removeShareListener?.();

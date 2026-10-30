@@ -96,7 +96,7 @@ and lifecycle: [air-sea-data-providers.md](air-sea-data-providers.md).
 - **Footprint.** `src/airsea/trajectory.js` turns consecutive fixes of one
   object into the cells it crossed: one passage per entry into a cell (no
   recount while it stays), and the minutes it spent there. A move is
-  followed along the great circle only within 20 min / 1,300 km/h (air) or
+  followed along the great circle only within 35 min / 1,300 km/h (air) or
   3 h / 90 km/h (sea); anything else is an uncertain gap that paints
   nothing in between. Grids: air H3 2 and 3, sea H3 2, 3 and 4.
 - **History.** `server/providers/airsea/history.js` keeps 5-minute rows for
@@ -108,8 +108,10 @@ and lifecycle: [air-sea-data-providers.md](air-sea-data-providers.md).
   `/api/airsea/anomalies?domain=`.
 - **Anomalies.** `src/airsea/anomaly.js` compares the last complete hour
   of passages per cell (air H3 2, sea H3 3) with the same hour of the week
-  one to four weeks back. A cell needs a usual value of at least 5
-  passages, a change of at least 50 % and a robust z-score of at least 3.
+  one to four weeks back. A cell needs a usual value of at least 10
+  passages, a change of at least 50 % and a robust z-score of at least 4,
+  with the spread never below counting noise (the square root of the usual
+  count). Only clusters of two or more adjacent cells reach the Autopilot.
   Weeks whose feed delivered under 75 % of the expected snapshots, or
   under 70 % of the usual objects per snapshot, do not count; when the
   current hour fails the same test the answer is `coverage_degraded`.
@@ -148,7 +150,8 @@ and lifecycle: [air-sea-data-providers.md](air-sea-data-providers.md).
   10 minutes). Event types map to subtypes: `airspace_warning`,
   `maritime_warning`, `air_traffic_anomaly`, `sea_traffic_anomaly`,
   `warning_traffic_correlation`; category `infrastructure_disruption`.
-  Records keep stable content (changes in tens of percent, no clock times
+  Records keep stable content (changes in tens of percent; only the anomaly
+  text names its hour, so each hour keeps a continuing anomaly alive; no other clock times
   in text), so repeat polls are duplicates and one situation stays one
   event. The measurement is dated by the end of its window, so the event
   is fresh when the change is measured, not when the warning was issued.
@@ -164,3 +167,85 @@ and lifecycle: [air-sea-data-providers.md](air-sea-data-providers.md).
   areas currently read `no_reference`; warnings issued from now on get a
   pre-warning comparison after their first complete hour, and matched
   baselines start two weeks after history began.
+
+## Phase E (hardening)
+
+Four adversarial reviews covered the branch (server, algorithms, client
+layers, Autopilot and security) before this phase; their findings were
+fixed with it. What changed in behaviour:
+
+- **Passages.** A first sighting is no passage (a restart cannot make every
+  moored ship "arrive"), a return to a cell left within 10 minutes (air) or
+  30 minutes (sea) is the same passage, and feed timestamps under 30 s apart
+  are judged on distance, not speed.
+- **Coverage.** A snapshot counts only when an object has a newer position
+  than its own previous one, so the AIS store's 30-minute memory and
+  republished OpenSky snapshots cannot hide an outage. Freshness is per
+  object because AIS timestamps run over a minute behind the clock. History
+  and coverage use each domain's main feed only (OpenSky, AISStream): the
+  regional and military feeds follow what viewers look at.
+- **Anomalies and correlation.** Spread floored at counting noise; a small
+  reference is `insufficient_sample`, never a percentage; baseline weeks must
+  end before the warning began; areas wider than half the globe, around a
+  pole or with over 10,000 corners are not correlated.
+- **Warnings.** Two complete listings in a row must omit a warning before it
+  ends, and one listed again is reinstated; NWS Cancel messages cancel what
+  they reference; reissues share a `chainId`; longitudes past 180 are wrapped
+  and a ring that lost corners is `approximate`; S-124 reads `srsDimension`,
+  marks arcs approximate and matches severity words whole.
+- **Autopilot.** Summary and metric ownership is recorded by report family
+  (provider and stable key), never by lineage: a copy inheriting an official
+  lineage cannot overwrite official facts, and a provider fills in unstated
+  facts only with an official record of its own on the event. One event per
+  warning chain, resolved when the warning ends, with two hourly readings
+  before a card reads "back to normal". A continuing anomaly extends its
+  lifetime without re-alerting.
+- **Layers.** Only explicit user, voice or tool requests are remembered
+  across reloads. A reveal uses the `autopilot` origin; a layer the operator
+  switches off stays off for that event. Requested state, not settled state,
+  decides ownership. Stale answers are dropped; drawings swap only when the
+  replacement is ready; opacity is quantised, so a count moving by one does
+  not rebuild every cell. Polygon holes stay unfilled.
+- **Server.** `/warnings` answers are cached and carry simplified outlines
+  (14.3 MB became 4.8 MB; `?trial=0` 3.3 MB); `/warnings/:id` keeps the full
+  geometry. `/footprint` takes a view box (1.58 MB became 57 KB for a
+  regional view). Correlations and anomalies are computed once per hour.
+  History survives lock and write failures (memory for that run; rows dropped
+  after five failed writes) and only a truly corrupt file is set aside. ZIP
+  sizes are checked as read, downloads capped while read, and 500 answers no
+  longer carry error text.
+
+### Quotas
+
+| Feed                 | Use                                                 | Limit                                |
+| -------------------- | --------------------------------------------------- | ------------------------------------ |
+| OpenSky `states/all` | One call per 5 min with OAuth; 30 min anonymous     | ~29 % of 4,000 credits; ~48 % of 400 |
+| adsb.lol military    | One call per 5 min, shared with the proxy cache     | Limit not verified                   |
+| AISStream            | The vessel layer's one socket; checked every 5 min  | One connection per key               |
+| NWS alerts, zones    | Alerts on the source's cadence, outlines once       | Public, conditional requests         |
+| CCG S-124 trial      | One download per 12 h, conditional, capped at 32 MB | Public trial data                    |
+
+### Checked
+
+Tested on Windows on 30 October 2026: full suite, build, production
+`vite preview` with Air & Sea on, the Autopilot smoke test, stop and restart
+on the same files, and a headless browser toggling all four layers.
+Five on/off cycles left the primitive count flat with no page errors. Frame
+rate was about 1 fps with the layers off and on: software rendering in a
+headless browser shows relative cost only, not real performance. Air and sea
+feed outages and corrupt payloads are covered by unit tests, not by cutting
+the live network.
+
+### Known limits
+
+- Matched baselines need two weeks of history; until then only warnings
+  issued after history began can be compared (pre-warning reference).
+- Camera flights from the warning list use the viewer directly, not
+  the shared navigation owner; the Autopilot is paused first.
+- `/warnings` still carries 4.8 MB with trial data on, and footprint reads sum
+  the whole table before a view box filters them.
+- A long-standing warning older than the Autopilot's 90-day retention keeps
+  its measurement but not its official record.
+- Reading 16,000 AIS rows takes a few hundred milliseconds of the dev server's
+  main thread every 30 seconds.
+- No aviation warning source is connected: FAA NOTAM access needs approval.

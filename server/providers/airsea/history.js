@@ -1,7 +1,9 @@
 // Traffic history (fork feature): passages and object-minutes per H3 cell
 // in 5-minute buckets (kept 3 days) and hourly totals (kept 120 days), plus
 // how well each domain's feed was delivered each hour. One writer, SQLite,
-// survives restarts; a corrupt file is set aside and a fresh one opened.
+// survives restarts. A corrupt file is set aside and a fresh one opened; a
+// file that cannot be opened for another reason (locked by a second
+// instance) is left alone and history is kept in memory for this run.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -23,12 +25,14 @@ CREATE TABLE IF NOT EXISTS fine (
   PRIMARY KEY (domain, res, cell, bucket)
 );
 CREATE INDEX IF NOT EXISTS fine_by_time ON fine (domain, res, bucket);
+CREATE INDEX IF NOT EXISTS fine_by_bucket ON fine (bucket);
 CREATE TABLE IF NOT EXISTS hourly (
   domain TEXT NOT NULL, res INTEGER NOT NULL, cell TEXT NOT NULL,
   hour INTEGER NOT NULL, passages INTEGER NOT NULL, minutes REAL NOT NULL,
   PRIMARY KEY (domain, res, cell, hour)
 );
 CREATE INDEX IF NOT EXISTS hourly_by_time ON hourly (domain, res, hour);
+CREATE INDEX IF NOT EXISTS hourly_by_hour ON hourly (hour);
 CREATE TABLE IF NOT EXISTS coverage (
   domain TEXT NOT NULL, hour INTEGER NOT NULL,
   snapshots INTEGER NOT NULL, objects INTEGER NOT NULL,
@@ -36,9 +40,15 @@ CREATE TABLE IF NOT EXISTS coverage (
 );
 `;
 
+// Errors that mean the file itself is damaged (or not ours to read).
+const CORRUPT =
+  /malformed|not a database|SQLITE_CORRUPT|SQLITE_NOTADB|unsupported traffic schema/i;
+// After this many failed writes in a row, pending rows are dropped.
+const MAX_FLUSH_FAILURES = 5;
+
 function openDatabase(file, warn) {
-  const open = () => {
-    const db = new DatabaseSync(file);
+  const open = (target = file) => {
+    const db = new DatabaseSync(target);
     try {
       db.exec('PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 2000;');
       db.exec(SCHEMA);
@@ -62,6 +72,12 @@ function openDatabase(file, warn) {
   try {
     return open();
   } catch (error) {
+    if (!CORRUPT.test(String(error?.message))) {
+      warn(
+        `[airsea] traffic history not opened (${error.message}); kept in memory for this run`,
+      );
+      return open(':memory:');
+    }
     const aside = `${file}.corrupt-${Date.now()}`;
     warn(
       `[airsea] traffic history unreadable (${error.message}); moved to ${aside}`,
@@ -172,9 +188,15 @@ export function createTrafficHistory({
     pendingCoverage.set(key, entry);
   }
 
+  let flushFailures = 0;
   function flush() {
     if (!pending.size && !pendingCoverage.size) return;
-    db.exec('BEGIN');
+    try {
+      db.exec('BEGIN');
+    } catch (error) {
+      failed(error);
+      return;
+    }
     try {
       for (const e of pending.values()) {
         q.fine.run(e.domain, e.res, e.cell, e.at, e.passages, e.minutes);
@@ -193,11 +215,29 @@ export function createTrafficHistory({
       }
       db.exec('COMMIT');
     } catch (error) {
-      db.exec('ROLLBACK');
-      throw error;
+      try {
+        db.exec('ROLLBACK');
+      } catch {
+        /* nothing to roll back */
+      }
+      failed(error);
+      return;
     }
+    flushFailures = 0;
     pending.clear();
     pendingCoverage.clear();
+  }
+
+  /** A write failed: keep the rows for the next try, a few times only. */
+  function failed(error) {
+    flushFailures += 1;
+    warn(`[airsea] history write failed: ${error.message}`);
+    if (flushFailures >= MAX_FLUSH_FAILURES) {
+      warn(`[airsea] dropping ${pending.size} unsaved history rows`);
+      pending.clear();
+      pendingCoverage.clear();
+      flushFailures = 0;
+    }
   }
 
   return {
@@ -256,15 +296,20 @@ export function createTrafficHistory({
     prune() {
       flush();
       const t = now();
-      q.pruneFine.run(t - FINE_RETAIN_MS);
-      q.pruneHourly.run(t - HOURLY_RETAIN_MS);
-      q.pruneCoverage.run(t - HOURLY_RETAIN_MS);
+      try {
+        q.pruneFine.run(t - FINE_RETAIN_MS);
+        q.pruneHourly.run(t - HOURLY_RETAIN_MS);
+        q.pruneCoverage.run(t - HOURLY_RETAIN_MS);
+      } catch (error) {
+        warn(`[airsea] history prune failed: ${error.message}`);
+      }
     },
     close() {
+      flush();
       try {
-        flush();
-      } finally {
         db.close();
+      } catch (error) {
+        warn(`[airsea] history close failed: ${error.message}`);
       }
     },
   };

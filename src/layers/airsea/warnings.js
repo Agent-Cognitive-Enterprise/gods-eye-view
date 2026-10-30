@@ -2,6 +2,7 @@ import * as Cesium from 'cesium';
 import { formatNumber, msg, t } from '../../i18n/index.js';
 import { translateFeedError } from '../../ui/statusText.js';
 import { continuousRing } from '../../airsea/warnings.js';
+import { RESTORE_ORIGIN, trackVisibility } from './visibility.js';
 
 /**
  * Warning Areas layer (fork feature): aviation and maritime warning areas
@@ -61,7 +62,7 @@ function defaultStorage() {
   }
 }
 
-/** Polygons (as rings), lines and points of a GeoJSON geometry. */
+/** Polygons (outer ring, then holes), lines and points of a geometry. */
 function parts(geometry, out = { polygons: [], lines: [], points: [] }) {
   if (!geometry) return out;
   switch (geometry.type) {
@@ -78,10 +79,10 @@ function parts(geometry, out = { polygons: [], lines: [], points: [] }) {
       out.lines.push(...geometry.coordinates);
       break;
     case 'Polygon':
-      out.polygons.push(geometry.coordinates[0]);
+      out.polygons.push(geometry.coordinates);
       break;
     case 'MultiPolygon':
-      for (const polygon of geometry.coordinates) out.polygons.push(polygon[0]);
+      for (const polygon of geometry.coordinates) out.polygons.push(polygon);
       break;
     case 'GeometryCollection':
       for (const part of geometry.geometries) parts(part, out);
@@ -143,6 +144,7 @@ export function createWarningAreasLayer({
   let _rowListener = null;
   let _restoreTimer = null;
   let _selected = null; // detail of the warning opened from the list
+  let _visibility = null;
   const _domains = new Set(
     (read('domains', 'marine_weather,maritime,aviation') || '')
       .split(',')
@@ -168,8 +170,9 @@ export function createWarningAreasLayer({
     share.publishWarnings(
       _enabled
         ? visible().flatMap((w) =>
-            parts(w.geometry).polygons.map((ring) => ({
-              ring: continuousRing(ring),
+            parts(w.geometry).polygons.map(([outer, ...holes]) => ({
+              ring: continuousRing(outer),
+              holes: holes.map(continuousRing),
               color: DOMAINS.find((d) => d.id === w.domain)?.color ?? '#ff4d4d',
             })),
           )
@@ -216,8 +219,16 @@ export function createWarningAreasLayer({
     if (!_primitives) return;
     renderSlices();
     const shown = visible();
+    // An amended warning keeps its id: its last change redraws it.
     const signature = JSON.stringify([
-      shown.map((w) => [w.id, w.severity, w.isNew]),
+      shown.map((w) => [
+        w.id,
+        w.severity,
+        w.isNew,
+        w.trial,
+        w.domain,
+        w.lastChange?.atUtc ?? null,
+      ]),
       _selected?.id ?? null,
     ]);
     if (signature === _signature) return;
@@ -233,14 +244,24 @@ export function createWarningAreasLayer({
       );
       const selected = _selected?.id === warning.id;
       const { polygons, lines, points } = parts(warning.geometry);
-      for (const ring of polygons) {
+      for (const [ring, ...holes] of polygons) {
         const positions = Cesium.Cartesian3.fromDegreesArray(
           continuousRing(ring).flat(),
+        );
+        // Holes (a harbour left open) stay unfilled.
+        const holeHierarchies = holes.map(
+          (hole) =>
+            new Cesium.PolygonHierarchy(
+              Cesium.Cartesian3.fromDegreesArray(continuousRing(hole).flat()),
+            ),
         );
         fills.push(
           new Cesium.GeometryInstance({
             geometry: new Cesium.PolygonGeometry({
-              polygonHierarchy: new Cesium.PolygonHierarchy(positions),
+              polygonHierarchy: new Cesium.PolygonHierarchy(
+                positions,
+                holeHierarchies,
+              ),
               vertexFormat: Cesium.PerInstanceColorAppearance.VERTEX_FORMAT,
             }),
             attributes: {
@@ -348,12 +369,18 @@ export function createWarningAreasLayer({
     notifyRow();
   }
 
+  let _openToken = 0;
   async function open(id) {
+    // Only the latest click counts, and only while the layer is on.
+    const token = ++_openToken;
+    let detail;
     try {
-      _selected = await source.getWarning(id);
+      detail = await source.getWarning(id);
     } catch {
-      _selected = null;
+      return; // keep what was open
     }
+    if (token !== _openToken || !_enabled) return;
+    _selected = detail;
     const bounds = _selected?.bounds;
     if (bounds && _viewer) {
       // The operator chose this: Autopilot steps aside first.
@@ -379,9 +406,12 @@ export function createWarningAreasLayer({
     let tries = 0;
     const attempt = () => {
       _restoreTimer = null;
-      if (_enabled || !_manager) return;
+      if (!_manager) return;
       if (_manager.viewer) {
-        void _manager.setEnabled(WARNING_LAYER_ID, true);
+        // Sent even if a reveal switched it on first: it is the operator's.
+        void _manager.setEnabled(WARNING_LAYER_ID, true, {
+          origin: RESTORE_ORIGIN,
+        });
         return;
       }
       if (++tries < 60) _restoreTimer = setTimeout(attempt, 500);
@@ -398,6 +428,11 @@ export function createWarningAreasLayer({
 
     attachDataManager(manager) {
       _manager = manager;
+      // Only a person's own on/off is remembered across reloads.
+      _visibility = trackVisibility(manager, {
+        id: WARNING_LAYER_ID,
+        remember: (on) => write('enabled', on ? '1' : '0'),
+      });
       scheduleRestore();
     },
     setRowControlsListener(listener) {
@@ -423,20 +458,18 @@ export function createWarningAreasLayer({
     },
     enable() {
       _enabled = true;
-      write('enabled', '1');
       if (_primitives) _primitives.show = _points.show = true;
       renderSlices();
     },
     disable() {
       _enabled = false;
-      write('enabled', '0');
       if (_primitives) _primitives.show = _points.show = false;
       renderSlices();
     },
     async update(_viewerArg, { signal } = {}) {
       if (!_enabled || signal?.aborted) return false;
       try {
-        const answer = await source.getWarnings({ signal });
+        const answer = await source.getWarnings({ trial: _trial, signal });
         if (!_enabled) return false;
         _warnings = answer.warnings ?? [];
         _sources = answer.sources ?? [];
@@ -455,6 +488,8 @@ export function createWarningAreasLayer({
     destroy(viewer = _viewer) {
       layer.disable();
       clearTimeout(_restoreTimer);
+      _visibility?.stop();
+      _visibility = null;
       _removeShareListener?.();
       _removeShareListener = null;
       if (_slices) {
@@ -532,6 +567,8 @@ export function createWarningAreasLayer({
               write('trial', _trial ? '1' : '0');
               render();
               notifyRow();
+              // Test data is only fetched while shown.
+              if (_trial && _manager) void _manager.refreshLayer?.(layer.id);
             },
           },
           ...(_selected?.sourceUrl

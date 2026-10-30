@@ -13,9 +13,14 @@ import { latLngToCell } from 'h3-js';
 export const FOOTPRINT_RULES = Object.freeze({
   air: Object.freeze({
     resolutions: Object.freeze([2, 3]),
-    maxGapMs: 20 * 60_000,
+    // Anonymous OpenSky is sampled every 30 minutes: a cruise between two
+    // samples is still followed along its great circle.
+    maxGapMs: 35 * 60_000,
     maxSpeedKmh: 1300,
     sampleKm: 15,
+    // Back into a cell it left this recently: the same passage (edge jitter,
+    // holding patterns), not a new one.
+    reentryMs: 10 * 60_000,
   }),
   sea: Object.freeze({
     // 2 and 3 match the air grids so the two can share hexagons.
@@ -23,10 +28,14 @@ export const FOOTPRINT_RULES = Object.freeze({
     maxGapMs: 3 * 3600_000,
     maxSpeedKmh: 90,
     sampleKm: 4,
+    reentryMs: 30 * 60_000,
   }),
 });
 
 const R_KM = 6371.0088;
+// Fixes closer in time than this are judged on distance, not speed: feeds
+// stamp the same position whole seconds apart or fractions apart.
+const MIN_SPEED_DT_MS = 30_000;
 const rad = (d) => (d * Math.PI) / 180;
 const deg = (r) => (r * 180) / Math.PI;
 
@@ -77,7 +86,7 @@ export function segmentCells(previous, next, resolution, rules) {
   const dtMs = next.observedAt - previous.observedAt;
   if (!(dtMs > 0)) return { cells: [], uncertain: false };
   const km = distanceKm(previous, next);
-  const kmh = km / (dtMs / 3600_000);
+  const kmh = km / (Math.max(dtMs, MIN_SPEED_DT_MS) / 3600_000);
   if (dtMs > rules.maxGapMs || kmh > rules.maxSpeedKmh)
     return { cells: [{ cell: endCell, minutes: 0, at }], uncertain: true };
   const steps = Math.max(1, Math.ceil(km / rules.sampleKm));
@@ -99,32 +108,37 @@ export function segmentCells(previous, next, resolution, rules) {
 
 /**
  * Per-object footprint state: the cell each object was last in, per
- * resolution. `observe` returns the passages (new cell entries) and the
- * minutes a new fix adds.
+ * resolution, and the cells it left recently. `observe` returns the
+ * passages (new cell entries) and the minutes a new fix adds.
+ *
+ * The first sighting of an object is no passage: after a restart every
+ * moored ship and parked aircraft would otherwise "arrive" at once. After
+ * an uncertain gap the object still counts only if it is in another cell.
  */
 export function createFootprintTracker({ maxObjects = 300_000 } = {}) {
-  const state = new Map(); // `${domain}:${id}` -> {fix, cells: {res: cell}}
+  // `${domain}:${id}` -> {fix, cells: {res: cell}, left: {res: Map cell->at}}
+  const state = new Map();
 
   function observe(fix, previousFix = null) {
     const rules = FOOTPRINT_RULES[fix.domain];
-    if (!rules) return { passages: [], minutes: [], uncertain: false };
+    if (!rules)
+      return { passages: [], minutes: [], uncertain: false, fresh: false };
     const key = `${fix.domain}:${fix.id}`;
     const known = state.get(key);
     const previous = previousFix ?? known?.fix ?? null;
     if (previous && fix.observedAt <= previous.observedAt)
-      return { passages: [], minutes: [], uncertain: false };
+      return { passages: [], minutes: [], uncertain: false, fresh: false };
     const passages = [];
     const minutes = [];
     let uncertain = false;
     const lastCells = { ...(known?.cells ?? {}) };
+    const left = { ...(known?.left ?? {}) };
     for (const resolution of rules.resolutions) {
       const segment = segmentCells(previous, fix, resolution, rules);
-      // After an uncertain gap the object may be on a new trip: its next
-      // cell is a new passage even if it is the same cell as before.
-      if (segment.uncertain) {
-        uncertain = true;
-        lastCells[resolution] = null;
-      }
+      if (segment.uncertain) uncertain = true;
+      const recent = new Map(left[resolution] ?? []);
+      for (const [cell, at] of recent)
+        if (fix.observedAt - at > rules.reentryMs) recent.delete(cell);
       for (const step of segment.cells) {
         if (step.minutes > 0)
           minutes.push({
@@ -133,19 +147,26 @@ export function createFootprintTracker({ maxObjects = 300_000 } = {}) {
             minutes: step.minutes,
             at: step.at,
           });
-        if (lastCells[resolution] !== step.cell) {
+        const from = lastCells[resolution];
+        if (from === step.cell) continue;
+        if (from) recent.set(from, step.at);
+        // First sighting, or back in a cell it just left: no new passage.
+        if (from && !recent.has(step.cell))
           passages.push({ resolution, cell: step.cell, at: step.at });
-          lastCells[resolution] = step.cell;
-        }
+        recent.delete(step.cell);
+        lastCells[resolution] = step.cell;
       }
+      left[resolution] = recent;
     }
     state.delete(key);
-    state.set(key, { fix, cells: lastCells });
+    state.set(key, { fix, cells: lastCells, left });
     for (const oldest of state.keys()) {
       if (state.size <= maxObjects) break;
       state.delete(oldest);
     }
-    return { passages, minutes, uncertain };
+    // Fresh: a newer position of an object already known. Feed timestamps
+    // can lag the clock by minutes, so this is judged per object.
+    return { passages, minutes, uncertain, fresh: Boolean(previous) };
   }
 
   return { observe, size: () => state.size };

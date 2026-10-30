@@ -7,12 +7,7 @@
 // Coordinates: h3-js takes and returns [lat, lng]; everything this module
 // emits as geometry is GeoJSON order [lon, lat].
 
-import {
-  cellToBoundary,
-  getHexagonAreaAvg,
-  isPentagon,
-  latLngToCell,
-} from 'h3-js';
+import { cellToBoundary, cellArea, isPentagon, latLngToCell } from 'h3-js';
 
 export const DOMAINS = Object.freeze(['air', 'sea']);
 // A fix this far ahead of its receipt is a clock or parser error.
@@ -239,7 +234,6 @@ export function aggregateCells(
   fixes,
   { resolution, now, box = null, maxCells = 8_000 },
 ) {
-  const areaKm2 = getHexagonAreaAvg(resolution, 'km2');
   const cells = new Map();
   for (const fix of fixes) {
     if (!inBox(fix, box)) continue;
@@ -276,8 +270,8 @@ export function aggregateCells(
   for (const cell of ranked.slice(0, maxCells)) {
     const ring = cellRing(cell.h3);
     if (!ring) continue;
-    // Pentagons are smaller than the average hexagon: density uses the
-    // resolution's average area either way, so counts stay comparable.
+    // Density per the cell's own area: H3 cells of one resolution range
+    // from about half to 1.2 times the average.
     out.push({
       h3: cell.h3,
       ring,
@@ -285,7 +279,9 @@ export function aggregateCells(
       movingCount: cell.movingCount,
       stationaryCount: cell.stationaryCount,
       densityPer10kKm2:
-        Math.round((cell.uniqueCount / areaKm2) * 10_000 * 100) / 100,
+        Math.round(
+          (cell.uniqueCount / cellArea(cell.h3, 'km2')) * 10_000 * 100,
+        ) / 100,
       newestAgeMs: Math.max(0, now - cell.newestAt),
       oldestAgeMs: Math.max(0, now - cell.oldestAt),
       providers: [...cell.providers].sort(),

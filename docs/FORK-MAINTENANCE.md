@@ -40,21 +40,21 @@ New files are fork-only (`src/intel/`, `server/providers/intel/`,
 `src/layers/airsea/`, `server/providers/airsea/`, the fork docs and workflows). Upstream files the
 fork edits are the merge surface; keep these edits additive and small:
 
-| File                                                                                         | Fork change                                                                |
-| -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `server/providers/local.js`                                                                  | Registers the intel and local-voice plugins; shares the GhostMaps watcher. |
-| `src/app/tools.js`, `src/standalone/tools.js`                                                | Mounts the Autopilot console and dock auto-hide; offers `local` voice.     |
-| `src/ui/templates/layer-panels.html`                                                         | FEEDS panel shell at the end of the left stack.                            |
-| `src/ui/leftPanelRail.js`                                                                    | Reads `--left-stack-base-top` (px) before its 26vh default.                |
-| `server/providers/aircraft/opensky.js`, `adsb-lol.js`                                        | One `publishTrafficSnapshot()` call after each cached snapshot (air/sea).  |
-| `src/app/constructCatalog.js`, `src/ui/layerPanel.js`, `src/ui/layerNames.js`                | Air Traffic / Sea Traffic layers, local-only metadata, Air & Sea group.    |
-| `src/sources/reference.js`, `src/app/sourceComposition.js`, `src/voice/layerManifest.js`     | `air-sea` source contract; the two layers listed voice-off.                |
-| `src/creditAttribution.test.mjs`, layer-count tests                                          | Vetted dock-hidden credit selectors; catalog size 35.                      |
-| `src/ui/templates/context.html`, `style.css`                                                 | Panel shell and stylesheet import.                                         |
-| `src/voice/commands.js`, `src/voice/providerCapabilities.js`, `src/voice/sessionCommands.js` | Local voice provider entry and label.                                      |
-| `scripts/package-boundaries.json`                                                            | Owned-module entries for the new modules.                                  |
-| `src/i18n/locales/*.json`, `src/i18n/same-as-english.json`                                   | Added strings (append-only).                                               |
-| `src/data/dataCredits.js`, `DATA_SOURCES.md`, `.env.example`                                 | One credit entry, one source row and note, commented settings.             |
+| File                                                                                         | Fork change                                                                                             |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `server/providers/local.js`                                                                  | Registers the intel, air/sea and local-voice plugins; shares the GhostMaps watcher and the air/sea hub. |
+| `src/app/tools.js`, `src/standalone/tools.js`                                                | Mounts the Autopilot console and dock auto-hide; offers `local` voice; Air & Sea layer reveal.          |
+| `src/ui/templates/layer-panels.html`                                                         | FEEDS panel shell at the end of the left stack.                                                         |
+| `src/ui/leftPanelRail.js`                                                                    | Reads `--left-stack-base-top` (px) before its 26vh default.                                             |
+| `server/providers/aircraft/opensky.js`, `adsb-lol.js`                                        | One `publishTrafficSnapshot()` call after each cached snapshot (air/sea).                               |
+| `src/app/constructCatalog.js`, `src/ui/layerPanel.js`, `src/ui/layerNames.js`                | The four Air & Sea layers, local-only metadata, Air & Sea group.                                        |
+| `src/sources/reference.js`, `src/app/sourceComposition.js`, `src/voice/layerManifest.js`     | `air-sea` source contract; the four layers listed voice-off.                                            |
+| `src/creditAttribution.test.mjs`, layer-count tests                                          | Vetted dock-hidden credit selectors; catalog size 37.                                                   |
+| `src/ui/templates/context.html`, `style.css`                                                 | Panel shell and stylesheet import.                                                                      |
+| `src/voice/commands.js`, `src/voice/providerCapabilities.js`, `src/voice/sessionCommands.js` | Local voice provider entry and label.                                                                   |
+| `scripts/package-boundaries.json`                                                            | Owned-module entries for the new modules.                                                               |
+| `src/i18n/locales/*.json`, `src/i18n/same-as-english.json`                                   | Added strings (append-only).                                                                            |
+| `src/data/dataCredits.js`, `DATA_SOURCES.md`, `.env.example`                                 | One credit entry, one source row and note, commented settings.                                          |
 
 The merge check flags conflicts and both-sides changes in these areas
 (`autopilot-hooks`, `voice`, `director`, `camera`, `i18n`, `dependencies`,
@@ -151,3 +151,23 @@ succeeded); runs `npm ci` if the lockfile changed, the local gates and a
 production build; restarts the instance and runs the smoke test. Any failure
 after the branch moves resets it to the rollback point and restarts that
 version. `Test-GEV.ps1` runs the smoke test on its own.
+
+## Air & Sea: enabling and rolling back
+
+Air & Sea reaches an installation only through the normal deployment above,
+after `feature/air-sea-monitor` is merged and verified. It is off unless
+`GEV_AIRSEA_ENABLED=1` is set in `.env`.
+
+- **Switch it off, keep the code:** remove `GEV_AIRSEA_ENABLED=1` and restart.
+  The routes answer 404, the layers report it, nothing is collected and the
+  Autopilot feed is not registered. `GEV_INTEL_AIRSEA=0` keeps the layers but
+  takes the signals out of the Autopilot.
+- **Go back a version:** run `Deploy-GEV.ps1 -Ref <rollback commit>`; the
+  rollback point is in `logs\deploy-<instance>-<time>.json`.
+- **Data:** everything lives in `.gev-cache/airsea/` (`traffic.sqlite` and its
+  `-wal` and `-shm` files, `warnings.json`, `zones/`). It is safe to delete
+  while the server is stopped, but traffic history cannot be rebuilt: the
+  baselines start again and comparisons need two more weeks. Events already
+  ingested stay in the Autopilot store until they expire.
+- **Keys:** AISStream allows one connection per key, and each instance with
+  `AISSTREAM_API_KEY` opens its own. Air & Sea needs no new key.

@@ -15,9 +15,10 @@
 // clock times in the text), so a repeat poll is a duplicate, not a new
 // revision, and one situation stays one event (stable event keys).
 
-import { cellToParent, gridDisk } from 'h3-js';
+import { gridDisk, latLngToCell } from 'h3-js';
 import { WARNING_SOURCES } from './warnings.js';
 import { cellRing } from '../../../src/airsea/aggregate.js';
+import { geometryBounds } from '../../../src/airsea/warnings.js';
 
 const HOUR = 3600_000;
 const PROVIDER = 'airsea';
@@ -35,6 +36,11 @@ const WARNING_SEVERITY_HINT = Object.freeze({
 // A pre-warning reference has no seasonal control: only large changes.
 const MIN_PRE_WARNING_CHANGE = 60;
 const tens = (pct) => Math.round(pct / 10) * 10;
+// A followed warning whose reading stops qualifying waits this many new
+// hourly readings before its card says so: no flip-flop around a threshold.
+const RECOVERY_READINGS = 2;
+// One warning across reissues (NWS gives every update a new id).
+const chainOf = (warning) => warning.chainId ?? warning.id;
 const signed = (pct) => `${pct > 0 ? '+' : ''}${pct}%`;
 
 /** Centre of [west, south, east, north]; west > east crosses the antimeridian. */
@@ -80,10 +86,14 @@ export function warningRecord(warning, { paired = false } = {}) {
   const location = warningLocation(warning);
   if (!location || warning.trial) return null;
   const source = WARNING_SOURCES.find((s) => s.id === warning.sourceId);
+  const chain = chainOf(warning);
   return {
     provider: PROVIDER,
-    source_item_id: `warning:${warning.id}`,
-    event_key: `warning:${warning.id}`,
+    source_item_id: `warning:${chain}`,
+    event_key: `warning:${chain}`,
+    // Its own lineage: the warning's URL is also the NWS feed's lineage, and
+    // sharing it would merge this event into that feed's alert.
+    lineage_key: `airsea:warning:${chain}`,
     publisher: warning.authority || source?.title || 'Warning authority',
     source_type: 'primary_official',
     url: warning.sourceUrl,
@@ -193,10 +203,12 @@ export function correlationRecord(correlation, warning) {
     severity = Math.min(45, severity);
   // A followed warning whose traffic is back to normal (or cannot be read).
   if (!qualifies(correlation)) severity = 25;
+  const chain = chainOf(warning);
   return {
     provider: PROVIDER,
-    source_item_id: `traffic:${warning.id}:${correlation.domain}`,
-    event_key: `warning:${warning.id}`,
+    source_item_id: `traffic:${chain}:${correlation.domain}`,
+    event_key: `warning:${chain}`,
+    lineage_key: `airsea:traffic:${chain}:${correlation.domain}`,
     publisher: ANALYSIS,
     source_type: 'analyst',
     url: null,
@@ -209,7 +221,11 @@ export function correlationRecord(correlation, warning) {
       ? `${what} traffic ${signed(change)} in ${warning.title}`.slice(0, 200)
       : `${what} traffic in ${warning.title}`.slice(0, 200),
     summary: correlationSummary(correlation),
-    occurred_at: warning.effectiveFromUtc ?? warning.publishedAtUtc,
+    // What happened is the traffic over the measured window.
+    occurred_at:
+      correlation.observedFromUtc ??
+      warning.effectiveFromUtc ??
+      warning.publishedAtUtc,
     // News is the measurement, not the warning: dated by its window's end.
     published_at: correlation.observedThroughUtc ?? warning.publishedAtUtc,
     valid_until: warning.effectiveUntilUtc ?? undefined,
@@ -257,34 +273,38 @@ export function anomalyClusters(cells) {
   return groups;
 }
 
+const wrapLon = (lon) => ((((lon + 180) % 360) + 360) % 360) - 180;
+
+/** Bounds of a cluster's cells, across the antimeridian when it straddles. */
 function clusterBounds(group) {
-  const points = group.flatMap((c) => cellRing(c.cell ?? c.h3) ?? []);
-  if (!points.length) return null;
-  const lats = points.map(([, lat]) => lat);
-  // Rings near the antimeridian already use longitudes beyond 180.
-  const lons = points.map(([lon]) => lon);
-  const wrap = (lon) => (lon > 180 ? lon - 360 : lon);
-  return [
-    wrap(Math.min(...lons)),
-    Math.min(...lats),
-    wrap(Math.max(...lons)),
-    Math.max(...lats),
-  ];
+  const rings = group
+    .map((c) => cellRing(c.cell ?? c.h3))
+    .filter(Boolean)
+    .map((ring) => ring.map(([lon, lat]) => [wrapLon(lon), lat]));
+  if (!rings.length) return null;
+  return geometryBounds({
+    type: 'MultiPolygon',
+    coordinates: rings.map((ring) => [ring]),
+  });
 }
 
-/** Anomaly clusters worth a queue entry: several cells, or one solid one. */
+/** Anomaly clusters worth a queue entry: two or more adjacent cells. */
 export function anomalyRecords(answer) {
   if (answer?.status !== 'ok') return [];
   const out = [];
   for (const group of anomalyClusters(answer.cells)) {
-    const solid = group.some((c) => c.confidence !== 'low');
-    if (group.length < 2 && !solid) continue;
+    // A lone cell is too easily chance; it stays on the anomaly layer.
+    if (group.length < 2) continue;
     const bounds = clusterBounds(group);
     if (!bounds) continue;
     const kind = group[0].observation;
     const drop = kind === 'possible_traffic_suppression';
-    const anchor = group.map((c) => c.cell ?? c.h3).sort()[0];
-    const region = cellToParent(anchor, 0);
+    // Keyed on the cluster's own place (a resolution-1 cell, ~600 km), not
+    // on whichever member sorts first: the key holds while it grows or
+    // shrinks, and two clusters far apart never share one.
+    const centre = boxCentre(bounds);
+    const region = latLngToCell(centre.lat, centre.lon, 1);
+    const hour = new Date(answer.hour_start).toISOString().slice(11, 16);
     const current = group.reduce((s, c) => s + c.current, 0);
     const baseline = group.reduce((s, c) => s + c.baseline, 0);
     const change = tens(((current - baseline) / baseline) * 100);
@@ -302,7 +322,9 @@ export function anomalyRecords(answer) {
       category: 'infrastructure_disruption',
       subtype: `${what}_traffic_anomaly`,
       title: `Possible ${drop ? 'drop' : 'rise'} in ${what} traffic (${group.length} cells, ${signed(change)})`,
-      summary: `${current} passages in the last complete hour against a usual ${baseline} for this hour of the week (${answer.weeksUsed} comparable weeks; confidence ${answer.confidence}). Feed coverage adequate. Cause unknown.`,
+      // The hour is in the text: each hour is a new reading that keeps the
+      // event alive (valid_until), not a duplicate of the last one.
+      summary: `${current} passages in the hour from ${hour} UTC against a usual ${baseline} for this hour of the week (${answer.weeksUsed} comparable weeks; confidence ${answer.confidence}). Feed coverage adequate. Cause unknown.`,
       occurred_at: answer.hour_start,
       published_at: answer.hour_start + HOUR,
       // Gone unless the next hours repeat it.
@@ -329,29 +351,60 @@ export function anomalyRecords(answer) {
 /**
  * Every qualified record now. `service`: the air/sea service (correlations,
  * anomalies); `warnings`: the warning service (list), or null; `followed`:
- * warnings already sent, whose measurement keeps being refreshed (back to
- * normal, inconclusive) while they stay active, so the card never goes stale.
+ * warning chains already sent (chain -> {misses, lastTo}), whose card keeps
+ * being refreshed while they stay active: back to normal after
+ * RECOVERY_READINGS new readings, and resolved when the warning ends.
  */
-export function airSeaRecords({ service, warnings, followed = new Set() }) {
+export function airSeaRecords({ service, warnings, followed = new Map() }) {
   const listed = warnings?.list() ?? [];
   const byId = new Map(listed.map((w) => [w.id, w]));
   const records = [];
-  const sent = new Set();
+  const sent = new Set(); // chains
   for (const correlation of service.correlations?.(listed) ?? []) {
-    const id = correlation.warningId;
-    if (!qualifies(correlation) && !followed.has(id)) continue;
-    const warning = byId.get(id);
+    const warning = byId.get(correlation.warningId);
+    if (!warning) continue;
+    const chain = chainOf(warning);
+    const follow = followed.get(chain);
+    if (qualifies(correlation)) {
+      followed.set(chain, {
+        misses: 0,
+        lastTo: correlation.observedThroughUtc,
+      });
+    } else {
+      if (!follow) continue;
+      sent.add(chain); // still followed, even while held back
+      if (follow.lastTo !== correlation.observedThroughUtc) {
+        follow.misses += 1;
+        follow.lastTo = correlation.observedThroughUtc;
+      }
+      if (follow.misses < RECOVERY_READINGS) continue;
+    }
     const official = warningRecord(warning, { paired: true });
     const measured = correlationRecord(correlation, warning);
     if (!official || !measured) continue;
     records.push(measured, official);
-    sent.add(id);
+    sent.add(chain);
   }
-  // Forget warnings no longer active.
-  for (const id of followed) if (!sent.has(id)) followed.delete(id);
-  for (const id of sent) followed.add(id);
+  // Followed warnings that ended: their card is resolved, then forgotten.
+  const gone = [...followed.keys()].filter((chain) => !sent.has(chain));
+  if (gone.length) {
+    const ended = new Map(
+      (warnings?.list({ includeEnded: true }) ?? []).map((w) => [
+        chainOf(w),
+        w,
+      ]),
+    );
+    for (const chain of gone) {
+      followed.delete(chain);
+      const warning = ended.get(chain);
+      if (warning?.status !== 'cancelled' && warning?.status !== 'expired')
+        continue;
+      const record = warningRecord(warning, { paired: true });
+      if (record) records.push(record);
+    }
+  }
   for (const warning of listed) {
-    if (sent.has(warning.id) || warning.trial) continue;
+    if (sent.has(chainOf(warning)) || warning.trial) continue;
     if (warning.domain === 'marine_weather' || warning.status !== 'active')
       continue;
     if (warning.severity !== 'danger' && warning.severity !== 'restricted')
@@ -371,7 +424,7 @@ export function airSeaRecords({ service, warnings, followed = new Set() }) {
  */
 export function createAirSeaHub() {
   let attached = null;
-  const followed = new Set();
+  const followed = new Map();
   const waiting = new Set();
   return {
     attach(services) {

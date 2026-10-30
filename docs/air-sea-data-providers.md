@@ -48,6 +48,7 @@ unavailable`), never a polygon.
 `scheduled` → `active` → `expired`, or `cancelled`, from each source's own
 times. A warning is never expired because its feed went quiet; it ends
 when its stated end passes, when the source cancels or supersedes it, or
-when a complete, successful listing from that source no longer contains it
-(`removed_by_source`). Ended warnings are kept 30 days with their change
-history (`new`, `changed`, `cancelled`, `expired`).
+when two complete, successful listings in a row from that source no longer
+contain it (`removed_by_source`). If the source lists it again, it is
+reinstated. Ended warnings are kept 30 days with their change history (`new`,
+`changed`, `cancelled`, `expired`, `reinstated`).

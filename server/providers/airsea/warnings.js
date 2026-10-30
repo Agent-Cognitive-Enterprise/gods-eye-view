@@ -18,6 +18,7 @@ import {
   warningStatus,
 } from '../../../src/airsea/warnings.js';
 import { readZipTextEntries } from './zip.js';
+import { readResponseBytesCapped } from '../../../src/sources/httpBody.js';
 
 const USER_AGENT = 'GodsEyeView-fork/early-warning (local research instance)';
 const NWS_PARSER_VERSION = 'nws-marine-1';
@@ -178,6 +179,7 @@ export function nwsMarineDrafts(collection, zoneGeometry) {
       publishedAtUtc: p.sent ?? null,
       effectiveFromUtc: p.onset ?? p.effective ?? null,
       effectiveUntilUtc: p.ends ?? p.expires ?? null,
+      cancel: p.messageType === 'Cancel',
       cancelledAtUtc: p.messageType === 'Cancel' ? (p.sent ?? null) : null,
       severity: NWS_SEVERITY.find(([re]) => re.test(event))?.[1] ?? 'advisory',
       geometry,
@@ -211,6 +213,7 @@ export function createWarningService({
   const state = {}; // source id -> {last_success_at, last_attempt_at, last_error, failures, validators, count}
   const zones = new Map(); // zone id -> {geometry, fetchedAt}
   let dirty = false;
+  let version = 0; // bumped by every apply: list answers are cached by it
   const timers = [];
 
   try {
@@ -255,14 +258,31 @@ export function createWarningService({
       if (!next) continue;
       seen.add(next.id);
       const previous = records.get(next.id);
-      const kind = changeKind(previous, next, t);
+      let kind = changeKind(previous, next, t);
+      // Listed again after a listing that left it out: still in force.
+      const reinstated = previous?.endReason === 'removed_by_source';
+      if (reinstated && !kind) kind = 'reinstated';
+      // One chain id across updates that supersede each other (NWS issues
+      // every update under a new id): the Autopilot follows the chain.
+      const chainId =
+        previous?.chainId ??
+        next.supersedes
+          .map((id) => records.get(id)?.chainId ?? null)
+          .find(Boolean) ??
+        next.supersedes.find((id) => records.has(id)) ??
+        next.id;
       const stored = {
         ...next,
+        bounds: geometryBounds(next.geometry),
+        chainId,
         firstSeenAtUtc: previous?.firstSeenAtUtc ?? iso(t),
         lastVerifiedAtUtc: iso(t),
-        // An earlier end or cancellation recorded here is kept.
+        missingListings: 0,
+        // An earlier end or cancellation recorded here is kept, except an
+        // absence the source has now taken back.
         cancelledAtUtc: next.cancelledAtUtc ?? previous?.cancelledAtUtc ?? null,
-        endedAtUtc: previous?.endedAtUtc ?? null,
+        endedAtUtc: reinstated ? null : (previous?.endedAtUtc ?? null),
+        endReason: reinstated ? null : (previous?.endReason ?? null),
         lastChange: kind
           ? { kind, atUtc: iso(t) }
           : (previous?.lastChange ?? null),
@@ -286,10 +306,17 @@ export function createWarningService({
     }
     // A complete, successful listing is authoritative: anything of this
     // source it no longer contains has ended (never because a feed failed).
+    // Two listings in a row must leave it out, so one short or empty answer
+    // cannot end every warning at once.
     if (complete)
-      for (const record of records.values())
-        if (record.sourceId === sourceId && !seen.has(record.id))
-          end(record.id, 'removed_by_source', t);
+      for (const record of records.values()) {
+        if (record.sourceId !== sourceId || seen.has(record.id)) continue;
+        if (record.endedAtUtc || record.cancelledAtUtc) continue;
+        record.missingListings = (record.missingListings ?? 0) + 1;
+        dirty = true;
+        if (record.missingListings >= 2) end(record.id, 'removed_by_source', t);
+      }
+    version += 1;
     prune(t);
   }
 
@@ -423,10 +450,20 @@ export function createWarningService({
             (f) => f.properties?.affectedZones ?? [],
           ),
         );
-        apply('nws-marine', nwsMarineDrafts(collection, zoneGeometry), {
-          complete: true,
-          parserVersion: NWS_PARSER_VERSION,
-        });
+        const drafts = nwsMarineDrafts(collection, zoneGeometry);
+        // A Cancel message cancels the alerts it references; it is not a
+        // warning of its own.
+        apply(
+          'nws-marine',
+          drafts.filter((d) => !d.cancel),
+          {
+            complete: true,
+            cancels: drafts
+              .filter((d) => d.cancel)
+              .flatMap((d) => d.supersedes),
+            parserVersion: NWS_PARSER_VERSION,
+          },
+        );
         return (collection.features ?? []).length;
       },
     },
@@ -441,10 +478,10 @@ export function createWarningService({
         });
         if (response.status === 304) return null;
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const length = Number(response.headers.get('content-length'));
-        if (length > 32 * 1024 * 1024)
-          throw new Error('exchange set too large');
-        const bytes = Buffer.from(await response.arrayBuffer());
+        // Capped while read, with or without a declared length.
+        const bytes = Buffer.from(
+          await readResponseBytesCapped(response, 32 * 1024 * 1024),
+        );
         const entries = readZipTextEntries(bytes, {
           accept: (n) => /DATASET_FILES\/[^/]+\.GML$/i.test(n),
         });
@@ -539,6 +576,8 @@ export function createWarningService({
       status: warningStatus(record, t),
       severity: record.severity,
       trial: record.trial,
+      chainId: record.chainId ?? record.id,
+      contentHash: record.contentHash ?? null,
       isNew: t - Date.parse(record.firstSeenAtUtc) < NEW_WARNING_MS,
       lastChange: record.lastChange,
       publishedAtUtc: record.publishedAtUtc,
@@ -546,7 +585,8 @@ export function createWarningService({
       effectiveUntilUtc: record.effectiveUntilUtc,
       geometry: record.geometry,
       geometryPrecision: record.geometryPrecision,
-      bounds: geometryBounds(record.geometry),
+      // Computed once per stored geometry, not on every listing.
+      bounds: (record.bounds ??= geometryBounds(record.geometry)),
       sourceUrl: record.sourceUrl,
     };
   }
@@ -583,10 +623,13 @@ export function createWarningService({
           .length,
       }));
     },
-    list({ domains = null, includeEnded = false } = {}) {
+    /** Changes whenever a source delivered (for caching list answers). */
+    version: () => version,
+    list({ domains = null, includeEnded = false, trial = true } = {}) {
       const t = now();
       return [...records.values()]
         .filter((r) => !domains || domains.includes(r.domain))
+        .filter((r) => trial || !r.trial)
         .map((r) => summary(r, t))
         .filter(
           (r) =>

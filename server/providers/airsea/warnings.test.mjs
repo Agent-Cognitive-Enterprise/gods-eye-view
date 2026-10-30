@@ -249,3 +249,84 @@ test('routes: list, detail, sources', async () => {
   assert.equal((await call('/warnings/nope')).status, 404);
   assert.ok((await call('/warning-sources')).json.sources.length >= 7);
 });
+
+test('one short listing ends nothing; a re-listed warning is reinstated; chains keep one id', () => {
+  let clock = T;
+  const svc = createWarningService({
+    dir: tmp(),
+    now: () => clock,
+    log: () => {},
+  });
+  const draft = (extra = {}) => ({
+    id: 'nws:a',
+    sourceId: 'nws-marine',
+    domain: 'marine_weather',
+    title: 'Gale Warning',
+    effectiveFromUtc: new Date(T - 3600_000).toISOString(),
+    effectiveUntilUtc: new Date(T + 6 * 3600_000).toISOString(),
+    geometry: { type: 'Point', coordinates: [-160, 64] },
+    ...extra,
+  });
+  const listing = (drafts) =>
+    svc.apply('nws-marine', drafts, { complete: true, parserVersion: 't' });
+  listing([draft()]);
+  // One empty answer: still in force.
+  listing([]);
+  assert.deepEqual(
+    svc.list().map((w) => w.id),
+    ['nws:a'],
+  );
+  // Two in a row: ended. Listed again afterwards: reinstated.
+  listing([]);
+  assert.equal(svc.list().length, 0);
+  listing([draft()]);
+  const back = svc.detail('nws:a');
+  assert.equal(back.status, 'active');
+  assert.equal(back.endReason, null);
+  assert.equal(back.lastChange.kind, 'reinstated');
+  // NWS reissues the alert under a new id: one chain.
+  clock += 600_000;
+  listing([draft({ id: 'nws:b', supersedes: ['nws:a'] })]);
+  clock += 600_000;
+  listing([draft({ id: 'nws:c', supersedes: ['nws:b'] })]);
+  assert.equal(svc.list()[0].chainId, 'nws:a');
+});
+
+test('an NWS Cancel message cancels what it references and is no warning itself', () => {
+  const svc = createWarningService({ dir: tmp(), now: () => T, log: () => {} });
+  const alerts = (features) => ({ type: 'FeatureCollection', features });
+  const feature = (id, extra = {}) => ({
+    id: `https://api.weather.gov/alerts/${id}`,
+    geometry: { type: 'Point', coordinates: [-160, 64] },
+    properties: {
+      id,
+      event: 'Gale Warning',
+      areaDesc: 'Somewhere',
+      onset: '2026-10-30T10:00:00Z',
+      ends: '2026-10-31T10:00:00Z',
+      affectedZones: [],
+      ...extra,
+    },
+  });
+  const drafts = nwsMarineDrafts(
+    alerts([
+      feature('A'),
+      feature('B', {
+        messageType: 'Cancel',
+        references: [{ identifier: 'A' }],
+      }),
+    ]),
+    () => null,
+  );
+  svc.apply(
+    'nws-marine',
+    drafts.filter((d) => !d.cancel),
+    {
+      complete: true,
+      cancels: drafts.filter((d) => d.cancel).flatMap((d) => d.supersedes),
+      parserVersion: 't',
+    },
+  );
+  assert.equal(svc.detail('nws:A').status, 'cancelled');
+  assert.equal(svc.detail('nws:B'), null);
+});

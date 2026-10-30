@@ -10,10 +10,13 @@ export const ANOMALY_RULES = Object.freeze({
   // Comparable weeks needed before any anomaly is reported.
   minWeeks: 2,
   // A cell needs this many passages in a normal hour to be judged at all.
-  minBaseline: 5,
-  // Relative change and robust z-score both required.
+  minBaseline: 10,
+  // Relative change and robust z-score both required. The spread is never
+  // below counting noise (sqrt of the usual count): with two to four weeks
+  // the median absolute deviation alone is often near zero, and random
+  // hour-to-hour variation would read as anomalies.
   minRelativeChange: 0.5,
-  minRobustZ: 3,
+  minRobustZ: 4,
   // Coverage: share of expected snapshots, and of normal objects per snapshot.
   minSnapshotShare: 0.75,
   minObjectShare: 0.7,
@@ -103,7 +106,7 @@ export function evaluateAnomalies(
     const mad = median(history.map((v) => Math.abs(v - m)));
     const value = current.get(cell) ?? 0;
     const change = (value - m) / m;
-    const z = (value - m) / (1.4826 * mad + 1);
+    const z = (value - m) / Math.max(1.4826 * mad, Math.sqrt(m));
     if (
       Math.abs(change) < rules.minRelativeChange ||
       Math.abs(z) < rules.minRobustZ

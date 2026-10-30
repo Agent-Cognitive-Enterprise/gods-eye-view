@@ -63,17 +63,25 @@ function localised(block, name) {
   return english ? textOf(english.inner, 'S124:text') : null;
 }
 
-/** "lat lon lat lon ..." → [[lon, lat], ...]. */
-function posList(value) {
+/**
+ * "lat lon lat lon ..." → [[lon, lat], ...]; with srsDimension 3 every
+ * third number (height) is skipped.
+ */
+function posList(value, dimension = 2) {
   const numbers = String(value ?? '')
     .trim()
     .split(/\s+/)
     .map(Number);
+  const step = dimension === 3 ? 3 : 2;
   const out = [];
-  for (let i = 0; i + 1 < numbers.length; i += 2)
+  for (let i = 0; i + 1 < numbers.length; i += step)
     out.push([numbers[i + 1], numbers[i]]);
   return out;
 }
+const dimensionOf = (element) =>
+  Number(attr(element?.attributes, 'srsDimension')) || 2;
+const positionsIn = (block, name) =>
+  elements(block, name).flatMap((p) => posList(p.inner, dimensionOf(p)));
 
 const NM_KM = 1.852;
 const radiusKm = (block) => {
@@ -84,19 +92,22 @@ const radiusKm = (block) => {
   return uom === 'KM' ? value : uom === 'M' ? value / 1000 : value * NM_KM;
 };
 
-/** Geometries of one NavwarnPart, with whether any was derived. */
+/**
+ * Geometries of one NavwarnPart, with whether any was derived (a stated
+ * circle) or approximate (arcs this parser does not trace).
+ */
 function partGeometries(part) {
   const geometries = [];
   let derived = false;
+  let approximate = false;
   for (const { inner } of elements(part, 'S124:geometry')) {
     for (const point of elements(inner, 'S100:pointProperty')) {
-      const pos = posList(first(point.inner, 'gml:pos')?.inner);
+      const pos = positionsIn(point.inner, 'gml:pos');
       if (pos.length) geometries.push({ type: 'Point', coordinates: pos[0] });
     }
     for (const curve of elements(inner, 'S100:curveProperty')) {
-      const line = elements(curve.inner, 'gml:posList').flatMap((p) =>
-        posList(p.inner),
-      );
+      const line = positionsIn(curve.inner, 'gml:posList');
+      if (/<[\w.-]*:Arc/.test(curve.inner)) approximate = true;
       if (line.length >= 2)
         geometries.push({ type: 'LineString', coordinates: line });
     }
@@ -104,7 +115,7 @@ function partGeometries(part) {
       const exterior = first(surface.inner, 'gml:exterior')?.inner ?? '';
       const circle = first(exterior, 'S100:S100_CircleByCenterPoint');
       if (circle) {
-        const [center] = posList(first(circle.inner, 'gml:pos')?.inner);
+        const [center] = positionsIn(circle.inner, 'gml:pos');
         const km = radiusKm(circle.inner);
         if (center && km) {
           geometries.push(
@@ -114,14 +125,14 @@ function partGeometries(part) {
         }
         continue;
       }
-      const ring = elements(exterior, 'gml:posList').flatMap((p) =>
-        posList(p.inner),
-      );
+      const ring = positionsIn(exterior, 'gml:posList');
+      // Arc segments are not traced: the polygon keeps only straight parts.
+      if (/<[\w.-]*:Arc/.test(exterior)) approximate = true;
       if (ring.length >= 3)
         geometries.push({ type: 'Polygon', coordinates: [ring] });
     }
   }
-  return { geometries, derived };
+  return { geometries, derived, approximate };
 }
 
 /** Calendar date (no time zone in the data) → ISO UTC, start or end of day. */
@@ -138,13 +149,17 @@ const isoUtc = (value) => {
 };
 
 const SEVERITY_RULES = [
-  [/explosive|mine|firing|gunnery|missile|rocket|ordnance/i, 'danger'],
+  // Whole words: "determined" is no mine, "flight" no light.
   [
-    /exercise|closed|closure|prohibit|restricted|exclusion|security zone/i,
+    /(?:explosives?|mines?|minefields?|firing|gunnery|missiles?|rockets?|ordnance)/i,
+    'danger',
+  ],
+  [
+    /(?:exercises?|closed|closures?|prohibited|prohibition|restricted|exclusion|security zones?)/i,
     'restricted',
   ],
   [
-    /light|buoy|beacon|aid to navigation|aids to navigation|chart|depth/i,
+    /(?:lights?|buoys?|beacons?|aids? to navigation|charts?|depths?)/i,
     'advisory',
   ],
 ];
@@ -186,10 +201,12 @@ export function parseS124Dataset(
 
   const geometries = [];
   let derived = false;
+  let approximate = false;
   for (const part of parts) {
     const found = partGeometries(part);
     geometries.push(...found.geometries);
     derived ||= found.derived;
+    approximate ||= found.approximate;
   }
   const starts = parts.map((p) => dateUtc(p, 'S124:dateStart')).filter(Boolean);
   const ends = parts.map((p) => dateUtc(p, 'S124:dateEnd', true));
@@ -235,12 +252,15 @@ export function parseS124Dataset(
           ? geometries[0]
           : { type: 'GeometryCollection', geometries },
     geometryPrecision: geometries.length
-      ? derived
-        ? 'derived_checked'
-        : 'official'
+      ? approximate
+        ? 'approximate'
+        : derived
+          ? 'derived_checked'
+          : 'official'
       : 'none',
     geometryNotes: [
       derived ? 'circle built from the stated centre and radius' : null,
+      approximate ? 'arc segments drawn as straight lines' : null,
       starts.length ? 'dates carry no time zone; read as UTC days' : null,
     ]
       .filter(Boolean)

@@ -111,8 +111,14 @@ export function createCellShare({ defer = (fn) => queueMicrotask(fn) } = {}) {
       as <= n &&
       an >= s &&
       [-360, 0, 360].some((k) => aw + k <= e && ae + k >= w);
+    // A cell wholly inside a hole of the area (water left open) is outside.
+    const inHole = (area) =>
+      (area.holes ?? []).some((hole) => {
+        const shifted = beside(hole, ring);
+        return ring.every((p) => inside(p, shifted));
+      });
     const hit = areas.find(
-      (area) => near(area) && ringsOverlap(ring, area.ring),
+      (area) => near(area) && ringsOverlap(ring, area.ring) && !inHole(area),
     );
     const color = hit?.color ?? null;
     warningHits.set(h3, color);
@@ -139,9 +145,10 @@ export function createCellShare({ defer = (fn) => queueMicrotask(fn) } = {}) {
       resolutions[owner] = next.size ? resolution : null;
       notify();
     },
-    /** @param {{ring: number[][], color: string}[]} rings */
+    /** @param {{ring: number[][], holes?: number[][][], color: string}[]} rings */
     publishWarnings(rings) {
-      const key = (list) => list.map((a) => `${a.color}:${a.ring}`).join('|');
+      const key = (list) =>
+        list.map((a) => `${a.color}:${a.ring}:${a.holes ?? ''}`).join('|');
       if (key(rings) === key(areas)) return;
       areas = rings.map((a) => ({ ...a, box: bbox(a.ring) }));
       warningHits = new Map();

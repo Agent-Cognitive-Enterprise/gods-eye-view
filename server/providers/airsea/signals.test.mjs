@@ -113,22 +113,31 @@ test('either arrival order gives the same card, and a later reading refreshes it
     a.engine.activeEvents()[0].summary,
     b.engine.activeEvents()[0].summary,
   );
-  // Two hours later traffic is back to normal: the card says so.
-  const followed = new Set([gale.id]);
-  const later = airSeaRecords({
-    ...fakes(
-      [gale],
-      [
-        correlation({
-          observation: 'no_material_change',
-          changePct: -8,
-          confidence: null,
-          corroboratingSignals: [],
-        }),
-      ],
-    ),
-    followed,
-  });
+  // Traffic is back to normal: after two new hourly readings (no flip-flop
+  // around the threshold) the card says so.
+  const followed = new Map([
+    [gale.id, { misses: 0, lastTo: '2026-11-20T12:00:00.000Z' }],
+  ]);
+  const normal = (through) =>
+    airSeaRecords({
+      ...fakes(
+        [gale],
+        [
+          correlation({
+            observation: 'no_material_change',
+            changePct: -8,
+            confidence: null,
+            corroboratingSignals: [],
+            observedThroughUtc: through,
+          }),
+        ],
+      ),
+      followed,
+    });
+  assert.deepEqual(normal('2026-11-20T13:00:00.000Z'), []);
+  assert.deepEqual(normal('2026-11-20T13:00:00.000Z'), []);
+  const later = normal('2026-11-20T14:00:00.000Z');
+  assert.equal(later.length, 2);
   a.at(T + 2 * 3600_000);
   a.engine.ingest(later, { receivedAt: T + 2 * 3600_000 });
   const [event] = a.engine.activeEvents();
@@ -226,4 +235,72 @@ test('the connector waits for the air/sea plugin, then reports it if it never st
   assert.equal(result.records.length, 2);
   again();
   assert.equal(hub.ready(), false);
+});
+
+test('a reissued warning stays one event; an ended one is resolved', () => {
+  const followed = new Map();
+  const first = airSeaRecords({
+    ...fakes([gale], [correlation()]),
+    followed,
+  });
+  // NWS reissues the alert under a new id in the same chain.
+  const reissued = { ...gale, id: 'nws:gale-2', chainId: gale.id };
+  const second = airSeaRecords({
+    ...fakes([reissued], [correlation({ warningId: reissued.id })]),
+    followed,
+  });
+  assert.equal(first[0].event_key, second[0].event_key);
+  assert.equal(second[1].lineage_key, `airsea:warning:${gale.id}`);
+  // Cancelled: no longer listed as active; the card is resolved once.
+  const ended = { ...reissued, status: 'cancelled' };
+  const closing = airSeaRecords({
+    warnings: {
+      list: ({ includeEnded = false } = {}) => (includeEnded ? [ended] : []),
+    },
+    service: {
+      correlations: () => [],
+      anomalies: ({ domain }) => quiet(domain),
+    },
+    followed,
+  });
+  assert.equal(closing.length, 1);
+  assert.equal(closing[0].status_hint, 'resolved');
+  assert.equal(followed.size, 0);
+});
+
+test('a continuing anomaly stays one live event, hour after hour', () => {
+  const { engine: e, at } = engine();
+  const centre = latLngToCell(51.5, -0.1, 2);
+  const [a, b] = gridDisk(centre, 1);
+  const cell = (id) => ({
+    cell: id,
+    current: 20,
+    baseline: 100,
+    changePct: -80,
+    robustZ: -8,
+    observation: 'possible_traffic_suppression',
+    confidence: 'medium',
+  });
+  for (let h = 0; h < 8; h++) {
+    const hourStart = T + h * 3600_000;
+    at(hourStart + 3600_000 + 60_000);
+    e.ingest(
+      anomalyRecords({
+        domain: 'air',
+        status: 'ok',
+        weeksUsed: 3,
+        confidence: 'medium',
+        hour_start: hourStart,
+        cells: [cell(a), cell(b)],
+      }),
+      { receivedAt: hourStart + 3600_000 + 60_000 },
+    );
+  }
+  const live = e
+    .activeEvents()
+    .filter(
+      (ev) =>
+        ev.lifecycle !== 'archived' && ev.subtype === 'air_traffic_anomaly',
+    );
+  assert.equal(live.length, 1);
 });

@@ -33,12 +33,26 @@ test('12: rings are closed, invalid positions dropped, unusable geometry refused
     coordinates: [
       [
         [10, 10],
-        [200, 10],
+        [600, 10],
         [11, 11],
       ],
     ],
   });
   assert.equal(bad.geometry, null, 'out-of-range point leaves too few');
+  // Longitudes written past 180 across the dateline are the same meridians.
+  const dateline = validateGeometry({
+    type: 'Polygon',
+    coordinates: [
+      [
+        [170, 10],
+        [185, 10],
+        [185, 20],
+        [170, 20],
+      ],
+    ],
+  });
+  assert.deepEqual(dateline.geometry.coordinates[0][1], [-175, 10]);
+  assert.equal(dateline.notes.includes('invalid_positions_dropped'), false);
   const multi = validateGeometry({
     type: 'MultiPolygon',
     coordinates: [

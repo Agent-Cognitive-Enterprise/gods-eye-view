@@ -47,6 +47,17 @@ export function updateTime(observation) {
 const authority = (o) =>
   o.official ? 2 : o.source_type === 'eyewitness' ? 1 : 0;
 
+/**
+ * A report family: one provider's stable key (an official warning and the
+ * local measurement filed under it share one). Ownership of the summary and
+ * of each metric is recorded by family, never by lineage: a lineage can be
+ * inherited by a copy from someone else.
+ */
+const familyOf = (observation, lineage) =>
+  observation.event_key
+    ? `${observation.provider}|${observation.event_key}`
+    : `lineage|${lineage.lineage_key}`;
+
 function newEvent(observation, lineage) {
   const at = updateTime(observation);
   const event = {
@@ -56,8 +67,8 @@ function newEvent(observation, lineage) {
     subtype: observation.subtype,
     title: observation.title,
     summary: observation.summary,
-    // Which lineage stated the summary and each metric (see applyMaterial).
-    summary_source: observation.summary ? lineage.lineage_key : null,
+    // Which report family stated the summary and each metric.
+    summary_source: observation.summary ? familyOf(observation, lineage) : null,
     language: observation.language,
     location: { ...observation.location },
     event_keys: observation.event_key
@@ -84,7 +95,10 @@ function newEvent(observation, lineage) {
     entities: [...observation.entities],
     metrics: { ...observation.metrics },
     metric_sources: Object.fromEntries(
-      Object.keys(observation.metrics).map((key) => [key, lineage.lineage_key]),
+      Object.keys(observation.metrics).map((key) => [
+        key,
+        familyOf(observation, lineage),
+      ]),
     ),
     status_hint: observation.status_hint,
     official: observation.official,
@@ -144,10 +158,14 @@ function applyMaterial(event, observation, lineage, reasons) {
   // warning and the local traffic measurement filed under it) may fill in
   // what nobody stated and refresh what it stated itself; it never
   // overrides another source.
-  const family =
-    Boolean(observation.event_key) &&
-    event.event_keys.includes(
-      `${observation.provider}|${observation.event_key}`,
+  const familyKey = familyOf(observation, lineage);
+  const family = event.event_keys.includes(familyKey);
+  // Facts nobody stated may be filled in only where that provider itself
+  // vouches for the event with an official record of its own.
+  const vouched =
+    family &&
+    event.lineages.some(
+      (l) => l.provider === observation.provider && l.official,
     );
   next.metric_sources ??= {};
   // Measured facts: counts only grow; the most authoritative source sets the rest.
@@ -158,11 +176,11 @@ function applyMaterial(event, observation, lineage, reasons) {
     else if (
       authority(observation) >= (next.official ? 2 : 0) ||
       (family &&
-        (next.metrics[key] === undefined ||
-          next.metric_sources[key] === lineage.lineage_key))
+        (next.metric_sources[key] === familyKey ||
+          (next.metrics[key] === undefined && vouched)))
     ) {
       next.metrics[key] = value;
-      next.metric_sources[key] = lineage.lineage_key;
+      next.metric_sources[key] = familyKey;
     }
   }
   // Ending an event (retracted, resolved) or reviving an ended one only
@@ -194,15 +212,15 @@ function applyMaterial(event, observation, lineage, reasons) {
     next.title = observation.title;
     if (observation.summary) {
       next.summary = observation.summary;
-      next.summary_source = lineage.lineage_key;
+      next.summary_source = familyKey;
     }
   } else if (
     family &&
     observation.summary &&
-    (!next.summary || next.summary_source === lineage.lineage_key)
+    (next.summary_source === familyKey || (!next.summary && vouched))
   ) {
     next.summary = observation.summary;
-    next.summary_source = lineage.lineage_key;
+    next.summary_source = familyKey;
   }
   if (observation.subtype && !next.subtype) next.subtype = observation.subtype;
   if (Number.isFinite(observation.valid_until))
@@ -330,6 +348,14 @@ export function createIntelEngine({ store, now, settings = {} }) {
         updated.last_seen_at,
         observation.received_at,
       );
+      // A source already on the event saying it is still in force extends
+      // the marker's lifetime; it is no news, so no re-alert.
+      if (
+        Number.isFinite(observation.valid_until) &&
+        parent.lineage_keys.includes(lineage.lineage_key) &&
+        observation.valid_until > (updated.valid_until ?? 0)
+      )
+        updated.valid_until = observation.valid_until;
       store.saveEvent(updated);
       store.saveObservation(observation, { ...link, material: false });
       return { status: 'non_material', event_id: parent.event_id, reasons: [] };

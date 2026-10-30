@@ -15,18 +15,23 @@
 
 import {
   POLYGON_TO_CELLS_FLAGS,
+  getHexagonAreaAvg,
   gridDisk,
   polygonToCellsExperimental,
 } from 'h3-js';
 import { ANOMALY_RULES, coverageAdequate, median } from './anomaly.js';
+import { continuousRing } from './warnings.js';
 
 const HOUR = 3600_000;
+const WEEK = 7 * 24 * HOUR;
 
 export const CORRELATION_RULES = Object.freeze({
   // Grids the history keeps hourly; sea zones are often small.
   resolution: Object.freeze({ air: 3, sea: 4 }),
   coarser: Object.freeze({ air: 2, sea: 3 }),
   maxInsideCells: 1500,
+  // More corners than this is not a warning area anyone drew by hand.
+  maxVertices: 10_000,
   bufferRings: 1,
   comparisonRings: 3,
   minPostMs: HOUR,
@@ -63,7 +68,34 @@ function polygonsOf(geometry, out = []) {
 export function warningZones(geometry, domain, rules = CORRELATION_RULES) {
   const polygons = polygonsOf(geometry);
   if (!polygons.length) return null;
+  // Areas h3 cannot read faithfully are not correlated: wider than half the
+  // globe (read as their complement), circling a pole, or absurdly detailed.
+  let vertices = 0;
+  let areaKm2 = 0;
+  for (const polygon of polygons) {
+    const ring = continuousRing(polygon[0] ?? []);
+    vertices += polygon.reduce((n, r) => n + r.length, 0);
+    if (ring.length < 4) return null;
+    const lons = ring.map(([lon]) => lon);
+    const lats = ring.map(([, lat]) => lat);
+    const span = Math.max(...lons) - Math.min(...lons);
+    if (span > 180 || Math.abs(lons.at(-1) - lons[0]) > 1) return null;
+    const midLat =
+      ((Math.max(...lats) + Math.min(...lats)) / 2) * (Math.PI / 180);
+    areaKm2 +=
+      span *
+      111.32 *
+      Math.cos(midLat) *
+      (Math.max(...lats) - Math.min(...lats)) *
+      110.57;
+  }
+  if (vertices > rules.maxVertices) return null;
+  // The bounding boxes bound the cell count from above: skip a grid that
+  // would be too fine before asking h3 for thousands of cells.
+  const fits = (resolution) =>
+    areaKm2 / getHexagonAreaAvg(resolution, 'km2') <= 4 * rules.maxInsideCells;
   const reach = (resolution) => {
+    if (!fits(resolution)) return null;
     const cells = new Set();
     for (const polygon of polygons) {
       for (const cell of polygonToCellsExperimental(
@@ -197,12 +229,9 @@ export function evaluateCorrelation(
   // the time of day: nothing is judged.
   if (comparison.change === null && !matched)
     return { ...base, reason: 'no_control' };
-  if (inside.change === null && inside.after < rules.minSample)
-    return { ...base, reason: 'insufficient_sample' };
-  const insideChange =
-    inside.change ??
-    // From (almost) nothing to a measurable flow: a doubling at least.
-    1;
+  // A small reference makes any percentage meaningless, both ways.
+  if (inside.change === null) return { ...base, reason: 'insufficient_sample' };
+  const insideChange = inside.change;
   const excess = insideChange - (comparison.change ?? 0);
   base.changePct = Math.round(insideChange * 100);
   base.surroundingChangePct =
@@ -264,5 +293,8 @@ export function correlationWindow(
     historySince !== null && historySince <= preTo - length
       ? { from: preTo - length, to: preTo }
       : null;
-  return { from, to, pre };
+  // Baseline weeks must end before the warning began: a week already under
+  // the warning would make a long closure look normal.
+  const weeks = [1, 2, 3, 4].filter((k) => to - k * WEEK <= preTo);
+  return { from, to, pre, weeks };
 }
