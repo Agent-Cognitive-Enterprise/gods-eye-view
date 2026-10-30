@@ -201,6 +201,27 @@ export function upstreamCheck(options, cwd = process.cwd()) {
 
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gev-upstream-check-'));
   let added = false;
+  // The worktree's node_modules may be a junction to the real one: remove
+  // the link itself first, so no recursive delete can ever follow it.
+  const cleanup = () => {
+    const link = path.join(dir, 'node_modules');
+    try {
+      if (fs.lstatSync(link).isSymbolicLink()) fs.unlinkSync(link);
+    } catch {
+      // no link
+    }
+    if (added)
+      git(root, ['worktree', 'remove', '--force', dir], { allowFail: true });
+    fs.rmSync(dir, { recursive: true, force: true });
+    git(root, ['worktree', 'prune'], { allowFail: true });
+  };
+  // Ctrl+C or a stop request still cleans up before exiting.
+  const interrupted = (signal) => {
+    cleanup();
+    process.exit(signal === 'SIGINT' ? 130 : 143);
+  };
+  process.once('SIGINT', interrupted);
+  process.once('SIGTERM', interrupted);
   try {
     git(root, ['worktree', 'add', '--quiet', '--detach', dir, head]);
     added = true;
@@ -246,13 +267,10 @@ export function upstreamCheck(options, cwd = process.cwd()) {
     }
     return report;
   } finally {
+    process.off('SIGINT', interrupted);
+    process.off('SIGTERM', interrupted);
     if (options.keep && added) report.worktree = dir;
-    else {
-      if (added)
-        git(root, ['worktree', 'remove', '--force', dir], { allowFail: true });
-      fs.rmSync(dir, { recursive: true, force: true });
-      git(root, ['worktree', 'prune'], { allowFail: true });
-    }
+    else cleanup();
   }
 }
 
