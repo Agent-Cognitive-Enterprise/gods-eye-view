@@ -11,6 +11,8 @@ import {
   DEFAULT_A22_CCTV_URL,
 } from '../../server/providers/cctv/constants.js';
 import { createCctvCatalog } from '../../server/providers/cctv/catalog.js';
+import { fetchWithinHost } from '../../server/providers/cctv/media.js';
+import { staticFrameRefreshMs } from './cctvLod.js';
 
 /** One Open Data Hub `WebcamInfo` item, shaped like the live a22 payload. */
 const item = (
@@ -196,4 +198,29 @@ test('CCTV_A22_ENABLED=0 keeps the lane from being loaded', async (t) => {
       [],
     );
   });
+});
+
+test('a redirect on the A22 frame host stays inside WebCamImg/', async () => {
+  const frame = `${A22_IMAGE_ORIGIN}km68.jpg`;
+  const redirectTo = (location) => async (url) =>
+    url === frame
+      ? new Response(null, { status: 302, headers: { location } })
+      : new Response('frame', { headers: { 'content-type': 'image/jpeg' } });
+  for (const location of ['/it/area-riservata/', '/WebCamImg/../x.jpg'])
+    assert.equal(
+      await fetchWithinHost(frame, {}, redirectTo(location)),
+      null,
+      location,
+    );
+  const followed = await fetchWithinHost(
+    frame,
+    {},
+    redirectTo('/WebCamImg/km77.jpg'),
+  );
+  assert.equal(await followed.text(), 'frame');
+});
+
+test('A22 ambient cards refresh on the highway cadence, not the default', () => {
+  const source = a22WebcamToSource(item());
+  assert.equal(staticFrameRefreshMs(source), 3 * 60 * 1000);
 });
