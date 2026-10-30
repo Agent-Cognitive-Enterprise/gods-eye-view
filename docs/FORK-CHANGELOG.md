@@ -7,6 +7,21 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **Air & Sea, Phase C (branch `feature/air-sea-monitor`).** Traffic
+  footprint: every accepted fix is followed along its great circle (only
+  when gap and speed are plausible) into passages per H3 cell and
+  object-minutes, kept in a local SQLite history (5-min rows for 3 days,
+  hourly rows for 120 days, per-hour feed coverage). TRAFFIC view (default:
+  passages over 15 min–24 h for air, 1–72 h for sea; 12 h / 24 h default)
+  beside the NOW view (current occupancy). Traffic Anomalies layer: the
+  last complete hour against the same hour of the week in up to four
+  earlier weeks (median and robust z-score), purple for possible
+  suppression and yellow for possible increase; nothing is reported until
+  two comparable weeks exist, and a feed that delivered too little reads
+  "coverage degraded: inconclusive", never as a drop in traffic. Shared
+  hexagons: where air, sea and a shown warning area meet in one cell, the
+  hexagon is split into halves or thirds (blue, green, red); sea joins the
+  air grid while both are on screen.
 - **Air & Sea, Phase B (branch `feature/air-sea-monitor`).** Warning Areas
   layer: canonical warning records with validated GeoJSON, stated circles,
   lifecycle (scheduled/active/expired/cancelled, superseded, removed by

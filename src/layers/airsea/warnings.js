@@ -10,6 +10,8 @@ import { continuousRing } from '../../airsea/warnings.js';
  * (test) data is drawn dashed and labelled. Sub-layers per domain, an
  * advisory filter, and a list of the newest warnings that opens one: its
  * times, authority, geometry quality and a link to the source.
+ * With a shared `share` (cellShare.js), traffic hexagons that reach into a
+ * shown area get a red slice of their own beside the air and sea slices.
  * Local-only layer; choices remembered per browser.
  */
 export const WARNING_LAYER_ID = 'warning-areas';
@@ -94,10 +96,18 @@ const fmtTime = (value) =>
     ? `${new Date(value).toISOString().slice(0, 16).replace('T', ' ')}Z`
     : '—';
 
-/** @param {{source: object, storage?: Storage|null}} options */
+// The red slice sits with the air cells, above high terrain.
+const SLICE_HEIGHT = 3_000;
+const SLICE_ALPHA = 0.45;
+
+/**
+ * @param {{source: object, storage?: Storage|null, share?: object|null}}
+ *   options
+ */
 export function createWarningAreasLayer({
   source,
   storage = defaultStorage(),
+  share = null,
 }) {
   if (typeof source?.getWarnings !== 'function')
     throw new TypeError('Warning areas layer requires a warnings source');
@@ -120,6 +130,9 @@ export function createWarningAreasLayer({
   let _viewer = null;
   let _primitives = null;
   let _points = null;
+  let _slices = null;
+  let _sliceSignature = null;
+  let _removeShareListener = null;
   let _manager = null;
   let _enabled = false;
   let _warnings = [];
@@ -149,8 +162,59 @@ export function createWarningAreasLayer({
           (_trial || !w.trial)),
     );
 
+  /** Share the shown areas, then draw the red slices of shared hexagons. */
+  function renderSlices() {
+    if (!share || !_slices) return;
+    share.publishWarnings(
+      _enabled
+        ? visible().flatMap((w) =>
+            parts(w.geometry).polygons.map((ring) => ({
+              ring: continuousRing(ring),
+              color: DOMAINS.find((d) => d.id === w.domain)?.color ?? '#ff4d4d',
+            })),
+          )
+        : [],
+    );
+    const slices = _enabled ? share.warningSlices() : [];
+    const signature = JSON.stringify(slices);
+    if (signature === _sliceSignature) return;
+    _sliceSignature = signature;
+    _slices.removeAll();
+    if (slices.length)
+      _slices.add(
+        new Cesium.Primitive({
+          geometryInstances: slices.map(
+            (slice) =>
+              new Cesium.GeometryInstance({
+                geometry: new Cesium.PolygonGeometry({
+                  polygonHierarchy: new Cesium.PolygonHierarchy(
+                    Cesium.Cartesian3.fromDegreesArray(slice.ring.flat()),
+                  ),
+                  height: SLICE_HEIGHT,
+                  vertexFormat: Cesium.PerInstanceColorAppearance.VERTEX_FORMAT,
+                }),
+                attributes: {
+                  color: Cesium.ColorGeometryInstanceAttribute.fromColor(
+                    Cesium.Color.fromCssColorString(slice.color).withAlpha(
+                      SLICE_ALPHA,
+                    ),
+                  ),
+                },
+              }),
+          ),
+          appearance: new Cesium.PerInstanceColorAppearance({
+            flat: true,
+            translucent: true,
+          }),
+          allowPicking: false,
+        }),
+      );
+    _viewer?.scene?.requestRender?.();
+  }
+
   function render() {
     if (!_primitives) return;
+    renderSlices();
     const shown = visible();
     const signature = JSON.stringify([
       shown.map((w) => [w.id, w.severity, w.isNew]),
@@ -351,16 +415,23 @@ export function createWarningAreasLayer({
       _points.show = false;
       viewer.scene.primitives.add(_primitives);
       viewer.scene.primitives.add(_points);
+      if (share) {
+        _slices = new Cesium.PrimitiveCollection();
+        viewer.scene.primitives.add(_slices);
+        _removeShareListener = share.subscribe(renderSlices);
+      }
     },
     enable() {
       _enabled = true;
       write('enabled', '1');
       if (_primitives) _primitives.show = _points.show = true;
+      renderSlices();
     },
     disable() {
       _enabled = false;
       write('enabled', '0');
       if (_primitives) _primitives.show = _points.show = false;
+      renderSlices();
     },
     async update(_viewerArg, { signal } = {}) {
       if (!_enabled || signal?.aborted) return false;
@@ -384,6 +455,12 @@ export function createWarningAreasLayer({
     destroy(viewer = _viewer) {
       layer.disable();
       clearTimeout(_restoreTimer);
+      _removeShareListener?.();
+      _removeShareListener = null;
+      if (_slices) {
+        viewer?.scene?.primitives?.remove(_slices);
+        _slices = null;
+      }
       if (_primitives) {
         viewer?.scene?.primitives?.remove(_primitives);
         viewer?.scene?.primitives?.remove(_points);

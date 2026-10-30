@@ -54,7 +54,7 @@ const PANEL_GROUPS = [
   {
     // Fork: aggregate air and sea traffic (warnings and anomalies join later).
     label: msg('Air & Sea'),
-    ids: ['warning-areas', 'air-traffic', 'sea-traffic'],
+    ids: ['warning-areas', 'air-traffic', 'sea-traffic', 'traffic-anomalies'],
   },
   {
     label: msg('Cameras'),

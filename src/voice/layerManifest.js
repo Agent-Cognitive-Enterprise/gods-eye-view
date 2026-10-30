@@ -428,6 +428,8 @@ export const VOICE_OFF_LAYERS = Object.freeze({
   'air-traffic': 'aggregate density layer (fork, not yet voice-controlled)',
   'sea-traffic': 'aggregate density layer (fork, not yet voice-controlled)',
   'warning-areas': 'warning areas layer (fork, not yet voice-controlled)',
+  'traffic-anomalies':
+    'traffic anomalies layer (fork, not yet voice-controlled)',
 });
 
 const TYPE_NAMES = Object.freeze({

@@ -1764,6 +1764,8 @@
       "./standalone/catalog"
     ],
     "modules": [
+      "src/airsea/cellShare.js",
+      "src/layers/airsea/anomalies.js",
       "src/layers/airsea/warnings.js",
       "src/airsea/warnings.js",
       "src/app/layers/airSeaTraffic.js",
@@ -2677,6 +2679,8 @@
   "application-layer-construction": {
     "exports": ["./application/layers"],
     "modules": [
+      "src/airsea/cellShare.js",
+      "src/layers/airsea/anomalies.js",
       "src/layers/airsea/warnings.js",
       "src/airsea/warnings.js",
       "src/app/layers/airSeaTraffic.js",

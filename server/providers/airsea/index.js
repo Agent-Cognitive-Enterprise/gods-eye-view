@@ -7,9 +7,17 @@ import {
   aggregateCells,
   aircraftFromReadsb,
   aircraftFromStates,
+  cellRing,
   createTrafficTracker,
+  rejectReason,
   vesselsFromAisRows,
 } from '../../../src/airsea/aggregate.js';
+import { evaluateAnomalies } from '../../../src/airsea/anomaly.js';
+import {
+  FOOTPRINT_RULES,
+  createFootprintTracker,
+} from '../../../src/airsea/trajectory.js';
+import { getHexagonAreaAvg } from 'h3-js';
 import {
   TRAFFIC_SOURCES,
   domainCoverage,
@@ -18,6 +26,7 @@ import {
 import { AISSTREAM_CACHE_MAX, aisStreamRows } from '../vessels/ais-store.js';
 import path from 'node:path';
 import { subscribeTrafficSnapshots, trafficSnapshotsSince } from './bus.js';
+import { HOUR_MS, createTrafficHistory } from './history.js';
 import { createWarningService } from './warnings.js';
 
 export const WINDOWS_MS = Object.freeze([
@@ -26,6 +35,20 @@ export const WINDOWS_MS = Object.freeze([
   6 * 3600_000,
   24 * 3600_000,
 ]);
+// Footprint windows: aircraft to a day, vessels (slower) to three days.
+export const FOOTPRINT_WINDOWS_MS = Object.freeze({
+  air: Object.freeze([
+    15 * 60_000,
+    3600_000,
+    6 * 3600_000,
+    12 * 3600_000,
+    24 * 3600_000,
+  ]),
+  sea: Object.freeze([3600_000, 6 * 3600_000, 24 * 3600_000, 72 * 3600_000]),
+});
+// Anomalies are judged on the coarser footprint grid (steadier counts).
+const ANOMALY_RESOLUTION = { air: 2, sea: 3 };
+const WEEK_MS = 7 * 24 * HOUR_MS;
 const AIS_READ_EVERY_MS = 30_000;
 const RESOLUTIONS = new Set([1, 2, 3, 4]);
 // A density answer is reused while nothing new arrived (and briefly, since
@@ -46,8 +69,10 @@ export function createAirSeaService({
   readAisRows = () => aisStreamRows(AISSTREAM_CACHE_MAX),
   aisConfigured = () => Boolean(process.env.AISSTREAM_API_KEY),
   cadenceMs = {},
+  history = null,
 } = {}) {
   const tracker = createTrafficTracker();
+  const footprint = createFootprintTracker();
   const startedAt = now();
   const cache = new Map(); // query key -> {version, at, result}
   // Every snapshot is taken in as it is published (off the publishing
@@ -71,6 +96,21 @@ export function createAirSeaService({
     const valid = fixes.filter(
       (f) => f.lat !== null && f.lon !== null && Number.isFinite(f.observedAt),
     );
+    if (history) {
+      // Where each object went since its last fix: passages and minutes.
+      for (const fix of fixes)
+        if (!rejectReason(fix, receivedAt))
+          history.add(fix.domain, footprint.observe(fix));
+      // Delivery of each domain's main feed, for coverage checks.
+      const domain =
+        source === 'opensky' ? 'air' : source === 'aisstream' ? 'sea' : null;
+      if (domain && valid.length)
+        history.noteSnapshot(
+          domain,
+          receivedAt,
+          new Set(valid.map((f) => f.id)).size,
+        );
+    }
     last[source] = {
       receivedAt,
       newestFixAt: valid.length
@@ -117,6 +157,15 @@ export function createAirSeaService({
     }
     tracker.prune(t);
   }
+
+  /** How often a domain's main feed is expected to deliver a snapshot. */
+  const expectedEvery = (domain) =>
+    domain === 'air' ? (cadenceMs.opensky ?? 5 * 60_000) : AIS_READ_EVERY_MS;
+
+  // Vessels are read from the shared AIS store on a timer, so history keeps
+  // filling between aircraft snapshots and while no one is watching.
+  const ticker = history ? setInterval(() => sync(), AIS_READ_EVERY_MS) : null;
+  ticker?.unref?.();
 
   function statuses() {
     const t = now();
@@ -195,6 +244,88 @@ export function createAirSeaService({
     },
     close() {
       unsubscribe?.();
+      clearInterval(ticker);
+    },
+    /** Passages and object-minutes per cell over a rolling window. */
+    footprint({ domain, resolution, windowMs }) {
+      sync();
+      const t = now();
+      const areaKm2 = getHexagonAreaAvg(resolution, 'km2');
+      const windowMinutes = windowMs / 60_000;
+      const cells = [];
+      for (const row of history?.footprint({ domain, resolution, windowMs }) ??
+        []) {
+        const ring = cellRing(row.cell);
+        if (!ring) continue;
+        cells.push({
+          h3: row.cell,
+          ring,
+          passages: row.passages,
+          minutes: Math.round(row.minutes * 10) / 10,
+          // Mean number present at any moment of the window.
+          averagePresent: Math.round((row.minutes / windowMinutes) * 100) / 100,
+          passagesPer10kKm2:
+            Math.round((row.passages / areaKm2) * 10_000 * 100) / 100,
+        });
+      }
+      const since = history?.since(domain) ?? null;
+      const covered = (
+        history?.coverageSince(domain, t - windowMs) ?? []
+      ).reduce((sum, row) => sum + row.snapshots, 0);
+      return {
+        domain,
+        resolution,
+        window_ms: windowMs,
+        generated_at: t,
+        history_since: since,
+        // The window reaches back before history began.
+        partial_window: since === null || since > t - windowMs,
+        snapshots_in_window: covered,
+        expected_snapshots: Math.round(windowMs / expectedEvery(domain)),
+        coverage: domainCoverage(domain, statuses()),
+        passages: cells.reduce((sum, c) => sum + c.passages, 0),
+        cells,
+      };
+    },
+    /** The last complete hour against the same hour in earlier weeks. */
+    anomalies({ domain }) {
+      sync();
+      const t = now();
+      const hour = Math.floor(t / HOUR_MS) * HOUR_MS - HOUR_MS;
+      const resolution = ANOMALY_RESOLUTION[domain];
+      const weeks = [];
+      for (let k = 1; k <= 4; k++) {
+        const past = hour - k * WEEK_MS;
+        const coverage = history?.coverage(domain, past);
+        if (coverage)
+          weeks.push({
+            cells: history.hourCells({ domain, resolution, hour: past }),
+            coverage,
+          });
+      }
+      const result = evaluateAnomalies({
+        current: history?.hourCells({ domain, resolution, hour }) ?? new Map(),
+        currentCoverage: history?.coverage(domain, hour) ?? null,
+        weeks,
+        expectedSnapshots: Math.max(
+          1,
+          Math.round(HOUR_MS / expectedEvery(domain)),
+        ),
+      });
+      const since = history?.since(domain) ?? null;
+      return {
+        domain,
+        resolution,
+        hour_start: hour,
+        history_since: since,
+        // When two comparable weeks can exist at the earliest.
+        baseline_possible_from:
+          since === null ? null : since + 2 * WEEK_MS + HOUR_MS,
+        ...result,
+        cells: result.cells
+          .map((c) => ({ ...c, h3: c.cell, ring: cellRing(c.cell) }))
+          .filter((c) => c.ring),
+      };
     },
   };
 }
@@ -346,6 +477,32 @@ export function airSeaProxy({
         return json(res, 200, { enabled: true, windows_ms: WINDOWS_MS });
       if (route === '/sources')
         return json(res, 200, { sources: service.sources() });
+      if (route === '/footprint' || route === '/anomalies') {
+        const domain = url.searchParams.get('domain');
+        if (domain !== 'air' && domain !== 'sea')
+          return json(res, 400, { error: 'domain must be air or sea' });
+        if (!service.footprint)
+          return json(res, 404, { error: 'history_disabled' });
+        if (route === '/anomalies')
+          return json(res, 200, service.anomalies({ domain }));
+        const windowMs = Number(
+          url.searchParams.get('window') ?? 12 * 3600_000,
+        );
+        if (!FOOTPRINT_WINDOWS_MS[domain].includes(windowMs))
+          return json(res, 400, { error: 'unsupported window' });
+        const resolution = Number(
+          url.searchParams.get('res') ?? FOOTPRINT_RULES[domain].resolutions[0],
+        );
+        if (!FOOTPRINT_RULES[domain].resolutions.includes(resolution))
+          return json(res, 400, {
+            error: `res must be one of ${FOOTPRINT_RULES[domain].resolutions.join(', ')}`,
+          });
+        return json(
+          res,
+          200,
+          service.footprint({ domain, resolution, windowMs }),
+        );
+      }
       if (route === '/warning-sources')
         return json(res, 200, { sources: ensureWarnings()?.sources() ?? [] });
       if (route === '/warnings') {
@@ -411,14 +568,33 @@ export function airSeaProxy({
     server.middlewares.use('/api/airsea', handler);
     if (!enabled || supplied) return;
     // Created now, not on the first request: it must take in every
-    // collected snapshot from the start.
-    service ??= createAirSeaService({ cadenceMs: cadence(env) });
+    // collected snapshot from the start. History lives beside the warnings.
+    const dir = env.GEV_AIRSEA_DIR
+      ? path.resolve(env.GEV_AIRSEA_DIR)
+      : path.join(process.cwd(), '.gev-cache', 'airsea');
+    const history = createTrafficHistory({
+      file: path.join(dir, 'traffic.sqlite'),
+    });
+    service ??= createAirSeaService({ cadenceMs: cadence(env), history });
+    const flush = setInterval(() => {
+      try {
+        history.flush();
+      } catch (error) {
+        console.warn(`[airsea] history write failed: ${error.message}`);
+      }
+    }, 60_000);
+    const prune = setInterval(() => history.prune(), HOUR_MS);
+    flush.unref?.();
+    prune.unref?.();
     const stop = startCollector(server, collectionPlan(env));
     ensureWarnings()?.start();
     server.httpServer?.once('close', () => {
       stop();
+      clearInterval(flush);
+      clearInterval(prune);
       service?.close?.();
       warnings?.stop();
+      history.close();
     });
   };
   return {

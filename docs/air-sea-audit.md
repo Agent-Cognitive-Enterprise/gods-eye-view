@@ -90,3 +90,39 @@ exchange set (test data, labelled TRIAL, never used for alerts). Catalogued
 but not fetched: FAA NOTAM API, EUROCONTROL EAD, Airservices NAIPS, AMSA
 NAVAREA X, other NAVAREA coordinators. Details per source, geometry rules
 and lifecycle: [air-sea-data-providers.md](air-sea-data-providers.md).
+
+## Phase C (traffic history and anomalies)
+
+- **Footprint.** `src/airsea/trajectory.js` turns consecutive fixes of one
+  object into the cells it crossed: one passage per entry into a cell (no
+  recount while it stays), and the minutes it spent there. A move is
+  followed along the great circle only within 20 min / 1,300 km/h (air) or
+  3 h / 90 km/h (sea); anything else is an uncertain gap that paints
+  nothing in between. Grids: air H3 2 and 3, sea H3 2, 3 and 4.
+- **History.** `server/providers/airsea/history.js` keeps 5-minute rows for
+  three days and hourly rows for 120 days in
+  `GEV_AIRSEA_DIR/traffic.sqlite` (default `.gev-cache/airsea`), with the
+  snapshots and objects each feed delivered per hour. Windows up to 6 h
+  read the 5-minute rows, longer ones the hourly rows. Routes:
+  `/api/airsea/footprint?domain=&res=&window=` and
+  `/api/airsea/anomalies?domain=`.
+- **Anomalies.** `src/airsea/anomaly.js` compares the last complete hour
+  of passages per cell (air H3 2, sea H3 3) with the same hour of the week
+  one to four weeks back. A cell needs a usual value of at least 5
+  passages, a change of at least 50 % and a robust z-score of at least 3.
+  Weeks whose feed delivered under 75 % of the expected snapshots, or
+  under 70 % of the usual objects per snapshot, do not count; when the
+  current hour fails the same test the answer is `coverage_degraded`.
+  With fewer than two usable weeks the answer is `baseline_insufficient`
+  and the row says from which day comparisons become possible.
+- **Shared hexagons.** `src/airsea/cellShare.js` is the meeting point of
+  the three map layers: each traffic layer publishes the cells it draws,
+  the warning layer publishes its shown area outlines, and a cell reached
+  by two or three of them is drawn as halves or thirds in the order air,
+  sea, warning. It works when both traffic layers draw the same grid: in
+  the TRAFFIC view sea follows the air grid (H3 3 close in, H3 2 on the
+  globe); a TRAFFIC row beside a NOW row can still differ at some heights,
+  and then the cells simply overlap as before.
+- **Later option.** adsb.lol publishes daily historical archives (ODbL)
+  that could seed the baseline instead of waiting two weeks; they are
+  large and not fetched.

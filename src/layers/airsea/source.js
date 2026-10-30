@@ -35,6 +35,19 @@ export function createAirSeaSource({
     getSources({ signal } = {}) {
       return get('/api/airsea/sources', signal);
     },
+    /** Passages and object-minutes per cell along every track in a window. */
+    getFootprint({ domain, resolution, windowMs }, { signal } = {}) {
+      const params = new URLSearchParams({
+        domain,
+        res: String(resolution),
+        window: String(windowMs),
+      });
+      return get(`/api/airsea/footprint?${params}`, signal);
+    },
+    /** The last complete hour against the same hour in earlier weeks. */
+    getAnomalies({ domain }, { signal } = {}) {
+      return get(`/api/airsea/anomalies?domain=${domain}`, signal);
+    },
     /** Active and scheduled warning areas, with the state of every source. */
     getWarnings({ signal } = {}) {
       return get('/api/airsea/warnings', signal);
