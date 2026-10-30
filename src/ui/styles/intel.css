@@ -326,3 +326,11 @@ body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode) #cesium-credits {
 body:not(.cockpit-mode) #intel-hud .hud-top-right {
   top: 32px !important;
 }
+
+/* Left corners (fork): no classification / mode / summary block under the
+   title, and no MGRS / coordinate readout at the bottom. The cockpit keeps
+   its own layout. */
+body:not(.cockpit-mode) #intel-hud .hud-top-left,
+body:not(.cockpit-mode) #intel-hud .hud-bottom-left {
+  display: none !important;
+}

@@ -7,9 +7,10 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
-- **Upper-right corner.** The ACTIVE STYLE indicator is hidden and the REC
-  readout moves up into its place (CSS in `src/ui/styles/intel.css`; the
-  cockpit layout is unchanged).
+- **Cleaner corners.** The ACTIVE STYLE indicator is hidden and the REC
+  readout moves up into its place; the upper-left classification / mode /
+  summary block and the lower-left MGRS / coordinate readout are hidden (CSS
+  in `src/ui/styles/intel.css`; the cockpit layout is unchanged).
 - **Personal relevance.** Home/Family/Travel/Custom places raise attention
   with an exponential distance curve (1,000 km radius, 400 km decay); confidence
   is unchanged and proximity alone never interrupts.
