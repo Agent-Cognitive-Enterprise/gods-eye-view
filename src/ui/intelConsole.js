@@ -594,23 +594,20 @@ export function createIntelConsole({
       row.append(chip);
     }
     const current = placeOf(placeSlot);
-    // Name the slot the buttons act on, so what is set where is never a guess.
-    row.append(
-      el(
-        documentRef,
-        'span',
-        'intel-muted intel-place-value',
-        `${t(PLACE_TEXT[placeSlot])}: ${current ? coordText(current) : t('not set')}`,
-      ),
+    // One action under the chips: the selected place becomes the map centre.
+    // The value names the slot it acts on, so what is set where is no guess.
+    const line = el(documentRef, 'div', 'intel-place-line');
+    const set = el(
+      documentRef,
+      'button',
+      'data-toggle-chip intel-place-action',
+      t('AT MAP CENTRE'),
     );
-    const action = (text, title, handler) => {
-      const button = el(documentRef, 'button', 'data-toggle-chip', text);
-      button.type = 'button';
-      button.title = title;
-      button.addEventListener('click', handler);
-      row.append(button);
-    };
-    action(t('MAP CENTRE'), t('Use the point at the centre of the map'), () => {
+    set.type = 'button';
+    set.title = t(
+      'Set the selected place to the point at the centre of the map',
+    );
+    set.addEventListener('click', () => {
       const point = mapCentre();
       if (point) setPlace(placeSlot, point);
       else {
@@ -618,36 +615,18 @@ export function createIntelConsole({
         renderSettings();
       }
     });
-    if (globalThis.navigator?.geolocation)
-      action(
-        t('MY LOCATION'),
-        t('Use this device’s location (the browser asks first)'),
-        () => {
-          // The slot is fixed at the click, not when the browser answers.
-          const label = placeSlot;
-          globalThis.navigator.geolocation.getCurrentPosition(
-            (position) =>
-              setPlace(label, {
-                lat: position.coords.latitude,
-                lon: position.coords.longitude,
-              }),
-            () => {
-              placeNote = t('This device’s location is not available');
-              renderSettings();
-            },
-            { maximumAge: 600_000, timeout: 15_000 },
-          );
-        },
-      );
-    if (current)
-      action(t('CLEAR'), t('Forget this place'), () => {
-        placeNote = '';
-        changeSettings({
-          homeLocations: places.filter((p) => p.label !== placeSlot),
-        });
-      });
+    line.append(
+      set,
+      el(
+        documentRef,
+        'span',
+        'intel-muted',
+        `${t(PLACE_TEXT[placeSlot])}: ${current ? coordText(current) : t('not set')}`,
+      ),
+    );
     if (placeNote)
-      row.append(el(documentRef, 'span', 'intel-place-note', placeNote));
+      line.append(el(documentRef, 'span', 'intel-place-note', placeNote));
+    row.append(line);
     return row;
   }
 

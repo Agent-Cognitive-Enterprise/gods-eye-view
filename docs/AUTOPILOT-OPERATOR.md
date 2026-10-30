@@ -58,11 +58,11 @@ The autopilot instance's environment is set in `gev-common.ps1`
 - Camera moves turn the globe first, then descend; after each shot the
   camera zooms out in steps to the whole globe (**ZOOM OUT**,
   `pullBackEnabled`). Each browser remembers ON / OFF / PAUSED across reloads.
-- **PLACES**: pick HOME, FAMILY, TRAVEL or CUSTOM, then **MAP CENTRE** (the
-  point in the middle of the map) or **MY LOCATION** (the browser asks
-  first; works on `localhost`). Events near a place rank higher (**NEAR**
-  radius, **DECAY** length); confidence is not changed. Places are stored
-  rounded to about 1 km and are visible to LAN viewers of the status API.
+- **PLACES**: pick HOME, FAMILY, TRAVEL or CUSTOM, centre the map on the
+  place, then press **AT MAP CENTRE**; the row confirms what was saved.
+  Events near a place rank higher (**NEAR** radius, **DECAY** length);
+  confidence is not changed. Places are stored rounded to about 1 km and are
+  visible to LAN viewers of the status API.
 - The bottom controls (locations, voice, visual presets, POWER UP, language)
   hide after 4 s idle; any key or moving the pointer to the bottom edge
   brings them back. They stay visible while hovered or while a tray is open,

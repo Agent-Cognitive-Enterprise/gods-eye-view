@@ -174,8 +174,8 @@ off, restoring the single still global view. The card says why an event is not
 an alert: too little evidence, past its focus window, or a filtered category.
 
 Personal relevance (PLACES, `homeLocations`): up to four places (Home,
-Family, Travel, Custom), set in the panel from the map centre or this device's
-location, stored to about 1 km. Attention rises toward 100 near the nearest
+Family, Travel, Custom), set in the panel from the map centre (AT MAP CENTRE),
+stored to about 1 km. Attention rises toward 100 near the nearest
 place: `P' = P + (1 − P) · W(d)`, `W(d) = (e^(−d/L) − e^(−R/L)) / (1 − e^(−R/L))`
 below the radius `R` (`proximityRadiusKm`, 1,000 km; NEAR) and 0 beyond it,
 with decay length `L` (`proximityDecayKm`, 400 km; DECAY). Score 33 becomes

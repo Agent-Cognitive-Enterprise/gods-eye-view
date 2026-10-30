@@ -279,14 +279,22 @@
   flex: 1;
 }
 
-/* PLACES: the value line and the outcome of the last action. */
-.intel-place-value,
-.intel-place-note {
+/* PLACES: one action and the selected place's value under the chips. */
+.intel-place-line {
+  display: flex;
   flex-basis: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   padding-left: 60px;
   font-size: 10px;
 }
+.intel-place-action {
+  border-color: #5ac8fa;
+  color: #5ac8fa;
+}
 .intel-place-note {
+  flex-basis: 100%;
   color: #7bd88f;
 }
 
