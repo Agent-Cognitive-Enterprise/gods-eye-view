@@ -279,6 +279,17 @@
   flex: 1;
 }
 
+/* PLACES: the value line and the outcome of the last action. */
+.intel-place-value,
+.intel-place-note {
+  flex-basis: 100%;
+  padding-left: 60px;
+  font-size: 10px;
+}
+.intel-place-note {
+  color: #7bd88f;
+}
+
 /* Auto-hiding bottom controls (src/ui/dockAutoHide.js). The dock keeps its
    own transform (centring) and opacity transition. */
 #corner-actions {

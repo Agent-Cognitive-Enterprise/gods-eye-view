@@ -301,6 +301,7 @@ export function createIntelConsole({
   let modeRestored = false; // nothing is written before the stored mode is read
   let notice = '';
   let placeSlot = 'home'; // which place the PLACES buttons set
+  let placeNote = ''; // outcome of the last PLACES action, shown in the row
   let points = null;
   let clickHandler = null;
   let history = null; // null = hidden, [] = shown
@@ -587,19 +588,19 @@ export function createIntelConsole({
       chip.setAttribute('aria-pressed', String(placeSlot === label));
       chip.addEventListener('click', () => {
         placeSlot = label;
+        placeNote = '';
         renderSettings();
       });
       row.append(chip);
     }
     const current = placeOf(placeSlot);
+    // Name the slot the buttons act on, so what is set where is never a guess.
     row.append(
       el(
         documentRef,
         'span',
         'intel-muted intel-place-value',
-        current
-          ? `${formatNumber(Math.abs(current.lat))}°${current.lat < 0 ? 'S' : 'N'} ${formatNumber(Math.abs(current.lon))}°${current.lon < 0 ? 'W' : 'E'}`
-          : t('not set'),
+        `${t(PLACE_TEXT[placeSlot])}: ${current ? coordText(current) : t('not set')}`,
       ),
     );
     const action = (text, title, handler) => {
@@ -613,36 +614,45 @@ export function createIntelConsole({
       const point = mapCentre();
       if (point) setPlace(placeSlot, point);
       else {
-        notice = t('Point the map at the globe first');
-        render();
+        placeNote = t('Point the map at the globe first');
+        renderSettings();
       }
     });
     if (globalThis.navigator?.geolocation)
       action(
         t('MY LOCATION'),
         t('Use this device’s location (the browser asks first)'),
-        () =>
+        () => {
+          // The slot is fixed at the click, not when the browser answers.
+          const label = placeSlot;
           globalThis.navigator.geolocation.getCurrentPosition(
             (position) =>
-              setPlace(placeSlot, {
+              setPlace(label, {
                 lat: position.coords.latitude,
                 lon: position.coords.longitude,
               }),
             () => {
-              notice = t('This device’s location is not available');
-              render();
+              placeNote = t('This device’s location is not available');
+              renderSettings();
             },
             { maximumAge: 600_000, timeout: 15_000 },
-          ),
+          );
+        },
       );
     if (current)
-      action(t('CLEAR'), t('Forget this place'), () =>
+      action(t('CLEAR'), t('Forget this place'), () => {
+        placeNote = '';
         changeSettings({
           homeLocations: places.filter((p) => p.label !== placeSlot),
-        }),
-      );
+        });
+      });
+    if (placeNote)
+      row.append(el(documentRef, 'span', 'intel-place-note', placeNote));
     return row;
   }
+
+  const coordText = ({ lat, lon }) =>
+    `${formatNumber(Math.abs(lat))}°${lat < 0 ? 'S' : 'N'} ${formatNumber(Math.abs(lon))}°${lon < 0 ? 'W' : 'E'}`;
 
   function mapCentre() {
     const canvas = viewer.scene?.canvas;
@@ -659,11 +669,21 @@ export function createIntelConsole({
     };
   }
 
-  function setPlace(label, { lat, lon }) {
+  async function setPlace(label, { lat, lon }) {
     const places = (settings.homeLocations ?? []).filter(
       (p) => p.label !== label,
     );
-    changeSettings({ homeLocations: [...places, { label, lat, lon }] });
+    placeSlot = label;
+    placeNote = '';
+    await changeSettings({ homeLocations: [...places, { label, lat, lon }] });
+    const saved = settings.homeLocations?.find((p) => p.label === label);
+    placeNote = saved
+      ? t('{place} saved: {position}', {
+          place: t(PLACE_TEXT[label]),
+          position: coordText(saved),
+        })
+      : notice || t('Could not save the camera rules');
+    renderSettings();
   }
 
   function renderSettings() {

@@ -3130,6 +3130,7 @@
   "Use this device’s location (the browser asks first)": "Usar la ubicación de este dispositivo (el navegador pregunta antes)",
   "This device’s location is not available": "La ubicación de este dispositivo no está disponible",
   "Forget this place": "Olvidar este lugar",
+  "{place} saved: {position}": "{place} guardado: {position}",
   "After each event, zoom out step by step until the whole globe is in view": "Tras cada evento, alejar la cámara por pasos hasta ver todo el globo",
   "Past its focus window: not an alert": "Fuera de su ventana de foco: no es una alerta",
   "Category filtered out of Autopilot": "Categoría excluida del autopiloto",

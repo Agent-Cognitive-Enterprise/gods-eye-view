@@ -2988,6 +2988,7 @@
   "Use this device’s location (the browser asks first)": "使用本设备的位置（浏览器会先询问）",
   "This device’s location is not available": "无法获取本设备的位置",
   "Forget this place": "忘记此地点",
+  "{place} saved: {position}": "{place}已保存：{position}",
   "After each event, zoom out step by step until the whole globe is in view": "每个事件之后，逐步拉远镜头，直到整个地球进入画面",
   "Past its focus window: not an alert": "已过关注窗口：不是警报",
   "Category filtered out of Autopilot": "此类别已从自动驾驶中排除",

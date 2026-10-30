@@ -2988,6 +2988,7 @@
   "Use this device’s location (the browser asks first)": "使用本裝置的位置（瀏覽器會先詢問）",
   "This device’s location is not available": "無法取得本裝置的位置",
   "Forget this place": "忘記此地點",
+  "{place} saved: {position}": "{place}已儲存：{position}",
   "After each event, zoom out step by step until the whole globe is in view": "每個事件之後，逐步拉遠鏡頭，直到整個地球進入畫面",
   "Past its focus window: not an alert": "已過關注時段：不是警報",
   "Category filtered out of Autopilot": "此類別已從自動駕駛中排除",
