@@ -555,12 +555,7 @@ test('additive presentation gates retain the current localized reducer labels', 
     const steps = card.state.steps;
     const result = card.state.result;
     const who = root.querySelector('#gev-voice-card-user-who');
-    card.handle({
-      type: 'transcript',
-      role: 'user',
-      text: 'Same words',
-      attribution: 'unverified',
-    });
+    card.handle({ type: 'transcript', role: 'user', text: 'Same words', attribution: 'unverified' });
     assert.equal(card.state.userAttribution, 'unverified');
     assert.equal(card.snapshot().user.label, 'Habla reciente');
     assert.equal(who.textContent, 'Habla reciente');

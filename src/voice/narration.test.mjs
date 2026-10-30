@@ -43,9 +43,7 @@ function rig({ canSpeak = () => true, earconAvailable = true } = {}) {
   const advance = (ms) => {
     const target = clock + ms;
     for (;;) {
-      const due = [...timers]
-        .filter(([, t]) => t.at <= target)
-        .sort((a, b) => a[1].at - b[1].at)[0];
+      const due = [...timers].filter(([, t]) => t.at <= target).sort((a, b) => a[1].at - b[1].at)[0];
       if (!due) break;
       timers.delete(due[0]);
       clock = due[1].at;
@@ -53,24 +51,13 @@ function rig({ canSpeak = () => true, earconAvailable = true } = {}) {
     }
     clock = target;
   };
-  return {
-    scheduler,
-    spoken,
-    events,
-    earcon,
-    advance,
-    timers,
-    retracted: () => retracted,
-  };
+  return { scheduler, spoken, events, earcon, advance, timers, retracted: () => retracted };
 }
 
 test('a fast tool (<700 ms) is never narrated and never earconned', () => {
   const r = rig();
   r.scheduler.userTurnEnded();
-  r.scheduler.toolStarted('a', {
-    name: 'set_layer_visibility',
-    label: 'Flights',
-  });
+  r.scheduler.toolStarted('a', { name: 'set_layer_visibility', label: 'Flights' });
   r.advance(400);
   r.scheduler.toolFinished('a');
   r.scheduler.audible();
@@ -82,20 +69,14 @@ test('a fast tool (<700 ms) is never narrated and never earconned', () => {
 test('a slow tool gets the earcon at 700 ms and its current step spoken at 1.5 s', () => {
   const r = rig();
   r.scheduler.userTurnEnded();
-  r.scheduler.toolStarted('a', {
-    name: 'annotate_map',
-    label: 'Texas Capitol',
-  });
+  r.scheduler.toolStarted('a', { name: 'annotate_map', label: 'Texas Capitol' });
   r.scheduler.progress('a', { step: 'resolve', label: 'Texas Capitol' });
   r.advance(699);
   assert.equal(r.earcon.on, false);
   r.advance(1);
   assert.equal(r.earcon.on, true);
   r.advance(800);
-  assert.deepEqual(
-    r.spoken.map((s) => s.line),
-    ['Finding Texas Capitol on the map.'],
-  );
+  assert.deepEqual(r.spoken.map((s) => s.line), ['Finding Texas Capitol on the map.']);
   assert.equal(r.spoken[0].at, 1500);
   assert.equal(r.earcon.on, false, 'speech replaces the earcon');
 });
@@ -104,18 +85,12 @@ test('a spoken preamble suppresses step lines but keeps one still-working line',
   const r = rig();
   r.scheduler.userTurnEnded();
   r.scheduler.preamble();
-  r.scheduler.toolStarted('a', {
-    name: 'select_nearest_aircraft',
-    label: 'Austin',
-  });
+  r.scheduler.toolStarted('a', { name: 'select_nearest_aircraft', label: 'Austin' });
   r.scheduler.progress('a', { step: 'layer', label: 'flights' });
   r.advance(5000);
   r.scheduler.progress('a', { step: 'fly', label: 'Austin' });
   r.advance(3000);
-  assert.deepEqual(
-    r.spoken.map((s) => s.line),
-    ['Still working on Austin.'],
-  );
+  assert.deepEqual(r.spoken.map((s) => s.line), ['Still working on Austin.']);
   r.advance(30000);
   assert.equal(r.spoken.length, 1);
 });
@@ -123,10 +98,7 @@ test('a spoken preamble suppresses step lines but keeps one still-working line',
 test('step changes speak at most twice, at least 3 s apart', () => {
   const r = rig();
   r.scheduler.userTurnEnded();
-  r.scheduler.toolStarted('a', {
-    name: 'select_nearest_aircraft',
-    label: 'Austin',
-  });
+  r.scheduler.toolStarted('a', { name: 'select_nearest_aircraft', label: 'Austin' });
   r.scheduler.progress('a', { step: 'layer', label: 'flights' });
   r.advance(1500);
   r.scheduler.progress('a', { step: 'fly', label: 'Austin' });
@@ -136,15 +108,9 @@ test('step changes speak at most twice, at least 3 s apart', () => {
   r.scheduler.progress('a', { step: 'refresh' });
   r.advance(3500);
   const lines = r.spoken.map((s) => s.line);
-  assert.deepEqual(lines.slice(0, 2), [
-    'Turning on flights.',
-    'Heading to Austin.',
-  ]);
+  assert.deepEqual(lines.slice(0, 2), ['Turning on flights.', 'Heading to Austin.']);
   assert.equal(r.spoken[1].at, 4500);
-  assert.ok(
-    !lines.includes('Loading aircraft there.'),
-    'third step line is capped',
-  );
+  assert.ok(!lines.includes('Loading aircraft there.'), 'third step line is capped');
 });
 
 test('no progress line speaks after the tool result, and an unheard line is retracted', () => {
@@ -185,10 +151,7 @@ test('lines wait while speaking is not allowed and silent tools stay silent', ()
   assert.deepEqual(r.spoken, [], 'user holding push-to-talk: no line');
   allowed = true;
   r.advance(7000);
-  assert.deepEqual(
-    r.spoken.map((s) => s.line),
-    ['Still working on Zilker Park.'],
-  );
+  assert.deepEqual(r.spoken.map((s) => s.line), ['Still working on Zilker Park.']);
 });
 
 test('the earcon only plays when its output cannot reach the microphone', () => {
