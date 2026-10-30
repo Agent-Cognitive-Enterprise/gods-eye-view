@@ -249,3 +249,8 @@ the live network.
 - Reading 16,000 AIS rows takes a few hundred milliseconds of the dev server's
   main thread every 30 seconds.
 - No aviation warning source is connected: FAA NOTAM access needs approval.
+- Upstream now ships de, fr, it, ja, pt and uk catalogs. The trial merge
+  of 30 October 2026 (upstream 423ca3ca) has no conflicts and passes
+  formatting, boundaries and the build, but those six catalog tests fail until
+  the fork's 278 strings (84 of them Air & Sea) are translated. See
+  [FORK-MAINTENANCE.md](FORK-MAINTENANCE.md).
