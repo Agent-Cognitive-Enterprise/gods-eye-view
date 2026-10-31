@@ -438,7 +438,7 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
   --panel-expanded-width: 360px;
   position: relative;
   order: 6;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   width: var(--panel-expanded-width);
   min-height: 0;
   pointer-events: auto;
@@ -597,4 +597,14 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
 }
 .fast-warn > span:first-child {
   color: #ffb454;
+}
+.fast-section {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
 }

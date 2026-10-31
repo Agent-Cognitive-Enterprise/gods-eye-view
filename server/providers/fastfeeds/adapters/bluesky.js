@@ -383,6 +383,7 @@ export function createBlueskyAdapter({
       connect();
     },
     stop() {
+      if (!running) return;
       running = false;
       clearTimer(retryTimer);
       clearTimer(connectTimer);

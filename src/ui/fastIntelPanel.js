@@ -529,7 +529,7 @@ export function createFastIntelPanel({
     const button = el(
       documentRef,
       'button',
-      'intel-section intel-settings-title',
+      'intel-section panel-title intel-rules-toggle fast-section',
       `${open ? '▾' : '▸'} ${label}`,
     );
     button.type = 'button';
@@ -540,16 +540,16 @@ export function createFastIntelPanel({
 
   function render() {
     if (destroyed || !panel || !body) return;
-    const down = (status?.sources ?? []).some((source) =>
-      WARN_STATES.has(source.status),
+    // A source switched off on purpose is neither up nor down.
+    const watched = (status?.sources ?? []).filter(
+      (source) => source.status !== 'disabled',
     );
+    const down = watched.some((source) => WARN_STATES.has(source.status));
     if (summary) {
-      const live = (status?.sources ?? []).filter(
-        (source) => source.status === 'healthy',
-      ).length;
+      const live = watched.filter((source) => source.status === 'healthy');
       summary.textContent = t('{up}/{total} up', {
-        up: formatNumber(live),
-        total: formatNumber(status?.sources?.length ?? 0),
+        up: formatNumber(live.length),
+        total: formatNumber(watched.length),
       });
       summary.classList.toggle('intel-feeds-down', down);
     }
@@ -600,6 +600,8 @@ export function createFastIntelPanel({
       if (!status?.enabled) return false;
       settings = await client.fastSettings(abort.signal).catch(() => null);
       panel.hidden = false;
+      // The left rail measures its panels on resize; this one just appeared.
+      documentRef.defaultView?.dispatchEvent(new Event('resize'));
       render();
       timer = setTimeout(poll, STATUS_POLL_MS);
       return true;
