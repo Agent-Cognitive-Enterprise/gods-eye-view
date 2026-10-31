@@ -206,6 +206,8 @@ export function createBlueskyAdapter({
   let retryTimer = null;
   let connectTimer = null;
   let flushTimer = null;
+  // Separate: a report must never wait on the slow cursor save.
+  let cursorTimer = null;
   let buffer = [];
   let cursor = null;
   let hostIndex = 0;
@@ -234,7 +236,9 @@ export function createBlueskyAdapter({
 
   const flush = guarded(() => {
     clearTimer(flushTimer);
+    clearTimer(cursorTimer);
     flushTimer = null;
+    cursorTimer = null;
     if (!buffer.length && cursor === intake.cursor(id)) return;
     const reports = buffer;
     buffer = [];
@@ -296,7 +300,7 @@ export function createBlueskyAdapter({
       // Expected in volume when the stream is filtered here, so not counted.
       if (outcome.skip && outcome.skip !== 'unlisted_account')
         intake.count(id, `skip_${outcome.skip}`);
-      flushTimer ??= setTimer(flush, CURSOR_SAVE_MS);
+      cursorTimer ??= setTimer(flush, CURSOR_SAVE_MS);
       return;
     }
     state.last_report_at = at;

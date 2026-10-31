@@ -148,6 +148,25 @@ test('with a long list, only listed accounts are kept and the cursor still moves
   assert.equal(r.settle().length, 1);
 });
 
+test('a report never waits on the slow cursor save', () => {
+  const r = rig({
+    accounts: Array.from({ length: 200 }, (_, i) => ({
+      did: i === 0 ? SYNTHETIC_DID : `did:plc:listed${i}`,
+      source_type: 'social_claim',
+    })),
+  });
+  r.adapter.start();
+  r.sockets.last().open();
+  r.sockets
+    .last()
+    .frame(postFrame({ did: SYNTHETIC_DID_2, seq: 1, rkey: 'other' }));
+  r.sockets.last().frame(postFrame({ seq: 2, rkey: 'mine' }));
+  assert.ok(
+    Math.min(...r.timers.delays()) <= 100,
+    `shortest flush ${Math.min(...r.timers.delays())} ms`,
+  );
+});
+
 test('a refused connection says so, even with an empty error', () => {
   const r = rig();
   r.adapter.start();
