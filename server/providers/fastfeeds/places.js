@@ -94,6 +94,16 @@ const US_STATES = Object.freeze({
   wyoming: 'WY',
 });
 
+const titleCase = (label) =>
+  label.replace(/\b\p{L}/gu, (letter) => letter.toUpperCase());
+
+const STATE_BY_POSTAL = new Map(
+  Object.entries(US_STATES).map(([label, postal]) => [
+    postal,
+    titleCase(label),
+  ]),
+);
+
 /** Case-folded key; Cyrillic keeps its stem so inflected forms meet. */
 export function placeKey(words) {
   return words
@@ -153,7 +163,7 @@ function load() {
   for (const [label, postal] of Object.entries(US_STATES))
     add(label, {
       kind: 'state',
-      name: label.replace(/\b\p{L}/gu, (letter) => letter.toUpperCase()),
+      name: titleCase(label),
       iso2: 'US',
       postal,
     });
@@ -209,6 +219,24 @@ function mentionsIn(text) {
             text.slice(words[start - 1].index, words[start].index),
           ),
       });
+      // "Melbourne FL" is not Melbourne: the code says which one.
+      const next = words[start + size]?.[0];
+      if (STATE_BY_POSTAL.has(next))
+        found.push({
+          entries: [
+            {
+              kind: 'state',
+              name: STATE_BY_POSTAL.get(next),
+              iso2: 'US',
+              postal: next,
+            },
+          ],
+          quote: next,
+          index: words[start + size].index,
+          end: words[start + size].index + next.length,
+          located: false,
+          sentenceStart: false,
+        });
       start += size - 1;
       break;
     }

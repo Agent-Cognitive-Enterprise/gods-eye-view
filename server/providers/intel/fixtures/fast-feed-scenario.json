@@ -14,7 +14,9 @@
       "subtype": "fire",
       "title": "[DRILL] Something burning somewhere in town, not sure where",
       "summary": "Synthetic drill post with no place and little severity.",
-      "metrics": { "severity_hint": 30 }
+      "metrics": {
+        "severity_hint": 30
+      }
     },
     {
       "at_min": 2,
@@ -36,19 +38,9 @@
         "place": "Lyon",
         "region_code": "FR"
       },
-      "metrics": { "severity_hint": 55 }
-    },
-    {
-      "at_min": 4,
-      "published_min": 4,
-      "source_item_id": "fast-repost-wave",
-      "copies_of": "fast-first-report",
-      "copies": 0,
-      "publisher": "bsky:did:plc:drillaccount0000003",
-      "source_type": "social_claim",
-      "category": "natural_disaster",
-      "title": "[DRILL] copy",
-      "metrics": { "severity_hint": 55 }
+      "metrics": {
+        "severity_hint": 55
+      }
     },
     {
       "at_min": 6,
@@ -70,7 +62,9 @@
         "place": "Lyon",
         "region_code": "FR"
       },
-      "metrics": { "severity_hint": 55 }
+      "metrics": {
+        "severity_hint": 55
+      }
     },
     {
       "at_min": 14,
@@ -93,7 +87,10 @@
         "place": "Lyon",
         "region_code": "FR"
       },
-      "metrics": { "severity_hint": 80, "alert_level": "orange" }
+      "metrics": {
+        "severity_hint": 80,
+        "alert_level": "orange"
+      }
     },
     {
       "at_min": 30,
@@ -117,7 +114,10 @@
         "place": "Lyon",
         "region_code": "FR"
       },
-      "metrics": { "severity_hint": 80, "alert_level": "orange" }
+      "metrics": {
+        "severity_hint": 80,
+        "alert_level": "orange"
+      }
     },
     {
       "at_min": 8,
@@ -139,7 +139,9 @@
         "place": "Geneva",
         "region_code": "CH"
       },
-      "metrics": { "severity_hint": 95 }
+      "metrics": {
+        "severity_hint": 95
+      }
     },
     {
       "at_min": 16,
@@ -162,7 +164,9 @@
         "place": "Geneva",
         "region_code": "CH"
       },
-      "metrics": { "severity_hint": 95 }
+      "metrics": {
+        "severity_hint": 95
+      }
     },
     {
       "at_min": 22,
@@ -185,7 +189,9 @@
         "place": "Geneva",
         "region_code": "CH"
       },
-      "metrics": { "severity_hint": 95 }
+      "metrics": {
+        "severity_hint": 95
+      }
     }
   ]
 }

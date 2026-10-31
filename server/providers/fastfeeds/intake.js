@@ -52,6 +52,9 @@ CREATE TABLE IF NOT EXISTS dead_letters (
 );
 `;
 const DAY = 24 * 3600_000;
+// A filtered report's record only exists to catch a replay, and the stream
+// replays about 36 hours at most.
+const FILTERED_RETENTION_DAYS = 2;
 const MAX_DEAD_LETTERS = 500;
 const MAX_SAMPLE = 400;
 
@@ -166,7 +169,10 @@ export function createIntake({
        RETURNING source_id, received_at`,
     ),
     prune: db.prepare(
-      'DELETE FROM intake WHERE received_at < ? AND status != ?',
+      "DELETE FROM intake WHERE received_at < ? AND status != 'pending'",
+    ),
+    pruneFiltered: db.prepare(
+      "DELETE FROM intake WHERE received_at < ? AND status IN ('filtered', 'dropped')",
     ),
   };
 
@@ -294,9 +300,9 @@ export function createIntake({
     stats: () => ({ pending, max_pending: maxPending }),
     /** Handled reports hold no text; their records go after retention. */
     prune(at = now()) {
-      return Number(
-        q.prune.run(at - rawRetentionDays * DAY, 'pending').changes,
-      );
+      const filtered = q.pruneFiltered.run(at - FILTERED_RETENTION_DAYS * DAY);
+      const old = q.prune.run(at - rawRetentionDays * DAY);
+      return Number(filtered.changes) + Number(old.changes);
     },
     close: () => db.close(),
   };

@@ -25,20 +25,20 @@ The rule for all of it: nothing here touches the camera and nothing here decides
 what is true. A report becomes an ordinary observation, and the engine's rules
 decide what it means.
 
-| Module                                       | Owner of                                                                  |
-| -------------------------------------------- | ------------------------------------------------------------------------- |
-| `server/providers/fastfeeds/index.js`        | Lifetimes, settings, health, the numbers in the panel                     |
-| `server/providers/fastfeeds/intake.js`       | Durable bounded queue, cursors, counters, dead letters                    |
-| `server/providers/fastfeeds/gate.js`         | Language, topic match, link canonicalisation                              |
-| `server/providers/fastfeeds/rules.js`        | English, Russian and Ukrainian terms; add more through language packs     |
-| `server/providers/fastfeeds/places.js`       | Naming a place from the text against the bundled gazetteer                |
-| `server/providers/fastfeeds/pipeline.js`     | One bounded pass from queue to engine                                     |
-| `server/providers/fastfeeds/enricher.js`     | The single question Qwen is asked                                         |
-| `server/providers/fastfeeds/adapters/*`      | Bluesky, Telegram                                                         |
-| `server/providers/fastfeeds/secretStore.js`  | Telegram login under Windows DPAPI                                        |
-| `src/intel/fastStatus.js`                    | `candidate` to `retracted`, derived from verification and never stored    |
-| `src/intel/fastView.js`                      | What the operator chose to see                                            |
-| `src/ui/fastIntelPanel.js`                   | The panel                                                                 |
+| Module                                      | Owner of                                                               |
+| ------------------------------------------- | ---------------------------------------------------------------------- |
+| `server/providers/fastfeeds/index.js`       | Lifetimes, settings, health, the numbers in the panel                  |
+| `server/providers/fastfeeds/intake.js`      | Durable bounded queue, cursors, counters, dead letters                 |
+| `server/providers/fastfeeds/gate.js`        | Language, topic match, link canonicalisation                           |
+| `server/providers/fastfeeds/rules.js`       | English, Russian and Ukrainian terms; add more through language packs  |
+| `server/providers/fastfeeds/places.js`      | Naming a place from the text against the bundled gazetteer             |
+| `server/providers/fastfeeds/pipeline.js`    | One bounded pass from queue to engine                                  |
+| `server/providers/fastfeeds/enricher.js`    | The single question Qwen is asked                                      |
+| `server/providers/fastfeeds/adapters/*`     | Bluesky, Telegram                                                      |
+| `server/providers/fastfeeds/secretStore.js` | Telegram login under Windows DPAPI                                     |
+| `src/intel/fastStatus.js`                   | `candidate` to `retracted`, derived from verification and never stored |
+| `src/intel/fastView.js`                     | What the operator chose to see                                         |
+| `src/ui/fastIntelPanel.js`                  | The panel                                                              |
 
 Changes to existing fork code are small and listed in
 [FORK-MAINTENANCE.md](FORK-MAINTENANCE.md). Upstream files touched: one panel
@@ -46,24 +46,24 @@ shell in `layer-panels.html`, and `package.json`/`package-lock.json`.
 
 ## From a post to the map
 
-| Report | Trust tag | Source type           | One post                                  | More sources                                        |
-| ------ | --------- | --------------------- | ----------------------------------------- | --------------------------------------------------- |
+| Report | Trust tag | Source type           | One post                                    | More sources                                          |
+| ------ | --------- | --------------------- | ------------------------------------------- | ----------------------------------------------------- |
 | Social | community | `social_claim`        | Confidence 0.25, drawn if placed, no camera | Two accounts corroborate; capped at 0.60, no critical |
-| Social | reporter  | `secondary_reporting` | Confidence 0.40, a normal unverified report | Normal rules apply                                  |
-| Social | official  | `primary_official`    | Confidence 0.85, official                 | Normal rules apply                                  |
+| Social | reporter  | `secondary_reporting` | Confidence 0.40, a normal unverified report | Normal rules apply                                    |
+| Social | official  | `primary_official`    | Confidence 0.85, official                   | Normal rules apply                                    |
 
 `community` is the default. `reporter` and `official` are the operator saying they
 checked that source themselves; an account's name proves nothing.
 
-| Status        | Meaning                                                      | On the map                    |
-| ------------- | ------------------------------------------------------------ | ----------------------------- |
-| `candidate`   | Thin, or no place. In the activity list only                 | Nothing                       |
-| `provisional` | Unconfirmed, placed, severity 50 or more. Badge FIRST REPORT | Hollow ring                   |
-| `corroborated`| Independent sources agree                                    | Solid marker                  |
-| `official`    | An identifiable competent authority says so                  | Solid marker                  |
-| `contested`   | Someone disputes it                                          | Hollow ring, no camera        |
-| `retracted`   | Its source took it back, or an authority did                 | Gone; kept in the archive     |
-| `resolved`    | Over                                                         | Dimmed, then archived         |
+| Status         | Meaning                                                      | On the map                |
+| -------------- | ------------------------------------------------------------ | ------------------------- |
+| `candidate`    | Thin, or no place. In the activity list only                 | Nothing                   |
+| `provisional`  | Unconfirmed, placed, severity 50 or more. Badge FIRST REPORT | Hollow ring               |
+| `corroborated` | Independent sources agree                                    | Solid marker              |
+| `official`     | An identifiable competent authority says so                  | Solid marker              |
+| `contested`    | Someone disputes it                                          | Hollow ring, no camera    |
+| `retracted`    | Its source took it back, or an authority did                 | Gone; kept in the archive |
+| `resolved`     | Over                                                         | Dimmed, then archived     |
 
 An unconfirmed social claim leaves the map after 6 hours, whatever its category.
 
@@ -86,15 +86,15 @@ An unconfirmed social claim leaves the map after 6 hours, whatever its category.
 
 Every card keeps these apart (`GET /api/intel/fast/events/<id>`):
 
-| Field                                 | Source                                                  |
-| ------------------------------------- | ------------------------------------------------------- |
-| `event_time`                          | Only when a source states it; `null` otherwise          |
-| `first_known_source_publication_time` | Earliest report, even one that arrives late             |
-| `first_detected_at`                   | When this system first received it                      |
-| `reports[].processed_at`              | When the pipeline finished each report                  |
-| `first_displayed_at`                  | When it was first served to a map client                |
-| `first_corroborated_at`               | When a second source or an official one first agreed    |
-| `last_material_update_at`             | The last real change                                    |
+| Field                                 | Source                                               |
+| ------------------------------------- | ---------------------------------------------------- |
+| `event_time`                          | Only when a source states it; `null` otherwise       |
+| `first_known_source_publication_time` | Earliest report, even one that arrives late          |
+| `first_detected_at`                   | When this system first received it                   |
+| `reports[].processed_at`              | When the pipeline finished each report               |
+| `first_displayed_at`                  | When it was first served to a map client             |
+| `first_corroborated_at`               | When a second source or an official one first agreed |
+| `last_material_update_at`             | The last real change                                 |
 
 ## Set-up
 
@@ -188,32 +188,32 @@ Numbers are the specification's. The tests are in
 `server/providers/fastfeeds/*.test.mjs`, `src/intel/socialClaims.test.mjs` and, where
 noted, the existing suites.
 
-| #  | Case                                                       | Test                                                                                |
-| -- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| 1  | New push report end to end                                 | `1: a pushed post is stored, timestamped and reaches the engine once`               |
-| 2  | Out of order, delayed, clock skew                          | `2: posts arriving out of order keep their own times`, `publication time: …`        |
-| 3  | Old post, repost, forward renews nothing                   | `3: an imported old post…`, `3: a quote post…`, `Telegram: a message keeps…`        |
-| 4  | One agency across channels is one origin                   | `3 and 4: a shared article, however linked, is one origin`                          |
-| 5  | Two independent reporters correlate                        | `5: two independent accounts with different words correlate`                        |
-| 6  | Like events in nearby towns stay apart                     | `6: like incidents in nearby towns stay apart`                                      |
-| 7  | Fabricated GPS, country-only claim                         | `7: a country-only claim gets no point…`, `a copy of one post shared by twenty…`    |
-| 8  | Contradicted, then retracted                               | `8: a source correcting itself retracts; someone else only disputes`                |
-| 9  | Official alert modified, expired, cancelled                | Existing: `USGS features…`, `NWS: VTEC ties updates…`, `tsunami centres: …`         |
-| 10 | Reconnect with cursor replay                               | `10: an outage resumes from the cursor…`                                            |
-| 11 | Telegram unconfigured, the rest runs                       | `11: Telegram with no login…`                                                       |
-| 12 | Rate limit, timeout, malformed, oversized                  | `12: malformed, oversized and hostile frames…`, `Telegram: a network failure…`      |
-| 13 | Flood of 10,000                                            | `13: a 10,000-message flood stays bounded, counted and fair`                        |
-| 14 | Model timeout, backlog drains                              | `14: a model timeout changes nothing…`                                              |
-| 15 | Unverified report, no interruption                         | `Autopilot never flies to an unverified post…`                                      |
-| 16 | Critical official warning interrupts                       | Existing: `A09: a qualified critical event interrupts…`                             |
-| 17 | Stale update gives no camera renewal                       | Existing: `an old incident arriving now…`, `A06: …`                                 |
-| 18 | Distant events rotate, nearby cluster                      | Existing: `A03: distant clusters rotate…`, `A02: …`                                 |
-| 19 | Restart keeps IDs, cursors, sources                        | `19: a restart keeps events, the cursor, the sources and the queue`                 |
-| 20 | No outside inference                                       | Existing: `only loopback base URLs are accepted…`                                   |
-| 21 | Outage is not a lull                                       | `21: a dead stream reads as a dead stream…`                                         |
-| 22 | UTC, daylight saving, date line                            | `22: times are compared as instants…`, `22: an instant across…`, existing `A04`     |
-| 23 | Edit or delete reconciles evidence                         | `23: an edit updates the record…`, `a deleted post stops counting…`                 |
-| 24 | Proximity raises attention only                            | `proximity raises attention, never the confidence in a post`                        |
+| #   | Case                                        | Test                                                                             |
+| --- | ------------------------------------------- | -------------------------------------------------------------------------------- |
+| 1   | New push report end to end                  | `1: a pushed post is stored, timestamped and reaches the engine once`            |
+| 2   | Out of order, delayed, clock skew           | `2: posts arriving out of order keep their own times`, `publication time: …`     |
+| 3   | Old post, repost, forward renews nothing    | `3: an imported old post…`, `3: a quote post…`, `Telegram: a message keeps…`     |
+| 4   | One agency across channels is one origin    | `3 and 4: a shared article, however linked, is one origin`                       |
+| 5   | Two independent reporters correlate         | `5: two independent accounts with different words correlate`                     |
+| 6   | Like events in nearby towns stay apart      | `6: like incidents in nearby towns stay apart`                                   |
+| 7   | Fabricated GPS, country-only claim          | `7: a country-only claim gets no point…`, `a copy of one post shared by twenty…` |
+| 8   | Contradicted, then retracted                | `8: a source correcting itself retracts; someone else only disputes`             |
+| 9   | Official alert modified, expired, cancelled | Existing: `USGS features…`, `NWS: VTEC ties updates…`, `tsunami centres: …`      |
+| 10  | Reconnect with cursor replay                | `10: an outage resumes from the cursor…`                                         |
+| 11  | Telegram unconfigured, the rest runs        | `11: Telegram with no login…`                                                    |
+| 12  | Rate limit, timeout, malformed, oversized   | `12: malformed, oversized and hostile frames…`, `Telegram: a network failure…`   |
+| 13  | Flood of 10,000                             | `13: a 10,000-message flood stays bounded, counted and fair`                     |
+| 14  | Model timeout, backlog drains               | `14: a model timeout changes nothing…`                                           |
+| 15  | Unverified report, no interruption          | `Autopilot never flies to an unverified post…`                                   |
+| 16  | Critical official warning interrupts        | Existing: `A09: a qualified critical event interrupts…`                          |
+| 17  | Stale update gives no camera renewal        | Existing: `an old incident arriving now…`, `A06: …`                              |
+| 18  | Distant events rotate, nearby cluster       | Existing: `A03: distant clusters rotate…`, `A02: …`                              |
+| 19  | Restart keeps IDs, cursors, sources         | `19: a restart keeps events, the cursor, the sources and the queue`              |
+| 20  | No outside inference                        | Existing: `only loopback base URLs are accepted…`                                |
+| 21  | Outage is not a lull                        | `21: a dead stream reads as a dead stream…`                                      |
+| 22  | UTC, daylight saving, date line             | `22: times are compared as instants…`, `22: an instant across…`, existing `A04`  |
+| 23  | Edit or delete reconciles evidence          | `23: an edit updates the record…`, `a deleted post stops counting…`              |
+| 24  | Proximity raises attention only             | `proximity raises attention, never the confidence in a post`                     |
 
 ## Limits
 

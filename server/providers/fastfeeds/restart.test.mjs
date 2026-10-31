@@ -134,6 +134,21 @@ test('a handled report keeps its record and none of its words', () => {
   );
 });
 
+test('filtered records go after two days, kept ones after retention', () => {
+  const DAY = 24 * 3600_000;
+  const intake = createIntake({ now: () => T0, rawRetentionDays: 14 });
+  for (const native_id of ['chatter', 'report', 'waiting'])
+    intake.enqueue('s', [{ native_id, received_at: T0, text: 't' }]);
+  const [chatter, report] = intake.next(2);
+  intake.complete(chatter.seq, { status: 'filtered', outcome: 'no_topic' });
+  intake.complete(report.seq, { status: 'processed', outcome: 'new_event' });
+  assert.equal(intake.prune(T0 + DAY), 0, 'a replay can still reach them');
+  assert.equal(intake.prune(T0 + 3 * DAY), 1, 'chatter goes first');
+  assert.equal(intake.prune(T0 + 15 * DAY), 1, 'then the report');
+  assert.equal(intake.stats().pending, 1, 'waiting work is never pruned');
+  intake.close();
+});
+
 test('a pass stops at its time budget and leaves the rest waiting', () => {
   const intake = createIntake({ now: () => T0 });
   intake.enqueue(

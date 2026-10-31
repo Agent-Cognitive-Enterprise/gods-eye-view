@@ -275,6 +275,25 @@ test('places: what fooled it on the live stream no longer does', () => {
   );
 });
 
+test('places: a state code says which town, or stands in for it', () => {
+  const florida = resolvePlace('Coastal Flood Advisory by NWS Melbourne FL');
+  assert.equal(florida.location.place, 'Melbourne');
+  assert.equal(florida.location.region_code, 'US');
+  assert.ok(Math.abs(florida.location.lat - 28.1) < 0.2, 'not Australia');
+  assert.equal(
+    resolvePlace('Tornado hits Dallas TX tonight').location.place,
+    'Dallas',
+  );
+  assert.equal(
+    resolvePlace('Blast in Melbourne overnight').location.region_code,
+    'AU',
+  );
+  // No such town in that state: the state, never the famous namesake.
+  const standIn = resolvePlace('Storm damage reported in Kyiv OH this morning');
+  assert.equal(standIn.location.region_code, 'US-OH');
+  assert.equal(standIn.location.lat, null);
+});
+
 test('places: a US state is a region, with its proper name', () => {
   const { location } = resolvePlace('Flash flooding across Arizona tonight');
   assert.equal(location.place, 'Arizona');

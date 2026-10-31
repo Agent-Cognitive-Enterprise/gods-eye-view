@@ -7,33 +7,33 @@ Implementation reference: [FAST_FEEDS_IMPLEMENTATION.md](FAST_FEEDS_IMPLEMENTATI
 
 ## Starting point
 
-| Item                  | Finding                                                                                                        |
-| --------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Live installation     | `C:\Users\user\gev-autopilot`, instance 4174, commit `4f74cec7`, no local changes                              |
-| Unpushed work         | None on any branch                                                                                             |
-| Upstream              | Level with `bilawalsidhu/gods-eye-view` at `a725178e`                                                          |
-| Development tree      | `C:\Users\user\gev-sync` (reused: C: had 16 GB free, too little for another `node_modules`)                    |
-| Local model           | KoboldCpp with Qwen3.6-35B on `127.0.0.1:8790`, not the usual 5001; a GTX 1070 at 99 %, often `busy`           |
-| Companion specs       | `GODS_EYE_VIEW_AUTOPILOT_SPEC.md` and the air/sea spec are not on this machine; read through the repo docs     |
-| `gh` CLI              | Not installed; the GitHub REST API is used directly                                                            |
-| Baseline tests        | 9,328 of 9,340 pass, 11 skipped, 1 known Windows sky-image failure (recorded at the previous sync)             |
+| Item              | Finding                                                                                                    |
+| ----------------- | ---------------------------------------------------------------------------------------------------------- |
+| Live installation | `C:\Users\user\gev-autopilot`, instance 4174, commit `4f74cec7`, no local changes                          |
+| Unpushed work     | None on any branch                                                                                         |
+| Upstream          | Level with `bilawalsidhu/gods-eye-view` at `a725178e`                                                      |
+| Development tree  | `C:\Users\user\gev-sync` (reused: C: had 16 GB free, too little for another `node_modules`)                |
+| Local model       | KoboldCpp with Qwen3.6-35B on `127.0.0.1:8790`, not the usual 5001; a GTX 1070 at 99 %, often `busy`       |
+| Companion specs   | `GODS_EYE_VIEW_AUTOPILOT_SPEC.md` and the air/sea spec are not on this machine; read through the repo docs |
+| `gh` CLI          | Not installed; the GitHub REST API is used directly                                                        |
+| Baseline tests    | 9,328 of 9,340 pass, 11 skipped, 1 known Windows sky-image failure (recorded at the previous sync)         |
 
 ## What already existed
 
 Much of the specification's Phase 1 was already there, so nothing was rebuilt.
 
-| Need                                  | Existing owner                                        |
-| ------------------------------------- | ----------------------------------------------------- |
-| Observation → event fold, lineage     | `src/intel/engine.js`, `correlate.js`, `evidence.js`  |
-| Copy detection, material changes      | `src/intel/correlate.js`                              |
-| Severity, confidence, attention       | `src/intel/scoring.js` ("important" is not "true")    |
-| Lifecycle, fade, archive              | `src/intel/lifecycle.js`                              |
-| Camera, dwell, hysteresis, cooldown   | `src/intel/scheduler.js` (the only camera authority)  |
-| Proximity (attention only)            | `src/intel/proximity.js`                              |
-| USGS, NWS, GDACS, tsunami centres     | `server/providers/intel/connectors/*`                 |
-| GDELT, S2 GhostMaps                   | Same; GDELT is aggregator grade and never corroborates |
-| Bounded model assessment              | `server/providers/intel/assessor.js`, `localLlm.js`   |
-| Durable storage                       | `node:sqlite` in `server/providers/intel/store.js`    |
+| Need                                | Existing owner                                         |
+| ----------------------------------- | ------------------------------------------------------ |
+| Observation → event fold, lineage   | `src/intel/engine.js`, `correlate.js`, `evidence.js`   |
+| Copy detection, material changes    | `src/intel/correlate.js`                               |
+| Severity, confidence, attention     | `src/intel/scoring.js` ("important" is not "true")     |
+| Lifecycle, fade, archive            | `src/intel/lifecycle.js`                               |
+| Camera, dwell, hysteresis, cooldown | `src/intel/scheduler.js` (the only camera authority)   |
+| Proximity (attention only)          | `src/intel/proximity.js`                               |
+| USGS, NWS, GDACS, tsunami centres   | `server/providers/intel/connectors/*`                  |
+| GDELT, S2 GhostMaps                 | Same; GDELT is aggregator grade and never corroborates |
+| Bounded model assessment            | `server/providers/intel/assessor.js`, `localLlm.js`    |
+| Durable storage                     | `node:sqlite` in `server/providers/intel/store.js`     |
 
 ## What was missing
 
@@ -55,31 +55,31 @@ Much of the specification's Phase 1 was already there, so nothing was rebuilt.
 
 ## Sources
 
-| Source                   | Role               | Access                         | Terms and caveats                                                                                                   |
-| ------------------------ | ------------------ | ------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| Bluesky Jetstream v2     | Push, first reports | Public, no key                 | No SLA or stated limits in the docs. Measured below.                                                                |
-| Telegram (MTProto)       | Push, first reports | User-owned `api_id`, `api_hash` | Only public channels an account may read. A Bot token cannot read arbitrary channels. Telegram's terms apply.       |
-| USGS, NWS, GDACS         | Official alerts    | Public                         | Reused. NWS asks for at most one request per 30 s; GDACS refreshes about every 6 minutes.                           |
-| GDELT                    | Slow correlation   | Public                         | 15-minute cycle. Aggregator grade; opt-in; a headline is a claim.                                                   |
-| S2 GhostMaps             | Analyst context    | Public, CC BY-NC-SA 4.0        | Analyst summary, not independent confirmation.                                                                      |
-| ACLED                    | Listed only        | Needs key                      | Its terms bar this use; never polled.                                                                               |
-| Natural Earth            | Gazetteer          | Bundled                        | Public domain.                                                                                                      |
-| Other national CAP feeds | Not started        |                                | Each needs its own check of terms and format.                                                                       |
-| Mastodon, news RSS       | Not started        |                                | Optional in the specification.                                                                                      |
+| Source                   | Role                | Access                          | Terms and caveats                                                                                             |
+| ------------------------ | ------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Bluesky Jetstream v2     | Push, first reports | Public, no key                  | No SLA or stated limits in the docs. Measured below.                                                          |
+| Telegram (MTProto)       | Push, first reports | User-owned `api_id`, `api_hash` | Only public channels an account may read. A Bot token cannot read arbitrary channels. Telegram's terms apply. |
+| USGS, NWS, GDACS         | Official alerts     | Public                          | Reused. NWS asks for at most one request per 30 s; GDACS refreshes about every 6 minutes.                     |
+| GDELT                    | Slow correlation    | Public                          | 15-minute cycle. Aggregator grade; opt-in; a headline is a claim.                                             |
+| S2 GhostMaps             | Analyst context     | Public, CC BY-NC-SA 4.0         | Analyst summary, not independent confirmation.                                                                |
+| ACLED                    | Listed only         | Needs key                       | Its terms bar this use; never polled.                                                                         |
+| Natural Earth            | Gazetteer           | Bundled                         | Public domain.                                                                                                |
+| Other national CAP feeds | Not started         |                                 | Each needs its own check of terms and format.                                                                 |
+| Mastodon, news RSS       | Not started         |                                 | Optional in the specification.                                                                                |
 
 ## Risks and what was done about them
 
-| Risk                                   | Treatment                                                                                                       |
-| -------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Rumour becomes fact                    | `social_claim` source type: below camera confidence alone, capped below critical however many accounts agree     |
-| Repost storm moves the camera          | Posts on an established event enrich its card and renew nothing                                                  |
-| Forged or old timestamps               | Server time wins over a post's own; a claimed time can only make a post older                                    |
-| Fabricated location                    | Coordinates only for a town named in the text; stated coordinates are never read; countries give bounds, no point |
-| Prompt injection through a post        | Post fenced as data; the model answers one question; its answer must quote the post and pass the gazetteer       |
-| Secrets in the repo or browser         | Telegram login encrypted with Windows DPAPI outside the repository; never sent to the browser                    |
-| A slow model delays alerts             | The fast path has no model in it                                                                                 |
-| Queue growth                           | Bounded, with counted drops and fairness by source                                                               |
-| Disturbing the live instance           | Separate tree, database and port. See the AISStream note below                                                   |
+| Risk                            | Treatment                                                                                                         |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Rumour becomes fact             | `social_claim` source type: below camera confidence alone, capped below critical however many accounts agree      |
+| Repost storm moves the camera   | Posts on an established event enrich its card and renew nothing                                                   |
+| Forged or old timestamps        | Server time wins over a post's own; a claimed time can only make a post older                                     |
+| Fabricated location             | Coordinates only for a town named in the text; stated coordinates are never read; countries give bounds, no point |
+| Prompt injection through a post | Post fenced as data; the model answers one question; its answer must quote the post and pass the gazetteer        |
+| Secrets in the repo or browser  | Telegram login encrypted with Windows DPAPI outside the repository; never sent to the browser                     |
+| A slow model delays alerts      | The fast path has no model in it                                                                                  |
+| Queue growth                    | Bounded, with counted drops and fairness by source                                                                |
+| Disturbing the live instance    | Separate tree, database and port. See the AISStream note below                                                    |
 
 ## What live testing changed
 
