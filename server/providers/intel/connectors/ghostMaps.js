@@ -10,6 +10,9 @@
 // news report arriving from another feed are one source, not two.
 
 import { readKmlFromKmz, readPlacemarks } from '../kmz.js';
+import { parseGhostMapsDate } from '../../../../src/layers/ghostMaps/age.js';
+
+export { parseGhostMapsDate };
 
 export const GHOSTMAPS_INCIDENT_PRODUCTS = Object.freeze([
   'kinetic-30d',
@@ -17,27 +20,6 @@ export const GHOSTMAPS_INCIDENT_PRODUCTS = Object.freeze([
 ]);
 const ATTRIBUTION =
   'S2 GhostMaps intel products: S2 Underground © by S2A1, CC BY-NC-SA 4.0';
-
-/** `M/D/YYYY[ h:mm[:ss] AM]` (no zone in the data) → epoch ms as UTC, or null. */
-export function parseGhostMapsDate(text) {
-  const match =
-    /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AP]M)?)?$/i.exec(
-      String(text ?? '').trim(),
-    );
-  if (!match) return null;
-  const [, month, day, year, h = '0', m = '0', s = '0', meridiem] = match;
-  let hour = Number(h);
-  if (meridiem) hour = (hour % 12) + (/pm/i.test(meridiem) ? 12 : 0);
-  const ms = Date.UTC(
-    Number(year),
-    Number(month) - 1,
-    Number(day),
-    hour,
-    Number(m),
-    Number(s),
-  );
-  return Number.isFinite(ms) ? ms : null;
-}
 
 const CONFLICT =
   /air ?strike|missile|drone|uav|artillery|shell|rocket|bomb|explosi|ied|attack|shooting|gunfire|clash|raid|ambush|assassinat|kinetic/i;

@@ -7,6 +7,11 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **S2 GhostMaps age window.** S2's "Last 30 Days" export reaches back to 2013,
+  so the layer drew years-old events as if current. A 6 H to 1 Y selector
+  (default 1 M, remembered) now judges each placemark by its own Date field. A
+  bare date lasts until that day ends. Undated events stay hidden; sites and
+  areas are not events and stay on.
 - **Upstream sync to a725178e.** Brings the Authoring panel (Scenes renamed and
   laid out in steps), one title style for the side panels, the Autostrada del
   Brennero (A22) webcams and an IPv4 retry for FIRMS.

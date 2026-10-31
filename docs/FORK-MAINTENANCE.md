@@ -45,6 +45,7 @@ fork edits are the merge surface; keep these edits additive and small:
 | `server/providers/local.js`                                                                  | Registers the intel, air/sea and local-voice plugins; shares the GhostMaps watcher and the air/sea hub. |
 | `src/app/tools.js`, `src/standalone/tools.js`                                                | Mounts the Autopilot console and dock auto-hide; offers `local` voice; Air & Sea layer reveal.          |
 | `src/ui/templates/layer-panels.html`                                                         | FEEDS panel shell at the end of the left stack.                                                         |
+| `src/layers/ghostMaps/index.js`                                                              | Age window over each placemark's date (logic in the fork-only `age.js`); keep `facing` and `inWindow`.  |
 | `src/ui/leftPanelRail.js`                                                                    | Reads `--left-stack-base-top` (px) before its 26vh default.                                             |
 | `server/providers/aircraft/opensky.js`, `adsb-lol.js`                                        | One `publishTrafficSnapshot()` call after each cached snapshot (air/sea).                               |
 | `src/app/constructCatalog.js`, `src/ui/layerPanel.js`, `src/ui/layerNames.js`                | The four Air & Sea layers, local-only metadata, Air & Sea group.                                        |

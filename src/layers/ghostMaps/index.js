@@ -15,8 +15,15 @@ import {
   tn,
 } from '../../i18n/index.js';
 import { createHorizonCull } from '../streetLevel/view.js';
+import {
+  GHOSTMAPS_DEFAULT_WINDOW,
+  GHOSTMAPS_WINDOWS,
+  placemarkAge,
+  shownInWindow,
+} from './age.js';
 import { readGhostMapsKml } from './kml.js';
 import { fieldLabel, parseDescriptionFields, wrapCardText } from './records.js';
+export * from './age.js';
 export * from './catalog.js';
 export * from './records.js';
 export { readGhostMapsKml } from './kml.js';
@@ -26,6 +33,7 @@ export const GHOSTMAPS_LAYER_ID = 's2-ghostmaps';
 export const GHOSTMAPS_OVERLAY_SOURCE_ID = 's2-ghostmaps';
 const PICK_PREFIX = 'ghostmaps:';
 const STORAGE_KEY = 'gev.ghostmaps.products';
+const WINDOW_STORAGE_KEY = 'gev.ghostmaps.window';
 const ACCENT = '#c8ff00';
 const MAX_ICON_BYTES = 512 * 1024;
 const CARD_HOST_OPTIONS = Object.freeze({
@@ -44,6 +52,17 @@ const PRODUCT_LABELS = Object.freeze({
   'iran-kinetic': msg('Iran Kinetic'),
   'yemen-flot': msg('Yemen FLOT'),
   'latest-drop': msg('Latest Drop'),
+});
+
+/** Chip names for the age windows in `age.js`. */
+const WINDOW_LABELS = Object.freeze({
+  '6h': msg('6 H'),
+  '12h': msg('12 H'),
+  '24h': msg('24 H'),
+  '1w': msg('1 W'),
+  '1m': msg('1 M'),
+  '6m': msg('6 M'),
+  '1y': msg('1 Y'),
 });
 
 /** One distinct fallback marker color per product. */
@@ -79,6 +98,26 @@ function writeStoredSelection(storage, selected) {
     storage?.setItem(STORAGE_KEY, JSON.stringify([...selected]));
   } catch {
     /* private window or blocked storage: the selection lasts this session */
+  }
+}
+
+function readStoredWindow(storage) {
+  try {
+    const id = storage?.getItem(WINDOW_STORAGE_KEY);
+    return (
+      GHOSTMAPS_WINDOWS.find((window) => window.id === id) ||
+      GHOSTMAPS_DEFAULT_WINDOW
+    );
+  } catch {
+    return GHOSTMAPS_DEFAULT_WINDOW;
+  }
+}
+
+function writeStoredWindow(storage, window) {
+  try {
+    storage?.setItem(WINDOW_STORAGE_KEY, window.id);
+  } catch {
+    /* private window or blocked storage: the choice lasts this session */
   }
 }
 
@@ -154,6 +193,7 @@ export function createGhostMapsLayer({
   let _selectedLink = null;
   let _lifetime = new AbortController();
   let _selection = readStoredSelection(storage);
+  let _window = readStoredWindow(storage);
   /** productId → {version, dataSource, urls, count, features} */
   const _loaded = new Map();
   /** productId → in-flight version */
@@ -229,6 +269,20 @@ export function createGhostMapsLayer({
       parsed.features.forEach((feature, index) => {
         const key = `${product.id}:${index}`;
         const { style } = feature;
+        const record = {
+          name: feature.name,
+          folder: feature.folder,
+          description: feature.description,
+          anchor: anchorOf(feature.geometries[0]),
+          ...placemarkAge(parseDescriptionFields(feature.description).fields),
+          inWindow: true,
+          parts: [],
+        };
+        const addPart = (entity) => {
+          const part = { entity, facing: true };
+          record.parts.push(part);
+          return part;
+        };
         feature.geometries.forEach((geometry, part) => {
           const id = `${PICK_PREFIX}${key}:${part}`;
           if (geometry.type === 'point') {
@@ -255,68 +309,73 @@ export function createGhostMapsLayer({
                 disableDepthTestDistance: Number.POSITIVE_INFINITY,
               },
             });
+            const pin = addPart(entity);
+            // The horizon cull owns only `facing`; the age window can keep a
+            // pin hidden while it turns to face the camera.
             pins.push({
               position,
               get show() {
-                return entity.show;
+                return pin.facing;
               },
               set show(value) {
-                entity.show = value;
+                pin.facing = value;
+                entity.show = value && record.inWindow;
               },
             });
           } else if (geometry.type === 'line') {
-            dataSource.entities.add({
-              id,
-              polyline: {
-                positions: Cesium.Cartesian3.fromDegreesArray(
-                  geometry.positions.flat(),
-                ),
-                width: Math.min(8, Math.max(1.5, style.lineWidth ?? 2)),
-                material: cesiumColor(style.lineColor, color),
-                clampToGround: true,
-              },
-            });
-          } else {
-            const ring = (points) =>
-              Cesium.Cartesian3.fromDegreesArray(points.flat());
-            dataSource.entities.add({
-              id,
-              polygon: {
-                hierarchy: new Cesium.PolygonHierarchy(
-                  ring(geometry.outer),
-                  geometry.holes.map(
-                    (hole) => new Cesium.PolygonHierarchy(ring(hole)),
-                  ),
-                ),
-                material:
-                  style.fill === false
-                    ? Cesium.Color.TRANSPARENT
-                    : cesiumColor(
-                        style.polyColor,
-                        color,
-                        style.polyColor ? undefined : 0.25,
-                      ),
-                classificationType: Cesium.ClassificationType.BOTH,
-              },
-            });
-            if (style.outline !== false)
+            addPart(
               dataSource.entities.add({
-                id: `${id}:outline`,
+                id,
                 polyline: {
-                  positions: ring([...geometry.outer, geometry.outer[0]]),
-                  width: Math.min(6, Math.max(1.5, style.lineWidth ?? 2)),
+                  positions: Cesium.Cartesian3.fromDegreesArray(
+                    geometry.positions.flat(),
+                  ),
+                  width: Math.min(8, Math.max(1.5, style.lineWidth ?? 2)),
                   material: cesiumColor(style.lineColor, color),
                   clampToGround: true,
                 },
-              });
+              }),
+            );
+          } else {
+            const ring = (points) =>
+              Cesium.Cartesian3.fromDegreesArray(points.flat());
+            addPart(
+              dataSource.entities.add({
+                id,
+                polygon: {
+                  hierarchy: new Cesium.PolygonHierarchy(
+                    ring(geometry.outer),
+                    geometry.holes.map(
+                      (hole) => new Cesium.PolygonHierarchy(ring(hole)),
+                    ),
+                  ),
+                  material:
+                    style.fill === false
+                      ? Cesium.Color.TRANSPARENT
+                      : cesiumColor(
+                          style.polyColor,
+                          color,
+                          style.polyColor ? undefined : 0.25,
+                        ),
+                  classificationType: Cesium.ClassificationType.BOTH,
+                },
+              }),
+            );
+            if (style.outline !== false)
+              addPart(
+                dataSource.entities.add({
+                  id: `${id}:outline`,
+                  polyline: {
+                    positions: ring([...geometry.outer, geometry.outer[0]]),
+                    width: Math.min(6, Math.max(1.5, style.lineWidth ?? 2)),
+                    material: cesiumColor(style.lineColor, color),
+                    clampToGround: true,
+                  },
+                }),
+              );
           }
         });
-        features.push({
-          name: feature.name,
-          folder: feature.folder,
-          description: feature.description,
-          anchor: anchorOf(feature.geometries[0]),
-        });
+        features.push(record);
       });
       dataSource.entities.resumeEvents();
       return { version: product.version, dataSource, urls, features, pins };
@@ -324,6 +383,40 @@ export function createGhostMapsLayer({
       urls.forEach((url) => URL.revokeObjectURL(url));
       throw error;
     }
+  }
+
+  /** Show one product's placemarks that fall inside the age window. */
+  function applyWindow(item, now = Date.now()) {
+    let changed = false;
+    for (const feature of item.features) {
+      const inWindow = shownInWindow(feature, _window.ms, now);
+      if (inWindow === feature.inWindow) continue;
+      feature.inWindow = inWindow;
+      changed = true;
+      for (const part of feature.parts)
+        part.entity.show = inWindow && part.facing;
+    }
+    return changed;
+  }
+
+  /** Re-judge everything on the globe; time passing ages events out too. */
+  function refreshWindow() {
+    let changed = false;
+    for (const item of _loaded.values()) changed = applyWindow(item) || changed;
+    if (!changed) return;
+    if (_selectedKey && !featureFor(_selectedKey).feature?.inWindow)
+      clearSelection();
+    notifyRow();
+    render();
+  }
+
+  function setWindow(id) {
+    const next = GHOSTMAPS_WINDOWS.find((window) => window.id === id);
+    if (!next || next === _window) return;
+    _window = next;
+    writeStoredWindow(storage, next);
+    refreshWindow();
+    notifyRow();
   }
 
   /** Bring the globe in line with the catalog and the chip selection. */
@@ -348,6 +441,7 @@ export function createGhostMapsLayer({
             next.urls.forEach((url) => URL.revokeObjectURL(url));
             return;
           }
+          applyWindow(next);
           // Cull before the first frame so far-side pins never flash.
           _horizon.update(next.pins);
           await _viewer.dataSources.add(next.dataSource);
@@ -540,10 +634,31 @@ export function createGhostMapsLayer({
     picking?.unregisterPickOwner?.(GHOSTMAPS_LAYER_ID);
   }
 
+  const shownFeatures = (item) =>
+    item.features.filter((feature) => feature.inWindow);
+
   function featureCount() {
     let count = 0;
-    for (const item of _loaded.values()) count += item.features.length;
+    for (const item of _loaded.values()) count += shownFeatures(item).length;
     return count;
+  }
+
+  /** What the age window keeps off the map, for the row's info line. */
+  function hiddenSummary() {
+    let older = 0;
+    let undated = 0;
+    for (const item of _loaded.values())
+      for (const feature of item.features) {
+        if (feature.inWindow) continue;
+        if (feature.at === null) undated += 1;
+        else older += 1;
+      }
+    return older || undated
+      ? t('Hidden: {older} older, {undated} undated', {
+          older: formatNumber(older),
+          undated: formatNumber(undated),
+        })
+      : null;
   }
 
   const layer = {
@@ -597,6 +712,7 @@ export function createGhostMapsLayer({
         const catalog = await source.getCatalog({ signal });
         if (!_enabled) return false;
         await applyCatalog(catalog);
+        refreshWindow();
         return true;
       } catch (error) {
         if (signal?.aborted || !_enabled) return false;
@@ -637,37 +753,44 @@ export function createGhostMapsLayer({
             })
         : t('Connecting to the S2 GhostMaps repository…');
       return {
-        chips: products.map((product) => {
-          const loaded = _loaded.get(product.id);
-          const failed = _failed.get(product.id);
-          return {
-            id: product.id,
-            label: t(PRODUCT_LABELS[product.id] || product.title),
-            active: wanted(product),
-            busy: _loading.has(product.id),
-            state: failed ? 'error' : undefined,
-            color: PRODUCT_COLORS[product.id],
-            title: [
-              product.fileTitle,
-              loaded
-                ? tn(
-                    loaded.features.length,
-                    '{count} placemark',
-                    '{count} placemarks',
-                    {
-                      count: formatNumber(loaded.features.length),
-                    },
-                  )
-                : null,
-              failed ? t(failed) : null,
-            ]
-              .filter(Boolean)
-              .join(' · '),
-            onClick: () => toggleProduct(product.id),
-          };
-        }),
+        chips: [
+          ...products.map((product) => {
+            const loaded = _loaded.get(product.id);
+            const failed = _failed.get(product.id);
+            const shown = loaded ? shownFeatures(loaded).length : 0;
+            return {
+              id: product.id,
+              label: t(PRODUCT_LABELS[product.id] || product.title),
+              active: wanted(product),
+              busy: _loading.has(product.id),
+              state: failed ? 'error' : undefined,
+              color: PRODUCT_COLORS[product.id],
+              title: [
+                product.fileTitle,
+                loaded
+                  ? tn(shown, '{count} placemark', '{count} placemarks', {
+                      count: formatNumber(shown),
+                    })
+                  : null,
+                failed ? t(failed) : null,
+              ]
+                .filter(Boolean)
+                .join(' · '),
+              onClick: () => toggleProduct(product.id),
+            };
+          }),
+          ...GHOSTMAPS_WINDOWS.map((window) => ({
+            id: `window-${window.id}`,
+            label: t(WINDOW_LABELS[window.id]),
+            active: _window === window,
+            title: t(
+              'Show events from this window. Undated events stay hidden; sites and areas are not events and stay on.',
+            ),
+            onClick: () => setWindow(window.id),
+          })),
+        ],
         legend: [],
-        info,
+        info: [hiddenSummary(), info].filter(Boolean).join(' · '),
         infoTitle: t(
           'S2 Underground publishes these KMZ products to GitHub. New uploads are detected within seconds and replace the previous edition automatically. Click a marker for its report.',
         ),
@@ -693,7 +816,7 @@ export function createGhostMapsLayer({
       if (!_enabled) return [];
       const out = [];
       for (const [productId, item] of _loaded) {
-        for (const feature of item.features) {
+        for (const feature of shownFeatures(item)) {
           if (out.length >= maxCount) return out;
           out.push({
             product: productId,

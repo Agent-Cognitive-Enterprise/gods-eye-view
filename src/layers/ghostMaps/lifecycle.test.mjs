@@ -83,11 +83,19 @@ function fixtureKmz() {
   return new Uint8Array(Buffer.concat([...local, directory, end]));
 }
 
-function fixture(t, { beforeFileReturns, onCreateUrl } = {}) {
+function fixture(
+  t,
+  {
+    beforeFileReturns,
+    onCreateUrl,
+    documentOf = documentFixture,
+    storage,
+  } = {},
+) {
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'DOMParser');
   globalThis.DOMParser = class {
     parseFromString() {
-      return documentFixture();
+      return documentOf();
     }
   };
   t.after(() => {
@@ -118,7 +126,7 @@ function fixture(t, { beforeFileReturns, onCreateUrl } = {}) {
     },
   };
   const layer = createGhostMapsLayer({
-    storage: null,
+    storage: storage ?? null,
     source: {
       getCatalog: async () => ({
         products: [{ id: 'cip', version: 'a'.repeat(40), defaultOn: true }],
@@ -177,4 +185,117 @@ test('successful load keeps icons until the product is disabled', async (t) => {
   layer.disable();
   assert.deepEqual(revoked, created);
   assert.equal(mounted.size, 0);
+});
+
+const row = (label, value) => `<tr><td>${label}</td><td>${value}</td></tr>`;
+
+function placemark(name, lon, rows) {
+  return element('Placemark', [
+    element('name', [], name),
+    element('description', [], `<table>${rows.join('')}</table>`),
+    element('Point', [element('coordinates', [], `${lon},34`)]),
+  ]);
+}
+
+const day = (back) => {
+  const at = new Date(Date.now() - back * 86_400_000);
+  return `${at.getUTCMonth() + 1}/${at.getUTCDate()}/${at.getUTCFullYear()}`;
+};
+
+function agedDocument() {
+  return element('document', [
+    element('kml', [
+      element('Document', [
+        placemark('recent', 10, [
+          row('AttackType', 'Bombing'),
+          row('Date', day(3)),
+        ]),
+        placemark('old', 11, [
+          row('AttackType', 'Bombing'),
+          row('Date', day(300)),
+        ]),
+        placemark('undated', 12, [row('IncidentType', 'Strike')]),
+        placemark('site', 13, [row('InstallationType', 'Air Base')]),
+      ]),
+    ]),
+  ]);
+}
+
+const names = (layer) => layer.getAnalystRecords().map((record) => record.name);
+const chip = (layer, id) =>
+  layer.getRowControls().chips.find((c) => c.id === id);
+const shownEntities = (mounted) =>
+  [...mounted][0].entities.values.filter((entity) => entity.show).length;
+
+test('the default window keeps out old and undated events, not sites', async (t) => {
+  const { layer, viewer, mounted } = fixture(t, { documentOf: agedDocument });
+  await layer.update(viewer);
+  assert.deepEqual(names(layer), ['recent', 'site']);
+  assert.equal(layer.getStats().count, 2);
+  assert.equal(shownEntities(mounted), 2);
+  assert.ok(chip(layer, 'window-1m').active);
+  assert.match(layer.getRowControls().info, /Hidden: 1 older, 1 undated/);
+});
+
+test('a window chip changes what the map shows and stays chosen', async (t) => {
+  const stored = new Map();
+  const storage = {
+    getItem: (key) => stored.get(key) ?? null,
+    setItem: (key, value) => stored.set(key, value),
+  };
+  const { layer, viewer, mounted } = fixture(t, {
+    documentOf: agedDocument,
+    storage,
+  });
+  await layer.update(viewer);
+  chip(layer, 'window-24h').onClick();
+  assert.deepEqual(names(layer), ['site']);
+  assert.equal(shownEntities(mounted), 1);
+  chip(layer, 'window-1y').onClick();
+  assert.deepEqual(names(layer), ['recent', 'old', 'site']);
+  assert.equal(shownEntities(mounted), 3);
+  assert.equal(stored.get('gev.ghostmaps.window'), '1y');
+});
+
+test('a stored window is read back and an unknown one ignored', async (t) => {
+  for (const [value, active] of [
+    ['6h', 'window-6h'],
+    ['forever', 'window-1m'],
+  ]) {
+    const { layer } = fixture(t, {
+      documentOf: agedDocument,
+      storage: { getItem: () => value, setItem() {} },
+    });
+    assert.ok(chip(layer, active).active, value);
+  }
+});
+
+test('the horizon cull does not bring back a pin the window hid', async (t) => {
+  const { layer, viewer, mounted } = fixture(t, { documentOf: agedDocument });
+  const listeners = [];
+  viewer.scene.preRender = {
+    addEventListener(listener) {
+      listeners.push(listener);
+      return () => {};
+    },
+  };
+  // From the far side every pin is culled; turning to face them restores
+  // only those inside the window.
+  viewer.camera = { positionWC: Cesium.Cartesian3.fromDegrees(-169, -34, 4e7) };
+  await layer.update(viewer);
+  assert.equal(shownEntities(mounted), 0);
+  viewer.camera.positionWC = Cesium.Cartesian3.fromDegrees(11, 34, 4e7);
+  listeners.forEach((listener) => listener());
+  assert.equal(shownEntities(mounted), 2);
+});
+
+test('events age out of the window as time passes', async (t) => {
+  const { layer, viewer } = fixture(t, { documentOf: agedDocument });
+  await layer.update(viewer);
+  chip(layer, 'window-1w').onClick();
+  assert.deepEqual(names(layer), ['recent', 'site']);
+  const now = Date.now();
+  t.mock.method(Date, 'now', () => now + 8 * 86_400_000);
+  await layer.update(viewer);
+  assert.deepEqual(names(layer), ['site']);
 });
