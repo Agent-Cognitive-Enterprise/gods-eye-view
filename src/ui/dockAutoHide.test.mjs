@@ -11,11 +11,14 @@ function fakeDom({ hovered = false, touch = false } = {}) {
   const listeners = {};
   const surface = {
     matches: (selector) => selector === ':hover' && dom.hovered,
-    querySelector: () => null,
+    querySelector: (selector) =>
+      selector.includes('aria-expanded') ? (dom.expanded[0] ?? null) : null,
+    querySelectorAll: () => dom.expanded,
     contains: () => false,
   };
   const dom = {
     hovered,
+    expanded: [],
     listeners,
     documentRef: {
       body: {
@@ -87,6 +90,21 @@ test('dock auto-hide: stays while hovered and on touch-only devices', () => {
   touch.runTimers();
   assert.equal(touchDock.isHidden(), false, 'no keyboard to recall it');
   assert.equal(DOCK_HIDDEN_CLASS, 'gev-dock-hidden');
+});
+
+test('dock auto-hide: an open menu holds it, a closed popup does not', () => {
+  const dom = fakeDom();
+  const dock = mount(dom);
+  dom.expanded = [{ closest: () => null }];
+  dom.runTimers();
+  assert.equal(dock.isHidden(), false, 'open menu');
+  // The language search field always says aria-expanded="true", inside a
+  // popup that is `hidden` while closed.
+  dom.expanded = [
+    { closest: (selector) => (selector === '[hidden]' ? {} : null) },
+  ];
+  dom.runTimers();
+  assert.equal(dock.isHidden(), true, 'closed language popup');
 });
 
 test('dock auto-hide: recall band is the bottom 120 px', () => {

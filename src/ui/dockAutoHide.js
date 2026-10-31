@@ -51,12 +51,19 @@ export function createDockAutoHide({
     windowRef.matchMedia?.('(hover: none) and (pointer: coarse)')?.matches ===
       true;
 
+  // The language search field always says aria-expanded="true", inside a popup
+  // that is `hidden` while closed, so only controls on show count.
+  const hasOpenMenu = (surface) =>
+    Array.from(surface.querySelectorAll?.('[aria-expanded="true"]') ?? []).some(
+      (control) => !control.closest('[hidden]'),
+    );
+
   function inUse() {
     const active = documentRef.activeElement;
     return surfaces().some(
       (surface) =>
         surface.matches?.(':hover') ||
-        surface.querySelector?.('[aria-expanded="true"]') ||
+        hasOpenMenu(surface) ||
         surface.querySelector?.(
           '.panel-collapsible:not(.collapsed), #location-bar:not(.collapsed)',
         ) ||
