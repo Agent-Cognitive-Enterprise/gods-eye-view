@@ -166,6 +166,49 @@ test('end to end: a post on the stream reaches an event card with every clock', 
   );
 });
 
+test('map delay is one reading per event, from the report that made it eligible', async (t) => {
+  const r = rig(t);
+  follow(r.fast);
+  r.fast.start();
+  r.sockets.last().open();
+  // Unplaced, so held back; it waits for a report that names a town.
+  r.sockets
+    .last()
+    .frame(
+      postFrame({
+        seq: 1,
+        rkey: 'a',
+        text: 'Explosions heard somewhere over here',
+      }),
+    );
+  await r.fast.adapters[0].stop();
+  r.fast.pipeline().pass();
+  r.fast.noteShown(r.service.listEvents('live').events);
+  assert.equal(
+    r.fast.status().sources[0].latency.receive_to_display,
+    undefined,
+  );
+  r.advance(120_000);
+  r.fast.intake.enqueue('bluesky', [
+    {
+      native_id: 'at://b',
+      revision: 'r',
+      received_at: r.now(),
+      published_at: r.now(),
+      provider: 'bluesky',
+      publisher: 'bsky:other',
+      source_type: 'social_claim',
+      text: 'Explosions heard in Kharkiv tonight',
+    },
+  ]);
+  r.fast.pipeline().pass();
+  r.advance(4_000);
+  r.fast.noteShown(r.service.listEvents('live').events);
+  const reading = r.fast.status().sources[0].latency.receive_to_display;
+  assert.equal(reading.samples, 1);
+  assert.equal(reading.p50_ms, 4_000);
+});
+
 test('11: Telegram with no login leaves everything else running', async (t) => {
   const r = rig(t);
   follow(r.fast);

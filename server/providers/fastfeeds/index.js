@@ -329,11 +329,20 @@ export function createFastFeeds({
         if (event.fast_status === 'candidate') continue;
         shown.add(event.event_id);
         if (shown.size > MAX_SHOWN_MEMORY) shown.clear();
-        for (const row of intake.markDisplayed(event.event_id))
+        // One reading per event, from the report that made it eligible: a
+        // candidate may wait hours for a place, and that is not map delay.
+        const latest = intake
+          .markDisplayed(event.event_id)
+          .reduce(
+            (newest, row) =>
+              !newest || row.received_at > newest.received_at ? row : newest,
+            null,
+          );
+        if (latest)
           latency.record(
-            row.source_id,
+            latest.source_id,
             'receive_to_display',
-            now() - row.received_at,
+            now() - latest.received_at,
           );
       }
     },
