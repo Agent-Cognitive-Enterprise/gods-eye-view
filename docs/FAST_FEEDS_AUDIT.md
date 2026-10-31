@@ -98,8 +98,8 @@ them would have shown up with fake sockets.
   and the error killed the whole process, every feed included. Fixed and proven by
   a live restart.
 - **The gate over-matched.** See the precision figures in the implementation doc.
-- **`telegram` (GramJS) is archived.** Installing it showed a deprecation notice
-  from its own maintainers pointing to `teleproto`, which was then used instead.
+- **`telegram` (GramJS) is archived.** Its maintainers point to `teleproto`, which was
+  then reviewed and not approved. See [TELEGRAM_LIBRARY_REVIEW.md](TELEGRAM_LIBRARY_REVIEW.md).
 - **Staging took the AIS connection.** See below.
 
 ### AISStream: a mistake to not repeat
@@ -111,6 +111,5 @@ before it was noticed and stopped. Instance 4174 afterwards showed AIS `live`, n
 reconnects and 25,156 vessels, with nothing in its log, but a brief overlap cannot
 be ruled out.
 
-Any second instance on this machine must blank the key. `.env` values are copied
-only over undefined variables, so setting it to an empty string from a launcher
-is enough; PowerShell's `$env:X = ''` deletes the variable and does not work.
+This is now enforced in code rather than left to instructions: see Staging in the
+implementation doc.

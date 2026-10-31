@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import { createAisStreamAdapter } from '../../../src/data/aisStreamAdapter.js';
 import { parseSilenceTimeoutEnv } from '../../../src/data/aisWatchdog.js';
 import { clampInt } from '../common/query.js';
+import { aisConnectionAllowed } from '../isolation.js';
 import {
   AISSTREAM_CACHE_MAX,
   AISSTREAM_STALE_MS,
@@ -302,7 +303,10 @@ function ensureAisStreamConnection() {
   }
   const policy = aisWatchdogPolicy();
   adapter.ensure({
-    hasKey: Boolean(process.env.AISSTREAM_API_KEY),
+    // One connection per key on this machine (fork): see isolation.js.
+    hasKey:
+      Boolean(process.env.AISSTREAM_API_KEY) &&
+      aisConnectionAllowed(aisKeyFingerprint()),
     hasTransport: Boolean(aisWebSocketImpl()),
     silenceWatch: policy.silenceWatch,
     keyFingerprint: aisKeyFingerprint(),

@@ -68,6 +68,146 @@ test('gate: words that fooled it on the live stream no longer do', () => {
     assert.equal(gateReport(text).pass, true, text);
 });
 
+test('gate: a report about the past, or about a report, is not a first report', () => {
+  const reason = (text, publishedAt = '2026-10-20T00:00:00Z') =>
+    gateReport(text, { publishedAt }).reason;
+  assert.equal(
+    reason('Hedge funds buy claims tied to the 2025 Los Angeles wildfires'),
+    'retrospective',
+  );
+  assert.equal(
+    reason('Britain narrowly escaped a grid blackout in June'),
+    'retrospective',
+  );
+  assert.equal(
+    reason('Explosions in Kyiv on March 3 left a crater'),
+    'retrospective',
+  );
+  assert.equal(
+    reason('Former officer goes on trial over undersea explosions'),
+    'legal',
+  );
+  assert.equal(
+    reason('Insured losses from Hurricane Isaias could reach $2 billion'),
+    'business',
+  );
+  assert.equal(
+    reason('Turkey awaits contract for Eurofighter Typhoon jets'),
+    'sense',
+  );
+  assert.equal(
+    reason('Macron denounces nationwide rioting and looting'),
+    'reaction',
+  );
+  assert.equal(
+    reason('Why are wildfires getting worse in Indonesia?'),
+    'analysis',
+  );
+  assert.equal(
+    reason('Police say they thwarted a mass shooting at a temple'),
+    'forecast',
+  );
+});
+
+test('gate: a stated toll outweighs a soft frame; a current date passes', () => {
+  const passes = (text, publishedAt = '2026-10-20T00:00:00Z') =>
+    gateReport(text, { publishedAt }).pass;
+  assert.equal(
+    passes(
+      'Zelensky condemns missile strike on Kharkiv that killed at least 12',
+    ),
+    true,
+  );
+  assert.equal(
+    passes('Russian missile attack kills two, Zelenskiy calls for air defence'),
+    true,
+  );
+  assert.equal(
+    passes('Explosions rocked Kyiv on Oct. 19, officials say'),
+    true,
+  );
+  assert.equal(passes('Explosions heard in Kharkiv tonight'), true);
+  assert.equal(
+    passes('At least 20 injured in northern Israel explosion'),
+    true,
+  );
+});
+
+test('gate: the vocabulary reaches events it used to miss', () => {
+  assert.equal(
+    gateReport('At least 17 students dead in Pakistan school roof collapse')
+      .subtype,
+    'structural_collapse',
+  );
+  assert.equal(
+    gateReport('Firefighters battle out-of-control blaze at Cardiff mill')
+      .subtype,
+    'fire',
+  );
+  assert.equal(
+    gateReport('Worsening water crisis sparks protests in Guadalajara').pass,
+    true,
+  );
+  assert.equal(
+    gateReport('Pennsylvania reports 1,222 measles cases in outbreak').pass,
+    true,
+  );
+  assert.equal(gateReport('All 22 crew rescued off UAE coast').pass, true);
+});
+
+test('gate: a topic with nothing happening is not a report', () => {
+  const reason = (text) => gateReport(text).reason;
+  assert.equal(
+    reason('Regeneron extends agreement for supply of Ebola treatment'),
+    'no_incident',
+  );
+  assert.equal(
+    reason('Indonesia sends oxygen bus to aid residents in forest fire haze'),
+    'no_incident',
+  );
+  assert.equal(
+    reason('French minister says protests could turn violent'),
+    'reaction',
+  );
+  assert.equal(
+    reason('While protests in France claimed attention, Milan marched too'),
+    'background',
+  );
+  assert.equal(
+    reason('After the train crash that killed 69, a minister laid the blame'),
+    'background',
+  );
+  assert.equal(
+    reason('Bulgarians head to the polls amid drone strikes on ships'),
+    'off_topic',
+  );
+  assert.equal(
+    gateReport('Wildfire burns homes in Southern California').pass,
+    true,
+  );
+  assert.equal(
+    gateReport('Greek container ship sinks after drone attack').pass,
+    true,
+  );
+});
+
+test('gate: a correction always reaches the engine, whatever else it lacks', () => {
+  for (const text of [
+    'That explosion story was a hoax, nothing happened',
+    'Correction: there was no explosion at the port',
+    'Air raid alert over, all clear',
+  ])
+    assert.equal(gateReport(text).pass, true, text);
+});
+
+test('gate: the incident test is for English; other languages keep their rules', () => {
+  assert.equal(gateReport('В Харькове прогремели взрывы').pass, true);
+  assert.equal(
+    gateReport('Sismo fuerte: explosion en el puerto', { language: 'es' }).pass,
+    true,
+  );
+});
+
 test('gate: disputes, retractions and all-clears are recognised', () => {
   assert.equal(
     gateReport('The explosion claim was debunked').status_hint,
@@ -272,6 +412,38 @@ test('places: what fooled it on the live stream no longer does', () => {
   assert.equal(
     unresolved('These Are the US Attorneys carrying out the agenda'),
     'unresolved',
+  );
+});
+
+test('places: St. Petersburg is the Russian one, and an agency is not the scene', () => {
+  for (const text of [
+    'Flames reported in Ukrainian drone attack on St. Petersburg',
+    'Drone attack on St Petersburg overnight',
+    'Attack on Saint Petersburg, Russia overnight',
+    'Fire in Petersburg overnight',
+  ])
+    assert.equal(resolvePlace(text).location.region_code, 'RU', text);
+  assert.equal(
+    resolvePlace('St. Petersburg FL under hurricane warning').location
+      .region_code,
+    'US',
+  );
+  const storm = resolvePlace(
+    'Hurricane Trudy off Mexico, the National Hurricane Center in Miami said',
+  );
+  assert.equal(storm.location.region_code, 'MX');
+});
+
+test('places: a capital speaking is not where the event is', () => {
+  assert.equal(
+    resolvePlace('Tu-95 crashed in Russia during training, Moscow says')
+      .location.place,
+    'Russia',
+  );
+  assert.equal(
+    resolvePlace('Pakistani airstrikes on Afghanistan kill nine, Kabul says')
+      .location.place,
+    'Afghanistan',
   );
 });
 

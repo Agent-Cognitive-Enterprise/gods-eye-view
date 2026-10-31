@@ -2,6 +2,7 @@
 // of any model, that decides whether it is worth correlating. Source text is
 // untrusted data here as everywhere: it is matched against, never interpreted.
 
+import { lacksIncident, notCurrent } from './currency.js';
 import {
   DISPUTE_TERMS,
   NOT_AN_EVENT,
@@ -9,29 +10,13 @@ import {
   RETRACTION_TERMS,
   RULES,
 } from './rules.js';
+import { compileTerms } from './terms.js';
 
-const WORD = '[\\p{L}\\p{N}]';
+export { compileTerms };
+
 const MAX_TEXT = 4000;
 const TRACKING_PARAMS =
   /^(utm_\w+|fbclid|gclid|mc_cid|mc_eid|igshid|si|ref|ref_src|ref_url|s|t|cmpid|ocid)$/i;
-
-const escapeTerm = (term) =>
-  term
-    .replace(/[.*+?^${}()|[\]\\]/g, (ch) => (ch === '*' ? '*' : `\\${ch}`))
-    // `\?` from a literal question mark in a pack stays literal; `u?` in our
-    // own lists means an optional letter.
-    .replace(/\\\?/g, '?')
-    .replace(/\s+/g, '\\s+')
-    .replace(/\*/g, '\\p{L}*');
-
-/** One alternation of terms, on word boundaries in any script. */
-export function compileTerms(terms) {
-  if (!terms.length) return null;
-  return new RegExp(
-    `(?<!${WORD})(?:${terms.map(escapeTerm).join('|')})(?!${WORD})`,
-    'iu',
-  );
-}
 
 /** Rules compiled once; operator packs come after the built-in ones. */
 export function compileRules(packs = []) {
@@ -41,11 +26,13 @@ export function compileRules(packs = []) {
       Array.isArray(pack.terms) &&
       pack.terms.length,
   );
-  return [...RULES, ...usable].map((rule) => ({
-    ...rule,
-    severity: Math.min(100, Math.max(0, Number(rule.severity) || 40)),
-    pattern: compileTerms(rule.terms.map(String).slice(0, 200)),
-  }));
+  return [...RULES, ...usable.map((pack) => ({ ...pack, fromPack: true }))].map(
+    (rule) => ({
+      ...rule,
+      severity: Math.min(100, Math.max(0, Number(rule.severity) || 40)),
+      pattern: compileTerms(rule.terms.map(String).slice(0, 200)),
+    }),
+  );
 }
 
 const NOT_AN_EVENT_PATTERN = compileTerms(NOT_AN_EVENT);
@@ -73,7 +60,10 @@ export function languageOf(text, stated) {
  *   subtype?: string, severity?: number, status_hint?: ?string,
  *   language: string, matched?: string}}
  */
-export function gateReport(rawText, { language, rules = DEFAULT_RULES } = {}) {
+export function gateReport(
+  rawText,
+  { language, rules = DEFAULT_RULES, publishedAt } = {},
+) {
   const text = String(rawText ?? '').slice(0, MAX_TEXT);
   const lang = languageOf(text, language);
   if (text.trim().length < 12)
@@ -87,19 +77,29 @@ export function gateReport(rawText, { language, rules = DEFAULT_RULES } = {}) {
       best = { rule, matched: found[0] };
   }
   if (!best) return { pass: false, reason: 'no_topic', language: lang };
+  const statusHint = RETRACTION_PATTERN.test(text)
+    ? 'retracted'
+    : DISPUTE_PATTERN.test(text)
+      ? 'disputed'
+      : RESOLVED_PATTERN.test(text)
+        ? 'resolved'
+        : null;
+  // A correction reports no incident, and it must still reach the engine.
+  if (!statusHint) {
+    const frame =
+      notCurrent(text, { publishedAt }) ??
+      (lang.startsWith('en') && !best.rule.fromPack
+        ? lacksIncident(text, best.rule.subtype)
+        : null);
+    if (frame) return { pass: false, reason: frame, language: lang };
+  }
   return {
     pass: true,
     category: best.rule.category,
     subtype: best.rule.subtype ?? null,
     severity: best.rule.severity,
     matched: best.matched,
-    status_hint: RETRACTION_PATTERN.test(text)
-      ? 'retracted'
-      : DISPUTE_PATTERN.test(text)
-        ? 'disputed'
-        : RESOLVED_PATTERN.test(text)
-          ? 'resolved'
-          : null,
+    status_hint: statusHint,
     language: lang,
   };
 }

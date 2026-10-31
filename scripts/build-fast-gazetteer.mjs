@@ -35,7 +35,12 @@ const ALIASES = Object.freeze({
   'Ho Chi Minh City': ['Saigon'],
   Mumbai: ['Bombay'],
   Yangon: ['Rangoon'],
-  'St. Petersburg': ['Saint Petersburg', 'Санкт-Петербург', 'Петербург'],
+  'Saint Petersburg': [
+    'St. Petersburg',
+    'Petersburg',
+    'Санкт-Петербург',
+    'Петербург',
+  ],
 });
 
 // Everyday words that are also towns; a capital letter at the start of a
@@ -110,7 +115,8 @@ function cityRow(p) {
     ...clean(p.NAMEALT)
       .split('|')
       .map((alt) => alt.trim()),
-    ...(ALIASES[p.NAME] ?? ALIASES[name] ?? []),
+    // By English name: Florida's St. Petersburg must not inherit Russia's aliases.
+    ...(ALIASES[name] ?? []),
   ]);
   names.delete(name);
   names.delete('');

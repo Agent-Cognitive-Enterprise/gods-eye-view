@@ -21,6 +21,8 @@ const LOCATIVES = new Set(
 );
 // Clear when a same-named town is this many times the size of the next.
 const DOMINANT_RATIO = 8;
+const WORLD_CITY_POPULATION = 3_000_000;
+const WORLD_CITY_RATIO = 1.5;
 const MAX_WORDS_IN_NAME = 3;
 // A capital at the start of a sentence says nothing; only a town of this size
 // counts there without "in" or "near" before it.
@@ -104,6 +106,10 @@ const STATE_BY_POSTAL = new Map(
   ]),
 );
 
+// Where the agency sits, not where the event is.
+const NOT_THE_SCENE =
+  /\b(?:[Hh]urricane [Cc]ent(?:er|re)|[Ww]eather [Ss]ervice|[Gg]eological [Ss]urvey|headquartered|based)\s+(?:in|at)\s+\p{Lu}[\p{L}-]+/gu;
+
 /** Case-folded key; Cyrillic keeps its stem so inflected forms meet. */
 export function placeKey(words) {
   return words
@@ -119,7 +125,11 @@ export function placeKey(words) {
     .join(' ');
 }
 
-const wordsOf = (text) => text.match(/[\p{L}\p{N}’'.-]+/gu) ?? [];
+/** Words of a name; a trailing full stop ("St.") is not part of the word. */
+const wordsOf = (text) =>
+  (text.match(/[\p{L}\p{N}’'.-]+/gu) ?? []).map((word) =>
+    word.replace(/[.'’-]+$/, ''),
+  );
 
 let cache = null;
 
@@ -131,7 +141,8 @@ function load() {
     const key = placeKey(wordsOf(name));
     if (!key) return;
     const held = names.get(key) ?? [];
-    held.push(entry);
+    // Two spellings can reduce to one key; a town must not tie with itself.
+    if (!held.includes(entry)) held.push(entry);
     names.set(key, held);
   };
   for (const [
@@ -175,7 +186,7 @@ function load() {
  * The town a name means, or null when two of similar size share it or the
  * country named right after it rules every candidate out.
  */
-function pickCity(entries, qualifiers) {
+function pickCity(entries, qualifiers, named) {
   const cities = entries.filter((entry) => entry.kind === 'city');
   if (!cities.length) return null;
   const pool = qualifiers.size
@@ -184,9 +195,17 @@ function pickCity(entries, qualifiers) {
   if (!pool.length) return null;
   const ranked = [...pool].sort((a, b) => b.population - a.population);
   if (ranked.length === 1) return ranked[0];
-  return ranked[0].population >= ranked[1].population * DOMINANT_RATIO
-    ? ranked[0]
-    : null;
+  if (ranked[0].population >= ranked[1].population * DOMINANT_RATIO)
+    return ranked[0];
+  // Between a world city and a namesake half its size, the world city.
+  if (
+    ranked[0].population >= WORLD_CITY_POPULATION &&
+    ranked[0].population >= ranked[1].population * WORLD_CITY_RATIO
+  )
+    return ranked[0];
+  // A near tie: a country named anywhere in the post may settle it.
+  const inNamed = ranked.filter((city) => named.has(city.iso2));
+  return inNamed.length === 1 ? inNamed[0] : null;
 }
 
 function mentionsIn(text) {
@@ -207,6 +226,13 @@ function mentionsIn(text) {
       const cleaned = slice.map((word) => word.replace(/[.'’-]+$/, ''));
       const entries = names.get(placeKey(cleaned));
       if (!entries) continue;
+      // "Moscow says" is who is talking; the event may be anywhere.
+      if (
+        /^(?:says?|said|claims?|announced|reports?|reported)$/i.test(
+          words[start + size]?.[0] ?? '',
+        )
+      )
+        break;
       found.push({
         entries,
         quote: cleaned.join(' '),
@@ -260,7 +286,7 @@ const regionOnly = (place, iso2, bounds, precision = 'country') => ({
  * @returns {{location: object, evidence: string[]}}
  */
 export function resolvePlace(text) {
-  const mentions = mentionsIn(String(text ?? ''));
+  const mentions = mentionsIn(String(text ?? '').replace(NOT_THE_SCENE, ' '));
   const empty = { location: { precision: 'unresolved' }, evidence: [] };
   if (!mentions.length) return empty;
   const countries = mentions.flatMap((m) =>
@@ -269,6 +295,7 @@ export function resolvePlace(text) {
   const states = mentions.flatMap((m) =>
     m.entries.filter((e) => e.kind === 'state'),
   );
+  const named = new Set(countries.map((country) => country.iso2));
   const qualifiersOf = (mention) =>
     new Set(
       mentions
@@ -287,7 +314,7 @@ export function resolvePlace(text) {
       // A word that is a country or a US state is not also a town here.
       city: mention.entries.some((e) => e.kind !== 'city')
         ? null
-        : pickCity(mention.entries, qualifiersOf(mention)),
+        : pickCity(mention.entries, qualifiersOf(mention), named),
     }))
     .filter(
       ({ city, sentenceStart, located }) =>

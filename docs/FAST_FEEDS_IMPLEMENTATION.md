@@ -53,7 +53,15 @@ shell in `layer-panels.html`, and `package.json`/`package-lock.json`.
 | Social | official  | `primary_official`    | Confidence 0.85, official                   | Normal rules apply                                    |
 
 `community` is the default. `reporter` and `official` are the operator saying they
-checked that source themselves; an account's name proves nothing.
+checked that source themselves; an account's name proves nothing. `official` is for a
+competent authority, never a news organisation, however reliable. Start accounts at
+`community` and measure them before moving any to `reporter`.
+
+**Posts do not move the camera.** Whatever its tag or number of sources, an event with
+nothing but posts behind it gets no Autopilot shot, tour stop or interruption, and shows
+`posts_held_from_camera`. It is still drawn and listed, and an operator can fly to it.
+An official feed on the same event lifts the hold. `socialCameraEnabled` lifts it for
+everything; leave it off until reliability has been shown.
 
 | Status         | Meaning                                                      | On the map                |
 | -------------- | ------------------------------------------------------------ | ------------------------- |
@@ -116,18 +124,12 @@ trust is your decision. The status reads NO SOURCES CHOSEN until then.
 Up to 150 accounts are filtered by the server. Beyond that the whole public post
 stream is read and filtered here, which costs about 0.1 % of a core.
 
-### Telegram (optional)
+### Telegram
 
-1. Get an `api_id` and `api_hash` at <https://my.telegram.org>.
-2. Run `node scripts/fast-feeds-telegram-login.mjs` in a terminal on the server and
-   follow the prompts. The login is encrypted for this Windows user and stored at
-   `%LOCALAPPDATA%\GodsEyeView\telegram-login.dpapi`.
-3. List channels in `.gev-cache/intel/fast-feeds.json`
-   (shape: [config/fast-feeds.example.json](../config/fast-feeds.example.json)) with
-   `"telegram": { "enabled": true, ... }`, and restart.
-
-Only public channels with a username are read, and only text. Without a login the
-status reads AUTH REQUIRED and everything else carries on.
+**Disabled, pending the review in [TELEGRAM_LIBRARY_REVIEW.md](TELEGRAM_LIBRARY_REVIEW.md).**
+It needs a library approved and installed, `GEV_TELEGRAM_ALLOWED=1`, and a login from
+`scripts/fast-feeds-telegram-login.mjs`. Do not do any of this until that review is done.
+Without them, the status reads OFF and everything else carries on.
 
 ### Settings
 
@@ -152,10 +154,8 @@ The drill also runs in the app: `POST /api/intel/replay` with
 Nothing here is deployed by merging. To roll out:
 
 1. Merge the pull request and let Fork Autopilot CI pass.
-2. Stop first: the lockfile changed, and `npm ci` cannot replace `node_modules`
-   under a running server. `Stop-GEV.ps1 -Instance autopilot`.
-3. `Deploy-GEV.ps1 -Ref <commit> -Instance autopilot`, then
-   `Start-GEV.ps1 -Instance autopilot -NoBrowser`.
+2. Complete the 24-hour staging run below and read its report.
+3. `Deploy-GEV.ps1 -Ref <commit> -Instance autopilot`. The lockfile has not changed.
 4. Add `GEV_FAST_FEEDS = '1'` and restart. With the flag off, the code is inert.
 5. Follow a few accounts and watch HEALTH AND DELAY.
 
@@ -167,9 +167,29 @@ Event changes are in the same store as before, and old records still load. Repor
 already ingested stay until they expire; `fast-intake.sqlite` and `fast-feeds.json`
 can be deleted while the server is stopped, at the cost of the cursors and sources.
 
-**Never run a second instance with the real AIS key.** See the AISStream note in the
-audit: the watchdog connects with no browser involved, and AISStream allows one
-connection per key.
+### Staging
+
+Use `scripts/gev-staging.mjs`, from a worktree with no `.env`:
+
+```powershell
+git worktree add ..\gev-staging <commit>
+cmd /c mklink /J ..\gev-staging\node_modules node_modules
+node ..\gev-staging\scripts\gev-staging.mjs --state C:\gev-staging-state
+node ..\gev-staging\scripts\gev-staging-monitor.mjs --state C:\gev-staging-state --hours 24
+node scripts\fast-feeds-readiness.mjs --state C:\gev-staging-state
+```
+
+AISStream allows one connection per key, and its watchdog connects with no browser
+involved. This is enforced in code, not left to instructions:
+
+- The launcher refuses a tree whose `.env` holds the key, a live checkout, and ports
+  4173 and 4174. It binds to loopback only.
+- An isolated instance loads neither the AIS nor the OpenSky provider.
+- Any process must hold a machine-wide lease to use an AIS key, so a second one on this
+  computer refuses to connect, however it was started. The live instance takes the lease
+  once it runs this code.
+- The launcher reads the server's real sockets every 20 s. A connection to AISStream
+  kills it and leaves `TRIPWIRE.txt`, which blocks restarting until a person removes it.
 
 **Upstream merges.** Fork-only files cannot conflict. Watch `package-lock.json`, the
 locale files (append-only) and the panel shell in `layer-panels.html`.
@@ -182,9 +202,9 @@ Nothing is deployed: 4174 runs without this branch.
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Implemented, live-run | Bluesky Jetstream v2 with cursor and replay, durable queue, gate, gazetteer, delete and edit handling, trust rules, source editing, FAST INTELLIGENCE panel, delay figures. All run against the real stream on staging.                                                            |
 | Implemented, reused   | USGS, NWS and GDACS through the existing connectors, with faster NWS and GDACS polling. Their cancellation and update rules are the existing ones.                                                                                                                                 |
-| Configured            | Nothing. No account is followed by default, and `GEV_FAST_FEEDS` is off.                                                                                                                                                                                                           |
-| Experimental          | Telegram: tested against a fake client only, never a real server. Qwen place enrichment: four synthetic posts on the real model, no long run.                                                                                                                                      |
-| Blocked               | Telegram live test: needs your `api_id`, `api_hash` and sign-in.                                                                                                                                                                                                                   |
+| Configured            | Seven verified accounts in `config/fast-feeds.starter.json`, all `community`, used by staging. `GEV_FAST_FEEDS` is off everywhere else.                                                                                                                                            |
+| Experimental          | Qwen place enrichment: four synthetic posts on the real model, no long run.                                                                                                                                                                                                        |
+| Disabled              | Telegram. The adapter cannot start without `GEV_TELEGRAM_ALLOWED=1`, `teleproto` is out of the lockfile, and no credentials exist. See [TELEGRAM_LIBRARY_REVIEW.md](TELEGRAM_LIBRARY_REVIEW.md).                                                                                   |
 | Not started           | Other national CAP feeds; Mastodon and news RSS; broad discovery across all of Bluesky; a map sublayer for source activity; panel filters by region, distance and priority; per-source weights beyond the three trust tags; a Telegram channel editor (settings file only); media. |
 
 ## Measurements
@@ -222,12 +242,11 @@ is a heavier load than normal, on a machine shared with the live instance.
 | CPU, memory        | 0.1 % of one core, 129 MB                                      |
 | Passed the gate    | 60 posts, 0.26 %                                               |
 
-**Precision.** 34 of those 60 were real current reports when read by hand: **57 %**.
-Tuning did not visibly help: 62 % (20 of 32) before it, on a different sample. Both
-samples are small and scored by one reader. This is the whole public stream, not
-chosen accounts, which is not how the system runs by default; precision on chosen
-accounts and all recall are unmeasured. Most misses were sport, games and
-figures of speech, and each is still a claim at confidence 0.25.
+**Precision on the open stream.** 34 of those 60 were real current reports when
+scored by Claude: 57 %. That was the whole public stream under the first rules, and
+is not how the system runs. **On the seven starter accounts the gate now measures
+84.5 % on an unseen period, scored blind**, with estimated per-post recall of 29 %.
+See [FAST_FEEDS_EVALUATION.md](FAST_FEEDS_EVALUATION.md).
 
 **Places.** 27 of the 60 got a place. The 3 wrong cities out of 11 were all
 "Melbourne FL" read as Australia, now fixed. One post about Ufa was placed in
@@ -301,15 +320,12 @@ noted, the existing suites.
 - **Coverage is what you list.** A first report only exists if a followed account
   posts it. No minutes-to-discovery promise can be made for the world, and an empty
   map says nothing about it. The panel says so.
-- **The gate reads words.** It cannot tell a retrospective article from a live
-  event, and its recall is unmeasured: there is no labelled set of what it missed.
+- **The gate reads words.** It catches stories that date themselves, but a follow-up
+  to an older event can still pass, and it passes about 29 % of real-event posts.
 - **Places are approximate.** A town named in a post is not proof of where anything
   happened, so they are marked `needs_verification`. Towns not in Natural Earth stay
   unresolved unless the model can read them, and two towns sharing a name stay
   unresolved unless a country follows.
-- **Telegram has never met a real server.** The adapter is tested against a fake
-  client; the library's API was checked by loading it, nothing more.
-- **`teleproto` is young.** One maintainer, and its crypto dependency `cifrante` was
-  three weeks old when pinned. It loads only after a Telegram login, and that login
-  is an account credential: decide whether you are comfortable before signing in.
+- **Telegram has never met a real server.** It is disabled, and its adapter has only
+  been tested against a fake client.
 - **Translations** of the 70 new strings have not had a native speaker's review.

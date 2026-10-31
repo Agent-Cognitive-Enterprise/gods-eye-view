@@ -788,15 +788,13 @@ test('a failed write goes back to the stored cursor, so nothing is skipped', () 
   const r = rig();
   r.adapter.start();
   r.sockets.last().open();
-  r.sockets
-    .last()
-    .frame(
-      postFrame({
-        seq: 1,
-        rkey: 'a',
-        text: 'Explosions heard in Kharkiv, first',
-      }),
-    );
+  r.sockets.last().frame(
+    postFrame({
+      seq: 1,
+      rkey: 'a',
+      text: 'Explosions heard in Kharkiv, first',
+    }),
+  );
   r.timers.run();
   assert.equal(r.intake.cursor('bluesky'), '1');
 

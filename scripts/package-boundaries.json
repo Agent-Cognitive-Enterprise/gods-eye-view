@@ -57,6 +57,7 @@
       "server/providers/aircraft/enrichment.js",
       "server/providers/aircraft/tracks.js",
       "server/providers/vessels/ais-store.js",
+      "server/providers/isolation.js",
       "server/providers/vessels/ais-live.js",
       "src/data/adsbLolFallback.js",
       "src/data/aisStreamAdapter.js",

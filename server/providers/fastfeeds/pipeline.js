@@ -110,7 +110,11 @@ export function createPipeline({
 
   function processReport(row) {
     const { report } = row;
-    const gate = gateReport(report.text, { language: report.language, rules });
+    const gate = gateReport(report.text, {
+      language: report.language,
+      rules,
+      publishedAt: report.published_at,
+    });
     if (!gate.pass) {
       intake.complete(row.seq, { status: 'filtered', outcome: gate.reason });
       intake.count(row.source_id, 'filtered');
