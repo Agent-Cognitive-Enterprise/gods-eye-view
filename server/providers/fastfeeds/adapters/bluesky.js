@@ -15,13 +15,18 @@ const HOSTS = Object.freeze([
 const ROUTE = '/xrpc/network.bsky.jetstream.subscribeEvents';
 const SUBPROTOCOL = 'xrpc.v1.json';
 const POST_COLLECTION = 'app.bsky.feed.post';
-const MAX_DIDS = 10_000;
+// The documented limit is 10,000, but the public hosts refuse an address over
+// about 8 KB (measured 2026-10-31: 150 accounts open, 200 refused). Beyond this
+// the whole post stream is read and filtered here: about 30 posts a second.
+const MAX_SERVER_FILTERED_DIDS = 150;
 const MAX_FRAME_BYTES = 256 * 1024;
 const MAX_TEXT = 3_000;
 const BACKOFF_MIN_MS = 1_000;
 const BACKOFF_MAX_MS = 5 * 60_000;
 const FLUSH_MS = 100;
 const FLUSH_SIZE = 200;
+// Keeps the cursor moving when nothing listed is posting.
+const CURSOR_SAVE_MS = 5_000;
 // A healthy stream of a few accounts can be silent for hours, so silence is
 // not an outage; the socket's own close and error events are what count.
 const CONNECT_TIMEOUT_MS = 20_000;
@@ -47,7 +52,8 @@ export function jetstreamUrl(host, dids, cursor) {
   const params = new URLSearchParams();
   params.append('collections', POST_COLLECTION);
   params.append('kinds', 'commit');
-  for (const did of dids) params.append('dids', did);
+  if (dids.length <= MAX_SERVER_FILTERED_DIDS)
+    for (const did of dids) params.append('dids', did);
   if (cursor !== null && cursor !== undefined && cursor !== '')
     params.append('cursor', String(cursor));
   return `wss://${host}${ROUTE}?${params}`;
@@ -205,14 +211,35 @@ export function createBlueskyAdapter({
   let hostIndex = 0;
   let accountIndex = new Map();
 
-  function flush() {
+  function fail(reason) {
+    state.last_error = String(reason).slice(0, 200);
+    state.last_error_at = now();
+  }
+
+  /**
+   * Socket and timer callbacks run outside any request: anything thrown there
+   * would stop the whole server, every other feed with it.
+   */
+  const guarded =
+    (work) =>
+    (...args) => {
+      try {
+        return work(...args);
+      } catch (error) {
+        fail(error.message);
+        log(`[fast-feeds] bluesky: ${error.message}`);
+        return undefined;
+      }
+    };
+
+  const flush = guarded(() => {
     clearTimer(flushTimer);
     flushTimer = null;
     if (!buffer.length && cursor === intake.cursor(id)) return;
     const reports = buffer;
     buffer = [];
     intake.enqueue(id, reports, { cursor });
-  }
+  });
 
   function hold(report) {
     buffer.push(report);
@@ -227,11 +254,6 @@ export function createBlueskyAdapter({
     const delay = backoffMs(state.attempt, random);
     log(`[fast-feeds] bluesky: ${reason}; retrying in ${delay} ms`);
     retryTimer = setTimer(connect, delay);
-  }
-
-  function fail(reason) {
-    state.last_error = String(reason).slice(0, 200);
-    state.last_error_at = now();
   }
 
   function onMessage(message) {
@@ -271,7 +293,10 @@ export function createBlueskyAdapter({
     }
     if (Number.isFinite(outcome.seq)) cursor = String(outcome.seq);
     if (!outcome.report) {
-      if (outcome.skip) intake.count(id, `skip_${outcome.skip}`);
+      // Expected in volume when the stream is filtered here, so not counted.
+      if (outcome.skip && outcome.skip !== 'unlisted_account')
+        intake.count(id, `skip_${outcome.skip}`);
+      flushTimer ??= setTimer(flush, CURSOR_SAVE_MS);
       return;
     }
     state.last_report_at = at;
@@ -297,7 +322,7 @@ export function createBlueskyAdapter({
     const ws = new WebSocketImpl(
       jetstreamUrl(
         host,
-        list.slice(0, MAX_DIDS).map((a) => a.did),
+        list.map((a) => a.did),
         cursor,
       ),
       [SUBPROTOCOL],
@@ -313,16 +338,19 @@ export function createBlueskyAdapter({
       state.attempt = 0;
       state.last_error = null;
     };
-    ws.onmessage = onMessage;
-    ws.onerror = (event) => fail(event?.message ?? 'socket error');
-    ws.onclose = (event) => {
+    ws.onmessage = guarded((message) => {
+      if (running) onMessage(message);
+    });
+    ws.onerror = (event) => fail(event?.message || 'connection failed');
+    ws.onclose = guarded((event) => {
       if (closed) return;
       closed = true;
       clearTimer(connectTimer);
       state.connected = false;
       if (socket === ws) socket = null;
-      flush();
+      // After stop() the queue may already be closed; stop() has flushed.
       if (!running) return;
+      flush();
       if (!opened) {
         // A refused cursor (too old for the stream's replay window) would be
         // refused for ever: forget it and take the live tail, and say so.
@@ -341,7 +369,7 @@ export function createBlueskyAdapter({
         }
       }
       schedule(`stream closed (${event?.code ?? 'no code'})`);
-    };
+    });
   }
 
   return {

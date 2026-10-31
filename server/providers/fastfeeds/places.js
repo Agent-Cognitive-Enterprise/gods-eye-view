@@ -28,7 +28,8 @@ const SENTENCE_START_MIN_POPULATION = 100_000;
 // A country or state right after a town says which town ("Paris, Texas").
 const QUALIFIER_CHARS = 32;
 const COUNTRY_ALIASES = Object.freeze({
-  US: ['United States', 'USA', 'U.S.', 'US', 'США', 'Сполучені Штати'],
+  // Not plain "US": it is far more often an adjective than a place.
+  US: ['United States', 'USA', 'США', 'Сполучені Штати'],
   GB: ['United Kingdom', 'UK', 'Britain', 'Великобритания', 'Британия'],
   RU: ['Russia', 'Россия', 'Росія', 'РФ'],
   KR: ['South Korea', 'Южная Корея', 'Південна Корея'],
@@ -150,7 +151,12 @@ function load() {
     for (const label of labels) add(label, { kind: 'country', name, iso2 });
   }
   for (const [label, postal] of Object.entries(US_STATES))
-    add(label, { kind: 'state', name: label, iso2: 'US', postal });
+    add(label, {
+      kind: 'state',
+      name: label.replace(/\b\p{L}/gu, (letter) => letter.toUpperCase()),
+      iso2: 'US',
+      postal,
+    });
   cache = { names, maxWords: MAX_WORDS_IN_NAME };
   return cache;
 }
@@ -184,8 +190,10 @@ function mentionsIn(text) {
       size--
     ) {
       const slice = words.slice(start, start + size).map((m) => m[0]);
-      // A place name starts with a capital in every language covered here.
-      if (!/^\p{Lu}/u.test(slice[0])) continue;
+      // A place name starts with a capital in every language covered here,
+      // and "SAn" or "LOndon" is a typo, not one.
+      if (!/^\p{Lu}/u.test(slice[0]) || /^\p{Lu}\p{Lu}+\p{Ll}/u.test(slice[0]))
+        continue;
       const cleaned = slice.map((word) => word.replace(/[.'’-]+$/, ''));
       const entries = names.get(placeKey(cleaned));
       if (!entries) continue;
@@ -208,10 +216,10 @@ function mentionsIn(text) {
   return found;
 }
 
-const regionOnly = (place, iso2, bounds) => ({
+const regionOnly = (place, iso2, bounds, precision = 'country') => ({
   lat: null,
   lon: null,
-  precision: 'country',
+  precision,
   region_code: iso2,
   place,
   bounds,
@@ -289,6 +297,7 @@ export function resolvePlace(text) {
         state.name,
         `US-${state.postal}`,
         usStateBounds(state.postal),
+        'region',
       ),
       evidence: [state.name],
       place_id: `US-${state.postal}`,

@@ -107,6 +107,82 @@ test('stream address: v2 route and parameters, never the v1 names', () => {
   );
 });
 
+test('stream address: a long list is filtered here, not in the address', () => {
+  const dids = (count) =>
+    Array.from(
+      { length: count },
+      (_, i) => `did:plc:${String(i).padStart(24, '0')}`,
+    );
+  const short = jetstreamUrl('jetstream.example', dids(150), null);
+  assert.equal(new URL(short).searchParams.getAll('dids').length, 150);
+  assert.ok(short.length < 8_000, 'the public hosts refuse about 8 KB and up');
+  const long = new URL(jetstreamUrl('jetstream.example', dids(151), '7'));
+  assert.equal(long.searchParams.has('dids'), false);
+  assert.equal(long.searchParams.get('cursor'), '7');
+  assert.deepEqual(long.searchParams.getAll('kinds'), ['commit']);
+});
+
+test('with a long list, only listed accounts are kept and the cursor still moves', () => {
+  const r = rig({
+    accounts: Array.from({ length: 200 }, (_, i) => ({
+      did: i === 0 ? SYNTHETIC_DID : `did:plc:listed${i}`,
+      source_type: 'social_claim',
+    })),
+  });
+  r.adapter.start();
+  assert.equal(new URL(r.sockets.last().url).searchParams.has('dids'), false);
+  r.sockets.last().open();
+  for (let i = 0; i < 50; i++)
+    r.sockets
+      .last()
+      .frame(postFrame({ did: SYNTHETIC_DID_2, seq: i + 1, rkey: `s${i}` }));
+  r.timers.run();
+  assert.equal(
+    r.intake.cursor('bluesky'),
+    '50',
+    'no replay of everything after a drop',
+  );
+  assert.equal(r.intake.counters().bluesky?.received ?? 0, 0);
+  assert.equal(r.intake.counters().bluesky?.skip_unlisted_account, undefined);
+  r.sockets.last().frame(postFrame({ seq: 51, rkey: 'mine' }));
+  assert.equal(r.settle().length, 1);
+});
+
+test('a refused connection says so, even with an empty error', () => {
+  const r = rig();
+  r.adapter.start();
+  r.sockets.last().onerror({ message: '' });
+  r.sockets.last().drop(1006);
+  assert.equal(r.adapter.health().last_error, 'connection failed');
+});
+
+test('a close event arriving after shutdown cannot stop the server', () => {
+  const r = rig();
+  r.adapter.start();
+  const socket = r.sockets.last();
+  socket.open();
+  socket.frame(postFrame({ seq: 1 }));
+  // close() answers at once on the fake; a real socket answers later.
+  socket.close = () => {};
+  r.adapter.stop();
+  r.intake.close();
+  assert.doesNotThrow(() => socket.onclose({ code: 1000 }));
+  assert.doesNotThrow(() => socket.frame(postFrame({ seq: 2, rkey: 'late' })));
+});
+
+test('a failing queue is reported, never thrown into the server', () => {
+  const r = rig();
+  r.adapter.start();
+  r.sockets.last().open();
+  r.intake.enqueue = () => {
+    throw new Error('database or disk is full');
+  };
+  r.sockets.last().frame(postFrame({ seq: 1 }));
+  assert.doesNotThrow(() => r.timers.run());
+  assert.equal(r.adapter.health().last_error, 'database or disk is full');
+  assert.doesNotThrow(() => r.sockets.last().drop(1006));
+});
+
 test('publication time: a post cannot make itself look newer', () => {
   const stream = '2026-10-31T03:20:00.000Z';
   const seen = Date.parse(stream);
@@ -236,16 +312,14 @@ test('10: an outage resumes from the cursor; a replay adds nothing and loses not
     .frame(
       postFrame({ seq: 100, rkey: 'a', text: 'Explosions in Kharkiv, first' }),
     );
-  r.sockets
-    .last()
-    .frame(
-      postFrame({
-        seq: 101,
-        rkey: 'b',
-        did: SYNTHETIC_DID_2,
-        text: 'Blasts shake Kharkiv this evening',
-      }),
-    );
+  r.sockets.last().frame(
+    postFrame({
+      seq: 101,
+      rkey: 'b',
+      did: SYNTHETIC_DID_2,
+      text: 'Blasts shake Kharkiv this evening',
+    }),
+  );
   const events = r.settle();
   assert.equal(events.length, 1);
   assert.equal(r.store.observationsFor(events[0].event_id).length, 2);
@@ -303,7 +377,7 @@ test('an unlisted account in the stream is not kept', () => {
   r.sockets.last().open();
   r.sockets.last().frame(postFrame({ did: SYNTHETIC_DID }));
   assert.equal(r.settle().length, 0);
-  assert.equal(r.intake.counters().bluesky.skip_unlisted_account, 1);
+  assert.equal(r.intake.counters().bluesky?.received ?? 0, 0);
 });
 
 test('replies and text-free posts are not reports', () => {
@@ -324,27 +398,23 @@ test('3 and 4: a shared article, however linked, is one origin', () => {
   const embed = (uri) => ({
     embed: { $type: 'app.bsky.embed.external', external: { uri } },
   });
-  r.sockets
-    .last()
-    .frame(
-      postFrame({
-        seq: 1,
-        rkey: 'a',
-        text: 'Explosions in Kharkiv say officials',
-        ...embed('https://example.com/report?utm_source=x'),
-      }),
-    );
-  r.sockets
-    .last()
-    .frame(
-      postFrame({
-        seq: 2,
-        rkey: 'b',
-        did: SYNTHETIC_DID_2,
-        text: 'Blasts in Kharkiv tonight, very worrying',
-        ...embed('http://www.example.com/report'),
-      }),
-    );
+  r.sockets.last().frame(
+    postFrame({
+      seq: 1,
+      rkey: 'a',
+      text: 'Explosions in Kharkiv say officials',
+      ...embed('https://example.com/report?utm_source=x'),
+    }),
+  );
+  r.sockets.last().frame(
+    postFrame({
+      seq: 2,
+      rkey: 'b',
+      did: SYNTHETIC_DID_2,
+      text: 'Blasts in Kharkiv tonight, very worrying',
+      ...embed('http://www.example.com/report'),
+    }),
+  );
   const [event] = r.settle();
   assert.equal(event.lineages.length, 1);
   assert.equal(event.verification, 'unverified');
@@ -354,15 +424,13 @@ test('3: a quote post is not an independent source', () => {
   const r = rig();
   r.adapter.start();
   r.sockets.last().open();
-  r.sockets
-    .last()
-    .frame(
-      postFrame({
-        seq: 1,
-        rkey: 'orig',
-        text: 'Explosions in Kharkiv reported now',
-      }),
-    );
+  r.sockets.last().frame(
+    postFrame({
+      seq: 1,
+      rkey: 'orig',
+      text: 'Explosions in Kharkiv reported now',
+    }),
+  );
   r.sockets.last().frame(
     postFrame({
       seq: 2,
@@ -388,16 +456,14 @@ test('5: two independent accounts with different words correlate', () => {
     .frame(
       postFrame({ seq: 1, rkey: 'a', text: 'Explosions heard in Kharkiv' }),
     );
-  r.sockets
-    .last()
-    .frame(
-      postFrame({
-        seq: 2,
-        rkey: 'b',
-        did: SYNTHETIC_DID_2,
-        text: 'В Харькове прогремел мощный взрыв',
-      }),
-    );
+  r.sockets.last().frame(
+    postFrame({
+      seq: 2,
+      rkey: 'b',
+      did: SYNTHETIC_DID_2,
+      text: 'В Харькове прогремел мощный взрыв',
+    }),
+  );
   const events = r.settle();
   assert.equal(events.length, 1);
   assert.equal(events[0].verification, 'corroborated');
@@ -413,16 +479,14 @@ test('6: like incidents in nearby towns stay apart', () => {
     .frame(
       postFrame({ seq: 1, rkey: 'a', text: 'Explosions heard in Kharkiv' }),
     );
-  r.sockets
-    .last()
-    .frame(
-      postFrame({
-        seq: 2,
-        rkey: 'b',
-        did: SYNTHETIC_DID_2,
-        text: 'Explosions heard in Belgorod',
-      }),
-    );
+  r.sockets.last().frame(
+    postFrame({
+      seq: 2,
+      rkey: 'b',
+      did: SYNTHETIC_DID_2,
+      text: 'Explosions heard in Belgorod',
+    }),
+  );
   assert.equal(r.settle().length, 2);
 });
 
@@ -430,14 +494,12 @@ test('7: a country-only claim gets no point; nothing the post states adds one', 
   const r = rig();
   r.adapter.start();
   r.sockets.last().open();
-  r.sockets
-    .last()
-    .frame(
-      postFrame({
-        text: 'Fuel shortage spreading across Lebanon',
-        location: { lat: 1, lon: 2 },
-      }),
-    );
+  r.sockets.last().frame(
+    postFrame({
+      text: 'Fuel shortage spreading across Lebanon',
+      location: { lat: 1, lon: 2 },
+    }),
+  );
   const [event] = r.settle();
   assert.equal(event.location.lat, null);
   assert.equal(event.location.region_code, 'LB');
@@ -448,50 +510,42 @@ test('8: a source correcting itself retracts; someone else only disputes', () =>
   const own = rig();
   own.adapter.start();
   own.sockets.last().open();
-  own.sockets
-    .last()
-    .frame(
-      postFrame({
-        seq: 1,
-        rkey: 'a',
-        text: 'Explosions heard in Kharkiv centre',
-      }),
-    );
+  own.sockets.last().frame(
+    postFrame({
+      seq: 1,
+      rkey: 'a',
+      text: 'Explosions heard in Kharkiv centre',
+    }),
+  );
   own.settle();
-  own.sockets
-    .last()
-    .frame(
-      postFrame({
-        seq: 2,
-        rkey: 'b',
-        text: 'Correction: no explosions in Kharkiv centre, it was fireworks',
-      }),
-    );
+  own.sockets.last().frame(
+    postFrame({
+      seq: 2,
+      rkey: 'b',
+      text: 'Correction: no explosions in Kharkiv centre, it was fireworks',
+    }),
+  );
   assert.equal(own.settle().length, 0, 'retracted');
 
   const other = rig();
   other.adapter.start();
   other.sockets.last().open();
-  other.sockets
-    .last()
-    .frame(
-      postFrame({
-        seq: 1,
-        rkey: 'a',
-        text: 'Explosions heard in Kharkiv centre',
-      }),
-    );
+  other.sockets.last().frame(
+    postFrame({
+      seq: 1,
+      rkey: 'a',
+      text: 'Explosions heard in Kharkiv centre',
+    }),
+  );
   other.settle();
-  other.sockets
-    .last()
-    .frame(
-      postFrame({
-        seq: 2,
-        rkey: 'b',
-        did: SYNTHETIC_DID_2,
-        text: 'That explosion in Kharkiv was debunked, fake news',
-      }),
-    );
+  other.sockets.last().frame(
+    postFrame({
+      seq: 2,
+      rkey: 'b',
+      did: SYNTHETIC_DID_2,
+      text: 'That explosion in Kharkiv was debunked, fake news',
+    }),
+  );
   const [event] = other.settle();
   assert.equal(fastStatus(event), 'contested');
   assert.equal(event.camera_eligible, false);
@@ -501,26 +555,22 @@ test('23: an edit updates the record; a delete withdraws it, words and all', () 
   const r = rig();
   r.adapter.start();
   r.sockets.last().open();
-  r.sockets
-    .last()
-    .frame(
-      postFrame({
-        seq: 1,
-        rkey: 'a',
-        text: 'Explosions heard in Kharkiv centre',
-      }),
-    );
-  r.sockets
-    .last()
-    .frame(
-      postFrame({
-        seq: 2,
-        rkey: 'a',
-        operation: 'update',
-        cid: 'bafyedit',
-        text: 'Explosions heard in Kharkiv centre, windows broken',
-      }),
-    );
+  r.sockets.last().frame(
+    postFrame({
+      seq: 1,
+      rkey: 'a',
+      text: 'Explosions heard in Kharkiv centre',
+    }),
+  );
+  r.sockets.last().frame(
+    postFrame({
+      seq: 2,
+      rkey: 'a',
+      operation: 'update',
+      cid: 'bafyedit',
+      text: 'Explosions heard in Kharkiv centre, windows broken',
+    }),
+  );
   const [event] = r.settle();
   assert.equal(r.store.observationsFor(event.event_id).length, 2);
   r.sockets.last().frame(deleteFrame({ seq: 3, rkey: 'a' }));
@@ -539,29 +589,25 @@ test('12: malformed, oversized and hostile frames are contained', () => {
   r.sockets.last().frame(`"${'x'.repeat(300_000)}"`);
   r.sockets.last().frame({ payload: null });
   r.sockets.last().frame({ payload: { $type: 'x#commit', did: 'nonsense' } });
-  r.sockets
-    .last()
-    .frame({
-      $type: 'message',
-      payload: {
-        $type: 'x#commit',
-        collection: 'app.bsky.feed.post',
-        did: SYNTHETIC_DID,
-        rkey: '../../etc',
-        seq: 5,
-      },
-    });
+  r.sockets.last().frame({
+    $type: 'message',
+    payload: {
+      $type: 'x#commit',
+      collection: 'app.bsky.feed.post',
+      did: SYNTHETIC_DID,
+      rkey: '../../etc',
+      seq: 5,
+    },
+  });
   r.sockets
     .last()
     .frame({ $type: 'error', error: 'ConsumerTooSlow', message: 'x' });
-  r.sockets
-    .last()
-    .frame(
-      postFrame({
-        seq: 9,
-        text: '<img src=x onerror=alert(1)> explosions in Kharkiv',
-      }),
-    );
+  r.sockets.last().frame(
+    postFrame({
+      seq: 9,
+      text: '<img src=x onerror=alert(1)> explosions in Kharkiv',
+    }),
+  );
   const [event] = r.settle();
   assert.ok(!event.title.includes('<img'));
   const counters = r.intake.counters().bluesky;
@@ -591,16 +637,14 @@ test('a post that breaks the engine never blocks the next one', () => {
   r.adapter.start();
   r.sockets.last().open();
   r.sockets.last().frame(postFrame({ seq: 1, rkey: 'a' }));
-  r.sockets
-    .last()
-    .frame(
-      postFrame({
-        seq: 2,
-        rkey: 'b',
-        did: SYNTHETIC_DID_2,
-        text: 'Second report: tornado hits Kyiv',
-      }),
-    );
+  r.sockets.last().frame(
+    postFrame({
+      seq: 2,
+      rkey: 'b',
+      did: SYNTHETIC_DID_2,
+      text: 'Second report: tornado hits Kyiv',
+    }),
+  );
   r.timers.run();
   pipeline.pass();
   assert.equal(r.engine.activeEvents(r.now()).length, 1);
@@ -613,15 +657,13 @@ test('13: a 10,000-message flood stays bounded, counted and fair', () => {
   r.sockets.last().open();
   const started = performance.now();
   for (let i = 0; i < 10_000; i++)
-    r.sockets
-      .last()
-      .frame(
-        postFrame({
-          seq: i + 1,
-          rkey: `flood${i}`,
-          text: `Flood message ${i}: nothing to see`,
-        }),
-      );
+    r.sockets.last().frame(
+      postFrame({
+        seq: i + 1,
+        rkey: `flood${i}`,
+        text: `Flood message ${i}: nothing to see`,
+      }),
+    );
   r.timers.run();
   const { pending, max_pending: maxPending } = r.intake.stats();
   assert.ok(pending <= maxPending, `${pending} waiting`);
@@ -647,16 +689,14 @@ test('13: a 10,000-message flood stays bounded, counted and fair', () => {
   });
   official.start();
   r.sockets.last().open();
-  r.sockets
-    .last()
-    .frame(
-      postFrame({
-        did: SYNTHETIC_DID_3,
-        seq: 1,
-        rkey: 'real',
-        text: 'Official: tsunami warning for Hilo',
-      }),
-    );
+  r.sockets.last().frame(
+    postFrame({
+      did: SYNTHETIC_DID_3,
+      seq: 1,
+      rkey: 'real',
+      text: 'Official: tsunami warning for Hilo',
+    }),
+  );
   r.timers.run();
   assert.equal(r.intake.counters()['official-source'].received, 1);
   const first = r.intake.next(10);
@@ -673,15 +713,13 @@ test('one account cannot fill the queue', () => {
   r.adapter.start();
   r.sockets.last().open();
   for (let i = 0; i < 10; i++)
-    r.sockets
-      .last()
-      .frame(
-        postFrame({
-          seq: i + 1,
-          rkey: `r${i}`,
-          text: `Explosions in Kharkiv, update number ${i}`,
-        }),
-      );
+    r.sockets.last().frame(
+      postFrame({
+        seq: i + 1,
+        rkey: `r${i}`,
+        text: `Explosions in Kharkiv, update number ${i}`,
+      }),
+    );
   r.settle();
   assert.equal(r.intake.counters().bluesky.deferred, 7);
 });

@@ -78,6 +78,7 @@ const COMMON_WORDS = new Set(
     'Reading',
     'Rugby',
     'Sale',
+    'San',
     'Sandy',
     'Split',
     'Sydney Mines',

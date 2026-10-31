@@ -86,17 +86,35 @@ export function createTelegramAdapter({
 
   const saveable = () => JSON.stringify(lastIds);
 
-  function flush() {
+  function fail(reason) {
+    state.last_error = String(reason).slice(0, 200);
+    state.last_error_at = now();
+  }
+
+  /** Library callbacks run outside any request: nothing may escape them. */
+  const guarded =
+    (work) =>
+    (...args) => {
+      try {
+        return work(...args);
+      } catch (error) {
+        fail(error.message);
+        log(`[fast-feeds] telegram: ${error.message}`);
+        return undefined;
+      }
+    };
+
+  const flush = guarded(() => {
     clearTimer(flushTimer);
     flushTimer = null;
     if (!buffer.length) return;
     const reports = buffer;
     buffer = [];
     intake.enqueue(id, reports, { cursor: saveable() });
-  }
+  });
 
   function hold(report, message) {
-    if (!report) return;
+    if (!report || !running) return;
     state.last_report_at = report.received_at;
     state.last_published_at = report.published_at;
     lastIds[message.channelId] = Math.max(
@@ -113,11 +131,6 @@ export function createTelegramAdapter({
       ? messageToReport(message, { receivedAt: now(), channel, canonical })
       : null;
   };
-
-  function fail(reason) {
-    state.last_error = String(reason).slice(0, 200);
-    state.last_error_at = now();
-  }
 
   function schedule() {
     if (!running) return;
@@ -149,10 +162,10 @@ export function createTelegramAdapter({
       }
       client.watch({
         chats: [...byChannelId.values()].map((c) => c.username),
-        onMessage: (message) => hold(toReport(message), message),
-        onEdit: (message) => hold(toReport(message), message),
-        onDelete: ({ channelId, ids }) => {
-          if (!byChannelId.has(channelId)) return;
+        onMessage: guarded((message) => hold(toReport(message), message)),
+        onEdit: guarded((message) => hold(toReport(message), message)),
+        onDelete: guarded(({ channelId, ids }) => {
+          if (!running || !byChannelId.has(channelId)) return;
           for (const messageId of ids)
             buffer.push({
               native_id: `tg:${channelId}:${messageId}`,
@@ -164,7 +177,7 @@ export function createTelegramAdapter({
               published_at: now(),
             });
           flushTimer ??= setTimer(flush, FLUSH_MS);
-        },
+        }),
       });
       // What arrived while disconnected, without walking a channel's history.
       for (const [channelId, channel] of byChannelId) {

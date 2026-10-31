@@ -48,6 +48,26 @@ test('gate: figures of speech and stories are filtered, and say why', () => {
   assert.equal(passes('We were blasting music all night long'), false);
 });
 
+test('gate: words that fooled it on the live stream no longer do', () => {
+  for (const text of [
+    'Ball State coach blasts college football leadership over the playoff',
+    'Riot Chaemirix says the first image pitched Augments',
+    'Peach Riot joins the POP MART collectable figure line',
+    'The people will riot.',
+    'FOI 2386: Bushfire insurance claims, released on 16 November 2018',
+    'A tsunami of paperwork landed on my desk this morning',
+  ])
+    assert.equal(gateReport(text).pass, false, text);
+  for (const text of [
+    'Blasts heard across central Kharkiv tonight',
+    'A blast at the port has injured several workers',
+    'Riots spread to a second district overnight',
+    'Riot police fired tear gas at the crowd',
+    'Tsunami warning issued for the coast',
+  ])
+    assert.equal(gateReport(text).pass, true, text);
+});
+
 test('gate: disputes, retractions and all-clears are recognised', () => {
   assert.equal(
     gateReport('The explosion claim was debunked').status_hint,
@@ -241,6 +261,26 @@ test('places: a sentence-initial word needs real weight to be a town', () => {
   ])
     assert.equal(resolvePlace(text).location.precision, 'unresolved', text);
   assert.equal(resolvePlace('Kyiv under attack again').location.place, 'Kyiv');
+});
+
+test('places: what fooled it on the live stream no longer does', () => {
+  const unresolved = (text) => resolvePlace(text).location.precision;
+  assert.equal(
+    unresolved('Imagine flooding SkyNews with the SAn brand'),
+    'unresolved',
+  );
+  assert.equal(
+    unresolved('These Are the US Attorneys carrying out the agenda'),
+    'unresolved',
+  );
+});
+
+test('places: a US state is a region, with its proper name', () => {
+  const { location } = resolvePlace('Flash flooding across Arizona tonight');
+  assert.equal(location.place, 'Arizona');
+  assert.equal(location.precision, 'region');
+  assert.equal(location.region_code, 'US-AZ');
+  assert.equal(location.lat, null);
 });
 
 test('places: a lower-case word is not a town', () => {
