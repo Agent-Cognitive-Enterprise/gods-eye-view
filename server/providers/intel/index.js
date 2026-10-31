@@ -23,8 +23,8 @@ import { worldBankConnector } from './connectors/worldBank.js';
 import { airSeaConnector } from './connectors/airsea.js';
 import {
   createFastFeeds,
+  createPolledObserver,
   fastFeedsEnabled,
-  observePolledBatch,
 } from '../fastfeeds/index.js';
 import { createLatencyBook } from '../fastfeeds/latency.js';
 import { createLocalLlm } from './localLlm.js';
@@ -176,7 +176,7 @@ export function intelProxy({
       connectors,
       scenarios: loadScenarios(),
       llm,
-      onFeedBatch: (batch) => observePolledBatch(latency, batch),
+      onFeedBatch: createPolledObserver(latency),
     });
     // Push sources in front of the same engine (fork feature, GEV_FAST_FEEDS=1).
     if (fastFeedsEnabled(env))

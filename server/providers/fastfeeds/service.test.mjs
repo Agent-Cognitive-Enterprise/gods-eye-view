@@ -8,7 +8,7 @@ import { intelProxy } from '../intel/index.js';
 import { createTelegramAdapter, messageToReport } from './adapters/telegram.js';
 import { buildPlacePrompt, createEnricher, validatePlace } from './enricher.js';
 import { canonicalLink } from './gate.js';
-import { createFastFeeds, observePolledBatch } from './index.js';
+import { createFastFeeds, createPolledObserver } from './index.js';
 import { createIntake } from './intake.js';
 import { createLatencyBook } from './latency.js';
 import {
@@ -203,26 +203,27 @@ test('SLO: unmeasured stays unmeasured; a miss says so', async (t) => {
   assert.equal(reading('receive_to_display').met, null);
 });
 
-test('polled feeds report real publication latency for new records only', () => {
+test('polled feeds: only what appeared since an earlier poll counts as delay', () => {
   const book = createLatencyBook();
-  observePolledBatch(book, {
-    id: 'usgs-earthquakes',
-    records: [{ published_at: T0 - 90_000 }],
-    outcome: [{ status: 'new_event', event_id: 'evt_1' }],
-    receivedAt: T0,
+  const observe = createPolledObserver(book);
+  const batch = (...records) =>
+    observe({ id: 'nws-alerts', records, receivedAt: T0 });
+  const old = { source_item_id: 'a', published_at: T0 - 86_400_000 };
+  batch(old);
+  assert.deepEqual(
+    book.summary(),
+    {},
+    'the first batch is everything in force',
+  );
+  batch(old);
+  assert.deepEqual(book.summary(), {}, 'polled again, it is not news');
+  batch(old, { source_item_id: 'b', published_at: T0 - 90_000 });
+  assert.equal(book.summary()['nws-alerts'].publish_to_receive.p50_ms, 90_000);
+  batch(old, {
+    source_item_id: 'c',
+    published_at: new Date(T0 - 30_000).toISOString(),
   });
-  observePolledBatch(book, {
-    id: 'usgs-earthquakes',
-    records: [{ published_at: T0 - 999_000 }],
-    outcome: [{ status: 'duplicate', event_id: 'evt_1' }],
-    receivedAt: T0,
-  });
-  assert.deepEqual(book.summary()['usgs-earthquakes'].publish_to_receive, {
-    samples: 1,
-    p50_ms: 90_000,
-    p95_ms: 90_000,
-    max_ms: 90_000,
-  });
+  assert.equal(book.summary()['nws-alerts'].publish_to_receive.samples, 2);
 });
 
 test('routes: reads are open, changes are this machine only', async (t) => {

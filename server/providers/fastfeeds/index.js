@@ -26,6 +26,7 @@ const PASS_MS = 250;
 const BUSY_PASS_MS = 5;
 const PRUNE_EVERY_MS = 6 * 3600_000;
 const MAX_SHOWN_MEMORY = 20_000;
+const MAX_POLLED_IDS = 50_000;
 const HANDLE = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,62}\.)+[a-zA-Z]{2,63}$/;
 const RESOLVE_HOST = 'https://public.api.bsky.app';
 export const FAST_PROVIDERS = Object.freeze(['bluesky', 'telegram']);
@@ -39,22 +40,33 @@ export const SLO_P95_MS = Object.freeze({
 export const fastFeedsEnabled = (env = process.env) =>
   env.GEV_FAST_FEEDS === '1';
 
-/** A feed batch from the poll-based connectors, for the latency panel. */
-export function observePolledBatch(
-  latency,
-  { id, records, outcome, receivedAt },
-) {
-  const fresh = new Set(
-    outcome
-      .filter((r) => r.status === 'new_event' || r.status === 'material_update')
-      .map((r) => r.event_id),
-  );
-  if (!fresh.size) return;
-  for (const record of records) {
-    const published =
-      Date.parse(record.published_at) || Number(record.published_at);
-    latency.record(id, 'publish_to_receive', receivedAt - published);
-  }
+/**
+ * Publication delay of the poll-based feeds, for the latency panel. A feed's
+ * first batch after a start is everything still in force, some of it days old,
+ * and says nothing about delay; only records that appeared since an earlier
+ * poll are measured.
+ */
+export function createPolledObserver(latency) {
+  const seen = new Map(); // feed id -> ids already delivered
+
+  return ({ id, records, receivedAt }) => {
+    const known = seen.get(id);
+    const ids = records.map((record) => record.source_item_id);
+    if (!known) {
+      seen.set(id, new Set(ids));
+      return;
+    }
+    records.forEach((record, index) => {
+      if (known.has(ids[index])) return;
+      known.add(ids[index]);
+      const published = Date.parse(record.published_at);
+      const at = Number.isFinite(published)
+        ? published
+        : Number(record.published_at);
+      latency.record(id, 'publish_to_receive', receivedAt - at);
+    });
+    if (known.size > MAX_POLLED_IDS) seen.set(id, new Set(ids));
+  };
 }
 
 /**
@@ -164,13 +176,14 @@ export function createFastFeeds({
 
   async function loop() {
     if (!running) return;
+    let handled = 0;
     try {
       // Drain what is there, a bounded pass at a time, yielding between them.
-      pipeline.pass();
+      handled = pipeline.pass();
     } catch (error) {
       log(`[fast-feeds] pipeline: ${error.message}`);
     }
-    timer = setTimeout(loop, intervalMs);
+    timer = setTimeout(loop, handled ? BUSY_PASS_MS : intervalMs);
     timer.unref?.();
   }
 

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
 import os from 'node:os';
 import path from 'node:path';
 import { fastStatus } from '../../../src/intel/fastStatus.js';
@@ -8,6 +9,8 @@ import { createIntelService } from '../intel/service.js';
 import { publicationTime } from './adapters/bluesky.js';
 import { createFastFeeds } from './index.js';
 import { createIntake } from './intake.js';
+import { createLatencyBook } from './latency.js';
+import { createPipeline } from './pipeline.js';
 import { SYNTHETIC_DID, fakeSockets, postFrame } from './testing.mjs';
 
 const T0 = Date.parse('2026-10-31T03:20:04.000Z');
@@ -107,6 +110,63 @@ test('19: a restart keeps events, the cursor, the sources and the queue', async 
     'no duplicate',
   );
   assert.equal(fastStatus(same), 'provisional');
+});
+
+test('a handled report keeps its record and none of its words', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gev-fast-words-'));
+  const file = path.join(dir, 'fast-intake.sqlite');
+  const intake = createIntake({ file });
+  const words = 'distinctive words of a stranger';
+  for (const native_id of ['filtered', 'processed'])
+    intake.enqueue('s', [{ native_id, received_at: T0, text: words }]);
+  const [first, second] = intake.next(2);
+  intake.complete(first.seq, { status: 'filtered', outcome: 'no_topic' });
+  intake.complete(second.seq, { status: 'processed', outcome: 'new_event' });
+  intake.close();
+  const db = new DatabaseSync(file);
+  const rows = db.prepare('SELECT body FROM intake').all();
+  db.close();
+  fs.rmSync(dir, { recursive: true, force: true });
+  assert.equal(rows.length, 2, 'the records stay');
+  assert.ok(
+    rows.every((row) => row.body === '{}'),
+    'the words go',
+  );
+});
+
+test('a pass stops at its time budget and leaves the rest waiting', () => {
+  const intake = createIntake({ now: () => T0 });
+  intake.enqueue(
+    's',
+    Array.from({ length: 100 }, (_, i) => ({
+      native_id: `n${i}`,
+      received_at: T0,
+      published_at: T0,
+      text: `Explosions heard in Kharkiv, report ${i}`,
+      provider: 'bluesky',
+      publisher: `bsky:did:plc:a${i}`,
+      source_type: 'social_claim',
+    })),
+  );
+  const pipeline = createPipeline({
+    intake,
+    latency: createLatencyBook(),
+    now: () => T0,
+    log: () => {},
+    engine: {
+      ingest() {
+        const until = performance.now() + 15;
+        while (performance.now() < until) {
+          /* a slow engine */
+        }
+        return [{ status: 'new_event', event_id: 'evt_1' }];
+      },
+    },
+  });
+  const handled = pipeline.pass();
+  assert.ok(handled >= 1 && handled < 10, `${handled} handled in one pass`);
+  assert.equal(intake.stats().pending, 100 - handled);
+  intake.close();
 });
 
 test('intake: an unreadable queue file is set aside, never fatal', (t) => {
