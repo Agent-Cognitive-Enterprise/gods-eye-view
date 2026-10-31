@@ -176,11 +176,92 @@ locale files (append-only) and the panel shell in `layer-panels.html`.
 
 ## Status
 
-@@STATUS@@
+Nothing is deployed: 4174 runs without this branch.
+
+| State                 | What                                                                                                                                                                                                                                                                               |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Implemented, live-run | Bluesky Jetstream v2 with cursor and replay, durable queue, gate, gazetteer, delete and edit handling, trust rules, source editing, FAST INTELLIGENCE panel, delay figures. All run against the real stream on staging.                                                            |
+| Implemented, reused   | USGS, NWS and GDACS through the existing connectors, with faster NWS and GDACS polling. Their cancellation and update rules are the existing ones.                                                                                                                                 |
+| Configured            | Nothing. No account is followed by default, and `GEV_FAST_FEEDS` is off.                                                                                                                                                                                                           |
+| Experimental          | Telegram: tested against a fake client only, never a real server. Qwen place enrichment: four synthetic posts on the real model, no long run.                                                                                                                                      |
+| Blocked               | Telegram live test: needs your `api_id`, `api_hash` and sign-in.                                                                                                                                                                                                                   |
+| Not started           | Other national CAP feeds; Mastodon and news RSS; broad discovery across all of Bluesky; a map sublayer for source activity; panel filters by region, distance and priority; per-source weights beyond the three trust tags; a Telegram channel editor (settings file only); media. |
 
 ## Measurements
 
-@@MEASUREMENTS@@
+All on this machine on 31 October 2026. Every figure says what it was measured on.
+
+**Against the targets**
+
+| Stage                                 | Target (p95)      | Measured                          | Samples             | Result  |
+| ------------------------------------- | ----------------- | --------------------------------- | ------------------- | ------- |
+| Push delivery to the queue            | under 15 s        | 0.49 s p50, 3.3 s p95, 17 s max   | 442 real posts      | Met     |
+| Filter and classify                   | under 15 s        | 9 ms p50, 16 ms p95 per report    | 512 real posts      | Met     |
+| Received to initial event             | under 30 s        | 0.23 s p50, 0.37 s p95            | 442 real posts      | Met     |
+| Eligible report to shown on the globe | under 60 s        | 4.4 s p50, 11.4 s p95, 12.7 s max | 21 events           | Met     |
+| Official alert                        | Poll cycle + 30 s | One NWS alert: 165 s from publish | 1, too few to judge | Unknown |
+
+The first-report time depends on the source: a post reaches the queue in seconds,
+but when an event first gets posted is outside this system. The console refreshes
+every 10 s, which sets most of the map delay. A claim that had to wait for a place
+was shown up to 103 s after its first report, because it could not be drawn until
+a report named one. That dashboard reading was corrected after this run: its new
+form was checked in tests and against these stored timestamps, not re-run live.
+
+These figures come from staging with 300 very active accounts and a temporary
+language pack that passed every post, so that all of them took the full path. That
+is a heavier load than normal, on a machine shared with the live instance.
+
+**The public stream**, read-only, 25 minutes, 23,410 top-level posts:
+
+| Measure            | Result                                                         |
+| ------------------ | -------------------------------------------------------------- |
+| Volume             | 28 frames a second, 26 KB/s (75 and 94 in a busier 15 minutes) |
+| Transport delay    | 227 ms p50, 2.5 s p95, 4.7 s max                               |
+| Gate cost per post | 27 µs p50, 190 µs p95                                          |
+| CPU, memory        | 0.1 % of one core, 129 MB                                      |
+| Passed the gate    | 60 posts, 0.26 %                                               |
+
+**Precision.** 34 of those 60 were real current reports when read by hand: **57 %**.
+Tuning did not visibly help: 62 % (20 of 32) before it, on a different sample. Both
+samples are small and scored by one reader. This is the whole public stream, not
+chosen accounts, which is not how the system runs by default; precision on chosen
+accounts and all recall are unmeasured. Most misses were sport, games and
+figures of speech, and each is still a claim at confidence 0.25.
+
+**Places.** 27 of the 60 got a place. The 3 wrong cities out of 11 were all
+"Melbourne FL" read as Australia, now fixed. One post about Ufa was placed in
+Ukraine, because the post named Ukraine, and that kind of error remains.
+
+**Local model.** Qwen read 4 of 4 synthetic posts correctly, including one that told
+it to answer Atlantis. Each took 1.6 to 46 s on a GPU already at 99 %. It is capped
+at 20 questions an hour and gives way to voice and to anyone else. Its GPU share
+was not measured separately.
+
+**Accelerated soak** (synthetic, `scripts/fast-feeds-soak.mjs`, commit `5c61bdcd`):
+
+24 simulated hours at 5 posts a second through the real adapter, queue, gate and
+engine on real SQLite files, with an outage and replay every hour and a flood of
+10,000 every six.
+
+| Measure             | Result                                                |
+| ------------------- | ----------------------------------------------------- |
+| Frames              | 463,731 received and all accounted for: none lost     |
+| Replayed            | 4,600 frames across 23 outages, every one ignored     |
+| Memory              | 153 MB in hour 1, 279 MB by hour 6, 285 MB at hour 24 |
+| Slowest pass        | 0.75 s, during a flood (2.2 s before the time budget) |
+| Queue after a flood | 10,000 waiting, drained to 0 by the end of each hour  |
+| Disk                | 469 MB of queue and 113 MB of evidence in the day     |
+
+That disk figure is high because 5 posts a second is about 430,000 reports a day.
+A few chosen accounts make far less. Filtered records go after two days, so it
+levels off at about twice that at this rate; on C:, with 16 GB free, keep an eye on
+it if you follow hundreds of busy accounts.
+
+**Not done: 24 hours against the live stream.** Staging ran for about 50 minutes in
+total, with restarts. The soak is simulated traffic on a simulated clock. It shows
+how the code behaves over a long run, and says nothing about a real service staying
+up for a day.
 
 ## Test matrix
 
