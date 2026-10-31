@@ -172,15 +172,13 @@ test('map delay is one reading per event, from the report that made it eligible'
   r.fast.start();
   r.sockets.last().open();
   // Unplaced, so held back; it waits for a report that names a town.
-  r.sockets
-    .last()
-    .frame(
-      postFrame({
-        seq: 1,
-        rkey: 'a',
-        text: 'Explosions heard somewhere over here',
-      }),
-    );
+  r.sockets.last().frame(
+    postFrame({
+      seq: 1,
+      rkey: 'a',
+      text: 'Explosions heard somewhere over here',
+    }),
+  );
   await r.fast.adapters[0].stop();
   r.fast.pipeline().pass();
   r.fast.noteShown(r.service.listEvents('live').events);
@@ -209,8 +207,28 @@ test('map delay is one reading per event, from the report that made it eligible'
   assert.equal(reading.p50_ms, 4_000);
 });
 
+test('Telegram stays off by code: settings alone cannot connect an account', async (t) => {
+  let asked = 0;
+  const r = rig(t, {
+    loadTelegramLogin: async () => {
+      asked += 1;
+      return { apiId: 1, apiHash: 'h', session: 's' };
+    },
+    connectTelegram: async () => {
+      throw new Error('must never be called');
+    },
+  });
+  r.fast.updateSettings({
+    telegram: { enabled: true, channels: [{ username: 'some_channel' }] },
+  });
+  r.fast.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(r.fast.status().sources[1].status, 'disabled');
+  assert.equal(asked, 0, 'the login is not even read');
+});
+
 test('11: Telegram with no login leaves everything else running', async (t) => {
-  const r = rig(t);
+  const r = rig(t, { env: { GEV_TELEGRAM_ALLOWED: '1' } });
   follow(r.fast);
   r.fast.updateSettings({
     telegram: { enabled: true, channels: [{ username: 'some_channel' }] },

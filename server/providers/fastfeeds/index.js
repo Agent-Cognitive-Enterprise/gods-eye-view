@@ -94,6 +94,7 @@ export function createFastFeeds({
   intervalMs = PASS_MS,
 }) {
   const offline = env.GEV_INTEL_OFFLINE === '1';
+  const telegramAllowed = env.GEV_TELEGRAM_ALLOWED === '1';
   const settingsFile = path.join(dir, 'fast-feeds.json');
   let settings = readFastSettings(settingsFile, log);
   let rules = compileRules(settings.languagePacks);
@@ -189,7 +190,11 @@ export function createFastFeeds({
 
   function applyEnabled() {
     bluesky.setEnabled(!offline && settings.bluesky.enabled);
-    telegram.setEnabled(!offline && settings.telegram.enabled);
+    // Held off by code, not by a setting: nothing in the panel or the settings
+    // file can connect an account until the library has been reviewed.
+    telegram.setEnabled(
+      !offline && telegramAllowed && settings.telegram.enabled,
+    );
   }
 
   /** Every push source joined with its counters and latency. */

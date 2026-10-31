@@ -108,9 +108,9 @@ export function createTelegramAdapter({
     clearTimer(flushTimer);
     flushTimer = null;
     if (!buffer.length) return;
-    const reports = buffer;
+    // Cleared only once stored: a failed write is tried again on the next flush.
+    intake.enqueue(id, buffer, { cursor: saveable() });
     buffer = [];
-    intake.enqueue(id, reports, { cursor: saveable() });
   });
 
   function hold(report, message) {

@@ -80,6 +80,7 @@ export function sanitizeSettings(input = {}) {
     'pullBackEnabled',
     'tourAnalystIncidents',
     'proximityEnabled',
+    'socialCameraEnabled',
   ])
     if (typeof input[key] === 'boolean') out[key] = input[key];
   if (input.categoryRelevance && typeof input.categoryRelevance === 'object') {

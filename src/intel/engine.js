@@ -19,7 +19,7 @@ import {
 } from './evidence.js';
 import { lifecycleAt } from './lifecycle.js';
 import { ruleSeverity, scoreEvent, verificationOf } from './scoring.js';
-import { CATEGORY_POLICY } from './taxonomy.js';
+import { CATEGORY_POLICY, isPostsOnly } from './taxonomy.js';
 
 const MAX_TOKENS = 200;
 const WITHDRAWN_TEXT = 'Report withdrawn by its source';
@@ -418,6 +418,7 @@ export function createIntelEngine({ store, now, settings = {} }) {
     const withVerification = { ...event, verification: score.verification };
     const life = lifecycleAt(withVerification, at, config.categoryOverrides);
     const enabled = config.categoryRelevance?.[event.category] !== 0;
+    const postsHeld = config.socialCameraEnabled !== true && isPostsOnly(event);
     return {
       ...event,
       severity: score.severity,
@@ -428,7 +429,8 @@ export function createIntelEngine({ store, now, settings = {} }) {
       attention_score: score.attention_score,
       base_attention_score: score.base_attention_score,
       proximity: score.proximity,
-      critical_qualified: score.critical_qualified,
+      critical_qualified: score.critical_qualified && !postsHeld,
+      posts_held_from_camera: postsHeld,
       critical_blocked: score.critical_blocked,
       evidence_factor: score.evidence_factor,
       model_applied: score.model_applied,
@@ -441,6 +443,7 @@ export function createIntelEngine({ store, now, settings = {} }) {
       expires_at: life.expires_at,
       camera_eligible:
         enabled &&
+        !postsHeld &&
         life.focus_eligible &&
         score.confidence >= (config.minimumCameraConfidence ?? 0) &&
         (event.location.lat !== null || event.location.region_code !== null),

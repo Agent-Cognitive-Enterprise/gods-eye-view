@@ -3,7 +3,8 @@
 // whatever is hidden. Only reports from the push sources are touched, so this
 // can never hide an official feed's alert. Pure and portable.
 
-export const FAST_SOURCE_PROVIDERS = Object.freeze(['bluesky', 'telegram']);
+import { PUSH_PROVIDERS } from './taxonomy.js';
+
 export const FAST_CATEGORIES = Object.freeze([
   'armed_conflict',
   'civil_unrest',
@@ -70,7 +71,7 @@ export function writeFastView(storage, view) {
 
 /** The event came in, at least partly, from a push source. */
 export const isFastEvent = (event) =>
-  event.providers?.some((id) => FAST_SOURCE_PROVIDERS.includes(id)) ?? false;
+  event.providers?.some((id) => PUSH_PROVIDERS.includes(id)) ?? false;
 
 /** A push-source claim too thin to draw; it waits in the activity list. */
 export const isHeldCandidate = (event) =>

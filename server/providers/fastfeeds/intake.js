@@ -103,9 +103,12 @@ export function createIntake({
   const db = open(file, warn);
   const q = {
     insert: db.prepare(
-      `INSERT OR IGNORE INTO intake
+      // Not INSERT OR IGNORE: that also swallows a NOT NULL violation, and a
+      // report would vanish while its cursor moved past it.
+      `INSERT INTO intake
        (source_id, native_id, revision, kind, priority, published_at, received_at, status, body)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+       ON CONFLICT (source_id, native_id, revision) DO NOTHING`,
     ),
     pendingCount: db.prepare(
       "SELECT count(*) AS n FROM intake WHERE status = 'pending'",
@@ -218,6 +221,14 @@ export function createIntake({
       const result = { accepted: 0, duplicate: 0, dropped: 0 };
       transaction(() => {
         for (const report of reports) {
+          // Node 24 refuses to bind undefined and Node 26 binds NULL: this
+          // queue's answer must not depend on which.
+          if (
+            typeof report.native_id !== 'string' ||
+            !report.native_id ||
+            !Number.isFinite(report.received_at)
+          )
+            throw new Error('report without an id or a receipt time');
           if (!makeRoom(report.priority ?? 0)) {
             result.dropped += 1;
             continue;

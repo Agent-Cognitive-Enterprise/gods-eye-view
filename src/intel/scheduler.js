@@ -80,6 +80,7 @@ export function tourClusters(events, s) {
     (e) =>
       TOUR_LIFECYCLES.has(e.lifecycle) &&
       !TOUR_EXCLUDED.has(e.verification) &&
+      !e.posts_held_from_camera &&
       credible(e) &&
       s.categoryRelevance?.[e.category] !== 0 &&
       ((e.location?.lat !== null && e.location?.lat !== undefined) ||

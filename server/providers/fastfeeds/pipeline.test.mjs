@@ -768,6 +768,93 @@ test('intake: the cursor is stored with the reports, or not at all', () => {
   assert.equal(r.intake.cursor('s'), null, 'rolled back together');
 });
 
+test('intake: a report with no id or receipt time is an error, never a silent loss', () => {
+  const r = rig();
+  for (const report of [
+    { received_at: T0 },
+    { native_id: '', received_at: T0 },
+    { native_id: 'x', received_at: null },
+    { native_id: 'x' },
+  ]) {
+    assert.throws(
+      () => r.intake.enqueue('s', [report], { cursor: 9 }),
+      /without an id or a receipt time/,
+    );
+    assert.equal(r.intake.cursor('s'), null, 'the cursor did not move past it');
+  }
+});
+
+test('a failed write goes back to the stored cursor, so nothing is skipped', () => {
+  const r = rig();
+  r.adapter.start();
+  r.sockets.last().open();
+  r.sockets
+    .last()
+    .frame(
+      postFrame({
+        seq: 1,
+        rkey: 'a',
+        text: 'Explosions heard in Kharkiv, first',
+      }),
+    );
+  r.timers.run();
+  assert.equal(r.intake.cursor('bluesky'), '1');
+
+  const failing = r.sockets.last();
+  const real = r.intake.enqueue;
+  r.intake.enqueue = () => {
+    throw new Error('database or disk is full');
+  };
+  failing.frame(
+    postFrame({
+      seq: 2,
+      rkey: 'b',
+      did: SYNTHETIC_DID_2,
+      text: 'Explosions in Kharkiv, second',
+    }),
+  );
+  r.timers.run();
+  r.intake.enqueue = real;
+  assert.equal(r.adapter.health().last_error, 'database or disk is full');
+  assert.equal(
+    r.intake.cursor('bluesky'),
+    '1',
+    'the stored cursor never moved',
+  );
+
+  // A frame already on its way changes nothing.
+  failing.frame(
+    postFrame({ seq: 3, rkey: 'c', did: SYNTHETIC_DID_3, text: 'Late frame' }),
+  );
+  r.timers.run();
+  const fresh = r.sockets.last();
+  assert.notEqual(fresh, failing, 'reconnected');
+  assert.equal(new URL(fresh.url).searchParams.get('cursor'), '1');
+  fresh.open();
+  fresh.frame(
+    postFrame({
+      seq: 1,
+      rkey: 'a',
+      text: 'Explosions heard in Kharkiv, first',
+    }),
+  );
+  fresh.frame(
+    postFrame({
+      seq: 2,
+      rkey: 'b',
+      did: SYNTHETIC_DID_2,
+      text: 'Explosions in Kharkiv, second',
+    }),
+  );
+  const [event] = r.settle();
+  assert.equal(
+    r.store.observationsFor(event.event_id).length,
+    2,
+    'nothing lost',
+  );
+  assert.equal(r.intake.cursor('bluesky'), '2');
+});
+
 test('intake: raw text leaves after retention; waiting work does not', () => {
   const r = rig({ intakeOptions: { rawRetentionDays: 7 } });
   r.intake.enqueue('s', [{ native_id: 'old', received_at: T0, text: 't' }]);

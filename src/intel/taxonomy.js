@@ -138,6 +138,21 @@ export const CATEGORY_POLICY = Object.freeze({
 export const SOCIAL_ONLY_CONFIDENCE_CAP = 0.6;
 export const SOCIAL_MARKER_TTL_MS = 6 * HOUR;
 
+/** Where posts come from, whatever trust tag an account was given. */
+export const PUSH_PROVIDERS = Object.freeze(['bluesky', 'telegram']);
+
+/**
+ * Nothing but posts stands behind the event. Until socialCameraEnabled is set,
+ * such an event is shown as a claim and never moves the camera on its own: no
+ * Autopilot shot, no tour stop, no interruption. An operator can still fly to it.
+ */
+export const isPostsOnly = (event) =>
+  (event.lineages?.length ?? 0) > 0 &&
+  event.lineages.every(
+    (l) =>
+      l.source_type === 'social_claim' || PUSH_PROVIDERS.includes(l.provider),
+  );
+
 /** Every source of the event is a social post. */
 export const isSocialOnly = (event) =>
   (event.lineages?.length ?? 0) > 0 &&
@@ -178,6 +193,8 @@ export const AUTOPILOT_DEFAULTS = Object.freeze({
   homeLocations: [],
   proximityRadiusKm: 1000,
   proximityDecayKm: 400,
+  // Posts alone never move the camera until their reliability is demonstrated.
+  socialCameraEnabled: false,
   // Local model assessments (Phase 3); off means rule-based scoring only.
   localAiEnabled: true,
 });

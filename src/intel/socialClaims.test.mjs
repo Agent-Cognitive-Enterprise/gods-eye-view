@@ -288,6 +288,81 @@ test('Autopilot never flies to an unverified post, and an official one still can
   assert.equal(scheduled().type, 'fly');
 });
 
+test('posts alone never move the camera, however well corroborated', () => {
+  const w = world({ minimumAttentionScore: 20 });
+  [
+    'Explosions over central Kyiv now',
+    'Central Kyiv explosions, I can see smoke',
+  ].forEach((title, i) =>
+    w.engine.ingest([
+      post({
+        title,
+        publisher: `did:plc:held${i}`,
+        metrics: { severity_hint: 99 },
+      }),
+    ]),
+  );
+  const [event] = only(w);
+  assert.equal(event.verification, 'corroborated');
+  assert.equal(event.posts_held_from_camera, true);
+  assert.equal(event.camera_eligible, false);
+  assert.equal(event.critical_qualified, false);
+  assert.equal(fastStatus(event), 'corroborated', 'still shown for what it is');
+  const clusters = clusterEvents([event], { diameterKm: 800 });
+  const decision = stepScheduler(
+    { ...createSchedulerState(), mode: 'auto' },
+    {
+      now: w.now(),
+      events: [event],
+      clusters,
+      settings: {
+        minimumAttentionScore: 20,
+        tourWhenIdle: true,
+        tourMinimumScore: 0,
+      },
+    },
+  ).decision;
+  assert.notEqual(
+    decision.type,
+    'fly',
+    'not as a shot, and not as a tour stop',
+  );
+});
+
+test('a trust tag does not get posts past the camera hold', () => {
+  const w = world();
+  w.engine.ingest([
+    post({
+      source_type: 'secondary_reporting',
+      title: 'Reporter says explosions over central Kyiv',
+    }),
+  ]);
+  w.engine.ingest([
+    post({
+      source_type: 'primary_official',
+      publisher: 'did:plc:tagged',
+      title: 'Tagged account says explosions over central Kyiv tonight',
+      metrics: { severity_hint: 99 },
+    }),
+  ]);
+  const [event] = only(w);
+  assert.equal(event.posts_held_from_camera, true);
+  assert.equal(event.camera_eligible, false);
+  assert.equal(event.critical_qualified, false);
+});
+
+test('an official feed behind the event lifts the hold; so can the operator', () => {
+  const w = world();
+  w.engine.ingest([post()]);
+  w.engine.ingest([official({ metrics: { severity_hint: 99 } })]);
+  assert.equal(only(w)[0].posts_held_from_camera, false);
+  assert.equal(only(w)[0].critical_qualified, true);
+
+  const allowed = world({ socialCameraEnabled: true });
+  allowed.engine.ingest([post({ source_type: 'secondary_reporting' })]);
+  assert.equal(only(allowed)[0].posts_held_from_camera, false);
+});
+
 test('proximity raises attention, never the confidence in a post', () => {
   const plain = world();
   const near = world({

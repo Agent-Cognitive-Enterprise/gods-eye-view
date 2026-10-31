@@ -210,6 +210,8 @@ export function createBlueskyAdapter({
   let cursorTimer = null;
   let buffer = [];
   let cursor = null;
+  // The cursor as stored, in step with the stored reports.
+  let storedCursor = null;
   let hostIndex = 0;
   let accountIndex = new Map();
 
@@ -239,10 +241,22 @@ export function createBlueskyAdapter({
     clearTimer(cursorTimer);
     flushTimer = null;
     cursorTimer = null;
-    if (!buffer.length && cursor === intake.cursor(id)) return;
+    if (!buffer.length && cursor === storedCursor) return;
     const reports = buffer;
+    const reached = cursor;
     buffer = [];
-    intake.enqueue(id, reports, { cursor });
+    try {
+      intake.enqueue(id, reports, { cursor: reached });
+      storedCursor = reached;
+    } catch (error) {
+      // Nothing was stored. Go back to the stored cursor and reconnect, and the
+      // stream delivers these again; carrying on would skip past them for good.
+      cursor = storedCursor;
+      const ws = socket;
+      socket = null;
+      ws?.close();
+      throw error;
+    }
   });
 
   function hold(report) {
@@ -343,7 +357,8 @@ export function createBlueskyAdapter({
       state.last_error = null;
     };
     ws.onmessage = guarded((message) => {
-      if (running) onMessage(message);
+      // A socket given up on after a failed write must not move the cursor.
+      if (running && socket === ws) onMessage(message);
     });
     ws.onerror = (event) => fail(event?.message || 'connection failed');
     ws.onclose = guarded((event) => {
@@ -384,6 +399,7 @@ export function createBlueskyAdapter({
       if (running || state.disabled) return;
       running = true;
       cursor = intake.cursor(id);
+      storedCursor = cursor;
       connect();
     },
     stop() {
