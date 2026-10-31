@@ -103,6 +103,11 @@ export function createEnricher({
       buildPlacePrompt(observation.summary),
       PLACE_SCHEMA,
     );
+    // The source may have taken the report back while the model was thinking.
+    const current = store
+      .observationsFor(job.eventId)
+      .find((o) => o.source_item_id === job.nativeId);
+    if (!current || current.withdrawn) return;
     const answer = validatePlace(text, observation.summary);
     if (!answer.ok) {
       counts[answer.reason === 'no_place' ? 'no_place' : 'rejected'] += 1;

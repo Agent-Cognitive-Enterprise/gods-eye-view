@@ -60,10 +60,18 @@ export function independentLineages(event) {
   // One outlet's several articles (or an agency's successive bulletins
   // without a stable URL) are one source: count publishers, not lineages.
   return new Set(
-    event.lineages
-      .filter((l) => l.source_type !== 'aggregator')
-      .map((l) => l.publisher || l.lineage_key),
+    weighedLineages(event).map((l) => l.publisher || l.lineage_key),
   ).size;
+}
+
+/**
+ * The sources that count as evidence. Beside anything firmer, posts are not
+ * corroboration of it: they only ever corroborate each other.
+ */
+function weighedLineages(event) {
+  const sources = event.lineages.filter((l) => l.source_type !== 'aggregator');
+  const firm = sources.filter((l) => l.source_type !== 'social_claim');
+  return firm.length ? firm : sources;
 }
 
 /** Verification state from the event's sources and status reports. */
@@ -72,11 +80,7 @@ export function verificationOf(event) {
   if (event.status_hint === 'resolved') return 'resolved';
   if (event.status_hint === 'disputed') return 'disputed';
   if (event.official) return 'officially_reported';
-  const publishers = new Set(
-    event.lineages
-      .filter((l) => l.source_type !== 'aggregator')
-      .map((l) => l.publisher),
-  );
+  const publishers = new Set(weighedLineages(event).map((l) => l.publisher));
   if (independentLineages(event) >= 2 && publishers.size >= 2)
     return 'corroborated';
   return 'unverified';

@@ -43,6 +43,17 @@ test('feeds outside Fast Intelligence are never hidden by it', () => {
   );
 });
 
+test('a post joining an official alert cannot hide the alert', () => {
+  const joined = event({
+    providers: ['nws', 'bluesky'],
+    fast_status: 'official',
+  });
+  const off = view({ enabled: false, windowMin: 5 });
+  off.categories.armed_conflict = false;
+  off.sublayers.official = false;
+  assert.equal(fastEventVisible(joined, off, NOW + 3_600_000), true);
+});
+
 test('the master switch hides the push sources and nothing else', () => {
   assert.equal(fastEventVisible(event(), view(), NOW), true);
   assert.equal(fastEventVisible(event(), view({ enabled: false }), NOW), false);

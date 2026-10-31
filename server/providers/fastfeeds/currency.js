@@ -217,7 +217,7 @@ const SOFT_FRAMES = Object.freeze({
 });
 
 const COUNT =
-  '(?:\\d[\\d,.]*|two|three|four|five|six|seven|eight|nine|ten|dozens?|scores|hundreds|thousands)';
+  '(?:\\d[\\d,.]{0,15}|two|three|four|five|six|seven|eight|nine|ten|dozens?|scores|hundreds|thousands)';
 const CASUALTY =
   '(?:killed|dead|dies|died|injured|wounded|missing|hurt|displaced|evacuated|arrested|detained)';
 const STATED_TOLL = new RegExp(

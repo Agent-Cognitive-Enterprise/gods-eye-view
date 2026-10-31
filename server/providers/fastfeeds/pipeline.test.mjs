@@ -9,6 +9,7 @@ import {
   createBlueskyAdapter,
   jetstreamUrl,
   publicationTime,
+  resumePoint,
 } from './adapters/bluesky.js';
 import { canonicalLink } from './gate.js';
 import { createIntake } from './intake.js';
@@ -25,6 +26,10 @@ import {
 } from './testing.mjs';
 
 const T0 = Date.parse('2026-10-31T03:20:04.000Z');
+const at = (seconds) => new Date(T0 + seconds * 1000).toISOString();
+const micros = (iso) => String(Date.parse(iso) * 1000);
+const OVERLAP_US = 5_000_000;
+const resumed = (iso) => String(Date.parse(iso) * 1000 - OVERLAP_US);
 
 function rig({ accounts, intakeOptions = {}, pipelineOptions = {} } = {}) {
   let clock = T0;
@@ -135,11 +140,18 @@ test('with a long list, only listed accounts are kept and the cursor still moves
   for (let i = 0; i < 50; i++)
     r.sockets
       .last()
-      .frame(postFrame({ did: SYNTHETIC_DID_2, seq: i + 1, rkey: `s${i}` }));
+      .frame(
+        postFrame({
+          did: SYNTHETIC_DID_2,
+          seq: i + 1,
+          rkey: `s${i}`,
+          time: at(i),
+        }),
+      );
   r.timers.run();
   assert.equal(
     r.intake.cursor('bluesky'),
-    '50',
+    micros(at(49)),
     'no replay of everything after a drop',
   );
   assert.equal(r.intake.counters().bluesky?.received ?? 0, 0);
@@ -314,31 +326,48 @@ test('10: an outage resumes from the cursor; a replay adds nothing and loses not
   const r = rig();
   r.adapter.start();
   r.sockets.last().open();
+  const first = at(0);
   r.sockets
     .last()
     .frame(
-      postFrame({ seq: 100, rkey: 'a', text: 'Explosions in Kharkiv, first' }),
+      postFrame({
+        seq: 100,
+        rkey: 'a',
+        time: first,
+        text: 'Explosions in Kharkiv, first',
+      }),
     );
   r.timers.run();
   r.sockets.last().drop(1006);
   assert.equal(r.adapter.health().connected, false);
   r.timers.run();
-  assert.equal(new URL(r.sockets.last().url).searchParams.get('cursor'), '100');
+  assert.equal(
+    new URL(r.sockets.last().url).searchParams.get('cursor'),
+    resumed(first),
+  );
   r.sockets.last().open();
-  // The cursor is inclusive: event 100 comes again, then what was missed.
+  // Resuming overlaps: the same post comes again, then what was missed.
   r.sockets
     .last()
     .frame(
-      postFrame({ seq: 100, rkey: 'a', text: 'Explosions in Kharkiv, first' }),
+      postFrame({
+        seq: 100,
+        rkey: 'a',
+        time: first,
+        text: 'Explosions in Kharkiv, first',
+      }),
     );
-  r.sockets.last().frame(
-    postFrame({
-      seq: 101,
-      rkey: 'b',
-      did: SYNTHETIC_DID_2,
-      text: 'Blasts shake Kharkiv this evening',
-    }),
-  );
+  r.sockets
+    .last()
+    .frame(
+      postFrame({
+        seq: 101,
+        rkey: 'b',
+        time: at(9),
+        did: SYNTHETIC_DID_2,
+        text: 'Blasts shake Kharkiv this evening',
+      }),
+    );
   const events = r.settle();
   assert.equal(events.length, 1);
   assert.equal(r.store.observationsFor(events[0].event_id).length, 2);
@@ -352,7 +381,7 @@ test('19: a restart resumes from the stored cursor', () => {
   const r = rig();
   r.adapter.start();
   r.sockets.last().open();
-  r.sockets.last().frame(postFrame({ seq: 777 }));
+  r.sockets.last().frame(postFrame({ seq: 777, time: at(0) }));
   r.timers.run();
   r.adapter.stop();
   const again = createBlueskyAdapter({
@@ -363,22 +392,118 @@ test('19: a restart resumes from the stored cursor', () => {
     log: () => {},
   });
   again.start();
-  assert.equal(new URL(r.sockets.last().url).searchParams.get('cursor'), '777');
+  assert.equal(
+    new URL(r.sockets.last().url).searchParams.get('cursor'),
+    resumed(at(0)),
+  );
   again.stop();
 });
 
-test('a cursor the stream refuses is dropped, and the possible gap is reported', () => {
+test('an outage of any length keeps the cursor: nothing is skipped to reconnect', () => {
   const r = rig();
-  r.intake.setCursor('bluesky', '5');
   r.adapter.start();
-  for (let attempt = 0; attempt < 4; attempt++) {
+  r.sockets.last().open();
+  r.sockets.last().frame(postFrame({ seq: 1, time: at(0) }));
+  r.timers.run();
+  for (let attempt = 0; attempt < 8; attempt++) {
     r.sockets.last().drop(1006);
     r.timers.run();
+    assert.equal(
+      new URL(r.sockets.last().url).searchParams.get('cursor'),
+      resumed(at(0)),
+      `attempt ${attempt}`,
+    );
   }
+  assert.equal(r.intake.cursor('bluesky'), micros(at(0)));
+  assert.equal(r.adapter.health().status, 'offline');
+  assert.notEqual(
+    new URL(r.sockets.sockets.at(-1).url).host,
+    new URL(r.sockets.sockets.at(-2).url).host,
+    'tries the other host',
+  );
+});
+
+test('an outage past the replay window is reported as a gap, in words', () => {
+  const r = rig();
+  r.adapter.start();
   r.sockets.last().open();
-  assert.equal(new URL(r.sockets.last().url).searchParams.has('cursor'), false);
-  assert.equal(r.intake.counters().bluesky.cursor_abandoned, 1);
-  assert.equal(r.adapter.health().status, 'healthy');
+  r.sockets.last().frame({
+    $type: 'message',
+    payload: {
+      $type: 'network.bsky.jetstream.subscribeEvents#info',
+      name: 'OutdatedCursor',
+      message: 'requested timestamp cursor below retention floor',
+    },
+  });
+  assert.equal(r.intake.counters().bluesky.gaps, 1);
+  assert.match(r.adapter.health().last_error, /reports were lost/);
+  assert.equal(r.intake.deadLetters()[0].reason, 'gap_past_replay_window');
+});
+
+test('a server that accepts and closes at once keeps backing off', () => {
+  const r = rig();
+  r.adapter.start();
+  const delays = [];
+  for (let attempt = 0; attempt < 6; attempt++) {
+    r.sockets.last().open();
+    r.sockets.last().drop(1000);
+    delays.push(Math.max(...r.timers.delays()));
+    r.timers.run();
+  }
+  assert.ok(delays.at(-1) > delays[0] * 4, delays.join(' '));
+});
+
+test('a silent stream is reopened from the cursor: half-open must not read healthy', () => {
+  const r = rig();
+  r.adapter.start();
+  const quiet = r.sockets.last();
+  quiet.open();
+  quiet.frame(postFrame({ seq: 1, time: at(0) }));
+  r.timers.run();
+  r.advance(14 * 60_000);
+  r.timers.run();
+  assert.equal(r.sockets.last(), quiet, 'quiet for a while is fine');
+  r.advance(2 * 60_000);
+  quiet.close = () => {}; // a dead peer never answers
+  r.timers.run();
+  assert.equal(r.intake.counters().bluesky.silence_reopened, 1);
+  assert.equal(
+    r.adapter.health().connected,
+    false,
+    'not called healthy meanwhile',
+  );
+  r.timers.run();
+  assert.notEqual(r.sockets.last(), quiet);
+  assert.equal(
+    new URL(r.sockets.last().url).searchParams.get('cursor'),
+    resumed(at(0)),
+  );
+  quiet.frame(postFrame({ seq: 2, rkey: 'late', time: at(99) }));
+  assert.equal(
+    r.intake.cursor('bluesky'),
+    micros(at(0)),
+    'the old socket moves nothing',
+  );
+});
+
+test('stopping and starting again leaves one stream', () => {
+  const r = rig();
+  r.adapter.start();
+  const old = r.sockets.last();
+  old.open();
+  old.close = () => {};
+  r.adapter.stop();
+  r.adapter.start();
+  const current = r.sockets.last();
+  old.onclose({ code: 1006 });
+  r.timers.run();
+  assert.equal(r.sockets.last(), current, 'a late close reconnects nothing');
+});
+
+test('the resume point leaves a seq-style value as it is', () => {
+  assert.equal(resumePoint('501'), '501');
+  assert.equal(resumePoint(null), null);
+  assert.equal(resumePoint('1793424429000000'), '1793424424000000');
 });
 
 test('nothing on the account list opens no connection', () => {
@@ -635,10 +760,10 @@ test('12: malformed, oversized and hostile frames are contained', () => {
   assert.equal(r.adapter.health().last_error, 'ConsumerTooSlow');
 });
 
-test('a post that breaks the engine never blocks the next one', () => {
+test('a failure on one report never blocks the next, and it is tried again', () => {
   const r = rig();
   const real = r.engine.ingest;
-  let calls = 0;
+  let failing = true;
   const pipeline = createPipeline({
     intake: r.intake,
     latency: r.latency,
@@ -646,28 +771,108 @@ test('a post that breaks the engine never blocks the next one', () => {
     now: r.now,
     engine: {
       ...r.engine,
-      ingest(...args) {
-        calls += 1;
-        if (calls === 1) throw new Error('boom');
-        return real(...args);
+      ingest(records, options) {
+        if (failing && records[0].summary.includes('Synthetic'))
+          throw new Error('database is locked');
+        return real(records, options);
       },
     },
   });
   r.adapter.start();
   r.sockets.last().open();
   r.sockets.last().frame(postFrame({ seq: 1, rkey: 'a' }));
-  r.sockets.last().frame(
-    postFrame({
-      seq: 2,
-      rkey: 'b',
-      did: SYNTHETIC_DID_2,
-      text: 'Second report: tornado hits Kyiv',
-    }),
-  );
+  r.sockets
+    .last()
+    .frame(
+      postFrame({
+        seq: 2,
+        rkey: 'b',
+        did: SYNTHETIC_DID_2,
+        text: 'Second report: tornado hits Kyiv hard',
+      }),
+    );
   r.timers.run();
   pipeline.pass();
-  assert.equal(r.engine.activeEvents(r.now()).length, 1);
+  assert.equal(
+    r.engine.activeEvents(r.now()).length,
+    1,
+    'the next one went through',
+  );
+  assert.equal(r.intake.stats().pending, 1, 'the failed one still waits');
+  assert.equal(pipeline.pass(), 0, 'not retried at once');
+  failing = false;
+  r.advance(16_000);
+  pipeline.pass();
+  assert.equal(r.intake.stats().pending, 0);
+  assert.equal(r.engine.activeEvents(r.now()).length, 2, 'nothing was lost');
+  assert.equal(r.intake.counters().bluesky.dead_lettered, undefined);
+});
+
+test('a report that always fails is given up on, in a dead letter', () => {
+  const r = rig();
+  const pipeline = createPipeline({
+    intake: r.intake,
+    latency: r.latency,
+    log: () => {},
+    now: r.now,
+    engine: {
+      ...r.engine,
+      ingest() {
+        throw new Error('still broken');
+      },
+    },
+  });
+  r.adapter.start();
+  r.sockets.last().open();
+  r.sockets.last().frame(postFrame({ seq: 1, rkey: 'a' }));
+  r.timers.run();
+  for (let attempt = 0; attempt < 8; attempt++) {
+    pipeline.pass();
+    r.advance(3_600_000);
+  }
+  assert.equal(r.intake.stats().pending, 0);
   assert.equal(r.intake.counters().bluesky.dead_lettered, 1);
+});
+
+test('a replay at the watermark pushes nothing out', () => {
+  const r = rig({ intakeOptions: { maxPending: 2 } });
+  const report = (native_id, priority) => ({
+    native_id,
+    priority,
+    received_at: T0,
+    text: 't',
+  });
+  r.intake.enqueue('s', [report('low', 0), report('high', 1)]);
+  const replay = r.intake.enqueue('s', [report('high', 1)]);
+  assert.equal(replay.duplicate, 1);
+  assert.equal(replay.dropped, 0);
+  assert.deepEqual(
+    r.intake.next(5).map((row) => row.native_id),
+    ['high', 'low'],
+  );
+  assert.equal(r.intake.counters().s.dropped, undefined);
+});
+
+test('a replay of a quiet day is not read as one account flooding', () => {
+  const r = rig({ pipelineOptions: { accountPostsPerMinute: 3 } });
+  r.adapter.start();
+  r.sockets.last().open();
+  for (let i = 0; i < 20; i++) {
+    const time = new Date(T0 - (20 - i) * 180_000).toISOString();
+    r.sockets
+      .last()
+      .frame(
+        postFrame({
+          seq: i + 1,
+          rkey: `r${i}`,
+          time,
+          createdAt: time,
+          text: `Explosions in Kharkiv, report ${i}`,
+        }),
+      );
+  }
+  r.settle();
+  assert.equal(r.intake.counters().bluesky.rate_limited, undefined);
 });
 
 test('13: a 10,000-message flood stays bounded, counted and fair', () => {
@@ -740,7 +945,7 @@ test('one account cannot fill the queue', () => {
       }),
     );
   r.settle();
-  assert.equal(r.intake.counters().bluesky.deferred, 7);
+  assert.equal(r.intake.counters().bluesky.rate_limited, 7);
 });
 
 test('intake: idempotent on source, id and revision; a new revision is new', () => {
@@ -788,15 +993,20 @@ test('a failed write goes back to the stored cursor, so nothing is skipped', () 
   const r = rig();
   r.adapter.start();
   r.sockets.last().open();
-  r.sockets.last().frame(
-    postFrame({
-      seq: 1,
-      rkey: 'a',
-      text: 'Explosions heard in Kharkiv, first',
-    }),
-  );
+  const first = at(0);
+  const second = at(5);
+  r.sockets
+    .last()
+    .frame(
+      postFrame({
+        seq: 1,
+        rkey: 'a',
+        time: first,
+        text: 'Explosions heard in Kharkiv, first',
+      }),
+    );
   r.timers.run();
-  assert.equal(r.intake.cursor('bluesky'), '1');
+  assert.equal(r.intake.cursor('bluesky'), micros(first));
 
   const failing = r.sockets.last();
   const real = r.intake.enqueue;
@@ -807,6 +1017,7 @@ test('a failed write goes back to the stored cursor, so nothing is skipped', () 
     postFrame({
       seq: 2,
       rkey: 'b',
+      time: second,
       did: SYNTHETIC_DID_2,
       text: 'Explosions in Kharkiv, second',
     }),
@@ -816,23 +1027,30 @@ test('a failed write goes back to the stored cursor, so nothing is skipped', () 
   assert.equal(r.adapter.health().last_error, 'database or disk is full');
   assert.equal(
     r.intake.cursor('bluesky'),
-    '1',
+    micros(first),
     'the stored cursor never moved',
   );
 
   // A frame already on its way changes nothing.
   failing.frame(
-    postFrame({ seq: 3, rkey: 'c', did: SYNTHETIC_DID_3, text: 'Late frame' }),
+    postFrame({
+      seq: 3,
+      rkey: 'c',
+      time: at(9),
+      did: SYNTHETIC_DID_3,
+      text: 'Late frame',
+    }),
   );
   r.timers.run();
   const fresh = r.sockets.last();
   assert.notEqual(fresh, failing, 'reconnected');
-  assert.equal(new URL(fresh.url).searchParams.get('cursor'), '1');
+  assert.equal(new URL(fresh.url).searchParams.get('cursor'), resumed(first));
   fresh.open();
   fresh.frame(
     postFrame({
       seq: 1,
       rkey: 'a',
+      time: first,
       text: 'Explosions heard in Kharkiv, first',
     }),
   );
@@ -840,6 +1058,7 @@ test('a failed write goes back to the stored cursor, so nothing is skipped', () 
     postFrame({
       seq: 2,
       rkey: 'b',
+      time: second,
       did: SYNTHETIC_DID_2,
       text: 'Explosions in Kharkiv, second',
     }),
@@ -850,7 +1069,25 @@ test('a failed write goes back to the stored cursor, so nothing is skipped', () 
     2,
     'nothing lost',
   );
-  assert.equal(r.intake.cursor('bluesky'), '2');
+  assert.equal(r.intake.cursor('bluesky'), micros(second));
+});
+
+test('a very first batch that cannot be stored is not lost to the live tail', () => {
+  const r = rig();
+  r.adapter.start();
+  r.sockets.last().open();
+  const real = r.intake.enqueue;
+  r.intake.enqueue = () => {
+    throw new Error('database or disk is full');
+  };
+  r.sockets.last().frame(postFrame({ seq: 1, rkey: 'a', time: at(0) }));
+  r.timers.run();
+  r.intake.enqueue = real;
+  r.timers.run();
+  assert.equal(
+    new URL(r.sockets.last().url).searchParams.get('cursor'),
+    resumed(at(0)),
+  );
 });
 
 test('intake: raw text leaves after retention; waiting work does not', () => {

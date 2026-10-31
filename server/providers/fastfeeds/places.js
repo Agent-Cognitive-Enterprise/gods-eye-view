@@ -228,9 +228,8 @@ function mentionsIn(text) {
       if (!entries) continue;
       // "Moscow says" is who is talking; the event may be anywhere.
       if (
-        /^(?:says?|said|claims?|announced|reports?|reported)$/i.test(
-          words[start + size]?.[0] ?? '',
-        )
+        /^(?:says?|said)$/i.test(words[start + size]?.[0] ?? '') &&
+        entries.every((entry) => entry.kind === 'city')
       )
         break;
       found.push({

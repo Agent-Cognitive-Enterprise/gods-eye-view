@@ -19,7 +19,12 @@ import {
 } from './evidence.js';
 import { lifecycleAt } from './lifecycle.js';
 import { ruleSeverity, scoreEvent, verificationOf } from './scoring.js';
-import { CATEGORY_POLICY, isPostsOnly } from './taxonomy.js';
+import {
+  CATEGORY_POLICY,
+  isPostsOnly,
+  isPushReport,
+  isSocialOnly,
+} from './taxonomy.js';
 
 const MAX_TOKENS = 200;
 const WITHDRAWN_TEXT = 'Report withdrawn by its source';
@@ -103,6 +108,7 @@ function newEvent(observation, lineage) {
     ),
     status_hint: observation.status_hint,
     official: observation.official,
+    official_feed: observation.official && !isPushReport(observation),
     time_zone_known: observation.time_zone_known,
     occurred_at: observation.occurred_at ?? observationTime(observation),
     // Matching needs a time; a card must still say when none was stated.
@@ -180,7 +186,11 @@ function applyMaterial(event, observation, lineage, reasons) {
     );
   next.metric_sources ??= {};
   // Measured facts: counts only grow; the most authoritative source sets the rest.
-  const m = observation.metrics;
+  // A post's claims do not become measured facts of firmer reporting.
+  const m =
+    isPushReport(observation) && !isSocialOnly(event)
+      ? {}
+      : observation.metrics;
   for (const [key, value] of Object.entries(m)) {
     if (['deaths', 'injured', 'affected', 'displaced', 'arrests'].includes(key))
       next.metrics[key] = Math.max(next.metrics[key] ?? 0, value);
@@ -199,7 +209,10 @@ function applyMaterial(event, observation, lineage, reasons) {
   // retraction makes it disputed; their "resolved" or a status that would
   // revive a retracted/resolved event is ignored.
   if (observation.status_hint) {
-    const own = event.lineage_keys.includes(lineage.lineage_key);
+    // A near copy shares a lineage, but it is not the claim's own source.
+    const own =
+      event.lineage_keys.includes(lineage.lineage_key) &&
+      lineage.reason !== 'near_identical_text';
     const trusted = observation.official || own;
     const ended = (hint) => hint === 'retracted' || hint === 'resolved';
     if (trusted) next.status_hint = observation.status_hint;
@@ -211,6 +224,8 @@ function applyMaterial(event, observation, lineage, reasons) {
       next.status_hint = observation.status_hint;
   }
   if (observation.official) next.official = true;
+  if (observation.official && !isPushReport(observation))
+    next.official_feed = true;
   if (
     PRECISION_RANK.indexOf(observation.location.precision) >
       PRECISION_RANK.indexOf(next.location.precision) ||
@@ -493,12 +508,30 @@ export function createIntelEngine({ store, now, settings = {} }) {
     next.revision += 1;
     next.lineages = next.lineages.filter((l) => !gone.has(l.lineage_key));
     next.lineage_keys = next.lineage_keys.filter((k) => !gone.has(k));
+    // A post on the card without a lineage of its own still stands behind it.
+    const remaining = others.at(-1);
+    if (!next.lineages.length && remaining) {
+      const { observation: o } = remaining;
+      const key = lineageOf(remaining);
+      next.lineage_keys.push(key);
+      next.lineages.push({
+        lineage_key: key,
+        publisher: o.publisher,
+        provider: o.provider,
+        source_type: o.source_type,
+        official: o.official,
+        first_observation_id: o.observation_id,
+        first_seen_at: o.received_at,
+      });
+    }
     if (!next.lineages.length) next.status_hint = 'retracted';
+    next.official = next.official_feed || next.lineages.some((l) => l.official);
+    // A new revision of the record, not news: the camera cooldown stands.
+    next.quiet_revisions = (next.quiet_revisions ?? 0) + 1;
     const withdrawnTitles = new Set(held.map((e) => e.observation.title));
     if (withdrawnTitles.has(next.title)) {
-      const remaining = others.at(-1)?.observation;
-      next.title = remaining?.title ?? WITHDRAWN_TEXT;
-      next.summary = remaining?.summary ?? '';
+      next.title = remaining?.observation.title ?? WITHDRAWN_TEXT;
+      next.summary = remaining?.observation.summary ?? '';
     }
     next.last_change_reasons = ['source_withdrew_report'];
     store.saveEvent(next);
@@ -508,6 +541,7 @@ export function createIntelEngine({ store, now, settings = {} }) {
         summary: '',
         withdrawn: true,
       });
+    store.redactRevisions(eventId, withdrawnTitles, WITHDRAWN_TEXT);
     snapshotRevision(
       next,
       held[0].observation,

@@ -60,8 +60,9 @@ competent authority, never a news organisation, however reliable. Start accounts
 **Posts do not move the camera.** Whatever its tag or number of sources, an event with
 nothing but posts behind it gets no Autopilot shot, tour stop or interruption, and shows
 `posts_held_from_camera`. It is still drawn and listed, and an operator can fly to it.
-An official feed on the same event lifts the hold. `socialCameraEnabled` lifts it for
-everything; leave it off until reliability has been shown.
+Only an official feed on the same event lifts the hold: a news item or an aggregator
+beside the posts does not. `socialCameraEnabled` lifts it for everything; leave it off
+until reliability has been shown.
 
 | Status         | Meaning                                                      | On the map                |
 | -------------- | ------------------------------------------------------------ | ------------------------- |
@@ -82,6 +83,10 @@ An unconfirmed social claim leaves the map after 6 hours, whatever its category.
 - Twenty accounts posting the same words are one source.
 - Posts about an event that is already official or corroborated go on its card.
   They renew nothing and do not lift the camera cooldown.
+- Nothing a post says changes an official event: not its status, place, measured
+  facts or attention. A person's post cannot retract, resolve or dispute an official
+  warning, whoever posted it and whatever it links.
+- Beside firmer reporting, posts corroborate nothing; they only corroborate each other.
 - A post's own timestamp can only make it older. Server time decides the rest, so
   a backdated import stays old and a future date is ignored. Replies are skipped.
 - An account correcting itself retracts. Anyone else can only dispute.
@@ -113,6 +118,13 @@ GEV_FAST_FEEDS = '1'
 ```
 
 ### Bluesky
+
+The cursor is a time, not a sequence number: both public hosts honour it alike, and it
+is never refused. An outage inside the roughly 36-hour replay window therefore loses
+nothing, whichever host answers. One longer than that is reported as a gap, in the
+health panel and as a dead letter, because those reports cannot be recovered. A stream
+silent for 15 minutes is reopened from the cursor, so a half-open socket cannot read as
+healthy.
 
 Open FAST INTELLIGENCE in the left stack, then SOURCES, enter a handle or DID, and
 press FOLLOW. The handle is resolved through `public.api.bsky.app` and stored as
@@ -156,7 +168,8 @@ Nothing here is deployed by merging. To roll out:
 1. Merge the pull request and let Fork Autopilot CI pass.
 2. Complete the 24-hour staging run below and read its report.
 3. `Deploy-GEV.ps1 -Ref <commit> -Instance autopilot`. The lockfile has not changed.
-4. Add `GEV_FAST_FEEDS = '1'` and restart. With the flag off, the code is inert.
+4. Add `GEV_FAST_FEEDS = '1'` and restart. With the flag off, nothing here runs and NWS
+   and GDACS poll as before. The AIS lease and the engine's trust rules are always on.
 5. Follow a few accounts and watch HEALTH AND DELAY.
 
 To switch it off and keep the code, remove the flag and restart: no source connects,
@@ -185,11 +198,16 @@ involved. This is enforced in code, not left to instructions:
 - The launcher refuses a tree whose `.env` holds the key, a live checkout, and ports
   4173 and 4174. It binds to loopback only.
 - An isolated instance loads neither the AIS nor the OpenSky provider.
-- Any process must hold a machine-wide lease to use an AIS key, so a second one on this
-  computer refuses to connect, however it was started. The live instance takes the lease
-  once it runs this code.
-- The launcher reads the server's real sockets every 20 s. A connection to AISStream
-  kills it and leaves `TRIPWIRE.txt`, which blocks restarting until a person removes it.
+- Any process needs a machine-wide lease to use an AIS key, an exclusive named pipe that
+  Windows releases when its owner dies, so a crash or a reboot cannot leave it stuck. A
+  second process on this computer refuses to connect and reports `lease-held`, however
+  it was started. If the lease itself cannot be taken, AIS connects anyway: a lease
+  must never cost the live instance its feed. The live instance takes the lease once
+  it runs this code.
+- The launcher reads the server's real sockets every 20 s. A connection to AISStream kills
+  the server and leaves a machine-wide tripwire file, which blocks every staging start
+  until a person removes it. It also refuses to start if it cannot resolve the host, and
+  the server stops if the launcher dies.
 
 **Upstream merges.** Fork-only files cannot conflict. Watch `package-lock.json`, the
 locale files (append-only) and the panel shell in `layer-panels.html`.

@@ -2000,6 +2000,7 @@ export function createIntelConsole({
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      fastPanel?.destroy();
       cancelFlights();
       if (bufferingSaved && viewer.scene?.globe)
         Object.assign(viewer.scene.globe, bufferingSaved);

@@ -3,10 +3,10 @@
 // with no browser involved, so a test server started with the real key silently
 // competes with the live instance. Written instructions did not prevent that, so
 // these are checks in code: an isolated instance does not load those providers,
-// any instance must hold a machine-wide lease to use the key, and the staging
-// launcher refuses unsafe starts and kills the server if it ever sees the socket.
+// any instance needs a machine-wide lease to use the key, and the staging launcher
+// refuses unsafe starts and kills the server if it ever sees the socket.
 
-import fs from 'node:fs';
+import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -21,8 +21,10 @@ export const SHARED_SECRETS = Object.freeze([
   'OPENSKY_CREDENTIALS_FILE',
 ]);
 
-/** Ports of the instances people use; a staging server may not take them. */
-export const RESERVED_PORTS = Object.freeze([4173, 4174]);
+/** Ports of the live instances and their model; a staging server may not take them. */
+export const RESERVED_PORTS = Object.freeze([4173, 4174, 8790, 8791]);
+
+const LEASE_RETRY_MS = 60_000;
 
 /** Marked by the staging launcher; such an instance loads no shared provider. */
 export const isIsolatedInstance = (env = process.env) =>
@@ -32,6 +34,9 @@ export const isIsolatedInstance = (env = process.env) =>
 export function isolatedEnvironment(base, { port, stateDir }) {
   const env = { ...base };
   for (const name of SHARED_SECRETS) env[name] = '';
+  // Telegram is never reachable from here, whatever the shell had set.
+  for (const name of Object.keys(env))
+    if (name.startsWith('GEV_TELEGRAM_')) delete env[name];
   return {
     ...env,
     GEV_ISOLATED_INSTANCE: '1',
@@ -42,7 +47,7 @@ export function isolatedEnvironment(base, { port, stateDir }) {
     GEV_INTEL_DB: path.join(stateDir, 'intel.sqlite'),
     GEV_AIRSEA_ENABLED: '0',
     GEV_INTEL_AIRSEA: '0',
-    // The GPU is the live instance's; an hour of staging load would show there.
+    // The GPU is the live instance's; a day of staging load would show there.
     GEV_LLM_DISABLED: '1',
     GEV_LOCAL_VOICE: '0',
   };
@@ -50,13 +55,23 @@ export function isolatedEnvironment(base, { port, stateDir }) {
 
 const KEY_LINE = /^\s*(?:export\s+)?AISSTREAM_API_KEY\s*=\s*\S/m;
 
+// Compared as text: these are Windows paths on any machine that checks them.
+const folded = (value) =>
+  String(value).replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+
+const within = (child, parent) => {
+  const [inner, outer] = [folded(child), folded(parent)];
+  return inner === outer || inner.startsWith(`${outer}/`);
+};
+
 /**
  * Why this start must not go ahead, or null.
- * @param {{root: string, port: number, tripwire: boolean,
+ * @param {{root: string, stateDir?: string, port: number, tripwire: boolean,
  *   envFiles: Record<string, string>, liveRoots?: string[]}} input
  */
 export function startRefusal({
   root,
+  stateDir = null,
   port,
   tripwire,
   envFiles,
@@ -66,11 +81,13 @@ export function startRefusal({
     return 'a forbidden connection was seen on an earlier run; a person must read and clear the tripwire file';
   if (RESERVED_PORTS.includes(port))
     return `port ${port} belongs to a live instance`;
-  const here = path.resolve(root).toLowerCase();
-  if (liveRoots.some((live) => path.resolve(live).toLowerCase() === here))
+  if (liveRoots.some((live) => within(root, live)))
     return `${root} is a live checkout`;
+  if (stateDir && liveRoots.some((live) => within(stateDir, live)))
+    return `${stateDir} is inside a live checkout`;
   for (const [name, text] of Object.entries(envFiles))
-    if (KEY_LINE.test(text))
+    // A file saved as UTF-16 still holds the key.
+    if (KEY_LINE.test(String(text).replace(/\0/g, '')))
       return `${name} holds the AIS key; staging must run from a tree without it`;
   return null;
 }
@@ -82,70 +99,96 @@ export function remoteAddresses(netstatText, pid) {
     const cells = line.trim().split(/\s+/);
     if (cells[0] !== 'TCP' || cells[3] !== 'ESTABLISHED') continue;
     if (Number(cells[4]) !== pid) continue;
-    out.push(cells[2].replace(/:\d+$/, '').replace(/^\[|\]$/g, ''));
+    out.push(
+      cells[2]
+        .replace(/:\d+$/, '')
+        .replace(/^\[|\]$/g, '')
+        .replace(/^::ffff:/i, ''),
+    );
   }
   return out;
 }
 
-const leaseFile = (fingerprint, dir) =>
-  path.join(dir, `aisstream-${fingerprint}.lease`);
+/** Outlives a reload of this module: a dev server restarts in one process. */
+const LEASES = Symbol.for('gev.isolation.aisLeases');
+const sharedLeases = () => (globalThis[LEASES] ??= new Map());
 
-const defaultLeaseDir = (env = process.env) =>
+export const aisPipeName = (fingerprint) =>
+  `\\\\.\\pipe\\gev-ais-${fingerprint}`;
+
+function takeLease(fingerprint, { table, createServer, now, log }) {
+  const entry = { state: 'pending', at: now() };
+  table.set(fingerprint, entry);
+  const server = createServer();
+  server.on('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+      entry.state = 'refused';
+      log(
+        "[ais] another process holds this key's one connection; not connecting",
+      );
+      return;
+    }
+    // Never cost the live instance its feed over a lease that could not be taken.
+    entry.state = 'held';
+    log(`[ais] lease unavailable (${error.code}); connecting without one`);
+  });
+  server.listen(aisPipeName(fingerprint), () => {
+    entry.state = 'held';
+  });
+  server.unref?.();
+  entry.server = server;
+}
+
+/**
+ * Whether this process may open the AIS stream for this key. The lease is an
+ * exclusive named pipe: machine-wide, and released by Windows when its owner
+ * dies, so a crash, a reboot or a reused process id cannot leave it stuck. Only a
+ * digest of the key is used. Taking it is asynchronous, so the first call answers
+ * no and the watchdog's next tick connects. Elsewhere this check does not apply.
+ */
+export function aisConnectionAllowed(
+  fingerprint,
+  {
+    env = process.env,
+    log = (...args) => console.warn(...args),
+    now = () => Date.now(),
+    createServer = () => net.createServer(),
+    platform = process.platform,
+    table = sharedLeases(),
+  } = {},
+) {
+  if (isIsolatedInstance(env) || !fingerprint) return false;
+  if (platform !== 'win32') return true;
+  const entry = table.get(fingerprint);
+  if (
+    !entry ||
+    (entry.state === 'refused' && now() - entry.at >= LEASE_RETRY_MS)
+  ) {
+    takeLease(fingerprint, { table, createServer, now, log });
+    return false;
+  }
+  return entry.state === 'held';
+}
+
+/** What to tell the operator when another process holds the key's connection. */
+export function aisLeaseRefusal(fingerprint, { table = sharedLeases() } = {}) {
+  return table.get(fingerprint)?.state === 'refused'
+    ? 'Another God’s Eye View on this computer holds this AIS key’s one connection.'
+    : null;
+}
+
+/** An isolated server stops with its launcher: nothing runs unsupervised. */
+export function exitWithLauncher(proc = process) {
+  const marker = Symbol.for('gev.isolation.exitWithLauncher');
+  if (!proc.send || proc[marker]) return;
+  proc[marker] = true;
+  proc.on('disconnect', () => proc.exit(5));
+}
+
+/** The machine-wide tripwire: a new --state folder must not step around it. */
+export const machineTripwire = (env = process.env) =>
   path.join(
     env.LOCALAPPDATA ?? path.join(os.homedir(), '.local', 'state'),
     'GodsEyeView',
+    'staging-tripwire.txt',
   );
-
-const alive = (pid) => {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return error.code === 'EPERM';
-  }
-};
-
-/**
- * Take the machine-wide lease on one AIS key. Only a digest of the key is used
- * and only a process id is stored. A lease whose process has gone is taken over.
- * @returns {{held: boolean, owner?: number, file: string}}
- */
-export function takeAisLease(
-  fingerprint,
-  { dir = defaultLeaseDir(), pid = process.pid, isAlive = alive } = {},
-) {
-  const file = leaseFile(fingerprint, dir);
-  fs.mkdirSync(dir, { recursive: true });
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      fs.writeFileSync(file, String(pid), { flag: 'wx' });
-      return { held: true, file };
-    } catch (error) {
-      if (error.code !== 'EEXIST') throw error;
-    }
-    const owner = Number(fs.readFileSync(file, 'utf8'));
-    if (owner === pid) return { held: true, file };
-    if (Number.isInteger(owner) && owner > 0 && isAlive(owner))
-      return { held: false, owner, file };
-    fs.rmSync(file, { force: true });
-  }
-  return { held: false, file };
-}
-
-let warned = false;
-
-/** Whether this process may open the AIS stream for this key. */
-export function aisConnectionAllowed(
-  fingerprint,
-  { env = process.env, log = (...args) => console.warn(...args) } = {},
-) {
-  if (isIsolatedInstance(env) || !fingerprint) return false;
-  const lease = takeAisLease(fingerprint);
-  if (!lease.held && !warned) {
-    warned = true;
-    log(
-      `[ais] another process (${lease.owner}) holds this key's one connection; not connecting. Lease: ${lease.file}`,
-    );
-  }
-  return lease.held;
-}

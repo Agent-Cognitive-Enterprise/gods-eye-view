@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS intake (
   outcome TEXT,
   event_id TEXT,
   displayed_at INTEGER,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  retry_after INTEGER NOT NULL DEFAULT 0,
   body TEXT NOT NULL,
   UNIQUE (source_id, native_id, revision)
 );
@@ -55,6 +57,9 @@ const DAY = 24 * 3600_000;
 // A filtered report's record only exists to catch a replay, and the stream
 // replays about 36 hours at most.
 const FILTERED_RETENTION_DAYS = 2;
+// A locked database passes; a report that always fails must not block for ever.
+const MAX_ATTEMPTS = 6;
+const RETRY_BASE_MS = 15_000;
 const MAX_DEAD_LETTERS = 500;
 const MAX_SAMPLE = 400;
 
@@ -110,6 +115,15 @@ export function createIntake({
        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
        ON CONFLICT (source_id, native_id, revision) DO NOTHING`,
     ),
+    known: db.prepare(
+      'SELECT 1 FROM intake WHERE source_id = ? AND native_id = ? AND revision = ?',
+    ),
+    retry: db.prepare(
+      'UPDATE intake SET attempts = attempts + 1, retry_after = ? WHERE seq = ?',
+    ),
+    giveUp: db.prepare(
+      "UPDATE intake SET status = 'failed', outcome = 'error', processed_at = ? WHERE seq = ?",
+    ),
     pendingCount: db.prepare(
       "SELECT count(*) AS n FROM intake WHERE status = 'pending'",
     ),
@@ -121,10 +135,11 @@ export function createIntake({
       "UPDATE intake SET status = 'dropped', outcome = 'overflow', processed_at = ?, body = '{}' WHERE seq = ?",
     ),
     waitingSources: db.prepare(
-      "SELECT DISTINCT source_id FROM intake WHERE status = 'pending'",
+      "SELECT DISTINCT source_id FROM intake WHERE status = 'pending' AND retry_after <= ?",
     ),
     nextForSource: db.prepare(
-      `SELECT * FROM intake WHERE status = 'pending' AND source_id = ?
+      `SELECT * FROM intake
+       WHERE status = 'pending' AND source_id = ? AND retry_after <= ?
        ORDER BY priority DESC, seq LIMIT ?`,
     ),
     complete: db.prepare(
@@ -229,6 +244,15 @@ export function createIntake({
             !Number.isFinite(report.received_at)
           )
             throw new Error('report without an id or a receipt time');
+          // A replay at the watermark must not push out a report to make room
+          // for one already held.
+          if (
+            pending >= maxPending &&
+            q.known.get(sourceId, report.native_id, report.revision ?? '0')
+          ) {
+            result.duplicate += 1;
+            continue;
+          }
           if (!makeRoom(report.priority ?? 0)) {
             result.dropped += 1;
             continue;
@@ -258,10 +282,11 @@ export function createIntake({
     },
     /** The next reports to work on, a fair share per source, best first. */
     next(limit = 100) {
-      const sources = q.waitingSources.all().map((row) => row.source_id);
+      const at = now();
+      const sources = q.waitingSources.all(at).map((row) => row.source_id);
       if (!sources.length) return [];
       const share = Math.max(1, Math.ceil(limit / sources.length));
-      const rows = sources.flatMap((id) => q.nextForSource.all(id, share));
+      const rows = sources.flatMap((id) => q.nextForSource.all(id, at, share));
       return rows
         .sort((a, b) => b.priority - a.priority || a.seq - b.seq)
         .slice(0, limit)
@@ -270,6 +295,20 @@ export function createIntake({
     complete(seq, { status, outcome = null, eventId = null }) {
       q.complete.run(status, outcome, eventId, now(), seq);
       pending = Math.max(0, pending - 1);
+    },
+    /**
+     * This attempt failed. It stays waiting, later, and only after repeated
+     * failures is it given up on; even then its words stay for diagnosis.
+     * @returns {boolean} Whether it will be tried again.
+     */
+    retry(row) {
+      if (row.attempts + 1 >= MAX_ATTEMPTS) {
+        q.giveUp.run(now(), row.seq);
+        pending = Math.max(0, pending - 1);
+        return false;
+      }
+      q.retry.run(now() + RETRY_BASE_MS * 2 ** row.attempts, row.seq);
+      return true;
     },
     count,
     deadLetter(sourceId, reason, sample = '') {

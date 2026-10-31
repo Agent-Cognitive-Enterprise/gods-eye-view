@@ -15,6 +15,7 @@ import { compileTerms } from './terms.js';
 export { compileTerms };
 
 const MAX_TEXT = 4000;
+const MAX_LINK = 2048;
 const TRACKING_PARAMS =
   /^(utm_\w+|fbclid|gclid|mc_cid|mc_eid|igshid|si|ref|ref_src|ref_url|s|t|cmpid|ocid)$/i;
 
@@ -110,9 +111,12 @@ export function gateReport(
  * @returns {?string}
  */
 export function canonicalLink(value) {
+  // Bounded first: the steps below are quadratic in a crafted address.
+  const text = String(value ?? '').trim();
+  if (text.length > MAX_LINK) return null;
   let url;
   try {
-    url = new URL(String(value ?? '').trim());
+    url = new URL(text);
   } catch {
     return null;
   }

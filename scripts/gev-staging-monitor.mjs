@@ -79,7 +79,7 @@ async function sample() {
       latency: bluesky.latency,
       telegram: status.sources[1]?.status,
       queue: status.queue.pending,
-      dead_letters: status.dead_letters.length,
+      dead_letters: bluesky.counters?.dead_lettered ?? 0,
       polled: status.polled.map((feed) => ({
         id: feed.id,
         status: feed.status,
@@ -98,8 +98,17 @@ async function sample() {
     row.process_error = error.message;
   }
   try {
+    process.kill(
+      Number(fs.readFileSync(path.join(stateDir, 'launcher.pid'), 'utf8')),
+      0,
+    );
+    row.supervised = true;
+  } catch {
+    row.supervised = false;
+  }
+  try {
     const live = await getJson(
-      `http://127.0.0.1:${livePort}/api/vessels?lamin=-1&lamax=1&lomin=-1&lomax=1`,
+      `http://127.0.0.1:${livePort}/api/vessels?maxRows=1`,
     );
     row.live = {
       ais: live.status,

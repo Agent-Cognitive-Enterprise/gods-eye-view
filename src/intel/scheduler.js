@@ -46,11 +46,15 @@ export function clusterKey(cluster) {
   return cluster.event_ids[0];
 }
 
+/** Revisions that count as news: a withdrawn report is not one. */
+const attentionRevision = (event) =>
+  (event?.revision ?? 0) - (event?.quiet_revisions ?? 0);
+
 function inCooldown(cluster, eventsById, state, now, cooldownMs) {
   return cluster.event_ids.every((id) => {
     const seen = state.presented[id];
     if (!seen) return false;
-    const revision = eventsById.get(id)?.revision ?? 0;
+    const revision = attentionRevision(eventsById.get(id));
     return revision <= seen.revision && now - seen.at < cooldownMs;
   });
 }
@@ -157,7 +161,7 @@ export function stepScheduler(state, { now, clusters, events, settings = {} }) {
     for (const id of cluster.event_ids)
       next.presented[id] = {
         at: now,
-        revision: eventsById.get(id)?.revision ?? 0,
+        revision: attentionRevision(eventsById.get(id)),
       };
     delete next.waitingSince[key];
     next.challenger = null;
@@ -230,7 +234,7 @@ export function stepScheduler(state, { now, clusters, events, settings = {} }) {
     for (const id of live.event_ids)
       next.presented[id] = {
         at: now,
-        revision: eventsById.get(id)?.revision ?? 0,
+        revision: attentionRevision(eventsById.get(id)),
       };
   }
 

@@ -154,13 +154,15 @@ export function nwsAlertToRecord(feature) {
   };
 }
 
-export function nwsConnector({ url = NWS_ALERTS_URL } = {}) {
+export function nwsConnector({
+  url = NWS_ALERTS_URL,
+  intervalMs = 3 * 60_000,
+} = {}) {
   return {
     id: 'nws-alerts',
     provider: 'nws',
     url,
-    // NWS asks for no more than one request every 30 s.
-    intervalMs: 60_000,
+    intervalMs,
     // Quiet days have no Severe alerts at all; the feed itself is the signal.
     staleAfterMs: 2 * 24 * 3600_000,
     license: 'Public domain (U.S. Government)',

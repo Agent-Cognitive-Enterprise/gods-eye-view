@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { isDid } from './adapters/bluesky.js';
+import { compileTerms } from './terms.js';
 
 const MAX_ACCOUNTS = 2_000;
 const MAX_CHANNELS = 200;
@@ -73,6 +74,14 @@ function sanitizeChannels(input) {
   return [...seen.values()];
 }
 
+const compiles = (term) => {
+  try {
+    return Boolean(compileTerms([term]));
+  } catch {
+    return false;
+  }
+};
+
 function sanitizePacks(input) {
   return (Array.isArray(input) ? input.slice(0, MAX_PACKS) : [])
     .filter(
@@ -90,8 +99,9 @@ function sanitizePacks(input) {
       terms: pack.terms
         .slice(0, 200)
         .map((term) => String(term).slice(0, 80))
-        .filter(Boolean),
-    }));
+        .filter(compiles),
+    }))
+    .filter((pack) => pack.terms.length);
 }
 
 const bounded = (value, lo, hi, fallback) => {

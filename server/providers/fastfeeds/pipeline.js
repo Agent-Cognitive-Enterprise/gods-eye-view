@@ -77,7 +77,7 @@ export function createPipeline({
 
   function overRate(publisher, at) {
     const held = recentByAccount.get(publisher);
-    if (!held || at - held.start >= MINUTE) {
+    if (!held || Math.abs(at - held.start) >= MINUTE) {
       recentByAccount.set(publisher, { start: at, count: 1 });
       if (recentByAccount.size > 20_000) recentByAccount.clear();
       return false;
@@ -120,9 +120,10 @@ export function createPipeline({
       intake.count(row.source_id, 'filtered');
       return;
     }
-    if (overRate(report.publisher, now())) {
+    // By when it was posted, so a replay of a quiet day is not read as a burst.
+    if (overRate(report.publisher, report.published_at ?? now())) {
       intake.complete(row.seq, { status: 'filtered', outcome: 'rate_limited' });
-      intake.count(row.source_id, 'deferred');
+      intake.count(row.source_id, 'rate_limited');
       return;
     }
     const place = resolvePlace(report.text);
@@ -166,8 +167,8 @@ export function createPipeline({
         } catch (error) {
           // One unreadable report never blocks the ones behind it.
           log(`[fast-feeds] ${row.source_id} report failed: ${error.message}`);
-          intake.complete(row.seq, { status: 'failed', outcome: 'error' });
-          intake.deadLetter(row.source_id, error.message, row.native_id);
+          if (!intake.retry(row))
+            intake.deadLetter(row.source_id, error.message, row.native_id);
         }
         latency.record(row.source_id, 'pipeline', now() - started);
       }

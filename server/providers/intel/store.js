@@ -257,6 +257,14 @@ export function createSqliteIntelStore({
           observationId,
         );
     },
+    /** The same for what the history kept of its words. */
+    redactRevisions(eventId, titles, replacement) {
+      for (const revision of q.revisions.all(eventId).map(parse)) {
+        if (!titles.has(revision.snapshot?.title)) continue;
+        revision.snapshot.title = replacement;
+        store.saveRevision(revision);
+      }
+    },
     saveRevision(revision) {
       q.putRevision.run(
         revision.event_id,

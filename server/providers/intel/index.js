@@ -51,11 +51,18 @@ export function intelConnectors({
   if (env.GEV_INTEL_OFFLINE === '1') return [];
   const on = (name) => env[`GEV_INTEL_${name}`] !== '0';
   const connectors = [];
+  // Fast Intelligence polls closer to what these sources allow: NWS asks for at
+  // most one request in 30 s, GDACS regenerates about every six minutes.
+  const fast = fastFeedsEnabled(env);
   if (on('USGS')) connectors.push(usgsConnector());
-  if (on('GDACS')) connectors.push(gdacsConnector());
+  if (on('GDACS'))
+    connectors.push(
+      gdacsConnector(fast ? { intervalMs: 6 * 60_000 } : undefined),
+    );
   if (on('TSUNAMI'))
     connectors.push(tsunamiConnector('ptwc'), tsunamiConnector('ntwc'));
-  if (on('NWS')) connectors.push(nwsConnector());
+  if (on('NWS'))
+    connectors.push(nwsConnector(fast ? { intervalMs: 60_000 } : undefined));
   if (on('EONET')) connectors.push(eonetConnector());
   if (on('WHO')) connectors.push(whoConnector());
   if (on('WORLDBANK')) connectors.push(worldBankConnector());

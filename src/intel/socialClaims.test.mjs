@@ -6,6 +6,7 @@ import { createMemoryIntelStore } from './memoryStore.js';
 import { stepScheduler, createSchedulerState } from './scheduler.js';
 import { clusterEvents } from './clustering.js';
 import { AUTOPILOT_DEFAULTS, SOCIAL_MARKER_TTL_MS } from './taxonomy.js';
+import { independentLineages } from './scoring.js';
 
 const START = Date.UTC(2026, 9, 31, 3, 0, 0);
 const KYIV = { lat: 50.45, lon: 30.52, precision: 'city', place: 'Kyiv' };
@@ -361,6 +362,238 @@ test('an official feed behind the event lifts the hold; so can the operator', ()
   const allowed = world({ socialCameraEnabled: true });
   allowed.engine.ingest([post({ source_type: 'secondary_reporting' })]);
   assert.equal(only(allowed)[0].posts_held_from_camera, false);
+});
+
+// Each of these was proved against the first version of these rules.
+
+const officialEvent = (w, over = {}) => {
+  w.engine.ingest(
+    [
+      official({
+        url: 'https://alerts.example/warning/1',
+        title: 'Flood warning issued for central Kyiv by the emergency service',
+        category: 'natural_disaster',
+        subtype: 'flood',
+        location: {
+          region_code: 'UA',
+          precision: 'region',
+          bounds: { west: 30, south: 50, east: 31, north: 51 },
+          place: 'Kyiv region',
+        },
+        ...over,
+      }),
+    ],
+    { receivedAt: START },
+  );
+  return only(w)[0];
+};
+const floodPost = (over = {}) =>
+  post({
+    title: 'Flood warning for central Kyiv, water rising in the streets',
+    category: 'natural_disaster',
+    subtype: 'flood',
+    location: KYIV,
+    ...over,
+  });
+
+test('no post can retract, resolve or dispute an official event', () => {
+  for (const [label, hint, extra] of [
+    ['correction from an account on the card', 'retracted', {}],
+    [
+      'linking the official page, all clear',
+      'resolved',
+      { lineage_key: 'https://alerts.example/warning/1' },
+    ],
+    [
+      'linking the official page, correction',
+      'retracted',
+      { lineage_key: 'https://alerts.example/warning/1' },
+    ],
+    ['a hoax call', 'disputed', {}],
+    [
+      'quoting it',
+      'retracted',
+      { derived_from: 'https://alerts.example/warning/1' },
+    ],
+  ]) {
+    const w = world();
+    const before = officialEvent(w);
+    w.engine.ingest([floodPost()]);
+    w.engine.ingest([floodPost({ status_hint: hint, ...extra })]);
+    const [after] = only(w);
+    assert.equal(after?.verification, 'officially_reported', label);
+    assert.equal(after.confidence, before.confidence, label);
+    assert.equal(after.revision, before.revision, `${label}: no renewal`);
+  }
+});
+
+test('a post cannot move an official event or re-fire its camera', () => {
+  for (const source_type of ['social_claim', 'secondary_reporting']) {
+    const w = world();
+    const before = officialEvent(w);
+    w.engine.ingest([floodPost({ source_type })]);
+    const [after] = only(w);
+    assert.equal(after.location.place, 'Kyiv region', source_type);
+    assert.equal(after.location.lat, null, source_type);
+    assert.equal(after.revision, before.revision, source_type);
+    assert.equal(
+      after.last_meaningful_update_at,
+      before.last_meaningful_update_at,
+    );
+  }
+});
+
+test('an official feed lifts the hold even if a post got there first in the same words', () => {
+  const w = world();
+  const title =
+    'Flood warning issued for central Kyiv by the emergency service';
+  w.engine.ingest([floodPost({ title, summary: title })]);
+  w.engine.ingest([
+    official({
+      title,
+      summary: title,
+      category: 'natural_disaster',
+      subtype: 'flood',
+      location: KYIV,
+      metrics: { severity_hint: 99 },
+    }),
+  ]);
+  const [event] = only(w);
+  assert.equal(event.verification, 'officially_reported');
+  assert.equal(event.posts_held_from_camera, false);
+  assert.equal(event.confidence, 0.85);
+  assert.equal(
+    event.lineages.some((l) => l.official),
+    true,
+  );
+});
+
+test('an aggregator or a news item beside posts does not lift the hold', () => {
+  const w = world();
+  w.engine.ingest([
+    post({ title: 'Explosions over central Kyiv now, loud ones' }),
+  ]);
+  w.engine.ingest([
+    post({
+      title: 'Central Kyiv explosions, I can see the smoke here',
+      publisher: 'did:plc:b',
+    }),
+  ]);
+  w.engine.ingest([
+    post({
+      provider: 'gdelt',
+      publisher: 'GDELT',
+      source_type: 'aggregator',
+      title: 'Explosions in central Kyiv reported today by news',
+    }),
+  ]);
+  const [event] = only(w);
+  assert.equal(event.posts_held_from_camera, true);
+  assert.equal(event.camera_eligible, false);
+  assert.equal(event.confidence, 0.6, 'still capped');
+
+  const mixed = world();
+  mixed.engine.ingest([
+    post({
+      provider: 'reliefweb',
+      publisher: 'OCHA',
+      source_type: 'secondary_reporting',
+      title: 'Explosions reported in central Kyiv, assessment under way',
+      metrics: {},
+    }),
+  ]);
+  const before = only(mixed)[0];
+  mixed.engine.ingest([
+    post({
+      title: 'Explosions in central Kyiv, assessment of damage under way',
+      metrics: { severity_hint: 99 },
+    }),
+  ]);
+  mixed.engine.ingest([
+    post({
+      title: 'Explosions in central Kyiv, assessment under way say people',
+      publisher: 'did:plc:b',
+      metrics: { severity_hint: 99 },
+    }),
+  ]);
+  const [after] = only(mixed);
+  assert.equal(after.posts_held_from_camera, true);
+  assert.equal(
+    after.verification,
+    'unverified',
+    'posts do not corroborate a firmer report',
+  );
+  assert.equal(after.confidence, before.confidence);
+  assert.equal(
+    after.rule_severity,
+    before.rule_severity,
+    'nor set its measured facts',
+  );
+  assert.equal(independentLineages(after), 1);
+});
+
+test('withdrawing a report keeps what stands and renews nothing', () => {
+  const w = world();
+  const tagged = post({
+    source_type: 'primary_official',
+    publisher: 'did:plc:tagged',
+    title: 'Tagged account says explosions over central Kyiv',
+  });
+  const reporter = post({
+    source_type: 'secondary_reporting',
+    publisher: 'did:plc:reporter',
+    title: 'Explosions over central Kyiv, a reporter says',
+  });
+  w.engine.ingest([tagged]);
+  w.engine.ingest([reporter]);
+  const [event] = only(w);
+  assert.equal(event.verification, 'officially_reported');
+  const decisionRevision = event.revision - (event.quiet_revisions ?? 0);
+  w.engine.withdrawReport(event.event_id, {
+    provider: 'bluesky',
+    sourceItemId: tagged.source_item_id,
+  });
+  const [after] = only(w);
+  assert.equal(after.official, false, 'official only while its source stands');
+  assert.equal(after.verification, 'unverified');
+  assert.equal(
+    after.revision - after.quiet_revisions,
+    decisionRevision,
+    'no cooldown lifted',
+  );
+  const words = JSON.stringify(w.store.revisions(event.event_id));
+  assert.ok(!words.includes(tagged.title), 'the history keeps no words of it');
+});
+
+test('an echo on the card carries the event when its only lineage withdraws', () => {
+  const w = world();
+  const first = post({ title: 'Explosions over central Kyiv tonight' });
+  w.engine.ingest([first]);
+  w.engine.ingest([
+    post({
+      title: 'Central Kyiv explosions, I can see the smoke',
+      publisher: 'did:plc:b',
+    }),
+  ]);
+  w.engine.ingest([
+    post({
+      title: 'Explosions in central Kyiv, windows shaking here',
+      publisher: 'did:plc:c',
+    }),
+  ]);
+  const [event] = only(w);
+  w.engine.withdrawReport(event.event_id, {
+    provider: 'bluesky',
+    sourceItemId: first.source_item_id,
+  });
+  w.engine.withdrawReport(event.event_id, {
+    provider: 'bluesky',
+    sourceItemId: w.store.observationsFor(event.event_id)[1].source_item_id,
+  });
+  const [after] = only(w);
+  assert.ok(after, 'a post still stands behind it');
+  assert.equal(after.verification, 'unverified');
+  assert.equal(after.lineages.length, 1);
 });
 
 test('proximity raises attention, never the confidence in a post', () => {

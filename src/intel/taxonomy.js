@@ -141,22 +141,33 @@ export const SOCIAL_MARKER_TTL_MS = 6 * HOUR;
 /** Where posts come from, whatever trust tag an account was given. */
 export const PUSH_PROVIDERS = Object.freeze(['bluesky', 'telegram']);
 
+/** A post, or a drill's stand-in for one, whatever tag its account has. */
+export const isPushReport = (report) =>
+  report.source_type === 'social_claim' ||
+  PUSH_PROVIDERS.includes(report.provider);
+
 /**
- * Nothing but posts stands behind the event. Until socialCameraEnabled is set,
- * such an event is shown as a claim and never moves the camera on its own: no
- * Autopilot shot, no tour stop, no interruption. An operator can still fly to it.
+ * Posts stand behind the event and no official feed does. Until
+ * socialCameraEnabled is set, such an event is shown as a claim and never moves
+ * the camera on its own: no Autopilot shot, no tour stop, no interruption. An
+ * operator can still fly to it. Only an official feed lifts this: a news item or
+ * an aggregator beside the posts does not.
  */
 export const isPostsOnly = (event) =>
-  (event.lineages?.length ?? 0) > 0 &&
-  event.lineages.every(
-    (l) =>
-      l.source_type === 'social_claim' || PUSH_PROVIDERS.includes(l.provider),
-  );
+  !event.official_feed &&
+  ((event.providers?.some((id) => PUSH_PROVIDERS.includes(id)) ?? false) ||
+    (event.lineages?.some((l) => l.source_type === 'social_claim') ?? false));
 
-/** Every source of the event is a social post. */
-export const isSocialOnly = (event) =>
-  (event.lineages?.length ?? 0) > 0 &&
-  event.lineages.every((l) => l.source_type === 'social_claim');
+/** Posts are the only evidence; an aggregator's echo of them adds none. */
+export const isSocialOnly = (event) => {
+  const evidence = (event.lineages ?? []).filter(
+    (l) => l.source_type !== 'aggregator',
+  );
+  return (
+    evidence.length > 0 &&
+    evidence.every((l) => l.source_type === 'social_claim')
+  );
+};
 
 /** Marker fade covers the final quarter of the remaining display lifetime. */
 export const FADE_FRACTION = 0.25;

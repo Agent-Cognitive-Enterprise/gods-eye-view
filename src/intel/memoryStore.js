@@ -108,6 +108,12 @@ export function createMemoryIntelStore() {
       const held = observations.get(observationId);
       if (held) Object.assign(held.observation, patch);
     },
+    /** The same for what the history kept of its words. */
+    redactRevisions(eventId, titles, replacement) {
+      for (const revision of revisions.get(eventId) ?? [])
+        if (titles.has(revision.snapshot?.title))
+          revision.snapshot.title = replacement;
+    },
     saveRevision(revision) {
       const list = revisions.get(revision.event_id) ?? [];
       list.push(structuredClone(revision));

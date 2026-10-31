@@ -16,6 +16,12 @@ import {
   secretsSupported,
 } from '../server/providers/fastfeeds/secretStore.js';
 
+if (process.env.GEV_TELEGRAM_ALLOWED !== '1') {
+  console.error(
+    'Telegram is disabled pending docs/TELEGRAM_LIBRARY_REVIEW.md. Nothing was changed.',
+  );
+  process.exit(1);
+}
 if (!secretsSupported()) {
   console.error(
     'This needs Windows: there is no protected store to save into.',

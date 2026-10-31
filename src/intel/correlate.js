@@ -6,7 +6,7 @@
 
 import { greatCircleKm } from '../geoDistance.js';
 import { observationTime, textTokens } from './evidence.js';
-import { CATEGORY_POLICY } from './taxonomy.js';
+import { CATEGORY_POLICY, isPushReport } from './taxonomy.js';
 
 /** Subtypes that describe a consequence of another event, linked rather than merged. */
 export const CONSEQUENCE_SUBTYPES = Object.freeze([
@@ -245,7 +245,9 @@ export function lineageFor(observation, priorObservations) {
         copy_of: prior.observation_id,
         reason: 'same_lineage',
       };
-    if (prior.publisher === observation.publisher) continue;
+    // An authority is never a copy of a post that happens to read the same.
+    if (observation.official || prior.publisher === observation.publisher)
+      continue;
     const titleSim = similarity(titleTokens, titleTokensOf(prior));
     const bodySim = similarity(bodyTokens, tokensOf(prior));
     if (titleSim >= COPY_SIMILARITY && bodySim >= COPY_SIMILARITY)
@@ -284,15 +286,17 @@ const IMPACT_METRICS = [
  * @returns {string[]} Reasons; empty when not material.
  */
 export function materialChanges(observation, event, lineage) {
+  const push = isPushReport(observation);
+  // Nothing a post says changes an official event: not its place, its status or
+  // its attention. It goes on the card.
+  if (push && event.official) return [];
   const reasons = [];
   const independent = !event.lineages.some(
     (known) => known.lineage_key === lineage.lineage_key,
   );
-  // Posts about something already established add to the card, not to the
+  // More posts about something already corroborated add to the card, not to the
   // attention: a wave of them must not keep lifting the camera cooldown.
-  const socialEcho =
-    observation.source_type === 'social_claim' &&
-    (event.official || publisherCount(event) >= 2);
+  const socialEcho = push && publisherCount(event) >= 2;
   // An aggregator echo is not a new source (see scoring.independentLineages).
   if (independent && observation.source_type !== 'aggregator' && !socialEcho)
     reasons.push('new_independent_source');
@@ -333,8 +337,9 @@ export function materialChanges(observation, event, lineage) {
     reasons.push('traffic_change_revised');
   const rank = ['unresolved', 'country', 'region', 'city', 'point', 'exact'];
   if (
+    !socialEcho &&
     rank.indexOf(observation.location.precision) >
-    rank.indexOf(event.location.precision)
+      rank.indexOf(event.location.precision)
   )
     reasons.push('geolocation_improved');
   return reasons;

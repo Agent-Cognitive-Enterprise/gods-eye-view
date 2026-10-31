@@ -77,6 +77,10 @@ console.log(
           ...liveRows.map((row) => row.live.reconnects ?? 0),
         ),
       },
+      supervised_percent:
+        Math.round(
+          (rows.filter((row) => row.supervised).length / rows.length) * 1000,
+        ) / 10,
       tripwire: fs.existsSync(path.join(stateDir, 'TRIPWIRE.txt')),
     },
     null,

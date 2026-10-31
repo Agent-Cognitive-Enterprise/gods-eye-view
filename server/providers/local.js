@@ -33,7 +33,7 @@ import { createAirSeaHub } from './airsea/signals.js';
 import { localVoiceProxy } from './localVoice/index.js';
 import { cycloneProxy } from './cyclones.js';
 import { windProxy } from './wind.js';
-import { isIsolatedInstance } from './isolation.js';
+import { exitWithLauncher, isIsolatedInstance } from './isolation.js';
 
 /**
  * Construct the local provider plugins in their established order.
@@ -46,6 +46,7 @@ function localProviderPlugins({ realtime, gemini } = {}) {
   const airSeaHub = createAirSeaHub();
   // A staging server has no business near a single-use or quota-bound connection.
   const isolated = isIsolatedInstance();
+  if (isolated) exitWithLauncher();
   return [
     ...(isolated ? [] : [openSkyProxy()]),
     celestrakProxy(),

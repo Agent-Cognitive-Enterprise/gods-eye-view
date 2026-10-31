@@ -116,6 +116,17 @@ test('settings: bounded, validated, and community by default', () => {
   assert.equal(TRUST_TAGS.community, 'social_claim');
 });
 
+test('settings: a pack term that cannot compile is never saved', () => {
+  const settings = sanitizeFastSettings({
+    languagePacks: [
+      { category: 'civil_unrest', terms: ['?', 'manifestación*'] },
+      { category: 'civil_unrest', terms: ['?'] },
+    ],
+  });
+  assert.deepEqual(settings.languagePacks.length, 1);
+  assert.deepEqual(settings.languagePacks[0].terms, ['manifestación*']);
+});
+
 test('offline mode connects to nothing, and reports run from fixtures only', async (t) => {
   const r = rig(t, { env: { GEV_INTEL_OFFLINE: '1' } });
   follow(r.fast);

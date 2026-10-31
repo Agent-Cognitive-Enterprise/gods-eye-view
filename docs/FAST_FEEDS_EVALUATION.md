@@ -18,10 +18,25 @@ just below it. **This does not enable camera control.** Posts stay held from the
 camera until `socialCameraEnabled` is deliberately set, after the live run confirms
 these figures.
 
-**Who scored it.** Claude read and labelled every post. No person has checked the
-labels, so treat the figures as one reader's judgement. The definition was: the post
-reports a specific event of a kind this system watches, happening now or within about
-two days. Earlier documents in this branch said "by hand"; that meant this.
+**Who scored it, and how.** Claude read and labelled every post, grading its own
+gate, from the first 150 characters with no date, in a single quick pass over 538
+posts. No person has checked the labels, so treat these as one reader's judgement. An
+independent adversarial review re-read 60 rows and landed around 80–83 %. The
+definition was: the post reports a specific event of a kind this system watches,
+happening now or within about two days. Earlier documents in this branch said "by
+hand"; that meant this.
+
+**How far to trust each number.**
+
+- **Precision** reproduces exactly from the labels with `fast-feeds-eval.mjs score`, and
+  the rules were frozen before the sample was drawn. But 18 of the passes are repeated
+  "LIVE:" posts about one story, so they are not independent: without them it is
+  83.2 %, and the true interval is wider than the one quoted.
+- **Recall** rests on 19 positives among 300 sampled rejects. A fair range is 21–39 %.
+- **Place accuracy is the weakest figure, and is not reproducible with the script.** It
+  was reached by reading the list after the fact and marking 8 wrong, unblinded. At
+  least 13 rows it counts as correct are an oblast or region given its city's point;
+  counting those as wrong gives about 85 %. So 85–94 %, depending on how strict you are.
 
 ### By account
 
@@ -43,7 +58,8 @@ nothing about whether a given post is right.
 
 ### What it still gets wrong
 
-37 false positives on the unseen period:
+37 false positives on the unseen period, sorted into classes afterwards (the classes
+are not stored in the label file):
 
 | Class                       | Count | Example shape                                              |
 | --------------------------- | ----- | ---------------------------------------------------------- |
@@ -69,8 +85,8 @@ strikes kill 13"), military moves, and transport incidents.
 ### Places
 
 The 8 wrong places of 136: a country mentioned for another reason (Iran, in a story
-about England), a speaker named as if the scene ("Kabul says", "Moscow says"; fixed
-after this measurement, so 94.1 % does not include that fix), and a roundup naming a
+about England), a speaker named as if the scene ("Kabul says", "Moscow says"; a town
+followed by "says" is no longer read as the scene, a fix made after this measurement), and a roundup naming a
 town the event was not in. Countries and US states give a region, never a point.
 
 ## How the figures were reached

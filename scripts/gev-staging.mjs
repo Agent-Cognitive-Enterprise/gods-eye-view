@@ -17,6 +17,7 @@ import { promisify } from 'node:util';
 import {
   FORBIDDEN_HOSTS,
   isolatedEnvironment,
+  machineTripwire,
   remoteAddresses,
   startRefusal,
 } from '../server/providers/isolation.js';
@@ -24,23 +25,35 @@ import {
 const run = promisify(execFile);
 const WATCH_MS = 20_000;
 const RESOLVE_MS = 10 * 60_000;
-const LIVE_ROOTS = ['C:/Users/user/gev-autopilot'];
+const LIVE_ROOTS = [
+  'C:/Users/user/gev-autopilot',
+  'C:/Users/user/gods-eye-view',
+];
 
 const option = (name, fallback) => {
   const at = process.argv.indexOf(`--${name}`);
   return at >= 0 ? process.argv[at + 1] : fallback;
 };
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const stateDir = path.resolve(option('state', ''));
-const port = Number(option('port', 4178));
-const settings = option('settings', 'config/fast-feeds.starter.json');
-const tripwireFile = path.join(stateDir, 'TRIPWIRE.txt');
-
 if (!option('state')) {
   console.error('--state <folder> is required');
   process.exit(2);
 }
-fs.mkdirSync(stateDir, { recursive: true });
+// Real paths: a junction into a live checkout is that checkout.
+const realPath = (target) => {
+  try {
+    return fs.realpathSync.native(target);
+  } catch {
+    return path.resolve(target);
+  }
+};
+const root = realPath(
+  path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
+);
+const stateDir = realPath(option('state'));
+const port = Number(option('port', 4178));
+const settings = option('settings', 'config/fast-feeds.starter.json');
+// Machine-wide, so a new --state folder cannot step around it.
+const tripwireFile = machineTripwire();
 
 const envFiles = {};
 for (const name of fs.readdirSync(root))
@@ -48,6 +61,7 @@ for (const name of fs.readdirSync(root))
     envFiles[name] = fs.readFileSync(path.join(root, name), 'utf8');
 const refusal = startRefusal({
   root,
+  stateDir,
   port,
   tripwire: fs.existsSync(tripwireFile),
   envFiles,
@@ -58,9 +72,28 @@ if (refusal) {
   process.exit(3);
 }
 
+const forbidden = new Set();
+async function resolveForbidden() {
+  for (const host of FORBIDDEN_HOSTS)
+    for (const lookup of [dns.resolve4, dns.resolve6])
+      for (const address of await lookup(host).catch(() => []))
+        forbidden.add(address.toLowerCase());
+}
+// No list means no tripwire, and that is not a state to run in. A later failure
+// keeps the list already held.
+await resolveForbidden();
+if (!forbidden.size) {
+  console.error(
+    `Refusing to start: could not resolve ${FORBIDDEN_HOSTS.join(', ')}, so the tripwire would be disarmed.`,
+  );
+  process.exit(3);
+}
+
+fs.mkdirSync(stateDir, { recursive: true });
 const settingsTarget = path.join(stateDir, 'fast-feeds.json');
 if (!fs.existsSync(settingsTarget))
   fs.copyFileSync(path.resolve(root, settings), settingsTarget);
+fs.writeFileSync(path.join(stateDir, 'launcher.pid'), String(process.pid));
 
 const server = spawn(
   process.execPath,
@@ -75,18 +108,15 @@ const server = spawn(
   {
     cwd: root,
     env: isolatedEnvironment(process.env, { port, stateDir }),
-    stdio: 'inherit',
+    // The channel lets the server notice this launcher has gone, and stop.
+    stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
   },
 );
 fs.writeFileSync(path.join(stateDir, 'server.pid'), String(server.pid));
-
-let forbidden = new Set();
-async function resolveForbidden() {
-  for (const host of FORBIDDEN_HOSTS) {
-    const addresses = await dns.resolve4(host).catch(() => []);
-    for (const address of addresses) forbidden.add(address);
-  }
-}
+server.on('exit', (code) => {
+  console.error(`Server exited with code ${code}.`);
+  process.exit(code ?? 1);
+});
 
 function stop(reason) {
   console.error(`Stopping staging: ${reason}`);
@@ -95,14 +125,15 @@ function stop(reason) {
 }
 
 async function watch() {
-  const { stdout } = await run('netstat', ['-ano', '-p', 'tcp'], {
+  const { stdout } = await run('netstat', ['-ano'], {
     maxBuffer: 16 * 1024 * 1024,
     windowsHide: true,
   });
   const hit = remoteAddresses(stdout, server.pid).find((address) =>
-    forbidden.has(address),
+    forbidden.has(address.toLowerCase()),
   );
   if (!hit) return;
+  fs.mkdirSync(path.dirname(tripwireFile), { recursive: true });
   fs.writeFileSync(
     tripwireFile,
     `${new Date().toISOString()} server ${server.pid} held a connection to ${hit}, ` +
@@ -111,16 +142,11 @@ async function watch() {
   stop(`forbidden connection to ${hit}`);
 }
 
-await resolveForbidden();
 setInterval(() => resolveForbidden().catch(() => {}), RESOLVE_MS);
 setInterval(
   () => watch().catch((error) => console.error(`watch: ${error.message}`)),
   WATCH_MS,
 );
-server.on('exit', (code) => {
-  console.error(`Server exited with code ${code}.`);
-  process.exit(code ?? 1);
-});
 for (const signal of ['SIGINT', 'SIGTERM'])
   process.on(signal, () => stop(signal));
 console.log(`Staging on http://127.0.0.1:${port}/, state in ${stateDir}`);

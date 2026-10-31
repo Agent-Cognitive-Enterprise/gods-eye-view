@@ -27,12 +27,17 @@ const FLUSH_MS = 100;
 const FLUSH_SIZE = 200;
 // Keeps the cursor moving when nothing listed is posting.
 const CURSOR_SAVE_MS = 5_000;
-// A healthy stream of a few accounts can be silent for hours, so silence is
-// not an outage; the socket's own close and error events are what count.
 const CONNECT_TIMEOUT_MS = 20_000;
-// Seqs are per instance: after switching host, step back a little and let the
-// queue's idempotent key absorb the overlap.
-const HOST_SWITCH_REWIND = 2_000;
+// A half-open socket reads as connected for ever, and a quiet list of accounts
+// looks the same as a dead one. After this long with no frame the stream is
+// reopened from the cursor, which costs nothing either way.
+const SILENCE_MS = 15 * 60_000;
+// The cursor is a time, which both hosts honour alike (their seqs differ) and which
+// is never refused: older than the roughly 36-hour window, the server serves what
+// it has and says so. Checked live 2026-10-31. Resuming overlaps a little, and the
+// queue's idempotent key absorbs the overlap.
+const CURSOR_OVERLAP_US = 5_000_000;
+const TIMESTAMP_CURSOR_MIN = 1e15;
 const DID = /^did:(?:plc|web):[a-zA-Z0-9._:%-]{1,256}$/;
 const RKEY = /^[a-zA-Z0-9._~:-]{1,512}$/;
 
@@ -63,6 +68,14 @@ const parseTime = (value) => {
   const ms = Date.parse(String(value ?? ''));
   return Number.isFinite(ms) ? ms : null;
 };
+
+/** Where to resume: a little before the stored time, or a stored value as it is. */
+export function resumePoint(cursor) {
+  const value = Number(cursor);
+  return Number.isFinite(value) && value >= TIMESTAMP_CURSOR_MIN
+    ? String(value - CURSOR_OVERLAP_US)
+    : cursor;
+}
 
 /** Bounded delay before reconnect attempt `attempt`, with full jitter. */
 export function backoffMs(attempt, random = Math.random) {
@@ -105,15 +118,20 @@ function quotedAccount(record) {
 export function frameToReport(frame, { receivedAt, accountsByDid, canonical }) {
   if (frame?.$type === 'error') return { error: frame.error ?? 'stream_error' };
   const event = frame?.payload;
+  if (String(event?.$type).endsWith('#info'))
+    return { info: event.name ?? 'info', detail: event.message };
+  const seen = parseTime(event?.time);
+  const cursorAt = seen === null ? null : seen * 1000;
   if (!event || !String(event.$type).endsWith('#commit'))
-    return { skip: 'not_a_commit', seq: event?.seq };
+    return { skip: 'not_a_commit', cursorAt };
   const { seq, did, rkey, operation, collection } = event;
-  if (collection !== POST_COLLECTION) return { skip: 'other_collection', seq };
+  if (collection !== POST_COLLECTION)
+    return { skip: 'other_collection', cursorAt };
   if (!isDid(did) || !RKEY.test(String(rkey)))
-    return { skip: 'malformed', seq };
+    return { skip: 'malformed', cursorAt };
   const account = accountsByDid.get(did);
   // The filter is the server's; a frame for anyone else is not ours to keep.
-  if (!account) return { skip: 'unlisted_account', seq };
+  if (!account) return { skip: 'unlisted_account', cursorAt };
   const nativeId = atUri(did, rkey);
   const base = {
     native_id: nativeId,
@@ -124,7 +142,7 @@ export function frameToReport(frame, { receivedAt, accountsByDid, canonical }) {
   };
   if (operation === 'delete')
     return {
-      seq,
+      cursorAt,
       report: {
         ...base,
         kind: 'delete',
@@ -133,19 +151,19 @@ export function frameToReport(frame, { receivedAt, accountsByDid, canonical }) {
       },
     };
   if (operation !== 'create' && operation !== 'update')
-    return { skip: 'unknown_operation', seq };
+    return { skip: 'unknown_operation', cursorAt };
   const record = event.record;
   const text =
     typeof record?.text === 'string' ? record.text.slice(0, MAX_TEXT) : '';
-  if (!text.trim()) return { skip: 'no_text', seq };
+  if (!text.trim()) return { skip: 'no_text', cursorAt };
   // A reply continues somebody's conversation; it is not a report of its own.
-  if (record.reply) return { skip: 'reply', seq };
+  if (record.reply) return { skip: 'reply', cursorAt };
   const { published_at: publishedAt, suspect } = publicationTime(
     event.time,
     record.createdAt,
   );
   return {
-    seq,
+    cursorAt,
     report: {
       ...base,
       kind: operation === 'update' ? 'edit' : 'post',
@@ -209,10 +227,15 @@ export function createBlueskyAdapter({
   // Separate: a report must never wait on the slow cursor save.
   let cursorTimer = null;
   let buffer = [];
+  let silenceTimer = null;
   let cursor = null;
   // The cursor as stored, in step with the stored reports.
   let storedCursor = null;
+  // Where this unstored batch began, for a first batch with nothing stored behind it.
+  let heldFrom = null;
   let hostIndex = 0;
+  // Bumped when a socket is left behind, so its late events change nothing.
+  let connection = 0;
   let accountIndex = new Map();
 
   function fail(reason) {
@@ -248,13 +271,13 @@ export function createBlueskyAdapter({
     try {
       intake.enqueue(id, reports, { cursor: reached });
       storedCursor = reached;
+      heldFrom = null;
     } catch (error) {
       // Nothing was stored. Go back to the stored cursor and reconnect, and the
       // stream delivers these again; carrying on would skip past them for good.
-      cursor = storedCursor;
-      const ws = socket;
-      socket = null;
-      ws?.close();
+      cursor = storedCursor ?? heldFrom ?? cursor;
+      heldFrom = null;
+      socket?.leave('write failed');
       throw error;
     }
   });
@@ -277,6 +300,12 @@ export function createBlueskyAdapter({
   function onMessage(message) {
     const at = now();
     state.last_frame_at = at;
+    // Only a stream that delivers has recovered: a server that accepts and
+    // closes at once must not reset the backoff.
+    if (state.attempt) {
+      state.attempt = 0;
+      state.last_error = null;
+    }
     const size =
       typeof message.data === 'string'
         ? message.data.length
@@ -309,7 +338,22 @@ export function createBlueskyAdapter({
       fail(outcome.error);
       return;
     }
-    if (Number.isFinite(outcome.seq)) cursor = String(outcome.seq);
+    if (outcome.info) {
+      // The one way to lose reports for good: an outage longer than the replay
+      // window. Nothing can recover them, so it is reported, not hidden.
+      if (outcome.info === 'OutdatedCursor') {
+        intake.count(id, 'gaps');
+        intake.deadLetter(id, 'gap_past_replay_window', outcome.detail);
+        fail('reports were lost: the outage outlasted the replay window');
+      }
+      return;
+    }
+    // Times only go forward: replayed or out-of-order frames do not move it back.
+    if (Number.isFinite(outcome.cursorAt)) {
+      const reached = String(outcome.cursorAt);
+      heldFrom ??= reached;
+      if (!cursor || Number(reached) > Number(cursor)) cursor = reached;
+    }
     if (!outcome.report) {
       // Expected in volume when the stream is filtered here, so not counted.
       if (outcome.skip && outcome.skip !== 'unlisted_account')
@@ -335,60 +379,74 @@ export function createBlueskyAdapter({
     }
     const host = hosts[hostIndex % hosts.length];
     state.host = host;
+    const generation = ++connection;
     let opened = false;
     let closed = false;
     const ws = new WebSocketImpl(
       jetstreamUrl(
         host,
         list.map((a) => a.did),
-        cursor,
+        resumePoint(cursor),
       ),
       [SUBPROTOCOL],
     );
     ws.binaryType = 'arraybuffer';
     socket = ws;
-    connectTimer = setTimer(() => ws.close(), CONNECT_TIMEOUT_MS);
+
+    const finish = guarded((reason) => {
+      if (closed || generation !== connection) return;
+      closed = true;
+      clearTimer(connectTimer);
+      clearTimer(silenceTimer);
+      state.connected = false;
+      if (socket === ws) socket = null;
+      // After stop() the queue may already be closed; stop() has flushed.
+      if (!running) return;
+      flush();
+      if (!opened) hostIndex += 1;
+      schedule(reason);
+    });
+    /** Give up on this socket now: a dead peer may never answer close(). */
+    ws.leave = (reason) => {
+      socket = null;
+      try {
+        ws.close();
+      } catch {
+        /* already gone */
+      }
+      finish(reason);
+    };
+
+    const watchSilence = guarded(() => {
+      silenceTimer = null;
+      if (socket !== ws || !running) return;
+      const quiet = now() - (state.last_frame_at ?? state.connected_at);
+      if (quiet < SILENCE_MS) {
+        silenceTimer = setTimer(watchSilence, SILENCE_MS - quiet);
+        return;
+      }
+      intake.count(id, 'silence_reopened');
+      state.last_frame_at = now();
+      ws.leave('no frame for a while');
+    });
+    connectTimer = setTimer(
+      () => ws.leave('connect timed out'),
+      CONNECT_TIMEOUT_MS,
+    );
     ws.onopen = () => {
       opened = true;
       clearTimer(connectTimer);
       state.connected = true;
       state.connected_at = now();
-      state.attempt = 0;
-      state.last_error = null;
+      silenceTimer = setTimer(watchSilence, SILENCE_MS);
     };
     ws.onmessage = guarded((message) => {
       // A socket given up on after a failed write must not move the cursor.
       if (running && socket === ws) onMessage(message);
     });
     ws.onerror = (event) => fail(event?.message || 'connection failed');
-    ws.onclose = guarded((event) => {
-      if (closed) return;
-      closed = true;
-      clearTimer(connectTimer);
-      state.connected = false;
-      if (socket === ws) socket = null;
-      // After stop() the queue may already be closed; stop() has flushed.
-      if (!running) return;
-      flush();
-      if (!opened) {
-        // A refused cursor (too old for the stream's replay window) would be
-        // refused for ever: forget it and take the live tail, and say so.
-        if (cursor && state.attempt >= 2) {
-          intake.count(id, 'cursor_abandoned');
-          fail(
-            'stored cursor refused; resumed at the live tail, a gap is possible',
-          );
-          cursor = null;
-        }
-        hostIndex += 1;
-        if (cursor) {
-          const value = Number(cursor);
-          if (Number.isFinite(value) && value > HOST_SWITCH_REWIND)
-            cursor = String(value - HOST_SWITCH_REWIND);
-        }
-      }
-      schedule(`stream closed (${event?.code ?? 'no code'})`);
-    });
+    ws.onclose = (event) =>
+      finish(`stream closed (${event?.code ?? 'no code'})`);
   }
 
   return {
@@ -405,8 +463,10 @@ export function createBlueskyAdapter({
     stop() {
       if (!running) return;
       running = false;
+      connection += 1;
       clearTimer(retryTimer);
       clearTimer(connectTimer);
+      clearTimer(silenceTimer);
       flush();
       socket?.close(1000);
       socket = null;
@@ -416,8 +476,7 @@ export function createBlueskyAdapter({
     restart() {
       if (!running) return;
       clearTimer(retryTimer);
-      const ws = socket;
-      if (ws) ws.close(1000);
+      if (socket) socket.leave('account list changed');
       else connect();
     },
     setEnabled(value) {

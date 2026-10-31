@@ -79,7 +79,8 @@ export const isHeldCandidate = (event) =>
 
 /** Whether the console may show this event, and the Autopilot go to it. */
 export function fastEventVisible(event, view, now) {
-  if (!isFastEvent(event)) return true;
+  // A post joining an official alert must not let this panel hide the alert.
+  if (!event.providers?.every((id) => PUSH_PROVIDERS.includes(id))) return true;
   if (!view.enabled || isHeldCandidate(event)) return false;
   const sublayer = SUBLAYER_OF[event.fast_status];
   if (sublayer && view.sublayers[sublayer] === false) return false;

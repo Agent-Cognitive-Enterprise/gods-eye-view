@@ -403,6 +403,25 @@ test('places: a sentence-initial word needs real weight to be a town', () => {
   assert.equal(resolvePlace('Kyiv under attack again').location.place, 'Kyiv');
 });
 
+test('links: a crafted address is refused before any work is done on it', () => {
+  const started = performance.now();
+  assert.equal(
+    canonicalLink(`https://example.com/${'/'.repeat(250_000)}`),
+    null,
+  );
+  assert.equal(
+    canonicalLink(`https://example.com/?${'utm_a=1&'.repeat(20_000)}`),
+    null,
+  );
+  assert.ok(performance.now() - started < 100);
+});
+
+test('gate: a run of digits costs no more than ordinary text', () => {
+  const started = performance.now();
+  gateReport(`Explosion ${'1,'.repeat(1_900)}`);
+  assert.ok(performance.now() - started < 150);
+});
+
 test('places: what fooled it on the live stream no longer does', () => {
   const unresolved = (text) => resolvePlace(text).location.precision;
   assert.equal(
@@ -432,6 +451,18 @@ test('places: St. Petersburg is the Russian one, and an agency is not the scene'
     'Hurricane Trudy off Mexico, the National Hurricane Center in Miami said',
   );
   assert.equal(storm.location.region_code, 'MX');
+});
+
+test('places: a country or state speaking still locates its own report', () => {
+  assert.equal(
+    resolvePlace('Syria says blast at a military site killed 11').location
+      .place,
+    'Syria',
+  );
+  assert.equal(
+    resolvePlace('Pennsylvania reports 943 measles cases').location.place,
+    'Pennsylvania',
+  );
 });
 
 test('places: a capital speaking is not where the event is', () => {
