@@ -122,7 +122,7 @@ export function createIntake({
        ORDER BY priority DESC, seq LIMIT ?`,
     ),
     complete: db.prepare(
-      'UPDATE intake SET status = ?, outcome = ?, event_id = ?, processed_at = ? WHERE seq = ?',
+      "UPDATE intake SET status = ?, outcome = ?, event_id = ?, processed_at = ?, body = '{}' WHERE seq = ?",
     ),
     forNative: db.prepare(
       `SELECT seq, revision, kind, event_id, status FROM intake
@@ -292,7 +292,7 @@ export function createIntake({
       return out;
     },
     stats: () => ({ pending, max_pending: maxPending }),
-    /** Raw report text older than retention is removed; waiting work is kept. */
+    /** Handled reports hold no text; their records go after retention. */
     prune(at = now()) {
       return Number(
         q.prune.run(at - rawRetentionDays * DAY, 'pending').changes,

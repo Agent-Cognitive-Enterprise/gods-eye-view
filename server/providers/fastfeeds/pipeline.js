@@ -7,6 +7,9 @@ import { gateReport } from './gate.js';
 import { resolvePlace } from './places.js';
 
 const PER_PASS = 200;
+// Everything here is synchronous, on the one thread that also serves the app:
+// a pass stops at this budget and the rest waits for the next one.
+const PASS_BUDGET_MS = 40;
 const MAX_TITLE_FROM_TEXT = 200;
 // One account may not fill the queue: this many posts a minute, then deferred.
 const ACCOUNT_POSTS_PER_MINUTE = 30;
@@ -147,7 +150,11 @@ export function createPipeline({
     /** One pass; returns how many reports it handled. */
     pass(limit = PER_PASS) {
       const rows = intake.next(limit);
+      const deadline = performance.now() + PASS_BUDGET_MS;
+      let handled = 0;
       for (const row of rows) {
+        if (handled && performance.now() >= deadline) break;
+        handled += 1;
         const started = now();
         try {
           if (row.kind === 'delete') processDelete(row);
@@ -160,7 +167,7 @@ export function createPipeline({
         }
         latency.record(row.source_id, 'pipeline', now() - started);
       }
-      return rows.length;
+      return handled;
     },
   };
 }

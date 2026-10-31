@@ -322,14 +322,24 @@ export function resolvePlace(text) {
 
 /**
  * Whether a place the model proposes is really in the text and in the
- * gazetteer: the deterministic check the model's answer has to pass.
+ * gazetteer: the deterministic check the model's answer has to pass. The quote
+ * must be the post's own words and must name that place; the model may spell
+ * the place in another language ("Kharkiv" for "в харькове"), and the capital a
+ * careless post left out is what it is here to read.
  * @returns {?{location: object, evidence: string[]}}
  */
 export function verifyPlace(text, placeName, quote) {
   const body = String(text ?? '');
   if (!placeName || !quote || !body.includes(quote)) return null;
-  if (!quote.toLowerCase().includes(String(placeName).toLowerCase()))
-    return null;
-  const resolved = resolvePlace(quote);
-  return resolved.evidence.length ? resolved : null;
+  const capitalised = quote.replace(
+    /(^|[\s("«])(\p{Ll})/gu,
+    (_, before, letter) => before + letter.toUpperCase(),
+  );
+  const resolved = resolvePlace(capitalised);
+  if (!resolved.evidence.length) return null;
+  const name = String(placeName).toLowerCase();
+  return quote.toLowerCase().includes(name) ||
+    String(resolved.location.place).toLowerCase() === name
+    ? resolved
+    : null;
 }

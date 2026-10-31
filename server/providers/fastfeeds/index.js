@@ -22,6 +22,8 @@ import {
 } from './settings.js';
 
 const PASS_MS = 250;
+// With a backlog, yield to the server and come straight back.
+const BUSY_PASS_MS = 5;
 const PRUNE_EVERY_MS = 6 * 3600_000;
 const MAX_SHOWN_MEMORY = 20_000;
 const HANDLE = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,62}\.)+[a-zA-Z]{2,63}$/;

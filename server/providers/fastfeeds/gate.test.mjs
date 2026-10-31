@@ -294,6 +294,26 @@ test('places: a lower-case word is not a town', () => {
   );
 });
 
+test('places: the model may read what the gate cannot, from the post alone', () => {
+  const careless = 'сильные взрывы в харькове прямо сейчас';
+  assert.equal(resolvePlace(careless).location.precision, 'unresolved');
+  assert.equal(
+    verifyPlace(careless, 'Харьков', 'в харькове').location.place,
+    'Kharkiv',
+  );
+  assert.equal(
+    verifyPlace(careless, 'Kharkiv', 'в харькове').location.place,
+    'Kharkiv',
+    'named in another language',
+  );
+  assert.equal(verifyPlace(careless, 'Kyiv', 'в харькове'), null);
+  assert.equal(
+    verifyPlace(careless, 'Kharkiv', 'в Харькове'),
+    null,
+    'the quote must be the post itself',
+  );
+});
+
 test('places: the model may only propose what the text says', () => {
   const text = 'Heavy shelling reported in Kherson region this morning';
   assert.equal(

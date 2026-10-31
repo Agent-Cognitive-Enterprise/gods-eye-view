@@ -15,7 +15,7 @@ const MAX_BACKLOG = 50;
 const MAX_TEXT = 1_000;
 const FAILURE_PAUSE_MS = 5 * 60_000;
 
-const SCHEMA = Object.freeze({
+export const PLACE_SCHEMA = Object.freeze({
   type: 'object',
   properties: {
     place_name: { type: 'string', maxLength: 80 },
@@ -101,7 +101,7 @@ export function createEnricher({
     started.push(now());
     const { text, latencyMs } = await llm.complete(
       buildPlacePrompt(observation.summary),
-      SCHEMA,
+      PLACE_SCHEMA,
     );
     const answer = validatePlace(text, observation.summary);
     if (!answer.ok) {

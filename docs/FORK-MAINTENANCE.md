@@ -35,6 +35,7 @@ history is never rewritten.
 ## Where the fork touches upstream code
 
 New files are fork-only (`src/intel/`, `server/providers/intel/`,
+`server/providers/fastfeeds/`, `src/ui/fastIntelPanel.js`,
 `server/providers/localVoice/`, `src/voice/local*.js`, `src/ui/intelConsole.js`,
 `src/ui/styles/intel.css`, `src/ui/dockAutoHide.js`, `src/airsea/`,
 `src/layers/airsea/`, `server/providers/airsea/`, the fork docs and workflows). Upstream files the
@@ -44,7 +45,7 @@ fork edits are the merge surface; keep these edits additive and small:
 | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `server/providers/local.js`                                                                  | Registers the intel, air/sea and local-voice plugins; shares the GhostMaps watcher and the air/sea hub. |
 | `src/app/tools.js`, `src/standalone/tools.js`                                                | Mounts the Autopilot console and dock auto-hide; offers `local` voice; Air & Sea layer reveal.          |
-| `src/ui/templates/layer-panels.html`                                                         | FEEDS panel shell at the end of the left stack.                                                         |
+| `src/ui/templates/layer-panels.html`                                                         | FEEDS and FAST INTELLIGENCE panel shells at the end of the left stack.                                  |
 | `src/layers/ghostMaps/index.js`                                                              | Age window over each placemark's date (logic in the fork-only `age.js`); keep `facing` and `inWindow`.  |
 | `src/ui/leftPanelRail.js`                                                                    | Reads `--left-stack-base-top` (px) before its 26vh default.                                             |
 | `server/providers/aircraft/opensky.js`, `adsb-lol.js`                                        | One `publishTrafficSnapshot()` call after each cached snapshot (air/sea).                               |
@@ -55,7 +56,8 @@ fork edits are the merge surface; keep these edits additive and small:
 | `src/voice/commands.js`, `src/voice/providerCapabilities.js`, `src/voice/sessionCommands.js` | Local voice provider entry and label.                                                                   |
 | `scripts/package-boundaries.json`                                                            | Owned-module entries for the new modules.                                                               |
 | `src/i18n/locales/*.json`, `src/i18n/same-as-english.json`                                   | Added strings (append-only).                                                                            |
-| `src/data/dataCredits.js`, `DATA_SOURCES.md`, `.env.example`                                 | One credit entry, one source row and note, commented settings.                                          |
+| `src/data/dataCredits.js`, `DATA_SOURCES.md`, `.env.example`                                 | One credit entry, source rows and notes, commented settings.                                            |
+| `package.json`, `package-lock.json`                                                          | `teleproto` as a pinned optional dependency; a sync that changes the lockfile needs a stopped server.   |
 
 The merge check flags conflicts and both-sides changes in these areas
 (`autopilot-hooks`, `voice`, `director`, `camera`, `i18n`, `dependencies`,
