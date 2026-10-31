@@ -369,6 +369,19 @@ test('an area that rounds up to the next unit reads in that unit', () => {
   assert.equal(formatMeasure(almostHectare), '1.0 ha');
   assert.match(drawHint(almostHectare), /^1\.0 ha · /);
   assert.equal(formatMeasure(square(9999.4)), '9999 m²');
-  assert.equal(formatMeasure(square(999_960)), '1.00 km²');
-  assert.equal(formatMeasure(square(999_400)), '99.9 ha');
+  // Pin the shoelace area too, so a geodesy change fails here and not as a unit.
+  const almostKm2 = square(999_960);
+  const nearKm2 = ringAreaM2(almostKm2.vertices);
+  assert.ok(
+    nearKm2 >= 999_500 && nearKm2 < 1e6,
+    `area should round to 100.0 ha, got ${nearKm2}`,
+  );
+  assert.equal(formatMeasure(almostKm2), '1.00 km²');
+  const under = square(999_400);
+  const underM2 = ringAreaM2(under.vertices);
+  assert.ok(
+    underM2 >= 998_500 && underM2 < 999_500,
+    `area should round to 99.9 ha, got ${underM2}`,
+  );
+  assert.equal(formatMeasure(under), '99.9 ha');
 });
