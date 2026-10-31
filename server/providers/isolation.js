@@ -87,7 +87,7 @@ export function startRefusal({
     return `${stateDir} is inside a live checkout`;
   for (const [name, text] of Object.entries(envFiles))
     // A file saved as UTF-16 still holds the key.
-    if (KEY_LINE.test(String(text).replace(/\0/g, '')))
+    if (KEY_LINE.test(String(text).replace(/\0|^[﻿�]+/g, '')))
       return `${name} holds the AIS key; staging must run from a tree without it`;
   return null;
 }

@@ -94,6 +94,15 @@ test('a start is refused near anything live', () => {
     /holds the AIS key/,
     'saved as UTF-16',
   );
+  for (const start of ['﻿', '��'])
+    assert.match(
+      startRefusal({
+        ...safe,
+        envFiles: { '.env': `${start}AISSTREAM_API_KEY=abc\n` },
+      }),
+      /holds the AIS key/,
+      'a byte-order mark cannot hide the first line',
+    );
   assert.match(startRefusal({ ...safe, port: 8790 }), /live instance/);
   assert.match(startRefusal({ ...safe, tripwire: true }), /tripwire/);
 });
