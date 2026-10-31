@@ -1,0 +1,191 @@
+{
+  "id": "fast-feed",
+  "description": "Synthetic drill: a first post becomes a corroborated incident and an official alert, while a rumour next door is contradicted and retracted. No real account, place report or event.",
+  "duration_min": 40,
+  "records": [
+    {
+      "at_min": 0,
+      "published_min": 0,
+      "source_item_id": "fast-rumour-weak",
+      "publisher": "bsky:did:plc:drillaccount0000001",
+      "lineage_key": "bsky:did:plc:drillaccount0000001",
+      "source_type": "social_claim",
+      "category": "breaking_news",
+      "subtype": "fire",
+      "title": "[DRILL] Something burning somewhere in town, not sure where",
+      "summary": "Synthetic drill post with no place and little severity.",
+      "metrics": { "severity_hint": 30 }
+    },
+    {
+      "at_min": 2,
+      "published_min": 2,
+      "source_item_id": "fast-first-report",
+      "publisher": "bsky:did:plc:drillaccount0000002",
+      "lineage_key": "bsky:did:plc:drillaccount0000002",
+      "source_type": "social_claim",
+      "category": "natural_disaster",
+      "subtype": "flood",
+      "title": "[DRILL] River over the embankment in Lyon, streets flooding",
+      "summary": "Synthetic drill: a first report from one account.",
+      "entities": ["flood@FR:Lyon"],
+      "location": {
+        "lat": 45.77,
+        "lon": 4.83,
+        "precision": "city",
+        "geolocation_status": "needs_verification",
+        "place": "Lyon",
+        "region_code": "FR"
+      },
+      "metrics": { "severity_hint": 55 }
+    },
+    {
+      "at_min": 4,
+      "published_min": 4,
+      "source_item_id": "fast-repost-wave",
+      "copies_of": "fast-first-report",
+      "copies": 0,
+      "publisher": "bsky:did:plc:drillaccount0000003",
+      "source_type": "social_claim",
+      "category": "natural_disaster",
+      "title": "[DRILL] copy",
+      "metrics": { "severity_hint": 55 }
+    },
+    {
+      "at_min": 6,
+      "published_min": 6,
+      "source_item_id": "fast-second-account",
+      "publisher": "bsky:did:plc:drillaccount0000004",
+      "lineage_key": "bsky:did:plc:drillaccount0000004",
+      "source_type": "social_claim",
+      "category": "natural_disaster",
+      "subtype": "flood",
+      "title": "[DRILL] Water coming up fast near the old bridge, Lyon",
+      "summary": "Synthetic drill: a second account in other words.",
+      "entities": ["flood@FR:Lyon"],
+      "location": {
+        "lat": 45.76,
+        "lon": 4.84,
+        "precision": "city",
+        "geolocation_status": "needs_verification",
+        "place": "Lyon",
+        "region_code": "FR"
+      },
+      "metrics": { "severity_hint": 55 }
+    },
+    {
+      "at_min": 14,
+      "occurred_min": 0,
+      "published_min": 13,
+      "source_item_id": "fast-official",
+      "event_key": "fast-official-1",
+      "publisher": "Drill Civil Protection",
+      "source_type": "primary_official",
+      "category": "natural_disaster",
+      "subtype": "flood",
+      "title": "[DRILL] Flood warning issued for Lyon, Rhone embankments",
+      "summary": "Synthetic drill: the competent authority confirms.",
+      "entities": ["flood@FR:Lyon"],
+      "location": {
+        "lat": 45.76,
+        "lon": 4.83,
+        "precision": "point",
+        "geolocation_status": "verified",
+        "place": "Lyon",
+        "region_code": "FR"
+      },
+      "metrics": { "severity_hint": 80, "alert_level": "orange" }
+    },
+    {
+      "at_min": 30,
+      "occurred_min": 0,
+      "published_min": 30,
+      "source_item_id": "fast-official-end",
+      "event_key": "fast-official-1",
+      "publisher": "Drill Civil Protection",
+      "source_type": "primary_official",
+      "category": "natural_disaster",
+      "subtype": "flood",
+      "status_hint": "resolved",
+      "title": "[DRILL] Flood warning lifted for Lyon",
+      "summary": "Synthetic drill: the warning ends.",
+      "entities": ["flood@FR:Lyon"],
+      "location": {
+        "lat": 45.76,
+        "lon": 4.83,
+        "precision": "point",
+        "geolocation_status": "verified",
+        "place": "Lyon",
+        "region_code": "FR"
+      },
+      "metrics": { "severity_hint": 80, "alert_level": "orange" }
+    },
+    {
+      "at_min": 8,
+      "published_min": 8,
+      "source_item_id": "fast-rumour",
+      "publisher": "bsky:did:plc:drillaccount0000005",
+      "lineage_key": "bsky:did:plc:drillaccount0000005",
+      "source_type": "social_claim",
+      "category": "armed_conflict",
+      "subtype": "explosion",
+      "title": "[DRILL] Huge explosion in Geneva, everyone says so",
+      "summary": "Synthetic drill: an alarming single claim.",
+      "entities": ["explosion@CH:Geneva"],
+      "location": {
+        "lat": 46.21,
+        "lon": 6.14,
+        "precision": "city",
+        "geolocation_status": "needs_verification",
+        "place": "Geneva",
+        "region_code": "CH"
+      },
+      "metrics": { "severity_hint": 95 }
+    },
+    {
+      "at_min": 16,
+      "published_min": 16,
+      "source_item_id": "fast-rumour-doubted",
+      "publisher": "bsky:did:plc:drillaccount0000006",
+      "lineage_key": "bsky:did:plc:drillaccount0000006",
+      "source_type": "social_claim",
+      "category": "armed_conflict",
+      "subtype": "explosion",
+      "status_hint": "disputed",
+      "title": "[DRILL] That Geneva explosion story is a hoax, nothing here",
+      "summary": "Synthetic drill: someone else contradicts it.",
+      "entities": ["explosion@CH:Geneva"],
+      "location": {
+        "lat": 46.21,
+        "lon": 6.14,
+        "precision": "city",
+        "geolocation_status": "needs_verification",
+        "place": "Geneva",
+        "region_code": "CH"
+      },
+      "metrics": { "severity_hint": 95 }
+    },
+    {
+      "at_min": 22,
+      "published_min": 22,
+      "source_item_id": "fast-rumour-retracted",
+      "publisher": "bsky:did:plc:drillaccount0000005",
+      "lineage_key": "bsky:did:plc:drillaccount0000005",
+      "source_type": "social_claim",
+      "category": "armed_conflict",
+      "subtype": "explosion",
+      "status_hint": "retracted",
+      "title": "[DRILL] Correction: no explosion in Geneva, my post was wrong",
+      "summary": "Synthetic drill: the claim's own source takes it back.",
+      "entities": ["explosion@CH:Geneva"],
+      "location": {
+        "lat": 46.21,
+        "lon": 6.14,
+        "precision": "city",
+        "geolocation_status": "needs_verification",
+        "place": "Geneva",
+        "region_code": "CH"
+      },
+      "metrics": { "severity_hint": 95 }
+    }
+  ]
+}

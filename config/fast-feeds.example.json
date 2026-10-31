@@ -1,0 +1,33 @@
+{
+  "bluesky": {
+    "enabled": true,
+    "accounts": [
+      {
+        "did": "did:plc:replacewitharealaccountid",
+        "label": "An account you have checked yourself",
+        "tag": "community"
+      }
+    ]
+  },
+  "telegram": {
+    "enabled": false,
+    "channels": [
+      {
+        "username": "public_channel_username",
+        "label": "A public channel you may lawfully read",
+        "tag": "community"
+      }
+    ]
+  },
+  "languagePacks": [
+    {
+      "category": "civil_unrest",
+      "subtype": "protest",
+      "severity": 45,
+      "terms": ["manifestación*", "disturbios"]
+    }
+  ],
+  "rawRetentionDays": 14,
+  "reportsPerAccountPerMinute": 30,
+  "placeEnrichment": true
+}

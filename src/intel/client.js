@@ -39,5 +39,13 @@ export function createIntelClient({ fetchImpl }) {
       call('/replay', { method: 'POST', body: { scenario, speed } }),
     stopReplay: () => call('/replay', { method: 'DELETE', body: {} }),
     replay: (signal) => call('/replay', { signal }),
+    fastStatus: (signal) => call('/fast/status', { signal }),
+    fastSettings: (signal) => call('/fast/settings', { signal }),
+    fastTimeline: (id, signal) =>
+      call(`/fast/events/${encodeURIComponent(id)}`, { signal }),
+    updateFastSettings: (settings) =>
+      call('/fast/settings', { method: 'PUT', body: settings }),
+    resolveFastAccount: (handle) =>
+      call('/fast/resolve', { method: 'POST', body: { handle } }),
   };
 }

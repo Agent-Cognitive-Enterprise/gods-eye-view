@@ -148,8 +148,9 @@ export function createFastFeeds({
     connect:
       connectTelegram ??
       (async (login, options) => {
-        const { connectGramJs } = await import('./adapters/telegramClient.js');
-        return connectGramJs(login, options);
+        const { connectTeleproto } =
+          await import('./adapters/telegramClient.js');
+        return connectTeleproto(login, options);
       }),
   });
   const adapters = [bluesky, telegram];

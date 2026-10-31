@@ -432,3 +432,169 @@ body.gev-dock-hidden:not(.cockpit-mode) #intel-hud .hud-bottom-right {
 body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
   display: none;
 }
+
+/* FAST INTELLIGENCE panel (src/ui/fastIntelPanel.js), under FEEDS. */
+#left-panel-stack > #fast-intel-panel {
+  --panel-expanded-width: 360px;
+  position: relative;
+  order: 6;
+  flex: 0 1 auto;
+  width: var(--panel-expanded-width);
+  min-height: 0;
+  pointer-events: auto;
+}
+#fast-intel-panel[hidden],
+#fast-intel-panel.collapsed #fast-intel-body {
+  display: none !important;
+}
+#fast-intel-panel .panel-glow {
+  display: none;
+}
+#fast-intel-body {
+  max-height: 46vh;
+  overflow-y: auto;
+  font: 11px var(--font-sans);
+  color: var(--text-primary);
+}
+#fast-intel-count {
+  color: #7bd88f;
+  font: 9px var(--font-mono);
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+#fast-intel-count.intel-feeds-down {
+  color: #ff5a5a;
+}
+.fast-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+  margin-bottom: 4px;
+}
+.fast-coverage {
+  margin: 4px 0;
+  color: var(--text-secondary, #9fb3bd);
+  font-size: 10px;
+}
+.fast-coverage-down,
+.fast-notice {
+  margin: 2px 0;
+  color: #ffb454;
+  font-size: 10px;
+}
+.fast-activity,
+.fast-source-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.fast-row-button {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  padding: 3px 5px;
+  border: 0;
+  border-left: 2px dashed #ffb454;
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.fast-row.s-corroborated .fast-row-button {
+  border-left: 2px solid #5ac8fa;
+}
+.fast-row.s-official .fast-row-button {
+  border-left: 2px solid #7bd88f;
+}
+.fast-row.s-contested .fast-row-button {
+  border-left: 2px dotted #ff5a5a;
+}
+.fast-row.s-candidate .fast-row-button {
+  border-left-color: rgba(255, 255, 255, 0.25);
+}
+.fast-badge {
+  color: #ffb454;
+  font: 9px var(--font-mono);
+  letter-spacing: 1px;
+}
+.fast-row.s-corroborated .fast-badge {
+  color: #5ac8fa;
+}
+.fast-row.s-official .fast-badge {
+  color: #7bd88f;
+}
+.fast-row.s-contested .fast-badge {
+  color: #ff5a5a;
+}
+.fast-row.s-candidate .fast-badge {
+  color: var(--text-secondary, #9fb3bd);
+}
+.fast-row-title {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.fast-timeline,
+.fast-sources,
+.fast-health {
+  padding: 4px 5px;
+}
+.fast-kv {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.fast-evidence {
+  display: flex;
+  flex-direction: column;
+  margin-top: 4px;
+  padding-top: 3px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-wrap: anywhere;
+}
+.fast-link {
+  color: #5ac8fa;
+}
+.fast-account {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 3px;
+}
+.fast-account-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fast-select,
+.fast-input {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.35);
+  color: inherit;
+  font: inherit;
+}
+.fast-add {
+  display: flex;
+  gap: 4px;
+}
+.fast-input {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 4px;
+}
+.fast-source {
+  display: flex;
+  flex-direction: column;
+}
+.fast-warn > span:first-child {
+  color: #ffb454;
+}

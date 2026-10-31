@@ -189,7 +189,7 @@ export function createTelegramAdapter({
       client = null;
       if (error.code === 'ERR_MODULE_NOT_FOUND') {
         state.library_missing = true;
-        fail('the telegram package is not installed');
+        fail('the teleproto package is not installed');
         return;
       }
       if (error.code === 'auth_expired') {

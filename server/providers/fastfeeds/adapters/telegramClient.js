@@ -1,10 +1,11 @@
-// GramJS behind the small interface the Telegram adapter uses, so the adapter
+// teleproto (the maintained successor of GramJS, the library the GramJS authors
+// point to) behind the small interface the Telegram adapter uses, so the adapter
 // is testable without a network and the library loads only when a login exists.
 // Public channels by username only. Text only: media is never requested.
 
 const CONNECTION_RETRIES = 5;
 
-/** A GramJS message as the plain shape the adapter maps. */
+/** A library message as the plain shape the adapter maps. */
 function plain(message, username) {
   const forward = message.fwdFrom;
   const fromChannel = forward?.fromId?.channelId ?? null;
@@ -24,12 +25,12 @@ function plain(message, username) {
  * @param {{apiId: number, apiHash: string, session: string}} login
  * @returns {Promise<object>} The adapter's client interface.
  */
-export async function connectGramJs(login, { log = () => {} } = {}) {
-  const { TelegramClient } = await import('telegram');
-  const { StringSession } = await import('telegram/sessions/index.js');
-  const { NewMessage } = await import('telegram/events/NewMessage.js');
-  const { EditedMessage } = await import('telegram/events/EditedMessage.js');
-  const { DeletedMessage } = await import('telegram/events/DeletedMessage.js');
+export async function connectTeleproto(login, { log = () => {} } = {}) {
+  const { TelegramClient } = await import('teleproto');
+  const { StringSession } = await import('teleproto/sessions/index.js');
+  const { NewMessage } = await import('teleproto/events/NewMessage.js');
+  const { EditedMessage } = await import('teleproto/events/EditedMessage.js');
+  const { DeletedMessage } = await import('teleproto/events/DeletedMessage.js');
   const client = new TelegramClient(
     new StringSession(login.session),
     Number(login.apiId),

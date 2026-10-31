@@ -285,5 +285,8 @@
     "./tools/services": "./src/tools/services.js",
     "./view": "./src/view/index.js",
     "./agent/world-packet": "./src/agent/worldPacket.js"
+  },
+  "optionalDependencies": {
+    "teleproto": "1.232.0"
   }
 }

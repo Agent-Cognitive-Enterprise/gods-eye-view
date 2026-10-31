@@ -51,7 +51,9 @@ ws.onmessage = ({ data }) => {
   const lag = Date.now() - Date.parse(event.time);
   if (lags.length < 200_000) lags.push(lag);
   const begin = process.hrtime.bigint();
-  const gate = gateReport(event.record.text, { language: event.record.langs?.[0] });
+  const gate = gateReport(event.record.text, {
+    language: event.record.langs?.[0],
+  });
   const place = gate.pass ? resolvePlace(event.record.text) : null;
   gateNs.push(Number(process.hrtime.bigint() - begin));
   if (!gate.pass) {
