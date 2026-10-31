@@ -139,6 +139,12 @@ export function createSqliteIntelStore({
        (observation_id, event_id, url, publisher, content_digest, received_at, material, body, link)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ),
+    observationBody: db.prepare(
+      'SELECT body FROM observations WHERE observation_id = ?',
+    ),
+    putObservationBody: db.prepare(
+      'UPDATE observations SET body = ? WHERE observation_id = ?',
+    ),
     observationsFor: db.prepare(
       `SELECT body, link FROM (SELECT body, link, received_at, rowid FROM observations
          WHERE event_id = ? ORDER BY received_at DESC, rowid DESC LIMIT ?)
@@ -242,6 +248,15 @@ export function createSqliteIntelStore({
         JSON.stringify(link),
       );
     },
+    /** Blank a report's words; the record that it existed stays. */
+    redactObservation(observationId, patch) {
+      const row = q.observationBody.get(observationId);
+      if (row)
+        q.putObservationBody.run(
+          JSON.stringify({ ...JSON.parse(row.body), ...patch }),
+          observationId,
+        );
+    },
     saveRevision(revision) {
       q.putRevision.run(
         revision.event_id,
@@ -280,13 +295,15 @@ export function createSqliteIntelStore({
           )
           .all(cutoff)
           .map((row) => row.event_id);
-        // Machine-coded news is voluminous and of little value once cold.
-        for (const row of db
-          .prepare(
-            'SELECT event_id FROM events WHERE last_meaningful_update_at < ? AND body LIKE \'%"providers":["gdelt"]%\'',
-          )
-          .all(at - 14 * DAY))
-          if (!ids.includes(row.event_id)) ids.push(row.event_id);
+        // Machine-coded news and lone social claims are voluminous and of
+        // little value once cold.
+        for (const provider of ['gdelt', 'bluesky', 'telegram'])
+          for (const row of db
+            .prepare(
+              `SELECT event_id FROM events WHERE last_meaningful_update_at < ? AND body LIKE '%"providers":["${provider}"]%'`,
+            )
+            .all(at - 14 * DAY))
+            if (!ids.includes(row.event_id)) ids.push(row.event_id);
         const del = (table) =>
           db.prepare(`DELETE FROM ${table} WHERE event_id = ?`);
         const statements = [

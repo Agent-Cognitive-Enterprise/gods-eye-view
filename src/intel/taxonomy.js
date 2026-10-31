@@ -32,6 +32,8 @@ export const SOURCE_TYPES = Object.freeze([
   'secondary_reporting',
   'aggregator',
   'analyst',
+  // A public post from a social platform: a claim, whoever it says it is from.
+  'social_claim',
   'synthetic_fixture',
 ]);
 
@@ -127,6 +129,19 @@ export const CATEGORY_POLICY = Object.freeze({
     matchRadiusKm: 200,
   }),
 });
+
+/**
+ * Social posts alone may be seen, never believed: however many accounts agree,
+ * confidence stays below what a critical interruption needs, and an unconfirmed
+ * claim leaves the map after a few hours instead of its category's lifetime.
+ */
+export const SOCIAL_ONLY_CONFIDENCE_CAP = 0.6;
+export const SOCIAL_MARKER_TTL_MS = 6 * HOUR;
+
+/** Every source of the event is a social post. */
+export const isSocialOnly = (event) =>
+  (event.lineages?.length ?? 0) > 0 &&
+  event.lineages.every((l) => l.source_type === 'social_claim');
 
 /** Marker fade covers the final quarter of the remaining display lifetime. */
 export const FADE_FRACTION = 0.25;

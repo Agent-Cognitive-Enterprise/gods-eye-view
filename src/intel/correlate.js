@@ -262,6 +262,13 @@ export function lineageFor(observation, priorObservations) {
   };
 }
 
+const publisherCount = (event) =>
+  new Set(
+    event.lineages
+      .filter((l) => l.source_type !== 'aggregator')
+      .map((l) => l.publisher),
+  ).size;
+
 const IMPACT_METRICS = [
   'deaths',
   'injured',
@@ -281,8 +288,13 @@ export function materialChanges(observation, event, lineage) {
   const independent = !event.lineages.some(
     (known) => known.lineage_key === lineage.lineage_key,
   );
+  // Posts about something already established add to the card, not to the
+  // attention: a wave of them must not keep lifting the camera cooldown.
+  const socialEcho =
+    observation.source_type === 'social_claim' &&
+    (event.official || publisherCount(event) >= 2);
   // An aggregator echo is not a new source (see scoring.independentLineages).
-  if (independent && observation.source_type !== 'aggregator')
+  if (independent && observation.source_type !== 'aggregator' && !socialEcho)
     reasons.push('new_independent_source');
   if (observation.official && !event.official)
     reasons.push('first_official_report');
@@ -303,6 +315,7 @@ export function materialChanges(observation, event, lineage) {
     if (Number.isFinite(m[key]) && m[key] > (e[key] ?? 0))
       reasons.push(`${key}_increased`);
   if (
+    !socialEcho &&
     Number.isFinite(m.severity_hint) &&
     m.severity_hint >= (e.severity_hint ?? 0) + 10
   )

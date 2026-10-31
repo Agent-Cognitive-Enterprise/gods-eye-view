@@ -103,6 +103,11 @@ export function createMemoryIntelStore() {
         link.event_id,
       );
     },
+    /** Blank a report's words; the record that it existed stays. */
+    redactObservation(observationId, patch) {
+      const held = observations.get(observationId);
+      if (held) Object.assign(held.observation, patch);
+    },
     saveRevision(revision) {
       const list = revisions.get(revision.event_id) ?? [];
       list.push(structuredClone(revision));

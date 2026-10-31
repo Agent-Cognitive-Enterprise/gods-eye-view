@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { clusterEvents } from '../../../src/intel/clustering.js';
 import { createIntelEngine } from '../../../src/intel/engine.js';
+import { fastStatus } from '../../../src/intel/fastStatus.js';
 import { createReplay } from '../../../src/intel/replay.js';
 import { PLACE_LABELS } from '../../../src/intel/proximity.js';
 import {
@@ -111,6 +112,7 @@ export function publicEvent(event) {
   return {
     ...rest,
     synthetic: event.providers?.includes('replay') ?? false,
+    fast_status: fastStatus(event),
     explanation: {
       attention: Object.entries(event.score_terms ?? {}).map(
         ([term, value]) => ({
@@ -148,6 +150,7 @@ export function createIntelService({
   log = (...args) => console.warn(...args),
   scenarios = {},
   llm = null,
+  onFeedBatch,
 } = {}) {
   const readSettings = () => {
     if (!settingsFile) return {};
@@ -176,6 +179,7 @@ export function createIntelService({
       fetchImpl,
       log,
       maxRecordAgeMs: RETENTION_DAYS * 24 * 3600_000,
+      onBatch: onFeedBatch,
     }),
   );
   let replay = null; // {world, startedAt, speed}

@@ -93,7 +93,8 @@ export function gdacsConnector({ url = GDACS_RSS } = {}) {
     id: 'gdacs-alerts',
     provider: 'gdacs',
     url,
-    intervalMs: 10 * 60_000,
+    // GDACS regenerates its feeds about every six minutes.
+    intervalMs: 6 * 60_000,
     staleAfterMs: 24 * 3600_000,
     license: 'CC BY 4.0 (European Union)',
     attribution: ATTRIBUTION,

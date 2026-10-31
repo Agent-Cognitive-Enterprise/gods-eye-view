@@ -77,6 +77,7 @@ export function createFeedRunner({
   // Records older than the store's retention would be archived on arrival and
   // pruned again, then re-ingested as "new" after every restart; skip them.
   maxRecordAgeMs = 90 * DAY,
+  onBatch,
 }) {
   const state = {
     disabled: !enabled,
@@ -172,9 +173,10 @@ export function createFeedRunner({
             (epochMs(r.occurred_at) ?? epochMs(r.published_at) ?? Infinity) >=
             cutoff,
         );
-        const outcome = fresh.length
-          ? ingest(fresh, { receivedAt: now() })
-          : [];
+        const receivedAt = now();
+        const outcome = fresh.length ? ingest(fresh, { receivedAt }) : [];
+        if (fresh.length)
+          onBatch?.({ id: connector.id, records: fresh, outcome, receivedAt });
         // The batch is stored: keep its validators and let the connector
         // mark what it consumed (product editions, export files).
         for (const [url, validator] of staged) validators.set(url, validator);

@@ -9,6 +9,8 @@ import {
   AUTOPILOT_DEFAULTS,
   CATEGORY_POLICY,
   SCORE_WEIGHTS,
+  SOCIAL_ONLY_CONFIDENCE_CAP,
+  isSocialOnly,
 } from './taxonomy.js';
 import { boostAttention, eventProximity } from './proximity.js';
 
@@ -86,6 +88,8 @@ const SOURCE_CONFIDENCE = Object.freeze({
   secondary_reporting: 0.4,
   analyst: 0.35,
   aggregator: 0.3,
+  // Below minimumCameraConfidence: one post is a marked claim, never a shot.
+  social_claim: 0.25,
   synthetic_fixture: 0.5,
 });
 
@@ -102,6 +106,8 @@ export function confidenceOf(event, verification = verificationOf(event)) {
     confidence = Math.max(confidence, Math.min(0.9, 0.6 + 0.08 * extra));
   if (verification === 'officially_reported')
     confidence = Math.max(confidence, 0.85);
+  if (isSocialOnly(event))
+    confidence = Math.min(confidence, SOCIAL_ONLY_CONFIDENCE_CAP);
   if (verification === 'disputed') confidence *= 0.5;
   if (event.location.geolocation_status === 'unresolved') confidence -= 0.05;
   if (!event.time_zone_known) confidence -= 0.02;
