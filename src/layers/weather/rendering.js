@@ -127,21 +127,24 @@ function createGlobeRendering({
           ? 'NOAA nowCOAST · NWS/OAR MRMS'
           : 'NOAA nowCOAST · NESDIS GOES / global satellite partners';
   }
-  function setCredit(frame, snapshot = frame.snapshot) {
-    const text = creditText(snapshot);
+  function setCredit(frame) {
+    const text = creditText(frame.creditSnapshot ?? frame.snapshot);
     if (frame.credit?.html === text) return false;
     frame.credit = new cesium.Credit(text, false);
     return true;
   }
   /**
    * Take the credit of a refreshed manifest of the same product. Each frame
-   * keeps the snapshot it was staged from, whose time and bounds still match.
+   * keeps the snapshot it was staged from, whose time and bounds still match,
+   * and remembers the refreshed one for its credit, including a frame that
+   * is still loading and takes its credit when installed.
    */
   function updateSnapshot(snapshot) {
     let changed = false;
     for (const frame of new Set([current, incoming, ...retiring])) {
       if (!frame || frame.product !== snapshot.product) continue;
-      if (frame.credit && setCredit(frame, snapshot)) changed = true;
+      frame.creditSnapshot = snapshot;
+      if (frame.credit && setCredit(frame)) changed = true;
     }
     if (changed) viewer.scene.requestRender();
   }
@@ -251,7 +254,11 @@ function createGlobeRendering({
         if (job && prefetchJob === job) prefetchJob = null;
       }
     },
-    async setFrame(snapshot, time, { signal, infrared = 'filtered' } = {}) {
+    async setFrame(
+      snapshot,
+      time,
+      { signal, infrared = 'filtered', creditSnapshot } = {},
+    ) {
       signal?.throwIfAborted();
       cancelPrefetch();
       rehome();
@@ -266,7 +273,7 @@ function createGlobeRendering({
         current.kind === kind &&
         current.infrared === infrared
       ) {
-        updateSnapshot(snapshot);
+        updateSnapshot(creditSnapshot ?? snapshot);
         return true;
       }
       lastError = null;
@@ -275,6 +282,7 @@ function createGlobeRendering({
       const global = snapshot.product === 'clouds';
       const frame = {
         snapshot,
+        creditSnapshot,
         time,
         infrared,
         mosaic: global
@@ -608,6 +616,8 @@ export function createWeatherRendering({
   let hidden = false;
   let shown = null;
   let restaging = null;
+  // The last refreshed manifest, so a frame shown after it keeps its credit.
+  let refreshed = null;
 
   // A host without imagery keeps the active renderer, which retains its frame.
   const wanted = () => {
@@ -635,11 +645,14 @@ export function createWeatherRendering({
       if (restaging !== frame) return;
       restaging = null;
       if (!ok) onChange();
-      else if (frame.latest && target === globe)
-        globe.updateSnapshot(frame.latest);
     };
+    // The restaged frame takes the newest refreshed credit; a refresh while
+    // it loads reaches it through the globe's own updateSnapshot.
     target
-      .setFrame(frame.snapshot, frame.time, { infrared: frame.infrared })
+      .setFrame(frame.snapshot, frame.time, {
+        infrared: frame.infrared,
+        ...(target === globe ? { creditSnapshot: shown?.latest } : {}),
+      })
       .then(settle, () => settle(false));
   }
   function switchHost() {
@@ -681,14 +694,27 @@ export function createWeatherRendering({
       switchHost();
       restaging = null;
       const target = active === 'shell' ? shellFor(snapshot.product) : globe;
+      const before = refreshed;
       const ok = await target.setFrame(snapshot, time, options);
-      if (ok)
-        shown = { snapshot, time, infrared: options.infrared ?? 'filtered' };
+      if (ok) {
+        // Keep a refresh that arrived while this frame loaded.
+        const latest =
+          refreshed !== before && refreshed?.product === snapshot.product
+            ? refreshed
+            : undefined;
+        shown = {
+          snapshot,
+          time,
+          infrared: options.infrared ?? 'filtered',
+          ...(latest ? { latest } : {}),
+        };
+      }
       return ok;
     },
     // The shown frame keeps its staged snapshot for a restage on another
     // host; only the refreshed credit is remembered and applied.
     updateSnapshot(snapshot) {
+      refreshed = snapshot;
       if (shown?.snapshot.product === snapshot.product)
         shown = { ...shown, latest: snapshot };
       globe.updateSnapshot(snapshot);
@@ -705,6 +731,7 @@ export function createWeatherRendering({
     clear() {
       restaging = null;
       shown = null;
+      refreshed = null;
       hidden = false;
       shell?.clear();
       shell = null;

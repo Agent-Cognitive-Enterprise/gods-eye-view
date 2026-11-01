@@ -805,6 +805,106 @@ test('a refreshed manifest leaves the shown snapshot for a host switch to restag
   rendering.clear();
 });
 
+test('a refresh during a host-switch restage keeps the newest credit', async () => {
+  const globe = globeViewer();
+  let host = { collection: globe.viewer.imageryLayers, kind: 'globe' };
+  const rendering = createWeatherRendering({
+    viewer: globe.viewer,
+    ...globe.options,
+    getHost: () => host,
+    createShell: ({ product }) => ({
+      product,
+      setAlpha() {},
+      setHidden() {},
+      rehome: () => false,
+      cancelPrefetch() {},
+      clear() {},
+      async setFrame() {
+        return true;
+      },
+    }),
+  });
+  const first = {
+    ...base,
+    product: 'lightning',
+    display: { credit: 'First credit' },
+  };
+  const shown = rendering.setFrame(first, times[0]);
+  await globe.settle();
+  assert.equal(await shown, true);
+  rendering.updateSnapshot({ ...first, display: { credit: 'Second credit' } });
+  host = { collection: {}, kind: 'tileset' };
+  assert.equal(rendering.rehome(), true);
+  await flush();
+  host = { collection: globe.viewer.imageryLayers, kind: 'globe' };
+  assert.equal(rendering.rehome(), true);
+  rendering.updateSnapshot({ ...first, display: { credit: 'Third credit' } });
+  await globe.settle();
+  assert.equal(globe.providers.length, 2);
+  assert.equal(creditOf(globe.providers), 'Third credit');
+  rendering.clear();
+});
+
+test('a refresh while a frame loads survives a later host switch', async () => {
+  const globe = globeViewer();
+  let host = { collection: globe.viewer.imageryLayers, kind: 'globe' };
+  const rendering = createWeatherRendering({
+    viewer: globe.viewer,
+    ...globe.options,
+    getHost: () => host,
+    createShell: ({ product }) => ({
+      product,
+      setAlpha() {},
+      setHidden() {},
+      rehome: () => false,
+      cancelPrefetch() {},
+      clear() {},
+      async setFrame() {
+        return true;
+      },
+    }),
+  });
+  const first = {
+    ...base,
+    product: 'lightning',
+    display: { credit: 'First credit' },
+  };
+  const shown = rendering.setFrame(first, times[0]);
+  rendering.updateSnapshot({ ...first, display: { credit: 'Second credit' } });
+  await globe.settle();
+  assert.equal(await shown, true);
+  assert.equal(creditOf(globe.providers), 'Second credit');
+  host = { collection: {}, kind: 'tileset' };
+  assert.equal(rendering.rehome(), true);
+  await flush();
+  host = { collection: globe.viewer.imageryLayers, kind: 'globe' };
+  assert.equal(rendering.rehome(), true);
+  await globe.settle();
+  assert.equal(globe.providers.length, 2);
+  assert.equal(creditOf(globe.providers), 'Second credit');
+  rendering.clear();
+});
+
+test('a refresh before a frame is installed gives it the newest credit', async () => {
+  for (const product of ['lightning', 'clouds']) {
+    const globe = globeViewer();
+    const rendering = createWeatherRendering({
+      viewer: globe.viewer,
+      ...globe.options,
+    });
+    const first = { ...base, product, display: { credit: 'First credit' } };
+    const shown = rendering.setFrame(first, times[1]);
+    rendering.updateSnapshot({
+      ...first,
+      display: { credit: 'Second credit' },
+    });
+    await globe.settle();
+    assert.equal(await shown, true);
+    assert.equal(creditOf(globe.providers), 'Second credit', product);
+    rendering.clear();
+  }
+});
+
 test('a layer refresh with the same latest frame updates the imagery credit', async (t) => {
   t.mock.method(Date, 'now', () => Date.parse(times[1]));
   const globe = globeViewer();
