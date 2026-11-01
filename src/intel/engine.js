@@ -18,10 +18,16 @@ import {
   textTokens,
 } from './evidence.js';
 import { lifecycleAt } from './lifecycle.js';
-import { ruleSeverity, scoreEvent } from './scoring.js';
-import { CATEGORY_POLICY } from './taxonomy.js';
+import { ruleSeverity, scoreEvent, verificationOf } from './scoring.js';
+import {
+  CATEGORY_POLICY,
+  isPostsOnly,
+  isPushReport,
+  isSocialOnly,
+} from './taxonomy.js';
 
 const MAX_TOKENS = 200;
+const WITHDRAWN_TEXT = 'Report withdrawn by its source';
 const MAX_HISTORY = 12;
 const PRECISION_RANK = [
   'unresolved',
@@ -102,8 +108,12 @@ function newEvent(observation, lineage) {
     ),
     status_hint: observation.status_hint,
     official: observation.official,
+    official_feed: observation.official && !isPushReport(observation),
     time_zone_known: observation.time_zone_known,
     occurred_at: observation.occurred_at ?? observationTime(observation),
+    // Matching needs a time; a card must still say when none was stated.
+    event_time_known: observation.occurred_at !== null,
+    first_published_at: observation.published_at,
     first_seen_at: observation.received_at,
     last_meaningful_update_at: at,
     last_seen_at: observation.received_at,
@@ -116,6 +126,13 @@ function newEvent(observation, lineage) {
   };
   event.severity_history.push(ruleSeverity(event));
   return event;
+}
+
+/** A report can arrive late; the first publication stays the earliest known. */
+function noteEarlierReport(event, observation) {
+  const at = observation.published_at;
+  if (at !== null && at < (event.first_published_at ?? Infinity))
+    event.first_published_at = at;
 }
 
 /** Apply a material observation to an event (returns a new object). */
@@ -169,7 +186,11 @@ function applyMaterial(event, observation, lineage, reasons) {
     );
   next.metric_sources ??= {};
   // Measured facts: counts only grow; the most authoritative source sets the rest.
-  const m = observation.metrics;
+  // A post's claims do not become measured facts of firmer reporting.
+  const m =
+    isPushReport(observation) && !isSocialOnly(event)
+      ? {}
+      : observation.metrics;
   for (const [key, value] of Object.entries(m)) {
     if (['deaths', 'injured', 'affected', 'displaced', 'arrests'].includes(key))
       next.metrics[key] = Math.max(next.metrics[key] ?? 0, value);
@@ -188,7 +209,10 @@ function applyMaterial(event, observation, lineage, reasons) {
   // retraction makes it disputed; their "resolved" or a status that would
   // revive a retracted/resolved event is ignored.
   if (observation.status_hint) {
-    const own = event.lineage_keys.includes(lineage.lineage_key);
+    // A near copy shares a lineage, but it is not the claim's own source.
+    const own =
+      event.lineage_keys.includes(lineage.lineage_key) &&
+      lineage.reason !== 'near_identical_text';
     const trusted = observation.official || own;
     const ended = (hint) => hint === 'retracted' || hint === 'resolved';
     if (trusted) next.status_hint = observation.status_hint;
@@ -200,6 +224,8 @@ function applyMaterial(event, observation, lineage, reasons) {
       next.status_hint = observation.status_hint;
   }
   if (observation.official) next.official = true;
+  if (observation.official && !isPushReport(observation))
+    next.official_feed = true;
   if (
     PRECISION_RANK.indexOf(observation.location.precision) >
       PRECISION_RANK.indexOf(next.location.precision) ||
@@ -229,6 +255,13 @@ function applyMaterial(event, observation, lineage, reasons) {
   next.severity_history.push(ruleSeverity(next));
   if (next.severity_history.length > MAX_HISTORY) next.severity_history.shift();
   next.last_change_reasons = reasons;
+  if (observation.occurred_at !== null) next.event_time_known = true;
+  noteEarlierReport(next, observation);
+  if (
+    !next.first_corroborated_at &&
+    ['corroborated', 'officially_reported'].includes(verificationOf(next))
+  )
+    next.first_corroborated_at = observation.received_at;
   return next;
 }
 
@@ -356,6 +389,7 @@ export function createIntelEngine({ store, now, settings = {} }) {
         observation.valid_until > (updated.valid_until ?? 0)
       )
         updated.valid_until = observation.valid_until;
+      noteEarlierReport(updated, observation);
       store.saveEvent(updated);
       store.saveObservation(observation, { ...link, material: false });
       return { status: 'non_material', event_id: parent.event_id, reasons: [] };
@@ -399,6 +433,7 @@ export function createIntelEngine({ store, now, settings = {} }) {
     const withVerification = { ...event, verification: score.verification };
     const life = lifecycleAt(withVerification, at, config.categoryOverrides);
     const enabled = config.categoryRelevance?.[event.category] !== 0;
+    const postsHeld = config.socialCameraEnabled !== true && isPostsOnly(event);
     return {
       ...event,
       severity: score.severity,
@@ -409,7 +444,8 @@ export function createIntelEngine({ store, now, settings = {} }) {
       attention_score: score.attention_score,
       base_attention_score: score.base_attention_score,
       proximity: score.proximity,
-      critical_qualified: score.critical_qualified,
+      critical_qualified: score.critical_qualified && !postsHeld,
+      posts_held_from_camera: postsHeld,
       critical_blocked: score.critical_blocked,
       evidence_factor: score.evidence_factor,
       model_applied: score.model_applied,
@@ -422,6 +458,7 @@ export function createIntelEngine({ store, now, settings = {} }) {
       expires_at: life.expires_at,
       camera_eligible:
         enabled &&
+        !postsHeld &&
         life.focus_eligible &&
         score.confidence >= (config.minimumCameraConfidence ?? 0) &&
         (event.location.lat !== null || event.location.region_code !== null),
@@ -445,6 +482,75 @@ export function createIntelEngine({ store, now, settings = {} }) {
       );
   }
 
+  /**
+   * A source took its report back (a deleted post). The report stops counting
+   * and its words are blanked; that it existed, and what the event looked like
+   * then, stay in the history. Other sources keep the event alive; with none
+   * left it is retracted. Attention is not renewed.
+   * @returns {?{event_id: string, retracted: boolean}}
+   */
+  function withdrawReport(eventId, { provider, sourceItemId }) {
+    const event = store.getEvent(eventId);
+    if (!event) return null;
+    const evidence = store.evidenceFor(eventId);
+    const isReport = ({ observation: o }) =>
+      o.provider === provider && o.source_item_id === sourceItemId;
+    const held = evidence.filter(isReport);
+    if (!held.length || held.every((e) => e.observation.withdrawn)) return null;
+    const lineageOf = (e) =>
+      e.link?.lineage?.lineage_key ?? e.observation.lineage_key;
+    const others = evidence.filter(
+      (e) => !isReport(e) && !e.observation.withdrawn,
+    );
+    const standing = new Set(others.map(lineageOf));
+    const gone = new Set(held.map(lineageOf).filter((k) => !standing.has(k)));
+    const next = structuredClone(event);
+    next.revision += 1;
+    next.lineages = next.lineages.filter((l) => !gone.has(l.lineage_key));
+    next.lineage_keys = next.lineage_keys.filter((k) => !gone.has(k));
+    // A post on the card without a lineage of its own still stands behind it.
+    const remaining = others.at(-1);
+    if (!next.lineages.length && remaining) {
+      const { observation: o } = remaining;
+      const key = lineageOf(remaining);
+      next.lineage_keys.push(key);
+      next.lineages.push({
+        lineage_key: key,
+        publisher: o.publisher,
+        provider: o.provider,
+        source_type: o.source_type,
+        official: o.official,
+        first_observation_id: o.observation_id,
+        first_seen_at: o.received_at,
+      });
+    }
+    if (!next.lineages.length) next.status_hint = 'retracted';
+    next.official = next.official_feed || next.lineages.some((l) => l.official);
+    // A new revision of the record, not news: the camera cooldown stands.
+    next.quiet_revisions = (next.quiet_revisions ?? 0) + 1;
+    const withdrawnTitles = new Set(held.map((e) => e.observation.title));
+    if (withdrawnTitles.has(next.title)) {
+      next.title = remaining?.observation.title ?? WITHDRAWN_TEXT;
+      next.summary = remaining?.observation.summary ?? '';
+    }
+    next.last_change_reasons = ['source_withdrew_report'];
+    store.saveEvent(next);
+    for (const { observation } of held)
+      store.redactObservation(observation.observation_id, {
+        title: WITHDRAWN_TEXT,
+        summary: '',
+        withdrawn: true,
+      });
+    store.redactRevisions(eventId, withdrawnTitles, WITHDRAWN_TEXT);
+    snapshotRevision(
+      next,
+      held[0].observation,
+      ['source_withdrew_report'],
+      'source_withdrawn',
+    );
+    return { event_id: eventId, retracted: !next.lineages.length };
+  }
+
   /** Attach a bounded, already-validated model assessment to an event. */
   function setAssessment(eventId, assessment) {
     const event = store.getEvent(eventId);
@@ -458,6 +564,7 @@ export function createIntelEngine({ store, now, settings = {} }) {
     evaluate,
     activeEvents,
     setAssessment,
+    withdrawReport,
     getEvent: (id, at = now()) => {
       const event = store.getEvent(id);
       return event ? evaluate(event, at) : null;

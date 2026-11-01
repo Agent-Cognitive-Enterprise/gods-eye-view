@@ -1,0 +1,44 @@
+{
+  "bluesky": {
+    "enabled": true,
+    "accounts": [
+      {
+        "did": "did:plc:5hz3bnmwhjqjhcthik4wt6li",
+        "label": "bnonews.com",
+        "tag": "community"
+      },
+      {
+        "did": "did:plc:jbvnehrrdqoulco4rf5gxg5r",
+        "label": "reuters.com",
+        "tag": "community"
+      },
+      {
+        "did": "did:plc:a67zdrt4nl2tv2qojpngogbq",
+        "label": "apnews.com",
+        "tag": "community"
+      },
+      {
+        "did": "did:plc:7v6ep3lckb5f2uaw62b4khev",
+        "label": "news.abc.net.au",
+        "tag": "community"
+      },
+      {
+        "did": "did:plc:2lofqead276vtc5647ye7sl2",
+        "label": "aljazeera.com",
+        "tag": "community"
+      },
+      {
+        "did": "did:plc:yazbevg3wkzp5llnzb44tqgh",
+        "label": "kyivindependent.com",
+        "tag": "community"
+      },
+      {
+        "did": "did:plc:uewxgchsjy4kmtu7dcxa77us",
+        "label": "bloomberg.com",
+        "tag": "community"
+      }
+    ]
+  },
+  "telegram": { "enabled": false, "channels": [] },
+  "rawRetentionDays": 14
+}

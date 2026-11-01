@@ -10,6 +10,7 @@ range geometry with no network dependency.
 | `marine.json` | `ne_10m_geography_marine_polys` (seas, gulfs, straits, bays, …) | 292 named |
 | `countries.json` | `ne_10m_admin_0_countries` (countries) | 256 |
 | `states_provinces.json` | `ne_10m_admin_1_states_provinces` (states, provinces and other first-level units) | 4,587 named |
+| `places.json` | `ne_10m_populated_places` and `ne_10m_admin_0_countries`, names and a label point only, built by `scripts/build-fast-gazetteer.mjs` for the Fast Intelligence gate | 6,883 cities, 245 countries |
 
 **Source:** Natural Earth 10m physical vectors, via the canonical
 [nvkelso/natural-earth-vector](https://github.com/nvkelso/natural-earth-vector)

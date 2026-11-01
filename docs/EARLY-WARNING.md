@@ -113,6 +113,13 @@ both the map layer and intel ingestion, so the repository is still watched once.
 9. **Retraction authority.** Only an official source or the claim's own
    lineage can retract; anyone else's "false" makes the event `disputed`.
 
+## Fast Intelligence
+
+Push sources in front of this engine, off unless `GEV_FAST_FEEDS=1`: see
+[FAST_FEEDS_IMPLEMENTATION.md](FAST_FEEDS_IMPLEMENTATION.md). Their reports are
+ordinary observations of the `social_claim` type and reach the camera only under
+the rules above.
+
 ## Autopilot (Phase 2)
 
 The AUTOPILOT panel sits at the top of the right rail and stays hidden unless

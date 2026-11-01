@@ -88,12 +88,15 @@ export function gdacsItemToRecord(item) {
   };
 }
 
-export function gdacsConnector({ url = GDACS_RSS } = {}) {
+export function gdacsConnector({
+  url = GDACS_RSS,
+  intervalMs = 10 * 60_000,
+} = {}) {
   return {
     id: 'gdacs-alerts',
     provider: 'gdacs',
     url,
-    intervalMs: 10 * 60_000,
+    intervalMs,
     staleAfterMs: 24 * 3600_000,
     license: 'CC BY 4.0 (European Union)',
     attribution: ATTRIBUTION,

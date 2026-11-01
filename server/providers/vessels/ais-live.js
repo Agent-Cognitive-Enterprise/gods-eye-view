@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import { createAisStreamAdapter } from '../../../src/data/aisStreamAdapter.js';
 import { parseSilenceTimeoutEnv } from '../../../src/data/aisWatchdog.js';
 import { clampInt } from '../common/query.js';
+import { aisConnectionAllowed, aisLeaseRefusal } from '../isolation.js';
 import {
   AISSTREAM_CACHE_MAX,
   AISSTREAM_STALE_MS,
@@ -302,7 +303,10 @@ function ensureAisStreamConnection() {
   }
   const policy = aisWatchdogPolicy();
   adapter.ensure({
-    hasKey: Boolean(process.env.AISSTREAM_API_KEY),
+    // One connection per key on this machine (fork): see isolation.js.
+    hasKey:
+      Boolean(process.env.AISSTREAM_API_KEY) &&
+      aisConnectionAllowed(aisKeyFingerprint()),
     hasTransport: Boolean(aisWebSocketImpl()),
     silenceWatch: policy.silenceWatch,
     keyFingerprint: aisKeyFingerprint(),
@@ -311,6 +315,9 @@ function ensureAisStreamConnection() {
 /** Status metadata for /api/vessels, safe to call before the first connect. */
 function aisStreamStatusSnapshot() {
   const snapshot = _aisAdapter ? _aisAdapter.snapshot() : null;
+  const refused = aisLeaseRefusal(aisKeyFingerprint());
+  if (snapshot && refused)
+    return { ...snapshot, status: 'lease-held', error: refused };
   if (snapshot) return snapshot;
   return {
     status: process.env.AISSTREAM_API_KEY ? 'idle' : 'missing-key',

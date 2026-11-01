@@ -6,7 +6,12 @@
 // The last meaningful update and any authoritative validity/closure drive
 // the state; feed poll times and reposts never do. Pure and portable.
 
-import { CATEGORY_POLICY, FADE_FRACTION } from './taxonomy.js';
+import {
+  CATEGORY_POLICY,
+  FADE_FRACTION,
+  SOCIAL_MARKER_TTL_MS,
+  isSocialOnly,
+} from './taxonomy.js';
 
 /** Unbounded categories (economic stress) still leave the map after this without news. */
 export const OPEN_ENDED_TTL_MS = 30 * 24 * 3600_000;
@@ -23,6 +28,8 @@ export function markerTtlMs(event, overrides = {}) {
     ...overrides[event.category],
   };
   let ttl = policy.markerTtlMs ?? OPEN_ENDED_TTL_MS;
+  if (event.verification === 'unverified' && isSocialOnly(event))
+    ttl = Math.min(ttl, SOCIAL_MARKER_TTL_MS);
   // An authoritative expiry caps the marker, but only while it is still
   // ahead of the latest meaningful update: news after the stated expiry
   // (casualties reported once a warning lapsed) keeps the category lifetime.

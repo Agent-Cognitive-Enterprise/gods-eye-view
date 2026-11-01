@@ -21,6 +21,12 @@ import { usgsConnector } from './connectors/usgs.js';
 import { whoConnector } from './connectors/who.js';
 import { worldBankConnector } from './connectors/worldBank.js';
 import { airSeaConnector } from './connectors/airsea.js';
+import {
+  createFastFeeds,
+  createPolledObserver,
+  fastFeedsEnabled,
+} from '../fastfeeds/index.js';
+import { createLatencyBook } from '../fastfeeds/latency.js';
 import { createLocalLlm } from './localLlm.js';
 import { createIntelService } from './service.js';
 
@@ -45,11 +51,18 @@ export function intelConnectors({
   if (env.GEV_INTEL_OFFLINE === '1') return [];
   const on = (name) => env[`GEV_INTEL_${name}`] !== '0';
   const connectors = [];
+  // Fast Intelligence polls closer to what these sources allow: NWS asks for at
+  // most one request in 30 s, GDACS regenerates about every six minutes.
+  const fast = fastFeedsEnabled(env);
   if (on('USGS')) connectors.push(usgsConnector());
-  if (on('GDACS')) connectors.push(gdacsConnector());
+  if (on('GDACS'))
+    connectors.push(
+      gdacsConnector(fast ? { intervalMs: 6 * 60_000 } : undefined),
+    );
   if (on('TSUNAMI'))
     connectors.push(tsunamiConnector('ptwc'), tsunamiConnector('ntwc'));
-  if (on('NWS')) connectors.push(nwsConnector());
+  if (on('NWS'))
+    connectors.push(nwsConnector(fast ? { intervalMs: 60_000 } : undefined));
   if (on('EONET')) connectors.push(eonetConnector());
   if (on('WHO')) connectors.push(whoConnector());
   if (on('WORLDBANK')) connectors.push(worldBankConnector());
@@ -148,6 +161,7 @@ export function intelProxy({
 } = {}) {
   const enabled = intelEnabled(env) || Boolean(supplied);
   let service = supplied ?? null;
+  let fast = null;
   const ensure = () => {
     if (service || !enabled) return service;
     const root = process.cwd();
@@ -157,17 +171,31 @@ export function intelProxy({
       ? path.dirname(path.resolve(env.GEV_INTEL_DB))
       : path.join(root, '.gev-cache', 'intel');
     const connectors = intelConnectors({ env, ghostMapsWatcher, airSeaHub });
+    // Loopback-only local model; GEV_LLM_DISABLED=1 keeps scoring rule-based.
+    const llm =
+      env.GEV_LLM_DISABLED === '1'
+        ? null
+        : createLocalLlm({ baseUrl: env.GEV_LLM_BASE_URL });
+    const latency = createLatencyBook();
     service = createIntelService({
       storeFile: env.GEV_INTEL_DB || path.join(dir, 'intel.sqlite'),
       settingsFile: path.join(dir, 'settings.json'),
       connectors,
       scenarios: loadScenarios(),
-      // Loopback-only local model; GEV_LLM_DISABLED=1 keeps scoring rule-based.
-      llm:
-        env.GEV_LLM_DISABLED === '1'
-          ? null
-          : createLocalLlm({ baseUrl: env.GEV_LLM_BASE_URL }),
+      llm,
+      onFeedBatch: createPolledObserver(latency),
     });
+    // Push sources in front of the same engine (fork feature, GEV_FAST_FEEDS=1).
+    if (fastFeedsEnabled(env))
+      fast = createFastFeeds({
+        engine: service.engine,
+        store: service.store,
+        llm,
+        dir,
+        env,
+        latency,
+        feeds: () => service.feeds(),
+      });
     return service;
   };
 
@@ -207,6 +235,7 @@ export function intelProxy({
         const list = svc.listEvents(worldName, {
           minScore: Number(url.searchParams.get('min_score')) || 0,
         });
+        if (list && worldName === 'live') fast?.noteShown(list.events);
         return list
           ? json(res, 200, list)
           : json(res, 404, { error: 'no_replay' });
@@ -242,6 +271,21 @@ export function intelProxy({
       if (route === '/settings') return json(res, 200, svc.settings());
       if (route === '/replay')
         return json(res, 200, { replay: svc.replayStatus() });
+      if (route === '/fast/status')
+        return json(res, 200, fast?.status() ?? { enabled: false });
+      if (fast && route === '/fast/settings')
+        return json(res, 200, fast.settings());
+      if (fast && route === '/fast/reports')
+        return json(res, 200, {
+          reports: fast.reports(Number(url.searchParams.get('limit')) || 50),
+        });
+      const timeline = /^\/fast\/events\/(evt_[0-9a-f]{1,32})$/.exec(route);
+      if (fast && timeline) {
+        const found = fast.timeline(timeline[1]);
+        return found
+          ? json(res, 200, found)
+          : json(res, 404, { error: 'unknown_event' });
+      }
       return json(res, 404, { error: 'unknown_route' });
     }
 
@@ -263,6 +307,14 @@ export function intelProxy({
     if (route === '/replay' && req.method === 'DELETE') {
       svc.stopReplay();
       return json(res, 200, { replay: null });
+    }
+    if (fast && route === '/fast/settings' && req.method === 'PUT')
+      return json(res, 200, fast.updateSettings(input));
+    if (fast && route === '/fast/resolve' && req.method === 'POST') {
+      const found = await fast.resolveHandle(input.handle);
+      return found
+        ? json(res, 200, found)
+        : json(res, 404, { error: 'unknown_account' });
     }
     if (route === '/ai/assess' && req.method === 'POST') {
       const outcome = await svc.assessNow();
@@ -310,7 +362,11 @@ export function intelProxy({
     server.middlewares.use('/api/intel', handler);
     if (!enabled) return;
     ensure().start();
-    server.httpServer?.once('close', () => service?.close());
+    fast?.start();
+    server.httpServer?.once('close', async () => {
+      await fast?.close();
+      service?.close();
+    });
   };
 
   return {

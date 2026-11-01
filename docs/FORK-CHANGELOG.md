@@ -7,6 +7,21 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **Fast Intelligence (branch `feature/fast-intelligence-feed`, off unless
+  `GEV_FAST_FEEDS=1`).** Public posts reach the engine within seconds of being
+  published, as claims and never as facts. Bluesky Jetstream v2 from listed
+  accounts, a durable bounded queue with the
+  stream cursor stored alongside, a rule gate in English, Russian and Ukrainian,
+  an offline gazetteer, and Qwen for places the gate cannot read. A post alone is
+  below camera confidence, any number of accounts stays below a critical
+  interruption, a wave of posts renews nothing, and a deleted post stops counting
+  with its words removed. The FAST INTELLIGENCE panel shows first reports as
+  hollow rings, every clock of a report, source health in words, and delay
+  against target. Posts alone never move the camera until `socialCameraEnabled`
+  is set. Telegram stays disabled pending a library review. A staging launcher
+  and a machine-wide AIS lease keep a second instance off the single connection.
+  NWS now polls every minute and GDACS every six. See
+  `docs/FAST_FEEDS_IMPLEMENTATION.md`.
 - **Auto-hide fix.** The bottom controls stopped hiding once the app had more
   than eight languages: the language search field that appears then always
   says `aria-expanded="true"`, and that was read as an open menu. Only controls

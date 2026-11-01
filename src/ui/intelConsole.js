@@ -22,6 +22,7 @@ import {
 } from '../i18n/index.js';
 import { greatCircleKm } from '../geoDistance.js';
 import { createIntelClient } from '../intel/client.js';
+import { applyFastView, isFastEvent } from '../intel/fastView.js';
 import {
   frameCluster,
   GLOBAL_VIEW_HEIGHT,
@@ -34,6 +35,7 @@ import {
   stepScheduler,
 } from '../intel/scheduler.js';
 import { wrapCardText } from '../layers/ghostMaps/records.js';
+import { createFastIntelPanel } from './fastIntelPanel.js';
 import { formatQuantity } from './unitLabels.js';
 import { createSpeechPlayer } from '../voice/localAudio.js';
 
@@ -128,6 +130,11 @@ const VERIFICATION_LABELS = Object.freeze({
   disputed: msg('DISPUTED'),
   retracted: msg('RETRACTED'),
   resolved: msg('RESOLVED'),
+});
+// A claim from a push source reads as what it is on every badge.
+const FAST_LABELS = Object.freeze({
+  provisional: msg('FIRST REPORT'),
+  contested: msg('CONTESTED'),
 });
 const FEED_LABELS = Object.freeze({
   'usgs-earthquakes': msg('USGS earthquakes'),
@@ -297,6 +304,9 @@ export function createIntelConsole({
   let enabled = false;
   let world = 'live';
   let data = { events: [], clusters: [], now: now() };
+  // Everything the server sent; `data` is what the Fast Intelligence view allows.
+  let received = data;
+  let fastPanel = null;
   let feeds = [];
   let ai = null;
   // Narration (local text-to-speech): offered only when this server has it.
@@ -467,6 +477,19 @@ export function createIntelConsole({
 
   const eventsById = () => new Map(data.events.map((e) => [e.event_id, e]));
 
+  /** The badge word for an event: a push-source claim says so. */
+  const verificationLabel = (event) =>
+    t(
+      (isFastEvent(event) && FAST_LABELS[event.fast_status]) ||
+        (VERIFICATION_LABELS[event.verification] ?? msg('UNVERIFIED')),
+    );
+
+  function applyView() {
+    const view = fastPanel?.view();
+    data = view ? applyFastView(received, view, now()) : received;
+    fastPanel?.update(received.events);
+  }
+
   function renderMode() {
     const mode = scheduler.mode;
     ui.modeButton.textContent =
@@ -624,12 +647,7 @@ export function createIntelConsole({
         ),
       );
       const badges = el(documentRef, 'span', 'intel-badges');
-      badges.append(
-        badge(
-          t(VERIFICATION_LABELS[event.verification] ?? msg('UNVERIFIED')),
-          `v-${event.verification}`,
-        ),
-      );
+      badges.append(badge(verificationLabel(event), `v-${event.verification}`));
       if (event.synthetic) badges.append(badge(t('DRILL'), 'v-drill'));
       if (event.model_applied) badges.append(badge(t('AI'), 'v-ai'));
       if (event.escalation === 'increasing')
@@ -1047,6 +1065,11 @@ export function createIntelConsole({
         CATEGORY_COLORS[event.category] ?? '#cccccc',
       );
       const focused = scheduler.current?.eventIds.includes(event.event_id);
+      // An unconfirmed claim is a hollow ring, never a solid marker.
+      const hollow =
+        isFastEvent(event) &&
+        (event.fast_status === 'provisional' ||
+          event.fast_status === 'contested');
       collection.add({
         id: `${PICK_PREFIX}${event.event_id}`,
         position: Cesium.Cartesian3.fromDegrees(
@@ -1054,15 +1077,18 @@ export function createIntelConsole({
           event.location.lat,
           500,
         ),
-        color: color.withAlpha(Math.max(0.15, event.opacity ?? 1)),
+        color: hollow
+          ? color.withAlpha(0.08)
+          : color.withAlpha(Math.max(0.15, event.opacity ?? 1)),
         pixelSize:
           7 + Math.round((event.attention_score / 100) * 9) + (focused ? 4 : 0),
-        outlineColor:
-          event.verification === 'officially_reported' ||
-          event.verification === 'corroborated'
+        outlineColor: hollow
+          ? color.withAlpha(0.8 * (event.opacity ?? 1))
+          : event.verification === 'officially_reported' ||
+              event.verification === 'corroborated'
             ? Cesium.Color.WHITE.withAlpha(event.opacity ?? 1)
             : Cesium.Color.BLACK.withAlpha(0.6 * (event.opacity ?? 1)),
-        outlineWidth: focused ? 3 : 1.5,
+        outlineWidth: focused || hollow ? 3 : 1.5,
       });
     }
     const labels = located.slice(0, MAX_LABELS).map((event, index) => ({
@@ -1080,10 +1106,7 @@ export function createIntelConsole({
           80,
         ),
       details: [
-        [
-          t(VERIFICATION_LABELS[event.verification] ?? msg('UNVERIFIED')),
-          event.synthetic ? t('DRILL') : null,
-        ]
+        [verificationLabel(event), event.synthetic ? t('DRILL') : null]
           .filter(Boolean)
           .join(' · '),
       ],
@@ -1466,6 +1489,12 @@ export function createIntelConsole({
     const at = data.now ?? now();
     const parts = [];
     if (event.synthetic) parts.push(t('Drill.'));
+    if (isFastEvent(event) && !event.official)
+      parts.push(
+        t(
+          'Public posts allege the following; independent confirmation is pending.',
+        ),
+      );
     parts.push(
       `${t(CATEGORY_LABELS[event.category] ?? msg('Event'))}: ${displayTitle(event).text}.`,
     );
@@ -1834,7 +1863,8 @@ export function createIntelConsole({
       // A slower response for another world, or an older request, must not
       // overwrite what is now on screen (e.g. live data landing after DEMO).
       if (requested !== world || generation !== refreshGeneration) return;
-      data = events;
+      received = events;
+      applyView();
       feeds = feedList.feeds;
       ai = aiStatus;
     } catch (error) {
@@ -1895,6 +1925,19 @@ export function createIntelConsole({
     renderSettings();
     panel.hidden = false;
     if (feedsPanel) feedsPanel.hidden = false;
+    fastPanel = createFastIntelPanel({
+      documentRef,
+      client,
+      storage,
+      now,
+      onSelect: (id) => selectEvent(id, { fly: true }),
+      onViewChange: () => {
+        applyView();
+        render();
+      },
+    });
+    if (!(await fastPanel.start())) fastPanel = null;
+    if (destroyed) return;
     mountTopButton();
     unsubscribeHandoff =
       navigation.subscribeCameraHandoff?.(onHandoff) ?? (() => {});
@@ -1957,6 +2000,7 @@ export function createIntelConsole({
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      fastPanel?.destroy();
       cancelFlights();
       if (bufferingSaved && viewer.scene?.globe)
         Object.assign(viewer.scene.globe, bufferingSaved);
