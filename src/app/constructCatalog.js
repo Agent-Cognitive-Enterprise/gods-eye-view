@@ -132,6 +132,7 @@ export function createApplicationCatalog({
         }),
         createApplicationGnssIntegrity({
           source: sources['gnss-integrity'],
+          windowMs: sources['gnss-integrity'].windowMs,
         }),
         ...createApplicationTrafficDensity({ source: sources['air-sea'] }),
         createApplicationGhostMaps({ source: sources['s2-ghostmaps'] }),
