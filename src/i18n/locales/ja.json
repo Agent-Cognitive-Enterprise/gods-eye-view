@@ -1182,6 +1182,8 @@
   "Contiguous US · gaps ≠ no rain": "米国本土 · 欠測 ≠ 降水なし",
   "Americas + Pacific · not individual strikes": "南北アメリカ + 太平洋 · 個々の落雷ではありません",
   "Color: strikes/km²/min ×10³": "色：落雷数/km²/分 ×10³",
+  "Color: {units}": "色：{units}",
+  "RADAR · {units}": "レーダー · {units}",
   "60°S–60°N · typically 2–3 h delayed": "60°S–60°N · 通常2–3時間遅れ",
   "North America · infrared imagery": "北米 · 赤外画像",
   "Reduced motion · history playback unavailable": "動きを減らす設定 · 履歴再生は利用不可",

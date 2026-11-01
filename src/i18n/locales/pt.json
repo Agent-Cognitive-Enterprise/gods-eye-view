@@ -1212,6 +1212,8 @@
   "Contiguous US · gaps ≠ no rain": "EUA contíguos · lacunas ≠ sem chuva",
   "Americas + Pacific · not individual strikes": "Américas + Pacífico · não são raios individuais",
   "Color: strikes/km²/min ×10³": "Cor: raios/km²/min ×10³",
+  "Color: {units}": "Cor: {units}",
+  "RADAR · {units}": "RADAR · {units}",
   "60°S–60°N · typically 2–3 h delayed": "60°S–60°N · normalmente com 2–3 h de atraso",
   "North America · infrared imagery": "América do Norte · imagens infravermelhas",
   "Reduced motion · history playback unavailable": "Movimento reduzido · reprodução do histórico indisponível",

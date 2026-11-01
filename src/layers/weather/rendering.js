@@ -3,6 +3,7 @@ import { orderWeatherImagery } from './imageryOrder.js';
 import { imageryHostStatus } from './imageryHost.js';
 import { createRasterTileProvider } from './rasterTiles.js';
 import { createWeatherShell } from './shellRendering.js';
+import { weatherDisplay, escapeCreditText } from './display.js';
 import { msg } from '../../i18n/index.js';
 import { readResponseBytesCapped } from '../../sources/httpBody.js';
 import {
@@ -116,6 +117,35 @@ function createGlobeRendering({
     return urls;
   }
 
+  function creditText(snapshot) {
+    const sourceCredit = weatherDisplay(snapshot).credit;
+    return sourceCredit !== undefined
+      ? escapeCreditText(sourceCredit)
+      : snapshot.product === 'lightning'
+        ? 'NOAA/NWS lightning density · derived from Vaisala NLDN/GLD360'
+        : snapshot.product === 'radar'
+          ? 'NOAA nowCOAST · NWS/OAR MRMS'
+          : 'NOAA nowCOAST · NESDIS GOES / global satellite partners';
+  }
+  function setCredit(frame, snapshot = frame.snapshot) {
+    const text = creditText(snapshot);
+    if (frame.credit?.html === text) return false;
+    frame.credit = new cesium.Credit(text, false);
+    return true;
+  }
+  /**
+   * Take the credit of a refreshed manifest of the same product. Each frame
+   * keeps the snapshot it was staged from, whose time and bounds still match.
+   */
+  function updateSnapshot(snapshot) {
+    let changed = false;
+    for (const frame of new Set([current, incoming, ...retiring])) {
+      if (!frame || frame.product !== snapshot.product) continue;
+      if (frame.credit && setCredit(frame, snapshot)) changed = true;
+    }
+    if (changed) viewer.scene.requestRender();
+  }
+
   function remove(frame) {
     if (!frame) return;
     frame.closed = true;
@@ -180,6 +210,7 @@ function createGlobeRendering({
   return {
     rehome,
     cancelPrefetch,
+    updateSnapshot,
     async prefetch(snapshot, time, { infrared = 'filtered' } = {}) {
       let job;
       try {
@@ -234,8 +265,10 @@ function createGlobeRendering({
         current.product === snapshot.product &&
         current.kind === kind &&
         current.infrared === infrared
-      )
+      ) {
+        updateSnapshot(snapshot);
         return true;
+      }
       lastError = null;
       const { west, south, east, north } = snapshot.bounds;
       const rectangle = cesium.Rectangle.fromDegrees(west, south, east, north);
@@ -342,14 +375,8 @@ function createGlobeRendering({
               }
             : undefined,
         );
-        const credit = new cesium.Credit(
-          snapshot.product === 'lightning'
-            ? 'NOAA/NWS lightning density · derived from Vaisala NLDN/GLD360'
-            : snapshot.product === 'radar'
-              ? 'NOAA nowCOAST · NWS/OAR MRMS'
-              : 'NOAA nowCOAST · NESDIS GOES / global satellite partners',
-          false,
-        );
+        setCredit(frame);
+        const credit = frame.credit;
         const provider = global
           ? createRasterTileProvider({
               cesium,
@@ -373,6 +400,13 @@ function createGlobeRendering({
               enablePickFeatures: false,
               credit,
             });
+        // Cesium reads a provider's credit every frame; a refreshed manifest
+        // can replace it without restaging the imagery.
+        Object.defineProperty(provider, 'credit', {
+          configurable: true,
+          enumerable: true,
+          get: () => frame.credit,
+        });
         const requestImage = provider.requestImage.bind(provider);
         provider.requestImage = (x, y, level, request) => {
           if (frame.closed) return undefined;
@@ -601,6 +635,8 @@ export function createWeatherRendering({
       if (restaging !== frame) return;
       restaging = null;
       if (!ok) onChange();
+      else if (frame.latest && target === globe)
+        globe.updateSnapshot(frame.latest);
     };
     target
       .setFrame(frame.snapshot, frame.time, { infrared: frame.infrared })
@@ -649,6 +685,13 @@ export function createWeatherRendering({
       if (ok)
         shown = { snapshot, time, infrared: options.infrared ?? 'filtered' };
       return ok;
+    },
+    // The shown frame keeps its staged snapshot for a restage on another
+    // host; only the refreshed credit is remembered and applied.
+    updateSnapshot(snapshot) {
+      if (shown?.snapshot.product === snapshot.product)
+        shown = { ...shown, latest: snapshot };
+      globe.updateSnapshot(snapshot);
     },
     setHidden(value) {
       hidden = Boolean(value);
