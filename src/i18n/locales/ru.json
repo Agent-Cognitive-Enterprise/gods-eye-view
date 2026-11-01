@@ -1278,6 +1278,8 @@
   "Contiguous US · gaps ≠ no rain": "Континентальные США · пробелы ≠ нет дождя",
   "Americas + Pacific · not individual strikes": "Америка + Тихий океан · не отдельные разряды",
   "Color: strikes/km²/min ×10³": "Цвет: разрядов/км²/мин ×10³",
+  "Color: {units}": "Цвет: {units}",
+  "RADAR · {units}": "РАДАР · {units}",
   "60°S–60°N · typically 2–3 h delayed": "60° ю. ш.–60° с. ш. · обычно задержка 2–3 ч",
   "North America · infrared imagery": "Северная Америка · ИК-снимки",
   "Reduced motion · history playback unavailable": "Уменьшение движения · воспроизведение истории недоступно",

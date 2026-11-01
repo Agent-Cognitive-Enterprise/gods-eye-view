@@ -1229,6 +1229,8 @@
   "Contiguous US · gaps ≠ no rain": "48 суміжних штатів США · прогалини ≠ немає дощу",
   "Americas + Pacific · not individual strikes": "Америка + Тихий океан · не окремі розряди",
   "Color: strikes/km²/min ×10³": "Колір: розрядів/км²/хв ×10³",
+  "Color: {units}": "Колір: {units}",
+  "RADAR · {units}": "РАДАР · {units}",
   "60°S–60°N · typically 2–3 h delayed": "60° пд. ш.–60° пн. ш. · зазвичай затримка 2–3 год",
   "North America · infrared imagery": "Північна Америка · ІЧ-знімки",
   "Reduced motion · history playback unavailable": "Зменшення руху · відтворення історії недоступне",
