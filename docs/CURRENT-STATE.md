@@ -475,6 +475,33 @@ not worldwide detections; units are strikes/km²/min ×10³. It is neither raw G
 flashes nor a live strike counter. Weather imagery orders scalar context below
 satellite, radar and lightning consistently across enable and history order.
 
+A weather source can describe its own products (credit, units, coverage,
+legend) through an optional `display` object in each product manifest:
+`source` (≤60 characters, the row's source name), `credit` (≤200, the imagery
+credit in Data attribution, shown as plain text and updated when a refreshed
+manifest changes it), `units` (≤40), `coverage` (≤48, the coverage badge and
+info line), `info` (≤600, the info tooltip), `legend` (2–16 `{ label, color }`
+stops; label a plain decimal number or text, at most 16 characters either way,
+a number reading back exactly as the legend shows it: within ±2^53−1, with
+no leading zeros and no digits lost to rounding; color `#rrggbb`) and `extent`
+(`{ west, south, east, north }` degrees, non-empty; west greater than east
+crosses the antimeridian; used for coverage navigation and the
+outside-coverage status). `units` and `legend` describe one scale and
+apply only together: if either is absent or invalid, both keep the built-in
+values, and the radar info heading names the units in use. Text must be
+single-line, without control characters (U+0000–U+001F, U+007F–U+009F), line
+or paragraph separators, or invisible and format characters: soft hyphen
+(U+00AD), combining grapheme joiner (U+034F), Arabic letter mark (U+061C),
+Mongolian vowel separator (U+180E), zero-width and direction marks
+(U+200B–U+200F), bidi embedding and override (U+202A–U+202E), word joiner,
+invisible operators and bidi isolates (U+2060–U+2069), variation selectors
+(U+FE00–U+FE0F), byte-order mark (U+FEFF) and tag characters
+(U+E0000–U+E007F). Each other field is validated on its own; an absent or
+invalid field keeps the built-in value, so the bundled nowCOAST manifests,
+which carry no `display`, look exactly as before. Accepted source
+and units text is source data and is shown untranslated. The static Data
+attribution entries remain the application's `credits` list.
+
 Cyclones combine fixed NHC/CPHC status and summary GIS endpoints through a bounded
 same-origin provider. The status endpoint lacks browser CORS; each installation
 fetches keyless public sources at runtime, with no centralized ingestion service.

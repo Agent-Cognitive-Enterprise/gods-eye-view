@@ -1156,6 +1156,8 @@
   "Contiguous US · gaps ≠ no rain": "美国本土 · 数据缺失 ≠ 无降雨",
   "Americas + Pacific · not individual strikes": "美洲与太平洋 · 非单次闪击",
   "Color: strikes/km²/min ×10³": "颜色：闪击次数/km²/分钟 ×10³",
+  "Color: {units}": "颜色：{units}",
+  "RADAR · {units}": "雷达 · {units}",
   "60°S–60°N · typically 2–3 h delayed": "60°S–60°N · 通常延迟 2–3 小时",
   "North America · infrared imagery": "北美洲 · 红外影像",
   "Reduced motion · history playback unavailable": "减弱动效 · 历史回放不可用",

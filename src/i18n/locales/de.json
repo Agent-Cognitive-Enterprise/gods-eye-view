@@ -1759,6 +1759,8 @@
   "Contiguous US · gaps ≠ no rain": "USA ohne Alaska/Hawaii · Lücken ≠ kein Regen",
   "Americas + Pacific · not individual strikes": "Amerika + Pazifik · keine Einzelblitze",
   "Color: strikes/km²/min ×10³": "Farbe: Blitze/km²/min ×10³",
+  "Color: {units}": "Farbe: {units}",
+  "RADAR · {units}": "RADAR · {units}",
   "60°S–60°N · typically 2–3 h delayed": "60°S–60°N · meist 2–3 h verzögert",
   "North America · infrared imagery": "Nordamerika · Infrarotbilder",
   "Reduced motion · history playback unavailable": "Reduzierte Bewegung · Verlaufswiedergabe nicht verfügbar",
