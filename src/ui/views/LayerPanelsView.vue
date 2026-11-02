@@ -10,6 +10,7 @@ import SceneDialog from './panels/SceneDialog.vue';
 import SceneOptions from './SceneOptions.vue';
 import SceneShotList from './SceneShotList.vue';
 import CctvPanel from './panels/CctvPanel.vue';
+import FastIntelPanel from './panels/FastIntelPanel.vue';
 import StreetLevelPanel from './panels/StreetLevelPanel.vue';
 import DrawControls from './panels/DrawControls.vue';
 import GeoImport from './panels/GeoImport.vue';
@@ -101,11 +102,8 @@ async function importChosen(event) {
     <div id="intel-feeds-body"></div>
   </RailPanel>
 
-  <!-- Fast Intelligence (fork feature): hidden unless /api/intel/fast/status reports it enabled. -->
-  <RailPanel id="fast-intel-panel" hidden start-collapsed :title="t('FAST INTELLIGENCE')">
-    <template #badge><span id="fast-intel-count" :aria-label="t('Push sources up')"></span></template>
-    <div id="fast-intel-body"></div>
-  </RailPanel>
+  <!-- Fast Intelligence (fork feature): hidden until its owner presents it. -->
+  <FastIntelPanel />
 
   </div>
   <Teleport to="body">
