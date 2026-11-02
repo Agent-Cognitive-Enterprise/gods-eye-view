@@ -13,9 +13,9 @@ const FIELDS = [
   'date.changed',
   'glide',
   'url',
-  'primary_country.iso3',
-  'primary_country.name',
-  'primary_country.location',
+  // Whole object: the API refuses primary_country.location with HTTP 400, but
+  // returns the coordinates when the parent field is asked for.
+  'primary_country',
   'primary_type.name',
   'country.iso3',
 ];

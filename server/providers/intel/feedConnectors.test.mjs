@@ -334,7 +334,36 @@ test('ReliefWeb waits for an app name; records map OCHA types', () => {
     feedStatus({ consecutive_failures: 0 }, off, NOW),
     'requires_credentials',
   );
-  assert.match(reliefWebUrl('my-app'), /appname=my-app/);
+  const url = new URL(reliefWebUrl('my-app'));
+  assert.equal(url.searchParams.get('appname'), 'my-app');
+  // The live API answers HTTP 400 for a field inside location; only the parent
+  // can be requested.
+  const fields = url.searchParams.getAll('fields[include][]');
+  assert.ok(fields.includes('primary_country'));
+  assert.ok(!fields.some((field) => field.includes('location')));
+  const located = valid(
+    reliefWebDisasterToRecord({
+      id: 52727,
+      fields: {
+        name: 'Congo: Floods - Oct 2026',
+        status: 'ongoing',
+        date: {
+          changed: '2026-10-26T06:01:08+00:00',
+          created: '2026-10-26T00:07:44+00:00',
+        },
+        url: 'https://reliefweb.int/taxonomy/term/52727',
+        primary_country: {
+          iso3: 'cog',
+          name: 'Congo',
+          location: { lat: -0.31, lon: 15.99 },
+        },
+        primary_type: { name: 'Flood' },
+      },
+    }),
+  );
+  assert.equal(located.location.lat, -0.31);
+  assert.equal(located.location.lon, 15.99);
+  assert.equal(located.location.region_code, 'CG');
   const o = valid(
     reliefWebDisasterToRecord({
       id: 52001,

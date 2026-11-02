@@ -7,6 +7,9 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **ReliefWeb works against the live API.** The first real request failed with
+  HTTP 400 because the API refuses `primary_country.location` as a field. The
+  connector now asks for the whole `primary_country`, which carries the coordinates.
 - **Fast Intelligence gate reads grammar.** It caught 9 of 27 real events in the
   live test, missing most conflict and protest reports. It now reads who did what to
   what, and stated tolls, in the main clause of a post. On an unseen period recall

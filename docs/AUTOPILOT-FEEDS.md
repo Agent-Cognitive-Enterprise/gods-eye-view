@@ -22,7 +22,7 @@ in [EARLY-WARNING.md](EARLY-WARNING.md#sources-registry). Status as of
 
 | Feed      | Why not active                                                                                                                       |
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| ReliefWeb | Its API requires an approved application name. Set `GEV_RELIEFWEB_APPNAME` once approved; tested on fixtures only.                   |
+| ReliefWeb | Its API requires an approved application name, set in `GEV_RELIEFWEB_APPNAME`. Polled live on 3 November 2026: 99 open disasters, of which only 3 stay active, because most were last updated too long ago to count as current. None was a camera target. |
 | GDELT     | Opt-in (`GEV_INTEL_GDELT=1`). Machine-coded news is frequently wrong; it is kept as unverified evidence and never confirms anything. Needs 10 articles, and at most 150 such events are listed at once, so it cannot push real events off the list. Alone it stays below camera confidence. |
 | ACLED     | Requires an account and its terms restrict redistribution; listed, never fetched.                                                    |
 

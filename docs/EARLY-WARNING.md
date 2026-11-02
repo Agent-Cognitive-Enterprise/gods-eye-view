@@ -523,7 +523,8 @@ injection text stored inert (`[DRILL]` rumour).
   territory (Natural Earth) and labelled approximate; markers there are not
   incident locations. A bare region code without a resolvable country stays
   queue-only.
-- ReliefWeb is fixture-tested only (no approved app name here); ACLED is not
+- ReliefWeb needs an approved app name, and most of its open disasters have
+  aged out of the event list by the time they are read; ACLED is not
   ingested. Multilingual RSS and The Wire are not integrated: no licence and
   terms review has been done for them.
 - Event titles are shown in their original language until Phase 3 translation.
