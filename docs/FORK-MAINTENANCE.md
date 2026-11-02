@@ -36,7 +36,8 @@ history is never rewritten.
 
 New files are fork-only (`src/intel/`, `server/providers/intel/`,
 `server/providers/fastfeeds/`, `src/ui/fastIntelPanel.js`,
-`server/providers/localVoice/`, `src/voice/local*.js`, `src/ui/intelConsole.js`,
+`src/ui/fastIntelPresentation.js`, `src/ui/stores/fastIntel.js`,
+`src/ui/views/panels/FastIntelPanel.vue`, `server/providers/localVoice/`, `src/voice/local*.js`, `src/ui/intelConsole.js`,
 `src/ui/styles/intel.css`, `src/ui/dockAutoHide.js`, `src/airsea/`,
 `src/layers/airsea/`, `server/providers/airsea/`, the fork docs and workflows). Upstream files the
 fork edits are the merge surface; keep these edits additive and small:

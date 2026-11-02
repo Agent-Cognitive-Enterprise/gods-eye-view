@@ -199,15 +199,22 @@ async function main() {
         })),
       LAYER_ID,
     );
+    const products = chips.filter((chip) => !chip.id.startsWith('window-'));
     record(
       'LIVE: one chip per product, defaults pressed',
-      chips.length === catalog.products.length &&
-        chips.every(
+      products.length === catalog.products.length &&
+        products.every(
           (chip) =>
             chip.active ===
             catalog.products.find((p) => p.id === chip.id)?.defaultOn,
         ),
       chips.map((c) => `${c.id}${c.active ? '*' : ''}`).join(' '),
+    );
+    // Fork: the event age selector shares the row and has one window pressed.
+    record(
+      'LIVE: one event age window is pressed',
+      chips.filter((chip) => chip.id.startsWith('window-') && chip.active)
+        .length === 1,
     );
     const stream = await page
       .waitForFunction(

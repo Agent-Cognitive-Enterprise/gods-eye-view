@@ -7,6 +7,12 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **Upstream's Vue UI merged.** AUTOPILOT, FEEDS and FAST INTELLIGENCE are panels on
+  the new rail, so each side shows one panel at a time. FAST INTELLIGENCE is a Vue view
+  over the `gev-fast-intel` store and follows a language switch without a reload;
+  `createFastIntelPanel` stays the only code that talks to the server. AUTOPILOT and
+  FEEDS keep their imperative bodies inside Vue shells. The fork's strings are in the
+  new Arabic catalog, machine translated and not yet reviewed by a speaker.
 - **The Autopilot loop keeps going.** An update that threw used to end the loop, so
   Autopilot stopped moving while still reading ON, with no Resume. Coming back to the
   tab during an update could start a second loop. Requests to the event service now
