@@ -36,6 +36,7 @@ import {
 } from '../intel/scheduler.js';
 import { wrapCardText } from '../layers/ghostMaps/records.js';
 import { createFastIntelPanel } from './fastIntelPanel.js';
+import { createTickLoop } from '../intel/tickLoop.js';
 import { formatQuantity } from './unitLabels.js';
 import { createSpeechPlayer } from '../voice/localAudio.js';
 
@@ -317,7 +318,6 @@ export function createIntelConsole({
   let settings = {};
   let lastFetchAt = 0;
   let refreshGeneration = 0;
-  let timer = null;
   let scheduler = createSchedulerState();
   let lastDecision = null;
   let selectedId = null;
@@ -1878,18 +1878,20 @@ export function createIntelConsole({
     render();
   }
 
-  async function tick() {
-    timer = null;
-    if (destroyed) return;
-    if (narration && globalThis.__gevVoiceCommands?.isActive?.())
-      stopNarration();
-    if (!documentRef.hidden) {
-      await refresh();
-      step();
-      render();
-    }
-    timer = setTimeout(tick, TICK_MS);
-  }
+  const tickLoop = createTickLoop({
+    intervalMs: TICK_MS,
+    onError: (error) => console.warn('[intel] update failed', error),
+    async run() {
+      if (destroyed) return;
+      if (narration && globalThis.__gevVoiceCommands?.isActive?.())
+        stopNarration();
+      if (!documentRef.hidden) {
+        await refresh();
+        step();
+        render();
+      }
+    },
+  });
 
   // ------------------------------------------------------------- lifetime
   const onHandoff = () => {
@@ -1897,7 +1899,7 @@ export function createIntelConsole({
   };
   const onCanvasInput = () => pause('manual_input');
   const onVisibility = () => {
-    if (!documentRef.hidden && enabled && !timer) tick();
+    if (!documentRef.hidden && enabled) tickLoop.start();
   };
   let unsubscribeHandoff = () => {};
 
@@ -1991,7 +1993,7 @@ export function createIntelConsole({
       if (scheduler.mode === 'auto') step();
     }
     render();
-    timer = setTimeout(tick, TICK_MS);
+    tickLoop.schedule();
   }
 
   start();
@@ -2006,7 +2008,7 @@ export function createIntelConsole({
         Object.assign(viewer.scene.globe, bufferingSaved);
       stopNarration();
       abort.abort();
-      clearTimeout(timer);
+      tickLoop.stop();
       unsubscribeHandoff();
       const canvas = viewer.scene?.canvas;
       for (const type of ['pointerdown', 'wheel'])

@@ -169,6 +169,14 @@ export const isSocialOnly = (event) => {
   );
 };
 
+/** Only aggregators stand behind the event, such as machine-coded news. */
+export const isAggregatorOnly = (event) => {
+  const lineages = event.lineages ?? [];
+  return (
+    lineages.length > 0 && lineages.every((l) => l.source_type === 'aggregator')
+  );
+};
+
 /** Marker fade covers the final quarter of the remaining display lifetime. */
 export const FADE_FRACTION = 0.25;
 

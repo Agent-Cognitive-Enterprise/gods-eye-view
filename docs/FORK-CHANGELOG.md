@@ -7,6 +7,12 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **The Autopilot loop keeps going.** An update that threw used to end the loop, so
+  Autopilot stopped moving while still reading ON, with no Resume. Coming back to the
+  tab during an update could start a second loop. Requests to the event service now
+  give up after 20 seconds instead of waiting for ever.
+- **No near-home lift for machine-coded news.** A GDELT item coded as fighting near
+  Sydney, from an article about an animal shelter fire, ranked first at 94.
 - **ReliefWeb works against the live API.** The first real request failed with
   HTTP 400 because the API refuses `primary_country.location` as a field. The
   connector now asks for the whole `primary_country`, which carries the coordinates.
