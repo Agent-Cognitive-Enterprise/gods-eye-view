@@ -155,6 +155,71 @@ test('gate: the vocabulary reaches events it used to miss', () => {
   assert.equal(gateReport('All 22 crew rescued off UAE coast').pass, true);
 });
 
+test('gate: grammar reaches reports that use no listed word', () => {
+  for (const text of [
+    'Drones struck two ships in the Black Sea off Bulgaria, sinking one',
+    'Houthi missiles reportedly struck a number of targets in Yemen',
+    'Russian strikes kill three, damage dozens of power facilities',
+    'Twelve migrants, including infant, drown as boats capsize off Greek islands',
+    'Nine people aboard a Learjet were killed when it crashed in Florida',
+    'Tens of thousands march in Lisbon over housing and living costs',
+    '25 rescued, two missing in Strait of Hormuz as four tankers strike mines',
+    'North Korea fires suspected ballistic missile, Japanese authorities say',
+    'Foreign national beaten to death by a mob in South Africa',
+    'Covered food market in Paris destroyed by violent fire',
+  ])
+    assert.equal(gateReport(text).pass, true, text);
+});
+
+test('gate: grammar reads what happened, not what it happened after', () => {
+  for (const text of [
+    'Delta pushes back Atlanta-Riyadh service after Riyadh airport attacks',
+    'Saudi stocks slide after attack on Riyadh airport',
+    'BP withdraws from Riyadh energy conference after airport attack',
+  ])
+    assert.equal(gateReport(text).pass, false, text);
+  // A listed word still counts wherever it is.
+  assert.equal(
+    gateReport('Rescuers search the rubble after a powerful earthquake struck')
+      .pass,
+    true,
+  );
+});
+
+test('gate: operator packs stay words, whatever else they carry', () => {
+  const rules = compileRules([
+    { category: 'civil_unrest', terms: ['ognuno'], grammar: ['\\bmarket\\b'] },
+  ]);
+  assert.equal(
+    gateReport('A market opened in town today', { rules }).reason,
+    'no_topic',
+  );
+});
+
+test('gate: a mention of a weapon or an attack is not an attack', () => {
+  for (const [text, reason] of [
+    ["Akhlaghi's experience centres on ballistic missiles", 'no_topic'],
+    ['Airbus tests Valkyrie drone in Europe, plans 2029 combat readiness', 'no_topic'],
+    ['The 16-year-old shooter who killed four was a former student', 'follow_up'],
+    ['Ukraine pauses strikes on Russian refineries after pressure', 'reaction'],
+    ['Two teenage boys dead in crash in north-east', 'routine'],
+    ['More than 50,000 people in Europe died this summer from heat', 'tally'],
+    ['Fire pollution killed more than 3,000 people, new study says', 'study'],
+    ['Algal bloom killed more than 8,000 sharks and rays', 'animal'],
+    ['Hundreds gather on the beach to pay tribute to a victim', 'ceremony'],
+  ])
+    assert.equal(gateReport(text).reason, reason, text);
+});
+
+test('gate: the Geological Survey is not a survey', () => {
+  assert.equal(
+    gateReport(
+      'A magnitude 6.1 earthquake hit Panama, according to the U.S. Geological Survey',
+    ).pass,
+    true,
+  );
+});
+
 test('gate: a topic with nothing happening is not a report', () => {
   const reason = (text) => gateReport(text).reason;
   assert.equal(

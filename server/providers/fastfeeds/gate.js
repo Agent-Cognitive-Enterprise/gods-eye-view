@@ -32,9 +32,22 @@ export function compileRules(packs = []) {
       ...rule,
       severity: Math.min(100, Math.max(0, Number(rule.severity) || 40)),
       pattern: compileTerms(rule.terms.map(String).slice(0, 200)),
+      // Packs only ever have words.
+      grammarPattern:
+        rule.grammar && !rule.fromPack
+          ? new RegExp(rule.grammar.join('|'), 'iu')
+          : null,
     }),
   );
 }
+
+/**
+ * The part of a post that says what happened. "Airline cancels flights after
+ * airport attack" reports the cancellation: what follows `after` is background,
+ * so grammar is not read there, while listed words still count anywhere.
+ */
+const BACKGROUND_CLAUSE = /\b(?:after|following|despite|amid|ahead of)\b/i;
+const mainClause = (text) => text.split(BACKGROUND_CLAUSE, 1)[0];
 
 const NOT_AN_EVENT_PATTERN = compileTerms(NOT_AN_EVENT);
 const DISPUTE_PATTERN = compileTerms(DISPUTE_TERMS);
@@ -72,8 +85,9 @@ export function gateReport(
   if (NOT_AN_EVENT_PATTERN.test(text))
     return { pass: false, reason: 'not_an_event', language: lang };
   let best = null;
+  const clause = mainClause(text);
   for (const rule of rules) {
-    const found = rule.pattern?.exec(text);
+    const found = rule.pattern?.exec(text) ?? rule.grammarPattern?.exec(clause);
     if (found && (!best || rule.severity > best.rule.severity))
       best = { rule, matched: found[0] };
   }

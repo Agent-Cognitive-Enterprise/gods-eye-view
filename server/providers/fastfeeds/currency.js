@@ -40,6 +40,19 @@ const HARD_FRAMES = Object.freeze({
     'років тому',
   ]),
   legal: compileTerms([
+    'jail',
+    'denies being',
+    'inquiry',
+    'parole',
+    'execution',
+    'juror',
+    'death penalty',
+    'accused of',
+    'on suspicion',
+    'indicts',
+    'resigned',
+    'identified as',
+    'names of',
     'on trial',
     'stands trial',
     'sues',
@@ -104,6 +117,45 @@ const HARD_FRAMES = Object.freeze({
     'message of support',
   ]),
   negative: compileTerms(['no new cases', 'no new Ebola cases']),
+  // Counts over a period, not something that just happened.
+  tally: compileTerms([
+    'this year',
+    'this summer',
+    'so far this',
+    'last month',
+    'since the start of',
+    'since January',
+    'since September',
+  ]),
+  study: compileTerms([
+    'study finds',
+    'new study',
+    'report finds',
+    'data shows',
+    'poll shows',
+    'survey finds',
+    'survey shows',
+    'media investigation',
+    'publicly-sourced data',
+  ]),
+  animal: compileTerms([
+    'shark',
+    'sharks',
+    'alligator',
+    'crocodile',
+    'dolphins',
+    'whale',
+    'whales',
+    'fish',
+  ]),
+  ceremony: compileTerms([
+    'tribute',
+    'vigil',
+    'parade',
+    'funeral',
+    'celebrate',
+    'cancer',
+  ]),
 });
 
 /** Usually not a report; a stated toll or reading says otherwise. */
@@ -355,7 +407,7 @@ const EVENT_SHAPES = Object.freeze({
 
 // Opens with what is around the event, or with who is talking about it.
 const BACKGROUND_OPENING =
-  /^(?:["“‘]|while|as|after|despite|since|though|although|amid|following|why|how|what|who|are|is|can|will|should)\b/i;
+  /^(?:["“‘]|while|as|after|despite|since|though|although|amid|following|why|how|what|who|are|is|can|will|should|(?:hours|days|weeks) after|looking to|survivors of)\b/i;
 const ACTOR_SPEAKS =
   /^(?:\S+\s+){0,5}(?:says?|said|urges?|wants?|asks?|calls?|claims?|insists?|accuses?|recommends?|disputes?|disputed)\b/i;
 const POLITICS_OR_SPORT = compileTerms([
@@ -370,8 +422,21 @@ const POLITICS_OR_SPORT = compileTerms([
   'season',
   'playoff*',
   'quarterfinal*',
+  'match',
+  'fans',
   'Colorado Avalanche',
 ]);
+
+// "The gunman who killed four": the sentence is about someone already known. A
+// thing is different: "a strike that killed 12" is often the report itself.
+const FOLLOW_UP =
+  /\b(?:who|he|she)\s+(?:\S+\s+){0,2}(?:shot|killed|attacked|stabbed)\b/i;
+// Decisions about attacks, not attacks.
+const POLICY =
+  /\b(?:pauses?|paused|resumes?|resumed|resumption|halts?|lifts?|suspends?|truce|ceasefire|backs?|back strikes|to resupply|receives?|approves?)\b/i;
+// A road death is real and sad, and not what this watches, unless it is a disaster.
+const ROAD = /\b(?:crash|crashes|collision|roads?|hit-and-run)\b/i;
+const MASS = /\b(?:\d{2,}|dozens|scores|hundreds|thousands)\b/i;
 
 /**
  * Whether the opening of a post shows an event of this kind happening.
@@ -387,6 +452,11 @@ export function lacksIncident(text, subtype) {
   const toll = STATED_TOLL.test(opening);
   if (!toll && ACTOR_SPEAKS.test(opening)) return 'reaction';
   if (!toll && POLITICS_OR_SPORT.test(opening)) return 'off_topic';
+  if (FOLLOW_UP.test(opening)) return 'follow_up';
+  if (subtype === 'attack_report' && !toll && POLICY.test(opening))
+    return 'reaction';
+  if (subtype === 'casualties' && ROAD.test(opening) && !MASS.test(opening))
+    return 'routine';
   const shaped = EVENT_SHAPES[subtype];
   if (shaped && !shaped.test(opening) && !toll) return 'no_incident';
   return null;

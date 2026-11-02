@@ -5,6 +5,22 @@
 // forms are covered. Operators add language packs in the same shape through the
 // fast-feeds settings file.
 
+// Grammar: who did what to what. Vocabulary alone missed most conflict reports,
+// which say "drones struck two ships" or "strikes kill 13" and use no listed
+// word. These describe the shape of a report, not one week's phrases, because
+// phrase lists tuned on one period fell apart on the next (FAST_FEEDS_EVALUATION).
+const COUNT =
+  '(?:\\d[\\d,.]{0,15}|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|a dozen|dozens?|scores|hundreds|thousands)';
+const WEAPON =
+  '(?:missiles?|rockets?|drones?|warplanes?|fighter jets?|artillery|shells?|bombs?|air ?strikes?|mortars?|torpedo(?:es)?)';
+const STRUCK =
+  '(?:hit|hits|struck|strikes?|slam(?:s|med)|pound(?:s|ed)|target(?:s|ed)|bomb(?:s|ed)|destroy(?:s|ed)|sank|sinks?|kill(?:s|ed)|set fire)';
+const SITE =
+  '(?:airports?|seaports?|ports?|harbou?rs?|bases?|ships?|tankers?|vessels?|refiner(?:y|ies)|oil (?:fields?|depots?)|power (?:plants?|stations?)|hospitals?|convoys?|camps?|embassy|embassies|checkpoints?|targets?)';
+const CRAFT =
+  '(?:planes?|jets?|aircraft|helicopters?|learjet|boats?|ferr(?:y|ies)|ships?|vessels?|tankers?|bus(?:es)?|trains?)';
+const GATHERING = '(?:protest|demonstration|march)';
+
 export const RULES = Object.freeze([
   {
     category: 'natural_disaster',
@@ -347,6 +363,9 @@ export const RULES = Object.freeze([
       'outbreak',
       'cholera',
       'ebola',
+      'measles',
+      'dengue',
+      'mpox',
       'вспышк* холер*',
       'вспышк* болезн*',
       'холер*',
@@ -449,6 +468,82 @@ export const RULES = Object.freeze([
       'сильный пожар',
       'масштабна пожежа',
       'велика пожежа',
+    ],
+    grammar: [
+      '\\b(?:destroyed|gutted|ravaged) by (?:a )?(?:\\S+ ){0,2}(?:fire|blaze)\\b',
+      '\\bfire (?:destroys|guts|engulfs|rips through|tears through|kills)\\b',
+    ],
+  },
+  {
+    category: 'armed_conflict',
+    subtype: 'attack_report',
+    severity: 65,
+    terms: [
+      'terror attack*',
+      'terrorist attack*',
+      'knife attack*',
+      'mass stabbing',
+      'gunman',
+      'weapons test*',
+      'hijacked',
+    ],
+    grammar: [
+      `\\b${WEAPON}\\b[^.\\n]{0,40}\\b${STRUCK}\\b`,
+      `\\b(?:attack(?:s|ed)?|struck|strikes?|bomb(?:s|ed)|shell(?:s|ed))\\b[^.\\n]{0,40}\\b${SITE}\\b`,
+      `\\b${SITE} (?:was hit|was struck|were hit|were struck)\\b`,
+      `\\b(?:fires?|fired|launch(?:es|ed)?) (?:\\S+ ){0,3}${WEAPON}\\b`,
+      '\\b(?:test-fires?|test-fired|tests|tested) (?:\\S+ ){0,3}missiles?\\b',
+      `\\b${COUNT} (?:\\S+ ){0,3}(?:strikes?|attacks?)\\b[^.\\n]{0,30}\\b(?:on|in|across|hit)\\b`,
+      '\\b(?:struck|strikes?|strike|hit|hits) (?:a |sea |naval )*mines?\\b',
+    ],
+  },
+  {
+    category: 'breaking_news',
+    subtype: 'casualties',
+    severity: 55,
+    terms: [
+      'death toll',
+      'mass grave*',
+      'shot dead',
+      'fatally shot',
+      'stabbing',
+    ],
+    grammar: [
+      `\\b${COUNT}\\b[^.\\n]{0,40}\\b(?:killed|dead|die|dies|died|drown(?:s|ed)?|wounded|injured)\\b`,
+      `\\b(?:kill(?:s|ed|ing)?|wound(?:s|ed|ing)?|injur(?:es?|ed|ing))\\b[^.\\n]{0,20}\\b${COUNT}\\b`,
+      '\\b(?:beaten|stabbed|shot|hacked) to death\\b',
+      '\\b(?:was|were) killed (?:in|when|after|as|by)\\b',
+    ],
+  },
+  {
+    category: 'civil_unrest',
+    subtype: 'demonstration',
+    severity: 45,
+    terms: [
+      'took to the streets',
+      'take to the streets',
+      'taken to the streets',
+      'demonstrate against',
+      'demonstrated against',
+      'protest arrests',
+      'arrested at protest*',
+      'arrested during protest*',
+      'marched through',
+    ],
+    grammar: [
+      '\\b(?:thousands|hundreds|tens of thousands|crowds?) (?:of \\S+ )?(?:rall(?:y|ied)|protest(?:ed)?|march(?:ed)?|gather(?:ed)?|demonstrat\\w+)\\b',
+      `\\b(?:launch(?:es|ed)?|hold|holds|held|stage[sd]?) (?:a |an |\\S+ ){0,3}${GATHERING}\\b`,
+      `\\b${GATHERING} (?:against|outside|over)\\b`,
+    ],
+  },
+  {
+    category: 'infrastructure_disruption',
+    subtype: 'craft_accident',
+    severity: 60,
+    terms: [],
+    grammar: [
+      `\\b${CRAFT}\\b[^.\\n]{0,30}\\b(?:crash(?:es|ed)?|capsiz\\w+|s[ai]nks?|sunk|derail\\w*|collid\\w+)\\b`,
+      `\\b(?:crash(?:es|ed)?|capsiz\\w+) (?:\\S+ ){0,2}${CRAFT}\\b`,
     ],
   },
 ]);

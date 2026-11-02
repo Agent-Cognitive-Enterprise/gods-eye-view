@@ -370,7 +370,7 @@ function gdeltRow({
   id = '1',
   day = '20261029',
   root = '14',
-  articles = '8',
+  articles = '12',
   geoType = '4',
   added = '20261029083000',
   url = 'https://news.example/a',
@@ -398,7 +398,7 @@ test('GDELT: protest/violence only, enough articles, city-level, recent, aggrega
   const csv = [
     gdeltRow(),
     gdeltRow({ id: '2', root: '07' }), // aid: not kept
-    gdeltRow({ id: '3', articles: '2' }),
+    gdeltRow({ id: '3', articles: '9' }),
     gdeltRow({ id: '4', geoType: '1' }), // country centroid
     gdeltRow({ id: '5', day: '20260901' }), // old story resurfacing
     gdeltRow({ id: '6', root: '19', articles: '30' }),

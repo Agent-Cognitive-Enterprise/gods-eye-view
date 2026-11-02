@@ -7,6 +7,14 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **Fast Intelligence gate reads grammar.** It caught 9 of 27 real events in the
+  live test, missing most conflict and protest reports. It now reads who did what to
+  what, and stated tolls, in the main clause of a post. On an unseen period recall
+  rose from 22 % to 43 % with precision unchanged within error at 78 %, which is below
+  the 80 % target, so posts still never move the camera. See
+  `docs/FAST_FEEDS_EVALUATION.md`.
+- **GDELT limits.** Machine-coded news now needs 10 articles rather than 5, and at most
+  150 such events are listed at once, so it cannot push real events off the event list.
 - **Fast Intelligence (branch `feature/fast-intelligence-feed`, off unless
   `GEV_FAST_FEEDS=1`).** Public posts reach the engine within seconds of being
   published, as claims and never as facts. Bluesky Jetstream v2 from listed

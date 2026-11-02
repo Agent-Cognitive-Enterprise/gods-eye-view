@@ -23,6 +23,9 @@ const RETENTION_DAYS = 90;
 
 const PRUNE_EVERY_MS = 6 * 3600_000;
 const MAX_LIST = 500;
+// Machine-coded news is voluminous and scores close to real reports: without a
+// limit a few days of it would push real events and analyst stops off the list.
+const MAX_AGGREGATOR_LISTED = 150;
 
 /** Operator settings: defaults plus validated, bounded overrides. */
 export function sanitizeSettings(input = {}) {
@@ -137,6 +140,21 @@ export function publicEvent(event) {
   };
 }
 
+/** The events a client sees, best first, with aggregators kept to their share. */
+export function listedEvents(events) {
+  let aggregated = 0;
+  return events
+    .filter((event) => {
+      const lineages = event.lineages ?? [];
+      const onlyAggregator =
+        lineages.length > 0 &&
+        lineages.every((l) => l.source_type === 'aggregator');
+      if (onlyAggregator) aggregated += 1;
+      return !onlyAggregator || aggregated <= MAX_AGGREGATOR_LISTED;
+    })
+    .slice(0, MAX_LIST);
+}
+
 /**
  * @param {{storeFile?: string, connectors?: object[], now?: () => number,
  *   settingsFile?: string|null, fetchImpl?: Function, log?: Function,
@@ -218,7 +236,7 @@ export function createIntelService({
   function listEvents(name, { minScore = 0 } = {}) {
     const w = world(name);
     if (!w) return null;
-    const active = w.engine.activeEvents(w.now).slice(0, MAX_LIST);
+    const active = listedEvents(w.engine.activeEvents(w.now));
     const s = settings();
     const eligible = active.filter(
       (e) => e.camera_eligible && e.attention_score >= s.minimumAttentionScore,

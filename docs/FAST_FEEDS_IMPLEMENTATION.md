@@ -262,8 +262,9 @@ is a heavier load than normal, on a machine shared with the live instance.
 
 **Precision on the open stream.** 34 of those 60 were real current reports when
 scored by Claude: 57 %. That was the whole public stream under the first rules, and
-is not how the system runs. **On the seven starter accounts the gate now measures
-84.5 % on an unseen period, scored blind**, with estimated per-post recall of 29 %.
+is not how the system runs. **On the seven starter accounts the gate measures 77.8 %
+on an unseen period, scored blind, with estimated per-post recall of 43 %**, up from 22 %
+for the earlier rules on the same period. That is below the 80 % target.
 See [FAST_FEEDS_EVALUATION.md](FAST_FEEDS_EVALUATION.md).
 
 **Places.** 27 of the 60 got a place. The 3 wrong cities out of 11 were all

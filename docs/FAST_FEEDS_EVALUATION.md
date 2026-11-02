@@ -1,10 +1,61 @@
 # Fast Intelligence: gate evaluation
 
 How well the gate tells a report of a current event from everything else a news
-account posts. Measured on 31 October 2026 on the seven starter accounts. Repeat it
-with `scripts/fast-feeds-eval.mjs`; the post files stay local and are not committed.
+account posts. Measured on the seven starter accounts. Repeat it with
+`scripts/fast-feeds-eval.mjs`; the post files stay local and are not committed.
 
-## Result
+## Current result (2 November 2026)
+
+The 24-hour live test found the gate caught 9 of 27 real events, and missed nearly
+every conflict and protest report. Grammar rules were added to fix that: who did what
+to what, and stated tolls, rather than more listed words.
+
+| Measure, on an unseen period, scored blind | Before                 | After                  |
+| ------------------------------------------ | ---------------------- | ---------------------- |
+| **Recall**, per post                       | **22.4 %** (17.5–29.6) | **43.2 %** (33.8–56.6) |
+| **Precision**                              | **78.8 %** (72.6–84.9) | **77.8 %** (73.8–81.8) |
+| Precision of the posts added               |                        | 75.6 % (70.4–80.8)     |
+| Passes a day                               | 10.7                   | 20.9                   |
+| Real posts still missed a day, estimated   |                        | 21                     |
+
+**Recall roughly doubled and precision did not measurably change, but 77.8 % is below
+the 80 % target, whose interval it only reaches.** `socialCameraEnabled` stays off.
+Posts show as provisional claims and move nothing.
+
+The period was harder than the one behind the 84.5 % below: the old gate scored 78.8 %
+on it, not 84.5 %. Period, labelling and reader's strictness all differ, so the two
+are not directly comparable. Both are one reader's judgement.
+
+**How it was measured.** Rules tuned only on 10 October to 2 November (8,779 posts),
+then frozen and recorded by hash. The test period, 20 August to 19 September (11,264
+posts), had never been used. From it, 710 posts were drawn in strata: 150 passed by
+both gates, 250 passed only by the new one, 300 rejected by both, and all 10 passed
+only by the old one. They were shuffled with account, date and decision removed, and
+every verdict was written down and hashed before any decision was seen. Intervals are
+a stratified bootstrap. Claude wrote the rules and read the posts, so one reader graded
+its own work and the rule's shape can sometimes be guessed from the text. No person
+has checked these labels.
+
+By account, on sampled passes: Kyiv Independent 89 %, Al Jazeera 83 %, Reuters 76 %,
+AP 69 %, ABC 63 %, Bloomberg 58 % of only 12.
+
+**Known defects, left in on purpose.** This test period is now spent, so changing rules
+against it would make the figures meaningless. Seen in its false positives, for the
+next round, which needs its own unseen period:
+
+- A number inside a compound: "two-time Grammy winner… has died".
+- "Injured list" in baseball, and other sport.
+- Deaths by illness or old age, and single-victim crime.
+- Reaction and blame that name an attack in the main clause.
+- Period tallies: "53 killed between…", "7 children a day".
+
+**Still missed.** Real posts with no matching shape: "Thousands flee… renewed fighting",
+"police fire tear gas to disperse traders protesting", "emergency declared due to haze",
+"Thousands rally outside Portugal's parliament" (the politics test). The headline in a
+link card is not read: on the tuning set that would add about 75 passes and lose 13, so
+it was left out as a small gain for a change to the Bluesky adapter.
+
+## Earlier result (31 October 2026)
 
 | Measure, on an unseen period, scored blind | Result                                     |
 | ------------------------------------------ | ------------------------------------------ |
