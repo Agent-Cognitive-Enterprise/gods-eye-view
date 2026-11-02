@@ -2,13 +2,16 @@
 // Responses are data; nothing here interprets event text.
 
 const BASE = '/api/intel';
+// A response that never comes must not hold the Autopilot loop for ever.
+const TIMEOUT_MS = 20_000;
 
-/** @param {{fetchImpl: Function}} options */
-export function createIntelClient({ fetchImpl }) {
+/** @param {{fetchImpl: Function, timeoutMs?: number}} options */
+export function createIntelClient({ fetchImpl, timeoutMs = TIMEOUT_MS }) {
   async function call(path, { method = 'GET', body, signal } = {}) {
+    const limit = AbortSignal.timeout(timeoutMs);
     const response = await fetchImpl(`${BASE}${path}`, {
       method,
-      signal,
+      signal: signal ? AbortSignal.any([signal, limit]) : limit,
       headers:
         body === undefined ? undefined : { 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),

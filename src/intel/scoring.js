@@ -10,6 +10,7 @@ import {
   CATEGORY_POLICY,
   SCORE_WEIGHTS,
   SOCIAL_ONLY_CONFIDENCE_CAP,
+  isAggregatorOnly,
   isSocialOnly,
 } from './taxonomy.js';
 import { boostAttention, eventProximity } from './proximity.js';
@@ -240,9 +241,15 @@ export function scoreEvent(event, now, settings = {}) {
   // Personal relevance lifts attention toward 100 near the operator's places.
   // It may rank an event first, never interrupt by itself: a boosted score
   // stays below the critical threshold unless the event already reached it.
+  // Machine-coded news gets no lift: its places are often wrong, and an animal
+  // shelter fire coded as "fighting near Sydney" topped the list at 94.
   const baseAttention = attention;
   const proximity = eventProximity(event, settings);
-  if (proximity?.weight > 0 && baseAttention < critical)
+  if (
+    proximity?.weight > 0 &&
+    baseAttention < critical &&
+    !isAggregatorOnly(event)
+  )
     attention = Math.min(
       critical - 1,
       round(boostAttention(baseAttention, proximity.weight)),

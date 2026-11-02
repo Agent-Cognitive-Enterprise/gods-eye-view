@@ -14,6 +14,7 @@ import {
   AUTOPILOT_DEFAULTS,
   CATEGORIES,
   SCORE_WEIGHTS,
+  isAggregatorOnly,
 } from '../../../src/intel/taxonomy.js';
 import { createAssessor } from './assessor.js';
 import { createFeedRunner } from './feeds.js';
@@ -145,10 +146,7 @@ export function listedEvents(events) {
   let aggregated = 0;
   return events
     .filter((event) => {
-      const lineages = event.lineages ?? [];
-      const onlyAggregator =
-        lineages.length > 0 &&
-        lineages.every((l) => l.source_type === 'aggregator');
+      const onlyAggregator = isAggregatorOnly(event);
       if (onlyAggregator) aggregated += 1;
       return !onlyAggregator || aggregated <= MAX_AGGREGATOR_LISTED;
     })
