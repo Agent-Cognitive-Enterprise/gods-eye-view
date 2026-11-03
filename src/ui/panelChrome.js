@@ -5,6 +5,7 @@ import { applicationPinia } from './vueRuntime.js';
 import { displayPanelScroller } from './displayPanelScroll.js';
 import { PanelPositionControls } from './panelPositionControls.js';
 import { PanelLayoutController } from './panelLayoutController.js';
+import { arePanelCompanions } from './panelAccordion.js';
 import {
   bindPanelDisclosure,
   collapsePanelOnEscape,
@@ -447,7 +448,8 @@ export class PanelChrome {
         if (
           peer !== panelEl &&
           peer.matches('[data-panel-id]') &&
-          !peer.hidden
+          !peer.hidden &&
+          !arePanelCompanions(peer.id, panelId)
         ) {
           this.setPanelCollapsed(peer.id, true, {
             explicit,

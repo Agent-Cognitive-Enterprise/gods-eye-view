@@ -1,3 +1,17 @@
+/** Fork: panels that stay open side by side; each is read beside the other. */
+const PANEL_COMPANIONS = Object.freeze({
+  'intel-feeds-panel': 'fast-intel-panel',
+  'fast-intel-panel': 'intel-feeds-panel',
+});
+
+/**
+ * Whether two panels may stay open together despite the one-panel rule.
+ * @param {string} first Panel id.
+ * @param {string} second Panel id.
+ */
+export const arePanelCompanions = (first, second) =>
+  PANEL_COMPANIONS[first] === second;
+
 /**
  * Keep one side panel open on desktop, and on phones put back the collapse
  * this applied, since a sheet shows several panels at once. The owner is the
@@ -34,7 +48,7 @@ export function settleSideAccordion({
     expanded.find((panel) => panel.contains(documentRef?.activeElement)) ||
     expanded[0];
   for (const panel of expanded) {
-    if (panel === owner) continue;
+    if (panel === owner || arePanelCompanions(panel.id, owner.id)) continue;
     onCollapse(panel, { collapsed: true, auto: 'accordion' });
   }
 }

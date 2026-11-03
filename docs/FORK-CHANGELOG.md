@@ -7,6 +7,10 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **FAST INTELLIGENCE fills the left lane.** Open, it takes the available height. FEEDS
+  may stay open beside it, at its natural height, and FAST INTELLIGENCE takes the rest.
+  These two are the only exception to upstream's one-panel-per-side rule: any other
+  panel on that side still closes both.
 - **Upstream's Vue UI merged.** AUTOPILOT, FEEDS and FAST INTELLIGENCE are panels on
   the new rail, so each side shows one panel at a time. FAST INTELLIGENCE is a Vue view
   over the `gev-fast-intel` store and follows a language switch without a reload;

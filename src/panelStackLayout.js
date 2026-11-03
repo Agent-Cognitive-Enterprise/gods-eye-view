@@ -44,6 +44,39 @@ export function allocatePanelStackHeights({
 }
 
 /**
+ * Heights when one panel fills the corridor: the others keep their natural
+ * height and it takes what is left. On a short screen the others shrink, so the
+ * filling panel always keeps a usable share.
+ *
+ * @param {object} input Corridor measurements.
+ * @param {number[]} input.naturalHeights Natural height of each panel, in px.
+ * @param {number} input.fillIndex The panel that fills.
+ * @param {number} input.availableHeight Corridor height, in px.
+ * @param {number} [input.minimumFillRatio=0.4] Share the filling panel keeps.
+ * @returns {number[]} Allocated heights, in the same order.
+ */
+export function allocatePanelFillHeights({
+  naturalHeights,
+  fillIndex,
+  availableHeight,
+  minimumFillRatio = 0.4,
+}) {
+  const available = Math.max(0, Number(availableHeight) || 0);
+  const natural = naturalHeights.map((height) =>
+    Math.max(0, Number(height) || 0),
+  );
+  const othersTotal = natural.reduce(
+    (sum, height, index) => (index === fillIndex ? sum : sum + height),
+    0,
+  );
+  const othersLimit = available * (1 - minimumFillRatio);
+  const scale = othersTotal > othersLimit ? othersLimit / othersTotal : 1;
+  return natural.map((height, index) =>
+    index === fillIndex ? available - othersTotal * scale : height * scale,
+  );
+}
+
+/**
  * Solves the accordion corridor's bottom boundary against the obstacles that
  * still limit it.
  *

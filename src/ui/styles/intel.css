@@ -458,6 +458,27 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
   font: 11px var(--font-sans);
   color: var(--text-primary);
 }
+/* Open, FAST INTELLIGENCE fills the lane; FEEDS beside it keeps its natural
+   height (src/ui/leftPanelRail.js allocates both). Only the bodies scroll. */
+#left-panel-stack.layout-focus
+  > :is(#intel-feeds-panel, #fast-intel-panel):not(.collapsed) {
+  display: flex;
+  flex: 0 0 var(--left-panel-allocated-height, auto);
+  flex-direction: column;
+  height: var(--left-panel-allocated-height, auto);
+  max-height: var(--left-panel-allocated-height, 100%);
+}
+#left-panel-stack.layout-focus
+  > :is(#intel-feeds-panel, #fast-intel-panel):not(.collapsed)
+  > :is(.intel-feeds-panel-inner, .fast-intel-panel-inner) {
+  height: 100%;
+}
+#left-panel-stack.layout-focus :is(#intel-feeds-body, #fast-intel-body) {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+}
 #fast-intel-count {
   color: #7bd88f;
   font: 9px var(--font-mono);

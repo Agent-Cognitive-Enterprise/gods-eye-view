@@ -7,8 +7,8 @@ import { RAIL_PANEL_OPEN_TOOLTIP_DELAY_MS } from './rail.js';
 const props = defineProps({
   /** @type {import('vue').PropType<import('./rail.js').UiRailItem[]>} */
   items: { type: Array, required: true },
-  /** The selected item's id, or null. */
-  active: { type: String, default: null },
+  /** The selected item's id, a list when several are, or null. */
+  active: { type: [String, Array], default: null },
   /** `left` or `right`: the screen edge the rail sits on. */
   side: { type: String, required: true },
   /** The nav's accessible name. */
@@ -57,9 +57,10 @@ function trackLabel(id, element) {
   labelObserver?.observe(element);
 }
 onBeforeUnmount(() => labelObserver?.disconnect());
+const isOn = (item) => [props.active].flat().includes(item.id);
 const tipHidden = (item) =>
   (expanded.value && !truncated.has(item.id)) ||
-  (props.panelOpen && item.id === props.active);
+  (props.panelOpen && isOn(item));
 </script>
 
 <template>
@@ -82,10 +83,10 @@ const tipHidden = (item) =>
         <button
           type="button"
           class="ui-rail__item"
-          :class="{ 'ui-rail__item--on': item.id === active }"
+          :class="{ 'ui-rail__item--on': isOn(item) }"
           :data-rail-item="item.id"
           :aria-label="item.label"
-          :aria-pressed="item.id === active"
+          :aria-pressed="isOn(item)"
           :disabled="item.disabled"
           @click="emit('select', item.id)"
         >

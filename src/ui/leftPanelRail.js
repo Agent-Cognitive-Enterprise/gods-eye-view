@@ -1,4 +1,5 @@
 import {
+  allocatePanelFillHeights,
   allocatePanelStackHeights,
   panelStackAutoCollapseIndices,
   resolveLeftStackBottomBoundary,
@@ -225,11 +226,20 @@ export function layoutLeftPanelRail({
   const tailLayoutBottom = tailLayoutTop + tailRequiredHeight;
   const tailAvailableHeight = Math.max(0, obstacleSafeBottom - obstacleSafeTop);
   const tailTolerance = wasTail ? stabilityBand : -stabilityBand;
+  // A panel marked data-panel-fill owns the corridor however little it holds,
+  // and an open companion keeps its natural height beside it.
+  const fillIndex = exclusive
+    ? expandedPanels.findIndex(
+        (panel) => panel.dataset?.panelFill !== undefined,
+      )
+    : -1;
+  const fills = fillIndex >= 0;
   const shouldTail =
+    !fills &&
     expandedPanels.length > 0 &&
     tailLayoutTop >= obstacleSafeTop - tailTolerance &&
     tailLayoutBottom <= obstacleSafeBottom + tailTolerance;
-  const shouldFocus = exceedsCenteredCorridor && !shouldTail;
+  const shouldFocus = fills || (exceedsCenteredCorridor && !shouldTail);
   // Focus mode owns the lane, so let every expanded panel share the full
   // obstacle-safe corridor. Tail/normal layouts keep the balanced
   // viewport centering used for compact accordion stacks.
@@ -255,17 +265,24 @@ export function layoutLeftPanelRail({
           rowGap * Math.max(0, expandedPanels.length - 1),
       )
     : naturalExpandedHeight;
-  const allocatedExpandedHeights = allocatePanelStackHeights({
-    naturalHeights: naturalExpandedHeights,
-    availableHeight: expandedAvailableHeight,
-  });
-  const autoCollapseIndices = hud.visible
-    ? panelStackAutoCollapseIndices({
+  const allocatedExpandedHeights = fills
+    ? allocatePanelFillHeights({
         naturalHeights: naturalExpandedHeights,
-        allocatedHeights: allocatedExpandedHeights,
-        collapseLaterPanels: shouldFocus && hud.variant === 'tactical',
+        fillIndex,
+        availableHeight: expandedAvailableHeight,
       })
-    : [];
+    : allocatePanelStackHeights({
+        naturalHeights: naturalExpandedHeights,
+        availableHeight: expandedAvailableHeight,
+      });
+  const autoCollapseIndices =
+    hud.visible && !fills
+      ? panelStackAutoCollapseIndices({
+          naturalHeights: naturalExpandedHeights,
+          allocatedHeights: allocatedExpandedHeights,
+          collapseLaterPanels: shouldFocus && hud.variant === 'tactical',
+        })
+      : [];
   if (autoCollapseIndices.length) {
     for (const index of autoCollapseIndices) {
       const panel = expandedPanels[index];

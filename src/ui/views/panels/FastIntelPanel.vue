@@ -23,9 +23,9 @@ async function follow() {
 </script>
 
 <template>
-  <RailPanel id="fast-intel-panel" :hidden="!panel" start-collapsed :title="t('FAST INTELLIGENCE')">
+  <RailPanel id="fast-intel-panel" :hidden="!panel" start-collapsed data-panel-fill :title="t('FAST INTELLIGENCE')">
     <template #badge><span id="fast-intel-count" :class="{ 'intel-feeds-down': panel?.summary.down }" :aria-label="t('Push sources up')">{{ panel?.summary.text }}</span></template>
-    <div id="fast-intel-body">
+    <div id="fast-intel-body" class="ui-scroll">
       <template v-if="panel">
         <div v-for="filter in panel.filters" :key="filter.id" class="fast-chips" :data-fast-filter="filter.id">
           <span class="intel-setting-label">{{ filter.label }}</span>

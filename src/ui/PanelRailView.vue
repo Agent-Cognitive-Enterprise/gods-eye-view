@@ -29,7 +29,7 @@ const items = computed(() =>
       };
     }),
 );
-const active = computed(() => panels.openPanelId(props.side));
+const active = computed(() => panels.openPanelIds(props.side));
 const label = computed(() =>
   props.side === 'left' ? t('Left panels') : t('Right panels'),
 );
@@ -41,7 +41,7 @@ const label = computed(() =>
     :active="active"
     :side="side"
     :label="label"
-    :panel-open="active !== null"
+    :panel-open="active.length > 0"
     collapsible
     @select="onSelect"
   />

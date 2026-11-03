@@ -46,6 +46,16 @@ export const usePanelStore = defineStore('gev-panels', () => {
     );
   }
 
+  /**
+   * @param {'left'|'right'} side Sidebar.
+   * @returns {string[]} Every open panel: companions stay open together.
+   */
+  function openPanelIds(side) {
+    return sides[side]
+      .filter((panel) => panel.open && panel.available)
+      .map((panel) => panel.id);
+  }
+
   /** @param {string} id Panel id. */
   function isOpen(id) {
     return [...sides.left, ...sides.right].some(
@@ -53,5 +63,5 @@ export const usePanelStore = defineStore('gev-panels', () => {
     );
   }
 
-  return { sides, setSide, openPanelId, isOpen };
+  return { sides, setSide, openPanelId, openPanelIds, isOpen };
 });

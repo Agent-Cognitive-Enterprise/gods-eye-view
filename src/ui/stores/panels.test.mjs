@@ -14,8 +14,10 @@ test('the panel store reports each side’s open panel and keeps unchanged sides
     { id: 'weather-panel', open: true, available: false },
   ]);
   assert.equal(store.openPanelId('left'), 'scene-panel');
+  assert.deepEqual(store.openPanelIds('left'), ['scene-panel']);
   // An open panel that is not offered is not the side's open panel.
   assert.equal(store.openPanelId('right'), null);
+  assert.deepEqual(store.openPanelIds('right'), []);
   assert.equal(store.isOpen('scene-panel'), true);
   assert.equal(store.isOpen('data-panel'), false);
   const published = store.sides.left;

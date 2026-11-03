@@ -9,7 +9,8 @@
  *
  * One synthetic Bluesky report is added to the event list inside the browser, so
  * nothing reaches the server and no real account is involved. Real clicks prove:
- *   - each panel has a rail icon and only one panel per side is open;
+ *   - each panel has a rail icon; FEEDS and FAST INTELLIGENCE stay open together
+ *     and it takes the height FEEDS leaves; any other panel closes both;
  *   - the report is listed and drawn as a marker;
  *   - the panel's chips change what the map draws, and the choice survives a reload;
  *   - opening the report shows its timeline and flies there on request;
@@ -153,6 +154,25 @@ const railClick = (page, name) =>
     return Boolean(item);
   }, name);
 
+/** How the left lane is shared: each panel's box, and the lane's own limits. */
+const lane = (page) =>
+  page.evaluate(() => {
+    const box = (id) => {
+      const rect = document.getElementById(id).getBoundingClientRect();
+      return { top: rect.top, bottom: rect.bottom, height: rect.height };
+    };
+    const stack = document.getElementById('left-panel-stack');
+    return {
+      viewport: innerHeight,
+      safeTop: (Number(stack.dataset.safeTopPct) / 100) * innerHeight,
+      safeBottom: (Number(stack.dataset.safeBottomPct) / 100) * innerHeight,
+      mode: stack.dataset.layoutMode,
+      feeds: box('intel-feeds-panel'),
+      fast: box('fast-intel-panel'),
+      feedsBody: document.getElementById('intel-feeds-body').scrollHeight,
+    };
+  });
+
 const isOpen = (page, id) =>
   page.evaluate((panelId) => {
     const panel = document.getElementById(panelId);
@@ -194,9 +214,60 @@ try {
   await sleep(600);
   record('FAST INTELLIGENCE opens', await isOpen(page, 'fast-intel-panel'));
   record(
-    'one panel per side: opening it closed FEEDS',
-    !(await isOpen(page, 'intel-feeds-panel')),
+    'FEEDS stays open beside it',
+    await isOpen(page, 'intel-feeds-panel'),
   );
+  const pressed = await page.evaluate(
+    () =>
+      [...document.querySelectorAll('.gev-panel-rail [aria-pressed="true"]')].length,
+  );
+  record('both rail icons read as open', pressed === 2, `${pressed} pressed`);
+  const shared = await lane(page);
+  record(
+    'FAST INTELLIGENCE runs down to the end of the lane',
+    Math.abs(shared.fast.bottom - shared.safeBottom) <= 12,
+    `bottom ${Math.round(shared.fast.bottom)} of ${Math.round(shared.safeBottom)}, mode ${shared.mode}`,
+  );
+  record(
+    'FEEDS sits above it and they do not overlap',
+    shared.feeds.bottom <= shared.fast.top + 1,
+    `feeds ${Math.round(shared.feeds.top)} to ${Math.round(shared.feeds.bottom)}, fast ${Math.round(shared.fast.top)} to ${Math.round(shared.fast.bottom)}`,
+  );
+
+  await railClick(page, 'FEEDS');
+  await sleep(800);
+  record('FEEDS can close alone', !(await isOpen(page, 'intel-feeds-panel')));
+  record('FAST INTELLIGENCE stays open', await isOpen(page, 'fast-intel-panel'));
+  const alone = await lane(page);
+  record(
+    'alone it takes the whole lane',
+    alone.fast.height > shared.fast.height + 40 &&
+      Math.abs(alone.fast.bottom - alone.safeBottom) <= 12,
+    `${Math.round(alone.fast.height)} high, was ${Math.round(shared.fast.height)}`,
+  );
+
+  await railClick(page, 'DATA LAYERS');
+  await sleep(800);
+  record('another panel closes it', !(await isOpen(page, 'fast-intel-panel')));
+  await railClick(page, 'FEEDS');
+  await sleep(600);
+  await railClick(page, 'FAST INTELLIGENCE');
+  await sleep(800);
+  record(
+    'opening both again closes the other panel',
+    !(await isOpen(page, 'data-panel')) &&
+      (await isOpen(page, 'intel-feeds-panel')) &&
+      (await isOpen(page, 'fast-intel-panel')),
+  );
+  await railClick(page, 'DATA LAYERS');
+  await sleep(800);
+  record(
+    'and another panel closes both',
+    !(await isOpen(page, 'intel-feeds-panel')) &&
+      !(await isOpen(page, 'fast-intel-panel')),
+  );
+  await railClick(page, 'FAST INTELLIGENCE');
+  await sleep(800);
 
   await page.waitForFunction(
     () => /QA SYNTHETIC/.test(document.getElementById('fast-intel-body')?.textContent ?? ''),

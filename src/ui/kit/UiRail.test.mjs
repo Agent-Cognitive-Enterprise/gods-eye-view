@@ -24,6 +24,15 @@ function mountRail(props = {}) {
   });
 }
 
+test('companion panels press both of their items', () => {
+  const wrapper = mountRail({ active: ['layers', 'scenes'], panelOpen: true });
+  const pressed = wrapper
+    .findAll('button')
+    .map((button) => button.attributes('aria-pressed'));
+  assert.deepEqual(pressed, ['true', 'true', 'false']);
+  assert.equal(wrapper.findAll('.ui-rail__item--on').length, 2);
+});
+
 test('the rail is a named nav with one pressed button per item', () => {
   const wrapper = mountRail({ active: 'scenes' });
   const nav = wrapper.get('nav');
