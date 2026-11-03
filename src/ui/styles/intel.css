@@ -23,7 +23,9 @@
 #right-context-rail > #intel-panel:not(.collapsed) #intel-panel-body {
   flex: 1 1 auto;
 }
-.intel-panel-inner {
+.intel-panel-inner,
+.intel-feeds-panel-inner,
+.fast-intel-panel-inner {
   position: relative;
   display: flex;
   flex-direction: column;

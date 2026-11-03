@@ -36,7 +36,8 @@ history is never rewritten.
 
 New files are fork-only (`src/intel/`, `server/providers/intel/`,
 `server/providers/fastfeeds/`, `src/ui/fastIntelPanel.js`,
-`server/providers/localVoice/`, `src/voice/local*.js`, `src/ui/intelConsole.js`,
+`src/ui/fastIntelPresentation.js`, `src/ui/stores/fastIntel.js`,
+`src/ui/views/panels/FastIntelPanel.vue`, `server/providers/localVoice/`, `src/voice/local*.js`, `src/ui/intelConsole.js`,
 `src/ui/styles/intel.css`, `src/ui/dockAutoHide.js`, `src/airsea/`,
 `src/layers/airsea/`, `server/providers/airsea/`, the fork docs and workflows). Upstream files the
 fork edits are the merge surface; keep these edits additive and small:
@@ -45,15 +46,16 @@ fork edits are the merge surface; keep these edits additive and small:
 | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `server/providers/local.js`                                                                  | Registers the intel, air/sea and local-voice plugins; shares the watcher and hub; isolated instances skip AIS and OpenSky. |
 | `src/app/tools.js`, `src/standalone/tools.js`                                                | Mounts the Autopilot console and dock auto-hide; offers `local` voice; Air & Sea layer reveal.                             |
-| `src/ui/templates/layer-panels.html`                                                         | FEEDS and FAST INTELLIGENCE panel shells at the end of the left stack.                                                     |
+| `src/ui/views/LayerPanelsView.vue`                                                           | FEEDS and FAST INTELLIGENCE panels at the end of the left stack.                                                           |
+| `src/ui/panelRailCatalog.js`, `index.html`                                                   | Rail icons for the three fork panels, and those glyphs in the icon font request.                                           |
 | `src/layers/ghostMaps/index.js`                                                              | Age window over each placemark's date (logic in the fork-only `age.js`); keep `facing` and `inWindow`.                     |
 | `src/ui/leftPanelRail.js`                                                                    | Reads `--left-stack-base-top` (px) before its 26vh default.                                                                |
 | `server/providers/aircraft/opensky.js`, `adsb-lol.js`                                        | One `publishTrafficSnapshot()` call after each cached snapshot (air/sea).                                                  |
 | `src/app/constructCatalog.js`, `src/ui/layerPanel.js`, `src/ui/layerNames.js`                | The four Air & Sea layers, local-only metadata, Air & Sea group.                                                           |
 | `src/sources/reference.js`, `src/app/sourceComposition.js`, `src/voice/layerManifest.js`     | `air-sea` source contract; the four layers listed voice-off.                                                               |
 | `src/creditAttribution.test.mjs`, layer-count tests                                          | Vetted dock-hidden credit selectors; catalog size 37.                                                                      |
-| `src/ui/templates/context.html`, `style.css`                                                 | Panel shell and stylesheet import.                                                                                         |
-| `src/voice/commands.js`, `src/voice/providerCapabilities.js`, `src/voice/sessionCommands.js` | Local voice provider entry and label.                                                                                      |
+| `src/ui/views/ContextView.vue`, `style.css`                                                  | AUTOPILOT panel and stylesheet import.                                                                                     |
+| `src/voice/commands.js`, `src/voice/providerCapabilities.js`, `src/ui/views/panels/VoiceControl.vue` | Local voice provider entry and translated label.                                                                   |
 | `scripts/package-boundaries.json`                                                            | Owned-module entries for the new modules.                                                                                  |
 | `src/i18n/locales/*.json`, `src/i18n/same-as-english.json`                                   | Added strings (append-only).                                                                                               |
 | `src/data/dataCredits.js`, `DATA_SOURCES.md`, `.env.example`                                 | One credit entry, source rows and notes, commented settings.                                                               |

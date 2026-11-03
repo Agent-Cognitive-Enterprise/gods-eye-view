@@ -38,7 +38,10 @@ decide what it means.
 | `server/providers/fastfeeds/secretStore.js` | Telegram login under Windows DPAPI                                     |
 | `src/intel/fastStatus.js`                   | `candidate` to `retracted`, derived from verification and never stored |
 | `src/intel/fastView.js`                     | What the operator chose to see                                         |
-| `src/ui/fastIntelPanel.js`                  | The panel                                                              |
+| `src/ui/fastIntelPanel.js`                  | The panel's owner: polling, filters, sources; publishes to the store   |
+| `src/ui/stores/fastIntel.js`                | The `gev-fast-intel` Pinia store                                       |
+| `src/ui/fastIntelPresentation.js`           | Its words, worked out while the view renders                           |
+| `src/ui/views/panels/FastIntelPanel.vue`    | The panel                                                              |
 
 Changes to existing fork code are small and listed in
 [FORK-MAINTENANCE.md](FORK-MAINTENANCE.md). Upstream files touched: one panel

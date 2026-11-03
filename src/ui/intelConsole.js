@@ -2035,6 +2035,7 @@ export function createIntelConsole({
       current: scheduler.current,
       lastDecision,
       events: data.events.length,
+      markers: points?.length ?? 0,
       clusters: data.clusters.length,
       selectedId,
       narrating: narration?.text ?? null,
