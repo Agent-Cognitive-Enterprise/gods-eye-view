@@ -265,11 +265,23 @@ export function layoutLeftPanelRail({
           rowGap * Math.max(0, expandedPanels.length - 1),
       )
     : naturalExpandedHeight;
+  const topPinned =
+    getComputedStyle(stack)
+      .getPropertyValue?.('--panel-stack-top-pinned')
+      ?.trim() === '1';
+  // A pinned stack stays in its own box whatever the corridor says, so a
+  // filling panel measures the box, or it would run off the screen.
+  const fillHeight = topPinned
+    ? Math.max(
+        0,
+        stackRect.height - rowGap * Math.max(0, expandedPanels.length - 1),
+      )
+    : expandedAvailableHeight;
   const allocatedExpandedHeights = fills
     ? allocatePanelFillHeights({
         naturalHeights: naturalExpandedHeights,
         fillIndex,
-        availableHeight: expandedAvailableHeight,
+        availableHeight: fillHeight,
       })
     : allocatePanelStackHeights({
         naturalHeights: naturalExpandedHeights,
@@ -301,10 +313,6 @@ export function layoutLeftPanelRail({
   }
   // The rail stays where the resting stack puts it; only the panels move.
   // A theme that pins the stack's top (Cyber) leaves nothing to offset.
-  const topPinned =
-    getComputedStyle(stack)
-      .getPropertyValue?.('--panel-stack-top-pinned')
-      ?.trim() === '1';
   const railOffset = `${(topPinned ? 0 : safeTop - layoutTop).toFixed(1)}px`;
   if (stack.style.getPropertyValue('--panel-rail-offset') !== railOffset) {
     stack.style.setProperty('--panel-rail-offset', railOffset);

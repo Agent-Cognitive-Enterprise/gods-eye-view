@@ -86,9 +86,8 @@ test('on a short screen FEEDS gives way so the filling panel stays usable', () =
     fillIndex: 0,
     availableHeight: 400,
   });
-  assert.equal(feeds, 240);
-  assert.equal(fill, 160);
-  assert.equal(fill + feeds, 400);
+  assert.equal(feeds, 200);
+  assert.equal(fill, 200);
 });
 
 test('a corridor with no height gives no height', () => {

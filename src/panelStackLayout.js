@@ -52,14 +52,14 @@ export function allocatePanelStackHeights({
  * @param {number[]} input.naturalHeights Natural height of each panel, in px.
  * @param {number} input.fillIndex The panel that fills.
  * @param {number} input.availableHeight Corridor height, in px.
- * @param {number} [input.minimumFillRatio=0.4] Share the filling panel keeps.
+ * @param {number} [input.minimumFillRatio=0.5] Share the filling panel keeps.
  * @returns {number[]} Allocated heights, in the same order.
  */
 export function allocatePanelFillHeights({
   naturalHeights,
   fillIndex,
   availableHeight,
-  minimumFillRatio = 0.4,
+  minimumFillRatio = 0.5,
 }) {
   const available = Math.max(0, Number(availableHeight) || 0);
   const natural = naturalHeights.map((height) =>
