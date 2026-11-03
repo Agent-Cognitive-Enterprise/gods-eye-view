@@ -7,12 +7,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { clusterEvents } from '../../../src/intel/clustering.js';
 import { createIntelEngine } from '../../../src/intel/engine.js';
+import { fastStatus } from '../../../src/intel/fastStatus.js';
 import { createReplay } from '../../../src/intel/replay.js';
 import { PLACE_LABELS } from '../../../src/intel/proximity.js';
 import {
   AUTOPILOT_DEFAULTS,
   CATEGORIES,
   SCORE_WEIGHTS,
+  isAggregatorOnly,
 } from '../../../src/intel/taxonomy.js';
 import { createAssessor } from './assessor.js';
 import { createFeedRunner } from './feeds.js';
@@ -22,6 +24,9 @@ const RETENTION_DAYS = 90;
 
 const PRUNE_EVERY_MS = 6 * 3600_000;
 const MAX_LIST = 500;
+// Machine-coded news is voluminous and scores close to real reports: without a
+// limit a few days of it would push real events and analyst stops off the list.
+const MAX_AGGREGATOR_LISTED = 150;
 
 /** Operator settings: defaults plus validated, bounded overrides. */
 export function sanitizeSettings(input = {}) {
@@ -79,6 +84,7 @@ export function sanitizeSettings(input = {}) {
     'pullBackEnabled',
     'tourAnalystIncidents',
     'proximityEnabled',
+    'socialCameraEnabled',
   ])
     if (typeof input[key] === 'boolean') out[key] = input[key];
   if (input.categoryRelevance && typeof input.categoryRelevance === 'object') {
@@ -111,6 +117,7 @@ export function publicEvent(event) {
   return {
     ...rest,
     synthetic: event.providers?.includes('replay') ?? false,
+    fast_status: fastStatus(event),
     explanation: {
       attention: Object.entries(event.score_terms ?? {}).map(
         ([term, value]) => ({
@@ -134,6 +141,18 @@ export function publicEvent(event) {
   };
 }
 
+/** The events a client sees, best first, with aggregators kept to their share. */
+export function listedEvents(events) {
+  let aggregated = 0;
+  return events
+    .filter((event) => {
+      const onlyAggregator = isAggregatorOnly(event);
+      if (onlyAggregator) aggregated += 1;
+      return !onlyAggregator || aggregated <= MAX_AGGREGATOR_LISTED;
+    })
+    .slice(0, MAX_LIST);
+}
+
 /**
  * @param {{storeFile?: string, connectors?: object[], now?: () => number,
  *   settingsFile?: string|null, fetchImpl?: Function, log?: Function,
@@ -148,6 +167,7 @@ export function createIntelService({
   log = (...args) => console.warn(...args),
   scenarios = {},
   llm = null,
+  onFeedBatch,
 } = {}) {
   const readSettings = () => {
     if (!settingsFile) return {};
@@ -176,6 +196,7 @@ export function createIntelService({
       fetchImpl,
       log,
       maxRecordAgeMs: RETENTION_DAYS * 24 * 3600_000,
+      onBatch: onFeedBatch,
     }),
   );
   let replay = null; // {world, startedAt, speed}
@@ -213,7 +234,7 @@ export function createIntelService({
   function listEvents(name, { minScore = 0 } = {}) {
     const w = world(name);
     if (!w) return null;
-    const active = w.engine.activeEvents(w.now).slice(0, MAX_LIST);
+    const active = listedEvents(w.engine.activeEvents(w.now));
     const s = settings();
     const eligible = active.filter(
       (e) => e.camera_eligible && e.attention_score >= s.minimumAttentionScore,

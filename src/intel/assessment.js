@@ -83,7 +83,7 @@ export function withoutDrillMarkers(text) {
 }
 
 /** Neutralize markup so evidence cannot close or forge its delimiters. */
-function fenced(text, max) {
+export function fenced(text, max) {
   return plainText(text, max).replace(/</g, '‹').replace(/>/g, '›');
 }
 

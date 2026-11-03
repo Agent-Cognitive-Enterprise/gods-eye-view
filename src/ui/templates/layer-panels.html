@@ -198,4 +198,18 @@
     </div>
   </div>
 
+  <!-- Fast Intelligence (fork feature): hidden unless /api/intel/fast/status reports it enabled. -->
+  <div id="fast-intel-panel" class="panel-collapsible collapsed" data-panel-id="fast-intel-panel" hidden>
+    <div class="panel-glow"></div>
+    <div class="intel-panel-inner intel-feeds-inner">
+      <div class="panel-header">
+        <span class="panel-title" data-i18n>FAST INTELLIGENCE</span>
+        <span id="fast-intel-count" aria-label="Push sources up" data-i18n-aria-label></span>
+        <span class="panel-divider"></span>
+        <button class="panel-collapse-btn" data-collapse-target="fast-intel-panel" type="button" title="Collapse panel" data-i18n-title>+</button>
+      </div>
+      <div id="fast-intel-body"></div>
+    </div>
+  </div>
+
   </div>

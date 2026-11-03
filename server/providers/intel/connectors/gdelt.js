@@ -3,13 +3,14 @@
 // automatic and often wrong, so records are `aggregator` grade (they never
 // corroborate anything), labelled "Machine-coded news", kept 14 days, and
 // limited to protests (CAMEO root 14) and violence (18-20) reported by at
-// least MIN_ARTICLES articles, geolocated to a city or landmark.
+// least MIN_ARTICLES articles, geolocated to a city or landmark. On a real day
+// ten kept 244 events; five kept 520, too many for the event list.
 
 import { readZipEntry } from '../kmz.js';
 
 export const GDELT_LAST_UPDATE =
   'https://data.gdeltproject.org/gdeltv2/lastupdate.txt';
-const MIN_ARTICLES = 5;
+const MIN_ARTICLES = 10;
 const MAX_RECORDS = 150;
 const COLUMNS = 61;
 const ROOTS = Object.freeze({

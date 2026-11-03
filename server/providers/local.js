@@ -33,6 +33,7 @@ import { createAirSeaHub } from './airsea/signals.js';
 import { localVoiceProxy } from './localVoice/index.js';
 import { cycloneProxy } from './cyclones.js';
 import { windProxy } from './wind.js';
+import { exitWithLauncher, isIsolatedInstance } from './isolation.js';
 
 /**
  * Construct the local provider plugins in their established order.
@@ -43,8 +44,11 @@ function localProviderPlugins({ realtime, gemini } = {}) {
   const ghostMapsWatcher = createGhostMapsWatcher();
   // Air & Sea results reach the early-warning Autopilot through one hub.
   const airSeaHub = createAirSeaHub();
+  // A staging server has no business near a single-use or quota-bound connection.
+  const isolated = isIsolatedInstance();
+  if (isolated) exitWithLauncher();
   return [
-    openSkyProxy(),
+    ...(isolated ? [] : [openSkyProxy()]),
     celestrakProxy(),
     tomtomProxy(),
     firmsProxy(),
@@ -62,7 +66,7 @@ function localProviderPlugins({ realtime, gemini } = {}) {
     localReceiversProxy(),
     transitProxy(),
     adsbLolProxy(),
-    aisLiveProxy(),
+    ...(isolated ? [] : [aisLiveProxy()]),
     trackBackfillProxies(),
     openAiRealtimeProxy({ realtime }),
     ...(gemini ? [geminiLiveProxy({ realtime: gemini })] : []),

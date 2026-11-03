@@ -7,6 +7,38 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **The Autopilot loop keeps going.** An update that threw used to end the loop, so
+  Autopilot stopped moving while still reading ON, with no Resume. Coming back to the
+  tab during an update could start a second loop. Requests to the event service now
+  give up after 20 seconds instead of waiting for ever.
+- **No near-home lift for machine-coded news.** A GDELT item coded as fighting near
+  Sydney, from an article about an animal shelter fire, ranked first at 94.
+- **ReliefWeb works against the live API.** The first real request failed with
+  HTTP 400 because the API refuses `primary_country.location` as a field. The
+  connector now asks for the whole `primary_country`, which carries the coordinates.
+- **Fast Intelligence gate reads grammar.** It caught 9 of 27 real events in the
+  live test, missing most conflict and protest reports. It now reads who did what to
+  what, and stated tolls, in the main clause of a post. On an unseen period recall
+  rose from 22 % to 43 % with precision unchanged within error at 78 %, which is below
+  the 80 % target, so posts still never move the camera. See
+  `docs/FAST_FEEDS_EVALUATION.md`.
+- **GDELT limits.** Machine-coded news now needs 10 articles rather than 5, and at most
+  150 such events are listed at once, so it cannot push real events off the event list.
+- **Fast Intelligence (branch `feature/fast-intelligence-feed`, off unless
+  `GEV_FAST_FEEDS=1`).** Public posts reach the engine within seconds of being
+  published, as claims and never as facts. Bluesky Jetstream v2 from listed
+  accounts, a durable bounded queue with the
+  stream cursor stored alongside, a rule gate in English, Russian and Ukrainian,
+  an offline gazetteer, and Qwen for places the gate cannot read. A post alone is
+  below camera confidence, any number of accounts stays below a critical
+  interruption, a wave of posts renews nothing, and a deleted post stops counting
+  with its words removed. The FAST INTELLIGENCE panel shows first reports as
+  hollow rings, every clock of a report, source health in words, and delay
+  against target. Posts alone never move the camera until `socialCameraEnabled`
+  is set. Telegram stays disabled pending a library review. A staging launcher
+  and a machine-wide AIS lease keep a second instance off the single connection.
+  NWS now polls every minute and GDACS every six. See
+  `docs/FAST_FEEDS_IMPLEMENTATION.md`.
 - **Auto-hide fix.** The bottom controls stopped hiding once the app had more
   than eight languages: the language search field that appears then always
   says `aria-expanded="true"`, and that was read as an open menu. Only controls

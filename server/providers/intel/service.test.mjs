@@ -10,7 +10,11 @@ import {
   intelProxy,
   isLocalMutation,
 } from './index.js';
-import { createIntelService, sanitizeSettings } from './service.js';
+import {
+  createIntelService,
+  listedEvents,
+  sanitizeSettings,
+} from './service.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const demo = JSON.parse(
@@ -54,6 +58,34 @@ test('A13: feed health distinguishes offline, degraded and stale', () => {
   );
   assert.equal(nextDelayMs({ consecutive_failures: 2 }, connector), 240_000);
   assert.equal(nextDelayMs({ consecutive_failures: 9 }, connector), 30 * MIN);
+});
+
+test('machine-coded news cannot crowd real events off the list', () => {
+  const machine = (n) => ({
+    event_id: `m${n}`,
+    lineages: [{ source_type: 'aggregator' }],
+  });
+  const real = (n) => ({
+    event_id: `r${n}`,
+    lineages: [{ source_type: 'primary_official' }],
+  });
+  // Best first, and every real event scores below all the machine-coded ones.
+  const events = [
+    ...Array.from({ length: 700 }, (_, n) => machine(n)),
+    ...Array.from({ length: 200 }, (_, n) => real(n)),
+  ];
+  const listed = listedEvents(events);
+  assert.equal(listed.filter((e) => e.event_id.startsWith('m')).length, 150);
+  assert.equal(listed.filter((e) => e.event_id.startsWith('r')).length, 200);
+  // An aggregator beside a real source is a real event.
+  const mixed = {
+    event_id: 'x',
+    lineages: [{ source_type: 'aggregator' }, { source_type: 'eyewitness' }],
+  };
+  assert.ok(listedEvents([...events, mixed]).some((e) => e.event_id === 'x'));
+  // The overall limit still holds.
+  const many = Array.from({ length: 600 }, (_, n) => real(n));
+  assert.equal(listedEvents(many).length, 500);
 });
 
 test('A13: a failing feed reports offline while another keeps ingesting', async () => {

@@ -52,6 +52,31 @@ test('proximity: the nearest place wins; imprecise locations count for less', ()
   );
 });
 
+test('proximity: machine-coded news near home gets no lift', () => {
+  const lineage = (source_type) => ({
+    key: source_type,
+    source_type,
+    publisher: source_type,
+  });
+  const report = (source_type) => ({
+    category: 'armed_conflict',
+    location: near(52.1, 5.1),
+    lineages: [lineage(source_type)],
+    providers: [source_type],
+    observation_count: 1,
+    severity_history: [10],
+    last_meaningful_update_at: 1000,
+    first_seen_at: 1000,
+    metrics: {},
+    metric_sources: {},
+  });
+  const gdelt = scoreEvent(report('aggregator'), 1000, settings);
+  assert.equal(gdelt.attention_score, gdelt.base_attention_score);
+  assert.ok(gdelt.proximity.weight > 0.9, 'the distance is still reported');
+  const news = scoreEvent(report('secondary_reporting'), 1000, settings);
+  assert.ok(news.attention_score > news.base_attention_score);
+});
+
 test('proximity: a small area containing a place is at distance 0; a large one counts from its centre', () => {
   const area = (bounds) => ({
     location: { lat: null, lon: null, precision: 'region', bounds },
