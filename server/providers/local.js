@@ -32,6 +32,7 @@ import { intelProxy } from './intel/index.js';
 import { airSeaProxy } from './airsea/index.js';
 import { createAirSeaHub } from './airsea/signals.js';
 import { localVoiceProxy } from './localVoice/index.js';
+import { droneAirspaceProxy } from './droneAirspace.js';
 import { cycloneProxy } from './cyclones.js';
 import { windProxy } from './wind.js';
 import { exitWithLauncher, isIsolatedInstance } from './isolation.js';
@@ -94,6 +95,7 @@ function localProviderPlugins({
     intelProxy({ ghostMapsWatcher, airSeaHub }),
     airSeaProxy({ hub: airSeaHub }),
     localVoiceProxy(),
+    droneAirspaceProxy(),
     keySetupEndpoint(),
   ];
 }
