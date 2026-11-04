@@ -154,7 +154,12 @@
       "src/ui/views/panels/GlobeCompass.vue",
       "src/ui/stores/recording.js",
       "src/ui/styleParameters.js",
-      "src/ui/i18n.js"
+      "src/ui/i18n.js",
+      "src/intel/mercator.js",
+      "src/intel/overviewWorld.json",
+      "src/ui/views/panels/WorldOverview.vue",
+      "src/ui/views/panels/WorldOverviewCamera.vue",
+      "src/ui/stores/worldOverview.js"
     ],
     "external": ["vue", "pinia", "vue-i18n"]
   },
@@ -3253,7 +3258,11 @@
       "src/voice/osmActions.js",
       "src/layers/osmPlaces/index.js",
       "src/app/layers/osmPlaces.js",
-      "src/voice/areaActions.js"
+      "src/voice/areaActions.js",
+      "src/intel/overviewModel.js",
+      "src/ui/stores/worldOverview.js",
+      "src/intel/mercator.js",
+      "src/ui/worldOverview.js"
     ],
     "external": [
       "hls.js",

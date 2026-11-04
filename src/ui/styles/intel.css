@@ -671,3 +671,140 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
   text-align: left;
   cursor: pointer;
 }
+
+/* WORLD OVERVIEW (src/ui/views/panels/WorldOverview.vue): a 2D Mercator map at
+   the foot of AUTOPILOT, the panel's full width. The queue above it scrolls; the
+   map stays in view. Red is the Autopilot: the shot on screen blinks, other stops
+   are faded red dots. The cyan crosshair is the camera itself. */
+.world-overview {
+  flex: 0 0 auto;
+  padding-top: 6px;
+  border-top: 1px solid var(--glass-border);
+}
+.world-overview__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 20px;
+}
+.world-overview__head .panel-title {
+  flex: 0 0 auto;
+}
+.wo-badge {
+  padding: 1px 5px;
+  border: 1px solid var(--glass-border);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  font: 9px var(--font-mono);
+  letter-spacing: 1px;
+}
+.wo-badge--auto {
+  border-color: rgba(255, 90, 90, 0.6);
+  color: #ff8a8a;
+}
+.wo-badge--demo {
+  border-color: rgba(255, 196, 0, 0.6);
+  color: #ffc400;
+}
+.wo-status {
+  flex: 1 1 auto;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font: 9px var(--font-mono);
+  letter-spacing: 1px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wo-toggle {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.world-overview__map {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.28);
+}
+.wo-land {
+  fill: rgba(150, 175, 195, 0.16);
+  stroke: rgba(170, 195, 215, 0.32);
+  stroke-width: 0.8;
+  vector-effect: non-scaling-stroke;
+}
+.wo-graticule {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.06);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.wo-route {
+  fill: none;
+  stroke: rgba(255, 70, 70, 0.4);
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+.wo-route--next {
+  stroke-dasharray: 4 3;
+}
+.wo-point {
+  fill: #ff3b3b;
+  cursor: pointer;
+  outline: none;
+}
+.wo-point--visited {
+  fill-opacity: 0.32;
+}
+.wo-point--next {
+  fill-opacity: 0.45;
+}
+/* A two-step blink: it repaints twice a cycle, not every frame. */
+.wo-point--current {
+  animation: wo-blink 1.2s steps(1, end) infinite;
+}
+.wo-point--regional {
+  stroke: #ff3b3b;
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+  vector-effect: non-scaling-stroke;
+}
+.wo-point:focus-visible {
+  stroke: #ffffff;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+@keyframes wo-blink {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wo-point--current {
+    animation: none;
+  }
+}
+.wo-camera__cross {
+  fill: none;
+  stroke: #7fe0ff;
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
+}
+.wo-camera__arrow {
+  fill: #7fe0ff;
+}
+.wo-note {
+  margin: 3px 0 0;
+  font-size: 10px;
+}
