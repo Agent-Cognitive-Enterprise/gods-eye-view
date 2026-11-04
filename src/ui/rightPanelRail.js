@@ -6,6 +6,7 @@ import { resolveHudRailLayout } from './panelRailGeometry.js';
 
 import { displayPanelScroller } from './displayPanelScroll.js';
 import { settleSideAccordion } from './panelAccordion.js';
+import { panelRailBand } from './leftPanelRail.js';
 
 const pendingCollapseRetries = new WeakSet();
 
@@ -224,7 +225,20 @@ export function layoutRightPanelRail({
   const shouldFocus = wasFocused
     ? naturalHeight >= availableHeight - stabilityBand
     : naturalHeight > availableHeight;
-  const layoutTop = shouldFocus ? safeTop : layout.top;
+  // A rail drawn as a row above the stack keeps its band clear and lines up
+  // with the left rail's row.
+  const railBand = panelRailBand(stack, getComputedStyle);
+  const layoutTop =
+    railBand > 0
+      ? Math.max(shouldFocus ? safeTop : layout.top, alignedTop)
+      : shouldFocus
+        ? safeTop
+        : layout.top;
+  if (railBand > 0) {
+    const railOffset = `${(alignedTop - layoutTop).toFixed(1)}px`;
+    if (stack.style.getPropertyValue('--panel-rail-offset') !== railOffset)
+      stack.style.setProperty('--panel-rail-offset', railOffset);
+  }
   const collapsedHeight = visiblePanels.reduce(
     (total, panel) =>
       panel.classList.contains('collapsed')

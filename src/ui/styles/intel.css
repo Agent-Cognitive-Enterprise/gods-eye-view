@@ -416,7 +416,47 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-left {
    title instead of at 26vh (src/ui/leftPanelRail.js reads this; the right
    rail aligns to the left stack; the title bar stays an obstacle). */
 #left-panel-stack {
-  --left-stack-base-top: 100px;
+  --left-stack-base-top: 146px;
+}
+
+/* Panel rails as a row of icons above each column, so the columns sit close to
+   the screen edges instead of 100px in (src/ui/leftPanelRail.js and
+   rightPanelRail.js keep the band clear and hold the rails on one row). The
+   vertical COLL / ONA and BAND / BITS / LVL edge readouts are hidden, which
+   frees that gutter too. The phone layout and Cockpit hide the rails as before. */
+:root {
+  --panel-rail-band: 46px;
+  --panel-rail-clearance: 0px;
+  --left-stack-x: 16px;
+  --right-rail-x: 16px;
+}
+.gev-panel-rail {
+  top: calc(var(--panel-rail-offset, 0px) - var(--panel-rail-band));
+}
+.gev-panel-rail--left {
+  inset-inline-start: 0;
+}
+.gev-panel-rail--right {
+  inset-inline-end: 0;
+}
+.gev-panel-rail .ui-rail {
+  flex-direction: row;
+}
+.gev-panel-rail .ui-rail__sep {
+  width: 1px;
+  height: auto;
+  margin: 6px 3px;
+}
+.gev-panel-rail .ui-rail--collapsible .ui-rail__item {
+  width: 32px;
+  padding: 0;
+  justify-content: center;
+}
+.gev-panel-rail .ui-rail__label {
+  display: none;
+}
+body:not(.cockpit-mode) #intel-hud .hud-edge {
+  display: none !important;
 }
 
 /* GSD / ALT / AIS readout: lower right, under the Autopilot panel and on
