@@ -30,7 +30,12 @@ export function canvasImageUrl(image, cache) {
   }
   let url = cache.get(image);
   if (!url) {
-    url = image.toDataURL();
+    try {
+      url = image.toDataURL();
+    } catch {
+      // A tainted canvas cannot be read: keep it as it is rather than fail the load.
+      return null;
+    }
     cache.set(image, url);
   }
   return url;

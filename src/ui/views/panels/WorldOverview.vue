@@ -46,16 +46,18 @@ const current = computed(() => (model.value?.current ? place(model.value.current
 const visited = computed(() => (model.value?.visited ?? []).map(place).filter(Boolean));
 const next = computed(() => (model.value?.next ?? []).map(place).filter(Boolean));
 // Where it has been, oldest first, into the shot on screen; then, dashed, the likely next stop.
+// Lines end where their dots are drawn: inside the band, like the dots themselves.
+const inBand = (p) => ({ ...p, lat: Math.min(74, Math.max(-59, p.lat)) });
 const pastPath = computed(() => {
   if (!model.value) return '';
   const points = [...model.value.visited].reverse();
   if (model.value.current) points.push(model.value.current);
-  return segmentsPath(routeSegments(points), SIZE, SIZE);
+  return segmentsPath(routeSegments(points.map(inBand)), SIZE, SIZE);
 });
 const nextPath = computed(() => {
   const m = model.value;
   if (!m?.current || !m.next.length) return '';
-  return segmentsPath(routeSegments([m.current, m.next[0]]), SIZE, SIZE);
+  return segmentsPath(routeSegments([m.current, m.next[0]].map(inBand)), SIZE, SIZE);
 });
 
 const STATUS = {
@@ -113,20 +115,24 @@ onBeforeUnmount(() => {
   <section ref="root" id="world-overview" class="world-overview" :aria-label="t('World overview')">
     <div class="world-overview__head">
       <span class="panel-title">{{ t('WORLD OVERVIEW') }}</span>
-      <span v-if="model" class="wo-badge" :class="`wo-badge--${model.mode}`">{{ STATUS[model.mode]?.() }}</span>
-      <span v-if="model?.demo" class="wo-badge wo-badge--demo">{{ t('DEMO') }}</span>
-      <span class="wo-status">{{ status }}</span>
-      <button type="button" class="wo-toggle" :aria-expanded="String(open)" :title="open ? t('Hide map') : t('Show map')" @click="store.act('toggle')">{{ open ? '▾' : '▸' }}</button>
+      <template v-if="open && model">
+        <span class="wo-badge" :class="`wo-badge--${model.mode}`">{{ STATUS[model.mode]?.() }}</span>
+        <span v-if="model.demo" class="wo-badge wo-badge--demo">{{ t('DEMO') }}</span>
+        <span class="wo-status">{{ status }}</span>
+      </template>
+      <button type="button" class="wo-toggle" :aria-expanded="String(open)" :aria-label="open ? t('Hide map') : t('Show map')" :title="open ? t('Hide map') : t('Show map')" @click="store.act('toggle')">{{ open ? '▾' : '▸' }}</button>
     </div>
-    <svg v-if="open && model" class="world-overview__map" :viewBox="viewBox" preserveAspectRatio="xMidYMid meet" role="img" :aria-label="label">
-      <path class="wo-land" :d="WORLD.path" />
-      <path class="wo-graticule" :d="graticule" />
-      <path v-if="pastPath" class="wo-route" :d="pastPath" />
-      <path v-if="nextPath" class="wo-route wo-route--next" :d="nextPath" />
-      <circle v-for="p in visited" :key="`v:${p.key}`" class="wo-point wo-point--visited" :cx="p.cx" :cy="p.cy" r="9" tabindex="0" role="button" :aria-label="describe(p, t('VISITED'))" @click="store.act('select', p.key)" @keydown.enter="store.act('select', p.key)"><title>{{ describe(p, t('VISITED')) }}</title></circle>
-      <circle v-for="p in next" :key="`n:${p.key}`" class="wo-point wo-point--next" :cx="p.cx" :cy="p.cy" r="9" tabindex="0" role="button" :aria-label="describe(p, t('LIKELY NEXT'))" @click="store.act('select', p.key)" @keydown.enter="store.act('select', p.key)"><title>{{ describe(p, t('LIKELY NEXT')) }}</title></circle>
-      <circle v-if="current" class="wo-point wo-point--current" :class="{ 'wo-point--regional': current.regional }" :cx="current.cx" :cy="current.cy" r="15" tabindex="0" role="button" :aria-label="describe(current, t('NOW'))" @click="store.act('select', current.key)" @keydown.enter="store.act('select', current.key)"><title>{{ describe(current, t('NOW')) }}</title></circle>
-      <WorldOverviewCamera :width="SIZE" :height="SIZE" />
+    <svg v-if="open && model" class="world-overview__map" :viewBox="viewBox" preserveAspectRatio="xMidYMid meet" role="group" :aria-label="label">
+      <g aria-hidden="true">
+        <path class="wo-land" :d="WORLD.path" />
+        <path class="wo-graticule" :d="graticule" />
+        <path v-if="pastPath" class="wo-route" :d="pastPath" />
+        <path v-if="nextPath" class="wo-route wo-route--next" :d="nextPath" />
+      </g>
+      <circle v-for="p in visited" :key="`v:${p.key}`" class="wo-point wo-point--visited" :cx="p.cx" :cy="p.cy" r="9" tabindex="0" role="button" :aria-label="describe(p, t('VISITED'))" @click="store.act('select', p.key)" @keydown.enter="store.act('select', p.key)" @keydown.space.prevent="store.act('select', p.key)"><title>{{ describe(p, t('VISITED')) }}</title></circle>
+      <circle v-for="p in next" :key="`n:${p.key}`" class="wo-point wo-point--next" :cx="p.cx" :cy="p.cy" r="9" tabindex="0" role="button" :aria-label="describe(p, t('LIKELY NEXT'))" @click="store.act('select', p.key)" @keydown.enter="store.act('select', p.key)" @keydown.space.prevent="store.act('select', p.key)"><title>{{ describe(p, t('LIKELY NEXT')) }}</title></circle>
+      <circle v-if="current" class="wo-point wo-point--current" :class="{ 'wo-point--regional': current.regional }" :cx="current.cx" :cy="current.cy" r="15" tabindex="0" role="button" :aria-label="describe(current, t('NOW'))" @click="store.act('select', current.key)" @keydown.enter="store.act('select', current.key)" @keydown.space.prevent="store.act('select', current.key)"><title>{{ describe(current, t('NOW')) }}</title></circle>
+      <WorldOverviewCamera :width="SIZE" :height="SIZE" :top="TOP + 8" :bottom="BOTTOM - 8" />
     </svg>
     <p v-if="open && model?.unplaced" class="wo-note intel-muted">{{ t('{count} without a map position', { count: formatNumber(model.unplaced) }) }}</p>
   </section>

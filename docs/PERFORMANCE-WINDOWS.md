@@ -21,9 +21,13 @@ measured.
 
 ## Method
 
-- `scripts/perf-staging.mjs --state <dir> --port <port>` starts an isolated instance:
-  its own event database and air/sea folder, no AIS collection, no LLM. It refuses to
-  start if `.env` exists, and stops if it sees a connection to AISStream.
+- `scripts/perf-staging.mjs --state <dir> --port <port>` starts an isolated instance
+  with the same guards as `scripts/gev-staging.mjs` (`server/providers/isolation.js`):
+  it refuses reserved ports, live checkouts and state folders, any `.env*` holding the
+  AIS key and a set tripwire; shared secrets are blank, Telegram, the local model and
+  voice are off; and it watches the server's sockets for as long as it runs, killing
+  it on any connection to AISStream. Unlike `gev-staging.mjs` it turns air/sea on to
+  replay a copied history, with collection off.
 - `scripts/perf-autopilot.mjs --url <instance> --label <name> --chrome <chrome.exe>`
   runs scenes in a real, headful Chrome and writes `<label>.json`:
   - **idle**: Autopilot off, camera parked, 45 s.
@@ -67,7 +71,9 @@ Fix: `src/data/stableBillboardImages.js` replaces each constant canvas image wit
 data URL, built once per canvas. A data URL is its own id, so every billboard and
 every reuse resolve to one atlas entry. It is applied to the submarine cable sources
 and to `localGeojsonCore.js`, which loads infrastructure points the same way (that
-second use was not measured separately). `geoFileImport.js` already did the same.
+second use was not measured separately). The launches layer's hover reticle was the
+one other canvas billboard image found; it is now a data URL too. `geoFileImport.js`
+already did the same.
 
 Not yet done: an overnight run of the fixed build.
 

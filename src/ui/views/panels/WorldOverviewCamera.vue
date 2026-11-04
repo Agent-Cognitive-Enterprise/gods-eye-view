@@ -6,11 +6,19 @@ import { useWorldOverviewStore } from '../../stores/worldOverview.js';
 
 // The camera's own marker: a crosshair with a heading arrow. A separate component, so
 // a moving camera re-renders only this, never the map or the Autopilot markers.
-const props = defineProps({ width: { type: Number, required: true }, height: { type: Number, required: true } });
+const props = defineProps({
+  width: { type: Number, required: true },
+  height: { type: Number, required: true },
+  // The visible band: a camera beyond it is held at its edge, like the dots.
+  top: { type: Number, default: 0 },
+  bottom: { type: Number, default: Infinity },
+});
 const { camera } = storeToRefs(useWorldOverviewStore());
-const transform = computed(() =>
-  camera.value ? `translate(${(camera.value.x * props.width).toFixed(1)} ${(camera.value.y * props.height).toFixed(1)}) rotate(${camera.value.heading})` : '',
-);
+const transform = computed(() => {
+  if (!camera.value) return '';
+  const y = Math.min(props.bottom, Math.max(props.top, camera.value.y * props.height));
+  return `translate(${(camera.value.x * props.width).toFixed(1)} ${y.toFixed(1)}) rotate(${camera.value.heading})`;
+});
 </script>
 
 <template>

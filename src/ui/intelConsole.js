@@ -1140,8 +1140,10 @@ export function createIntelConsole({
     const collection = ensurePoints();
     if (!collection) return;
     const limit = settings.maxMarkersInView ?? 200;
+    // Both coordinates: a half-located event would throw inside Cesium.
     const located = data.events.filter(
-      (e) => e.location?.lat !== null && e.location?.lat !== undefined,
+      (e) =>
+        Number.isFinite(e.location?.lat) && Number.isFinite(e.location?.lon),
     );
     let changed = false;
     const shown = new Set();
@@ -1153,6 +1155,8 @@ export function createIntelConsole({
       if (held && held.look === look.key) continue;
       const point =
         held?.point ?? collection.add({ id: `${PICK_PREFIX}${id}` });
+      // Held before it is styled, so a throw cannot leave an untracked point.
+      markerState.set(id, { point, look: null });
       applyLook(point, look);
       markerState.set(id, { point, look: look.key });
       changed = true;
@@ -1195,9 +1199,10 @@ export function createIntelConsole({
     const nextLabelLook = labels
       .map(
         (label, index) =>
+          // The position too: a revision that moves an event moves its label.
           `${label.id}|${label.title}|${label.details[0]}|${label.accent}|${Math.round(
             (located[index].opacity ?? 1) * 100,
-          )}`,
+          )}|${located[index].location.lat}|${located[index].location.lon}`,
       )
       .join('\n');
     if (nextLabelLook !== labelLook) {

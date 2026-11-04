@@ -40,8 +40,11 @@ The map never moves the camera by itself.
   `node scripts/build-overview-world.mjs` from the bundled Natural Earth countries
   (public domain): 34 KB, 14 KB compressed, instead of the 946 KB source.
 
-It does no work while the map is hidden, scrolled out of view or the tab is in the
-background, and catches up when it is shown again.
+It does no work while the map is collapsed, scrolled out of view or the tab is in the
+background, and catches up when it is shown again. Collapsed, the header shows only
+its title and the toggle. Switching between the drill and live events starts a new
+visited list. A shot framed by a country's or region's box, with no point, is drawn
+at the box's centre as regional.
 
 ## Settings
 

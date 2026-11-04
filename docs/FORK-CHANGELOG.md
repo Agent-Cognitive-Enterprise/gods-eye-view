@@ -15,7 +15,8 @@ number there.
   touring on staging, and every growth repacks all of them. Pins are now data URLs,
   so all 1,917 landing points share one entry. The local GeoJSON (infrastructure)
   layers load their points the same way and get the same fix, which was not measured
-  separately. See `docs/PERFORMANCE-WINDOWS.md`.
+  separately, as does the launches layer's hover reticle. See
+  `docs/PERFORMANCE-WINDOWS.md`.
 - **World overview in AUTOPILOT.** A 2D map at the foot of the panel: the shot on
   screen as a blinking red dot, the last five arrivals and up to eight likely next
   shots as faded red dots, and the camera with its heading. It reads the scheduler's

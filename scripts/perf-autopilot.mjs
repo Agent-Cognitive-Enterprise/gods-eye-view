@@ -68,7 +68,13 @@ function startChrome(chromeArgs) {
     spawn(CHROME, chromeArgs, { detached: true, stdio: 'ignore' }).unref();
     return;
   }
-  const quote = (value) => `'${String(value).replaceAll('\\', '/').replace(/'/g, "''")}'`;
+  // PowerShell reads typographic single quotes as quotes too, and Start-Process
+  // passes each element as it is, so one holding a space is wrapped in "...".
+  const quote = (value) => {
+    let text = String(value).replaceAll('\\', '/');
+    if (/\s/.test(text)) text = `"${text}"`;
+    return `'${text.replace(/['‘’‚‛]/g, '$&$&')}'`;
+  };
   spawnSync('powershell', [
     '-NoProfile',
     '-Command',
@@ -78,7 +84,9 @@ function startChrome(chromeArgs) {
 
 async function launch() {
   for (let attempt = 1; ; attempt += 1) {
-    profileDir = path.join(OUT, `profile-${LABEL}-${Date.now()}-${attempt}`);
+    // Only plain characters in the folder name: it is matched with PowerShell -like.
+    const safeLabel = LABEL.replace(/[^\w.-]/g, '_');
+    profileDir = path.join(OUT, `profile-${safeLabel}-${Date.now()}-${attempt}`);
     try {
       if (!CHROME) {
         return await puppeteer.launch({ headless: false, userDataDir: profileDir, defaultViewport: null, args: CHROME_ARGS });

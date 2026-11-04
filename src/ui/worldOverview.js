@@ -76,8 +76,9 @@ export function createWorldOverview({
 
   function rebuild() {
     if (destroyed || !lastInput) return;
-    // Nobody can see it: remember to catch up, and do nothing now.
-    if (!store.visible || documentRef?.hidden) {
+    // Nobody can see it (collapsed, scrolled away, background tab): remember to
+    // catch up, and do nothing now.
+    if (!store.open || !store.visible || documentRef?.hidden) {
       dirty = true;
       return;
     }
@@ -116,10 +117,10 @@ export function createWorldOverview({
     },
   });
   const catchUp = () => {
-    if (dirty && store.visible && !documentRef?.hidden) rebuild();
-    if (store.visible) updateCamera(true);
+    if (dirty && store.open && store.visible && !documentRef?.hidden) rebuild();
+    if (store.open && store.visible) updateCamera(true);
   };
-  const stopWatch = watch(() => store.visible, catchUp);
+  const stopWatch = watch(() => [store.visible, store.open], catchUp);
   documentRef?.addEventListener?.('visibilitychange', catchUp);
   updateCamera(true);
 
@@ -130,6 +131,9 @@ export function createWorldOverview({
      *   clusters: object[], events: object[], likely: object[]}} input
      */
     update(input) {
+      // Arrivals belong to the world they happened in: a switch between the drill
+      // and live events must not carry one's stops into the other.
+      if (lastInput && lastInput.world !== input.world) visited = [];
       lastInput = input;
       rebuild();
     },

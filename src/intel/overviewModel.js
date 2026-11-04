@@ -37,7 +37,20 @@ export function clusterPlace(cluster, eventsById) {
   const loc = top?.location;
   if (located(loc?.lat, loc?.lon))
     return { lat: loc.lat, lon: loc.lon, regional: precision === 'country' };
+  // A region-framed shot (country or area bounds, no point): its box's centre.
+  const middle = boundsCentre(cluster?.bounds ?? loc?.bounds);
+  if (middle) return { ...middle, regional: true };
   return null;
+}
+
+/** Centre of a {west, east, south, north} box, which may cross ±180°. */
+export function boundsCentre(bounds) {
+  const { west, east, south, north } = bounds ?? {};
+  if (!located(south, west) || !located(north, east)) return null;
+  const span = west <= east ? east - west : east + 360 - west;
+  let lon = west + span / 2;
+  if (lon > 180) lon -= 360;
+  return { lat: (south + north) / 2, lon };
 }
 
 /**
@@ -137,7 +150,7 @@ export function sameModel(a, b) {
         m.current.regional,
       ],
       m.visited.map((v) => [v.key, v.lat, v.lon]),
-      m.next.map((n) => [n.key, n.lat, n.lon, n.title]),
+      m.next.map((n) => [n.key, n.lat, n.lon, n.title, n.regional]),
     ]);
   return pick(a) === pick(b);
 }

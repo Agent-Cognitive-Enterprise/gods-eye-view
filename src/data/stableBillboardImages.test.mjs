@@ -62,3 +62,15 @@ test('canvasImageUrl answers null for anything that is not a canvas', () => {
   assert.equal(canvasImageUrl('data:x', cache), null);
   assert.equal(canvasImageUrl({ src: 'a.png' }, cache), null);
 });
+
+test('a canvas that cannot be read is kept as it is, and the load goes on', () => {
+  const tainted = {
+    toDataURL() {
+      throw new Error('SecurityError: tainted canvas');
+    },
+  };
+  const entities = [{ billboard: { image: constant(tainted) } }];
+  assert.equal(canvasImageUrl(tainted, new WeakMap()), null);
+  assert.equal(stabilizeBillboardImages(entities), 0);
+  assert.equal(entities[0].billboard.image.getValue(), tainted);
+});
