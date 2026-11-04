@@ -93,6 +93,57 @@ export function tourClusters(events, s) {
   return clusterEvents(usable, { diameterKm: s.groupingRadiusKm });
 }
 
+/** Clusters that may take the camera at all. */
+function eligibleClusters(clusters, eventsById, s) {
+  return clusters.filter(
+    (cluster) =>
+      cluster.top_score >= s.minimumAttentionScore &&
+      (cluster.framing !== 'region' || cluster.bounds) &&
+      cluster.event_ids.every(
+        (id) => eventsById.get(id)?.camera_eligible !== false,
+      ),
+  );
+}
+
+/** Score plus bounded fairness credit for the time a cluster has waited. */
+function fairRank(state, now) {
+  return (cluster) => {
+    const waited =
+      (now - (state.waitingSince[clusterKey(cluster)] ?? now)) / 60_000;
+    return (
+      cluster.top_score +
+      Math.min(MAX_FAIRNESS_POINTS, waited * FAIRNESS_POINTS_PER_MIN)
+    );
+  };
+}
+
+/** Eligible clusters out of cooldown, best first. */
+function freshClusters(eligible, eventsById, state, now, s) {
+  const rank = fairRank(state, now);
+  return eligible
+    .filter(
+      (c) => !inCooldown(c, eventsById, state, now, s.repeatFocusCooldownMs),
+    )
+    .sort(
+      (a, b) => rank(b) - rank(a) || (clusterKey(a) < clusterKey(b) ? -1 : 1),
+    );
+}
+
+/** Tour stops in visiting order: least recently toured, then most important. */
+function tourOrder(events, state, s) {
+  const toured = state.toured ?? {};
+  const lastVisit = (c) =>
+    Math.max(...c.event_ids.map((id) => toured[id] ?? -Infinity));
+  return tourClusters(events, s)
+    .filter((c) => c.framing !== 'region' || c.bounds)
+    .sort(
+      (a, b) =>
+        lastVisit(a) - lastVisit(b) ||
+        b.top_score - a.top_score ||
+        (clusterKey(a) < clusterKey(b) ? -1 : 1),
+    );
+}
+
 function isCritical(cluster, eventsById, threshold) {
   return cluster.event_ids.some((id) => {
     const event = eventsById.get(id);
@@ -114,14 +165,7 @@ export function stepScheduler(state, { now, clusters, events, settings = {} }) {
     return { state: next, decision: { type: 'none', reason: next.mode } };
 
   const eventsById = new Map(events.map((event) => [event.event_id, event]));
-  const eligible = clusters.filter(
-    (cluster) =>
-      cluster.top_score >= s.minimumAttentionScore &&
-      (cluster.framing !== 'region' || cluster.bounds) &&
-      cluster.event_ids.every(
-        (id) => eventsById.get(id)?.camera_eligible !== false,
-      ),
-  );
+  const eligible = eligibleClusters(clusters, eventsById, s);
 
   // Fairness bookkeeping: how long has each unshown cluster been waiting?
   const keys = new Set(eligible.map(clusterKey));
@@ -132,21 +176,7 @@ export function stepScheduler(state, { now, clusters, events, settings = {} }) {
     if (next.current?.key === key) delete next.waitingSince[key];
     else next.waitingSince[key] ??= now;
   }
-  const rank = (cluster) => {
-    const waited =
-      (now - (next.waitingSince[clusterKey(cluster)] ?? now)) / 60_000;
-    return (
-      cluster.top_score +
-      Math.min(MAX_FAIRNESS_POINTS, waited * FAIRNESS_POINTS_PER_MIN)
-    );
-  };
-  const fresh = eligible
-    .filter(
-      (c) => !inCooldown(c, eventsById, next, now, s.repeatFocusCooldownMs),
-    )
-    .sort(
-      (a, b) => rank(b) - rank(a) || (clusterKey(a) < clusterKey(b) ? -1 : 1),
-    );
+  const fresh = freshClusters(eligible, eventsById, next, now, s);
 
   const fly = (cluster, reason, interrupted = false) => {
     const key = clusterKey(cluster);
@@ -184,18 +214,7 @@ export function stepScheduler(state, { now, clusters, events, settings = {} }) {
     if (!eventsById.has(id)) delete next.presented[id];
   const nextTourStop = () => {
     if (!s.tourWhenIdle) return null;
-    const lastVisit = (c) =>
-      Math.max(...c.event_ids.map((id) => next.toured[id] ?? -Infinity));
-    return (
-      tourClusters(events, s)
-        .filter((c) => !holds(c) && (c.framing !== 'region' || c.bounds))
-        .sort(
-          (a, b) =>
-            lastVisit(a) - lastVisit(b) ||
-            b.top_score - a.top_score ||
-            (clusterKey(a) < clusterKey(b) ? -1 : 1),
-        )[0] ?? null
-    );
+    return tourOrder(events, next, s).find((c) => !holds(c)) ?? null;
   };
   const tour = (cluster) => {
     next.current = {
@@ -296,6 +315,40 @@ export function stepScheduler(state, { now, clusters, events, settings = {} }) {
   next.challenger = null;
   // Otherwise the dwell is over: rotate to the best cluster not yet shown.
   return fly(best, live ? 'rotation' : 'current_no_longer_eligible');
+}
+
+/**
+ * What the scheduler would turn to after the shot on screen, best first, for the
+ * world overview. Read only: it changes no state and commits to nothing. The
+ * scheduler picks one shot at a time, and a revision, a new event or a challenger
+ * can change the order, so these are candidates, not a route.
+ * @param {object} state Scheduler state.
+ * @param {{now: number, clusters: object[], events: object[], settings?: object}} input
+ * @param {number} [limit]
+ * @returns {object[]} Clusters.
+ */
+export function likelyNext(
+  state,
+  { now, clusters, events, settings = {} },
+  limit = 8,
+) {
+  if (state?.mode !== 'auto') return [];
+  const s = { ...AUTOPILOT_DEFAULTS, ...settings };
+  const eventsById = new Map(events.map((event) => [event.event_id, event]));
+  const onScreen = (c) =>
+    Boolean(state.current) && c.event_ids.includes(state.current.key);
+  const alerts = freshClusters(
+    eligibleClusters(clusters, eventsById, s),
+    eventsById,
+    state,
+    now,
+    s,
+  ).filter((c) => !onScreen(c));
+  if (alerts.length) return alerts.slice(0, limit);
+  if (!s.tourWhenIdle) return [];
+  return tourOrder(events, state, s)
+    .filter((c) => !onScreen(c))
+    .slice(0, limit);
 }
 
 /** Operator and ownership transitions. */

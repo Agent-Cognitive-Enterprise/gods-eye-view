@@ -14,6 +14,7 @@ import MissionDetail from './panels/MissionDetail.vue';
 import MissionRoster from './panels/MissionRoster.vue';
 import RadioPanel from './panels/RadioPanel.vue';
 import UiButton from '../kit/UiButton.vue';
+import WorldOverview from './panels/WorldOverview.vue';
 
 // ContextControls presents the mode switch and the nearby sites search and
 // publishes them; until it does, the panel shows its initial markup.
@@ -33,6 +34,8 @@ const sceneRuntime = computed(() => scenePanel.value?.runtime ?? '');
     <RailPanel id="intel-panel" hidden :title="t('AUTOPILOT')" sideways rail-scroller>
       <template #badge><span id="intel-panel-count" :aria-label="t('Active events')"></span></template>
       <div id="intel-panel-body" data-rail-scroller></div>
+      <!-- Fork: the 2D world overview, below the queue and always in view. -->
+      <WorldOverview />
     </RailPanel>
     <RailPanel id="weather-panel" hidden :title="t('WEATHER')" sideways rail-scroller>
       <template #badge><span id="weather-panel-count" :aria-label="t('Active weather products')">0</span></template>

@@ -416,7 +416,47 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-left {
    title instead of at 26vh (src/ui/leftPanelRail.js reads this; the right
    rail aligns to the left stack; the title bar stays an obstacle). */
 #left-panel-stack {
-  --left-stack-base-top: 100px;
+  --left-stack-base-top: 146px;
+}
+
+/* Panel rails as a row of icons above each column, so the columns sit close to
+   the screen edges instead of 100px in (src/ui/leftPanelRail.js and
+   rightPanelRail.js keep the band clear and hold the rails on one row). The
+   vertical COLL / ONA and BAND / BITS / LVL edge readouts are hidden, which
+   frees that gutter too. The phone layout and Cockpit hide the rails as before. */
+:root {
+  --panel-rail-band: 46px;
+  --panel-rail-clearance: 0px;
+  --left-stack-x: 16px;
+  --right-rail-x: 16px;
+}
+.gev-panel-rail {
+  top: calc(var(--panel-rail-offset, 0px) - var(--panel-rail-band));
+}
+.gev-panel-rail--left {
+  inset-inline-start: 0;
+}
+.gev-panel-rail--right {
+  inset-inline-end: 0;
+}
+.gev-panel-rail .ui-rail {
+  flex-direction: row;
+}
+.gev-panel-rail .ui-rail__sep {
+  width: 1px;
+  height: auto;
+  margin: 6px 3px;
+}
+.gev-panel-rail .ui-rail--collapsible .ui-rail__item {
+  width: 32px;
+  padding: 0;
+  justify-content: center;
+}
+.gev-panel-rail .ui-rail__label {
+  display: none;
+}
+body:not(.cockpit-mode) #intel-hud .hud-edge {
+  display: none !important;
 }
 
 /* GSD / ALT / AIS readout: lower right, under the Autopilot panel and on
@@ -630,4 +670,141 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
   background: none;
   text-align: left;
   cursor: pointer;
+}
+
+/* WORLD OVERVIEW (src/ui/views/panels/WorldOverview.vue): a 2D Mercator map at
+   the foot of AUTOPILOT, the panel's full width. The queue above it scrolls; the
+   map stays in view. Red is the Autopilot: the shot on screen blinks, other stops
+   are faded red dots. The cyan crosshair is the camera itself. */
+.world-overview {
+  flex: 0 0 auto;
+  padding-top: 6px;
+  border-top: 1px solid var(--glass-border);
+}
+.world-overview__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 20px;
+}
+.world-overview__head .panel-title {
+  flex: 0 0 auto;
+}
+.wo-badge {
+  padding: 1px 5px;
+  border: 1px solid var(--glass-border);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  font: 9px var(--font-mono);
+  letter-spacing: 1px;
+}
+.wo-badge--auto {
+  border-color: rgba(255, 90, 90, 0.6);
+  color: #ff8a8a;
+}
+.wo-badge--demo {
+  border-color: rgba(255, 196, 0, 0.6);
+  color: #ffc400;
+}
+.wo-status {
+  flex: 1 1 auto;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font: 9px var(--font-mono);
+  letter-spacing: 1px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wo-toggle {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.world-overview__map {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.28);
+}
+.wo-land {
+  fill: rgba(150, 175, 195, 0.16);
+  stroke: rgba(170, 195, 215, 0.32);
+  stroke-width: 0.8;
+  vector-effect: non-scaling-stroke;
+}
+.wo-graticule {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.06);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.wo-route {
+  fill: none;
+  stroke: rgba(255, 70, 70, 0.4);
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+.wo-route--next {
+  stroke-dasharray: 4 3;
+}
+.wo-point {
+  fill: #ff3b3b;
+  cursor: pointer;
+  outline: none;
+}
+.wo-point--visited {
+  fill-opacity: 0.32;
+}
+.wo-point--next {
+  fill-opacity: 0.45;
+}
+/* A two-step blink: it repaints twice a cycle, not every frame. */
+.wo-point--current {
+  animation: wo-blink 1.2s steps(1, end) infinite;
+}
+.wo-point--regional {
+  stroke: #ff3b3b;
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+  vector-effect: non-scaling-stroke;
+}
+.wo-point:focus-visible {
+  stroke: #ffffff;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+@keyframes wo-blink {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wo-point--current {
+    animation: none;
+  }
+}
+.wo-camera__cross {
+  fill: none;
+  stroke: #7fe0ff;
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
+}
+.wo-camera__arrow {
+  fill: #7fe0ff;
+}
+.wo-note {
+  margin: 3px 0 0;
+  font-size: 10px;
 }

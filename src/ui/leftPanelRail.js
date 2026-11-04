@@ -9,6 +9,22 @@ import { measurePanelNaturalHeight } from './panelMeasurement.js';
 import { settleSideAccordion } from './panelAccordion.js';
 
 /**
+ * The height a stack keeps clear above itself for a rail drawn as a row there
+ * (`--panel-rail-band`, px), or 0 when the rail sits beside it or is hidden.
+ * @param {HTMLElement} stack
+ * @param {Function} getComputedStyle
+ */
+export function panelRailBand(stack, getComputedStyle) {
+  const band = parseFloat(
+    getComputedStyle(stack).getPropertyValue?.('--panel-rail-band'),
+  );
+  if (!(band > 0)) return 0;
+  const rail = stack.querySelector?.(':scope > .gev-panel-rail');
+  if (rail && getComputedStyle(rail).display === 'none') return 0;
+  return band;
+}
+
+/**
  * Measure and place the left panel rail for one synchronous layout pass.
  * The caller owns scheduling, obstacle selection, disclosure preferences and
  * persistence. Auto-collapse is presentation only and reports through callbacks.
@@ -138,6 +154,11 @@ export function layoutLeftPanelRail({
     obstacles: bottomObstacles,
     safeGap,
   });
+  // A rail drawn as a row above the stack (--panel-rail-band) needs that band
+  // kept clear: no layout may lift the panels above their resting top.
+  const railBand = panelRailBand(stack, getComputedStyle);
+  const restingTop = safeTop;
+  if (railBand > 0) obstacleSafeTop = Math.max(obstacleSafeTop, restingTop);
 
   const obstacleSafeBottom = safeBottom;
 
@@ -313,7 +334,8 @@ export function layoutLeftPanelRail({
   }
   // The rail stays where the resting stack puts it; only the panels move.
   // A theme that pins the stack's top (Cyber) leaves nothing to offset.
-  const railOffset = `${(topPinned ? 0 : safeTop - layoutTop).toFixed(1)}px`;
+  // A rail above the stack stays on the row above the resting top.
+  const railOffset = `${(topPinned ? 0 : (railBand > 0 ? restingTop : safeTop) - layoutTop).toFixed(1)}px`;
   if (stack.style.getPropertyValue('--panel-rail-offset') !== railOffset) {
     stack.style.setProperty('--panel-rail-offset', railOffset);
   }

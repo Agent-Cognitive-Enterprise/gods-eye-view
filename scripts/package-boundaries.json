@@ -11,7 +11,8 @@
       "src/data/localGeojsonLod.js",
       "src/data/inputOwnership.js",
       "src/data/infrastructureOverlayEntry.js",
-      "src/sources/infrastructureData.js"
+      "src/sources/infrastructureData.js",
+      "src/data/stableBillboardImages.js"
     ],
     "external": ["cesium"]
   },
@@ -154,7 +155,12 @@
       "src/ui/views/panels/GlobeCompass.vue",
       "src/ui/stores/recording.js",
       "src/ui/styleParameters.js",
-      "src/ui/i18n.js"
+      "src/ui/i18n.js",
+      "src/intel/mercator.js",
+      "src/intel/overviewWorld.json",
+      "src/ui/views/panels/WorldOverview.vue",
+      "src/ui/views/panels/WorldOverviewCamera.vue",
+      "src/ui/stores/worldOverview.js"
     ],
     "external": ["vue", "pinia", "vue-i18n"]
   },
@@ -1629,7 +1635,8 @@
       "src/i18n/locales/ru.json",
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
-      "src/i18n/locales/zh-Hant.json"
+      "src/i18n/locales/zh-Hant.json",
+      "src/data/stableBillboardImages.js"
     ],
     "external": ["cesium"]
   },
@@ -2065,7 +2072,8 @@
       "src/i18n/locales/ru.json",
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
-      "src/i18n/locales/zh-Hant.json"
+      "src/i18n/locales/zh-Hant.json",
+      "src/data/stableBillboardImages.js"
     ],
     "external": ["cesium"]
   },
@@ -3253,7 +3261,12 @@
       "src/voice/osmActions.js",
       "src/layers/osmPlaces/index.js",
       "src/app/layers/osmPlaces.js",
-      "src/voice/areaActions.js"
+      "src/voice/areaActions.js",
+      "src/intel/overviewModel.js",
+      "src/ui/stores/worldOverview.js",
+      "src/intel/mercator.js",
+      "src/ui/worldOverview.js",
+      "src/data/stableBillboardImages.js"
     ],
     "external": [
       "hls.js",
@@ -3881,7 +3894,8 @@
       "src/data/local_data/wof_neighborhoods/files.js",
       "src/layers/osmPlaces/model.js",
       "src/layers/osmPlaces/index.js",
-      "src/app/layers/osmPlaces.js"
+      "src/app/layers/osmPlaces.js",
+      "src/data/stableBillboardImages.js"
     ],
     "external": [
       "hls.js",

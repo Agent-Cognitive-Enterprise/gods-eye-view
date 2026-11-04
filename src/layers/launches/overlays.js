@@ -1,3 +1,4 @@
+import { canvasImageUrl } from '../../data/stableBillboardImages.js';
 import * as Cesium from 'cesium';
 import { t, msg } from '../../i18n/index.js';
 import {
@@ -255,8 +256,11 @@ export function createOverlays({ state: layerState, services, parts, source }) {
     context.lineTo(size - inset, size - inset);
     context.lineTo(size - inset, size - inset - arm);
     context.stroke();
-    layerState._missionHoverReticleImage = canvas;
-    return canvas;
+    // A data URL, not the canvas: Cesium gives a canvas a new texture-atlas entry
+    // every time the reticle is shown again (see data/stableBillboardImages.js).
+    layerState._missionHoverReticleImage =
+      canvasImageUrl(canvas, new WeakMap()) ?? canvas;
+    return layerState._missionHoverReticleImage;
   }
 
   /**

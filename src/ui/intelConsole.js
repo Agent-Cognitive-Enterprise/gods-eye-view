@@ -31,9 +31,11 @@ import {
 } from '../intel/framing.js';
 import {
   createSchedulerState,
+  likelyNext,
   setSchedulerMode,
   stepScheduler,
 } from '../intel/scheduler.js';
+import { createWorldOverview } from './worldOverview.js';
 import { wrapCardText } from '../layers/ghostMaps/records.js';
 import { createFastIntelPanel } from './fastIntelPanel.js';
 import { createTickLoop } from '../intel/tickLoop.js';
@@ -308,6 +310,7 @@ export function createIntelConsole({
   // Everything the server sent; `data` is what the Fast Intelligence view allows.
   let received = data;
   let fastPanel = null;
+  let overview = null;
   let feeds = [];
   let ai = null;
   // Narration (local text-to-speech): offered only when this server has it.
@@ -1031,7 +1034,9 @@ export function createIntelConsole({
   }
 
   function render() {
-    if (destroyed || !enabled) return;
+    // start() reports enabled before the voice check returns and the panel is
+    // built; a toggle in that gap must not render into a panel that is not there.
+    if (destroyed || !enabled || !ui.modeButton) return;
     rememberMode();
     syncBuffering();
     renderMode();
@@ -1043,6 +1048,25 @@ export function createIntelConsole({
     renderAi();
     renderMarkers();
     renderCard();
+    updateOverview();
+  }
+
+  /** The world overview reads the scheduler's state; it never changes it. */
+  function updateOverview() {
+    overview?.update({
+      mode: scheduler.mode,
+      world,
+      schedulerCurrent: scheduler.current,
+      clusters: data.clusters,
+      events: data.events,
+      likely: () =>
+        likelyNext(scheduler, {
+          now: now(),
+          clusters: data.clusters,
+          events: data.events,
+          settings,
+        }),
+    });
   }
 
   // ----------------------------------------------------------- globe output
@@ -1052,44 +1076,96 @@ export function createIntelConsole({
     return points;
   }
 
+  // Markers by event id, with the look they were last drawn with. A render
+  // changes only the markers whose look changed: the console renders every
+  // tick, and rebuilding all of them each time (up to 200) was measured at
+  // 3,600 primitive additions a minute with nothing changing.
+  const markerState = new Map(); // eventId -> {point, look}
+  let labelLook = '';
+
+  /** How an event's marker looks; equal looks need no redraw. */
+  function markerLook(event) {
+    const opacity = Math.round((event.opacity ?? 1) * 100) / 100;
+    const focused = scheduler.current?.eventIds.includes(event.event_id);
+    // An unconfirmed claim is a hollow ring, never a solid marker.
+    const hollow =
+      isFastEvent(event) &&
+      (event.fast_status === 'provisional' ||
+        event.fast_status === 'contested');
+    const verified =
+      event.verification === 'officially_reported' ||
+      event.verification === 'corroborated';
+    return {
+      key: [
+        event.location.lon,
+        event.location.lat,
+        event.category,
+        opacity,
+        event.attention_score,
+        focused,
+        hollow,
+        verified,
+      ].join('|'),
+      event,
+      opacity,
+      focused,
+      hollow,
+      verified,
+    };
+  }
+
+  function applyLook(point, { event, opacity, focused, hollow, verified }) {
+    const color = Cesium.Color.fromCssColorString(
+      CATEGORY_COLORS[event.category] ?? '#cccccc',
+    );
+    point.position = Cesium.Cartesian3.fromDegrees(
+      event.location.lon,
+      event.location.lat,
+      500,
+    );
+    point.color = hollow
+      ? color.withAlpha(0.08)
+      : color.withAlpha(Math.max(0.15, opacity));
+    point.pixelSize =
+      7 + Math.round((event.attention_score / 100) * 9) + (focused ? 4 : 0);
+    point.outlineColor = hollow
+      ? color.withAlpha(0.8 * opacity)
+      : verified
+        ? Cesium.Color.WHITE.withAlpha(opacity)
+        : Cesium.Color.BLACK.withAlpha(0.6 * opacity);
+    point.outlineWidth = focused || hollow ? 3 : 1.5;
+  }
+
   function renderMarkers() {
     const collection = ensurePoints();
     if (!collection) return;
-    collection.removeAll();
     const limit = settings.maxMarkersInView ?? 200;
+    // Both coordinates: a half-located event would throw inside Cesium.
     const located = data.events.filter(
-      (e) => e.location?.lat !== null && e.location?.lat !== undefined,
+      (e) =>
+        Number.isFinite(e.location?.lat) && Number.isFinite(e.location?.lon),
     );
+    let changed = false;
+    const shown = new Set();
     for (const event of located.slice(0, limit)) {
-      const color = Cesium.Color.fromCssColorString(
-        CATEGORY_COLORS[event.category] ?? '#cccccc',
-      );
-      const focused = scheduler.current?.eventIds.includes(event.event_id);
-      // An unconfirmed claim is a hollow ring, never a solid marker.
-      const hollow =
-        isFastEvent(event) &&
-        (event.fast_status === 'provisional' ||
-          event.fast_status === 'contested');
-      collection.add({
-        id: `${PICK_PREFIX}${event.event_id}`,
-        position: Cesium.Cartesian3.fromDegrees(
-          event.location.lon,
-          event.location.lat,
-          500,
-        ),
-        color: hollow
-          ? color.withAlpha(0.08)
-          : color.withAlpha(Math.max(0.15, event.opacity ?? 1)),
-        pixelSize:
-          7 + Math.round((event.attention_score / 100) * 9) + (focused ? 4 : 0),
-        outlineColor: hollow
-          ? color.withAlpha(0.8 * (event.opacity ?? 1))
-          : event.verification === 'officially_reported' ||
-              event.verification === 'corroborated'
-            ? Cesium.Color.WHITE.withAlpha(event.opacity ?? 1)
-            : Cesium.Color.BLACK.withAlpha(0.6 * (event.opacity ?? 1)),
-        outlineWidth: focused || hollow ? 3 : 1.5,
-      });
+      const id = event.event_id;
+      shown.add(id);
+      const look = markerLook(event);
+      const held = markerState.get(id);
+      if (held && held.look === look.key) continue;
+      const point =
+        held?.point ?? collection.add({ id: `${PICK_PREFIX}${id}` });
+      // Held before it is styled, so a throw cannot leave an untracked point.
+      markerState.set(id, { point, look: null });
+      applyLook(point, look);
+      markerState.set(id, { point, look: look.key });
+      changed = true;
+    }
+    for (const [id, held] of markerState) {
+      if (shown.has(id)) continue;
+      collection.remove(held.point);
+      markerState.delete(id);
+      changed = true;
     }
     const labels = located.slice(0, MAX_LABELS).map((event, index) => ({
       id: `intel-label:${event.event_id}`,
@@ -1118,11 +1194,26 @@ export function createIntelConsole({
       collisionGroup: 'intel-labels',
       maxDistance: 30_000_000,
     }));
-    overlayHost.setEntries(LABEL_SOURCE, labels, {
-      maxVisible: MAX_LABELS,
-      collisionCapacity: 24,
-    });
-    viewer.scene.requestRender?.();
+    // The labels' alpha reads the event it was built from, so the look
+    // includes the opacity: a fading event gets fresh labels.
+    const nextLabelLook = labels
+      .map(
+        (label, index) =>
+          // The position too: a revision that moves an event moves its label.
+          `${label.id}|${label.title}|${label.details[0]}|${label.accent}|${Math.round(
+            (located[index].opacity ?? 1) * 100,
+          )}|${located[index].location.lat}|${located[index].location.lon}`,
+      )
+      .join('\n');
+    if (nextLabelLook !== labelLook) {
+      labelLook = nextLabelLook;
+      overlayHost.setEntries(LABEL_SOURCE, labels, {
+        maxVisible: MAX_LABELS,
+        collisionCapacity: 24,
+      });
+      changed = true;
+    }
+    if (changed) viewer.scene.requestRender?.();
   }
 
   let cardDetail = null; // {event, evidence}
@@ -1690,9 +1781,19 @@ export function createIntelConsole({
       const shot = shotFor(decision.cluster);
       const tour = decision.reason === 'tour';
       cancelPullBack();
+      const key = decision.cluster.event_ids[0];
       const accepted = flyTo(shot, {
         pan: true,
-        onSettled: (settledMs) => schedulePullBack(shot, settledMs, tour),
+        onSettled: (settledMs) => {
+          // Only a shot that arrived counts as visited on the overview.
+          overview?.visit({
+            key,
+            title: eventsById().get(key)?.title ?? '',
+            lat: decision.cluster.center?.lat ?? shot.lat,
+            lon: decision.cluster.center?.lon ?? shot.lon,
+          });
+          schedulePullBack(shot, settledMs, tour);
+        },
       });
       if (!accepted) {
         scheduler = setSchedulerMode(scheduler, 'paused', 'navigation_refused');
@@ -1927,6 +2028,14 @@ export function createIntelConsole({
     renderSettings();
     panel.hidden = false;
     if (feedsPanel) feedsPanel.hidden = false;
+    if (documentRef.getElementById('world-overview'))
+      overview = createWorldOverview({
+        viewer,
+        documentRef,
+        now,
+        // The same action as clicking the event's row: it pauses Autopilot.
+        onSelect: (id) => selectEvent(id, { fly: true }),
+      });
     fastPanel = createFastIntelPanel({
       documentRef,
       client,
@@ -2003,6 +2112,7 @@ export function createIntelConsole({
       if (destroyed) return;
       destroyed = true;
       fastPanel?.destroy();
+      overview?.destroy();
       cancelFlights();
       if (bufferingSaved && viewer.scene?.globe)
         Object.assign(viewer.scene.globe, bufferingSaved);
@@ -2025,6 +2135,8 @@ export function createIntelConsole({
       if (points && !viewer.isDestroyed?.())
         viewer.scene.primitives.remove(points);
       points = null;
+      markerState.clear();
+      labelLook = '';
     },
     /** Read-only state for QA scripts. */
     snapshot: () => ({

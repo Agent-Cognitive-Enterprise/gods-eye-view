@@ -3453,5 +3453,22 @@
   "counted over the bounding box of {area}, not its outline": "contado en el rectángulo que lo rodea ({area}), no en su contorno",
   "Search cancelled": "Búsqueda cancelada",
   "Sea Marks": "Señales marítimas",
-  "Ski Pistes": "Pistas de esquí"
+  "Ski Pistes": "Pistas de esquí",
+  "PAUSED": "EN PAUSA",
+  "POSITION UNKNOWN": "POSICIÓN DESCONOCIDA",
+  "NO TARGETS": "SIN OBJETIVOS",
+  "LIKELY NEXT: {count}": "PROBABLE SIGUIENTE: {count}",
+  "REGIONAL": "REGIONAL",
+  "beyond the edge of this map": "fuera del borde de este mapa",
+  "DEMO": "DEMO",
+  "World overview": "Vista general del mundo",
+  "Now: {title}": "Ahora: {title}",
+  "No event on screen": "Ningún evento en pantalla",
+  "WORLD OVERVIEW": "VISTA GENERAL DEL MUNDO",
+  "Hide map": "Ocultar mapa",
+  "Show map": "Mostrar mapa",
+  "VISITED": "VISITADO",
+  "LIKELY NEXT": "PROBABLE SIGUIENTE",
+  "{count} without a map position": "{count} sin posición en el mapa",
+  "Camera": "Cámara"
 }
