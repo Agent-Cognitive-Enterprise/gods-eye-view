@@ -7,6 +7,28 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **The overnight freeze.** With submarine cables on, the page froze after a few hours
+  and did not recover. Cesium draws GeoJSON point pins on a canvas, and a canvas gets
+  a new texture-atlas entry every time a billboard is given it, including each time
+  the cluster reuses a hidden billboard. The cables atlas grew from 1,917 to 2,765
+  entries in two hours on 4173, and to 14,373 in ten minutes of fast Autopilot
+  touring on staging, and every growth repacks all of them. Pins are now data URLs,
+  so all 1,917 landing points share one entry. The local GeoJSON (infrastructure)
+  layers load their points the same way and get the same fix, which was not measured
+  separately. See `docs/PERFORMANCE-WINDOWS.md`.
+- **World overview in AUTOPILOT.** A 2D map at the foot of the panel: the shot on
+  screen as a blinking red dot, the last five arrivals and up to eight likely next
+  shots as faded red dots, and the camera with its heading. It reads the scheduler's
+  own ranking, makes no request, and does nothing while hidden. Clicking a dot selects
+  that event. See `docs/WORLD_OVERVIEW.md`.
+- **Autopilot markers are updated, not rebuilt.** Each render used to remove and re-add
+  every event marker, about 3,600 additions a minute while idle. Markers are now
+  added, changed and removed individually, and labels only change when their text or
+  look does.
+- **Panel rails above the columns.** The icon rails sit in a row above each column,
+  so the columns are 16 px from the screen edges instead of 100 px. The vertical
+  edge readouts are hidden outside Cockpit.
+
 - **FAST INTELLIGENCE fills the left lane.** Open, it takes the available height. FEEDS
   may stay open beside it, at its natural height, and FAST INTELLIGENCE takes the rest.
   These two are the only exception to upstream's one-panel-per-side rule: any other
