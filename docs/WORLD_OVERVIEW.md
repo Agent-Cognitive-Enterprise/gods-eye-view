@@ -3,6 +3,8 @@
 A 2D Mercator map at the foot of the AUTOPILOT panel: where the camera is, the shot on
 screen, where Autopilot has been and where it is likely to go next.
 
+![World overview during a demo drill](media/fork/world-overview.png)
+
 ## What it shows
 
 | Mark                             | Meaning                                                                                                                                               |

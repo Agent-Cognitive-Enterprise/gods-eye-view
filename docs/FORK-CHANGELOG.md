@@ -7,6 +7,10 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **Showcase page.** `docs/AUTOPILOT.md` shows the Autopilot touring a demo drill: an
+  animated WebP (1 MB), a full-screen still, and close-ups of the AUTOPILOT panel and
+  the world overview, all under `docs/media/fork/`. `README.md` gains one line at the
+  top that links to it.
 - **The overnight freeze.** With submarine cables on, the page froze after a few hours
   and did not recover. Cesium draws GeoJSON point pins on a canvas, and a canvas gets
   a new texture-atlas entry every time a billboard is given it, including each time

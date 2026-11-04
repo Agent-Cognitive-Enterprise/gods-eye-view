@@ -1,3 +1,5 @@
+> **This fork** adds a Global Early-Warning Autopilot: public warning feeds ranked by evidence, and a camera that follows them. [See it in action →](docs/AUTOPILOT.md)
+
 <div align="center">
 
 # 🌐 God's Eye View

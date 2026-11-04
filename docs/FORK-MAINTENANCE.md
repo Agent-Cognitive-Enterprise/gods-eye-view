@@ -65,6 +65,7 @@ fork edits are the merge surface; keep these edits additive and small:
 | `src/i18n/locales/*.json`, `src/i18n/same-as-english.json`                                   | Added strings (append-only).                                                                                               |
 | `src/data/dataCredits.js`, `DATA_SOURCES.md`, `.env.example`                                 | One credit entry, source rows and notes, commented settings.                                                               |
 | `server/providers/vessels/ais-live.js`                                                       | One condition: the machine-wide AIS lease in `server/providers/isolation.js`.                                              |
+| `README.md`                                                                                  | One line at the top linking `docs/AUTOPILOT.md`; on a conflict, keep upstream, re-add it.                                  |
 
 The merge check flags conflicts and both-sides changes in these areas
 (`autopilot-hooks`, `voice`, `director`, `camera`, `i18n`, `dependencies`,
