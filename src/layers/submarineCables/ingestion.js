@@ -5,6 +5,7 @@ import {
   normalizeFeatures,
 } from './geometry.js';
 import * as Cesium from 'cesium';
+import { stabilizeBillboardImages } from '../../data/stableBillboardImages.js';
 
 const SOURCE_FEATURE_INDEX = '__gevSourceFeatureIndex';
 
@@ -87,6 +88,11 @@ export function createIngestion({ state, parts, source }) {
         },
       );
       if (!owns()) return;
+      // Cesium's pins are canvases: without this, every billboard the cluster
+      // reuses adds another copy to the texture atlas (stableBillboardImages.js).
+      const pinUrls = new WeakMap();
+      stabilizeBillboardImages(cableDataSource.entities.values, pinUrls);
+      stabilizeBillboardImages(landingDataSource.entities.values, pinUrls);
 
       cableDataSource.name = `${source.label} Submarine Cables`;
       landingDataSource.name = `${source.label} Landing Points`;

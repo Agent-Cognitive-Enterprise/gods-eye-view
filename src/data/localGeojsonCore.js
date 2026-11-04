@@ -1,4 +1,5 @@
 import * as Cesium from 'cesium';
+import { stabilizeBillboardImages } from './stableBillboardImages.js';
 import {
   layerTitle,
   mapAnalystRecord,
@@ -617,6 +618,9 @@ export function createLocalGeoJsonLayer(
               });
 
               if (_destroyed) return;
+              // One atlas entry for every pin, however often the cluster
+              // reuses a billboard (stableBillboardImages.js).
+              stabilizeBillboardImages(loaded.entities.values);
               loaded.name = name;
               loaded.show = false;
               // Cesium's DataSourceCollection.add() returns a promise and only
