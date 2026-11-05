@@ -489,3 +489,131 @@ test('fork: a track with a single trusted fix never votes', () => {
   const regions = voyage(d, { end: 45, spoofed: (m) => m >= 1 });
   for (const [, boxes] of regions) assert.deepEqual(boxes, []);
 });
+
+/** Position after `m` minutes on a north-east course with a speed profile. */
+const profiled = (lat, lon, knotsAt) => (m) => {
+  let km = 0;
+  for (let s = 0; s < m; s++) km += (knotsAt(s) * 1.852) / 60;
+  const deg = km / 111.2 / Math.SQRT2;
+  return [lat + deg, lon + deg / Math.cos((lat * Math.PI) / 180)];
+};
+
+test('fork: fast ferries that glitch while still slow are never frozen into a region', () => {
+  // Three ferries leave harbour at 8 kn, glitch at minute 10, cruise at 35 kn
+  // with a 10-minute reception gap, and dock at minute 150.
+  const d = createRegionalGnssDetector({ now: () => T });
+  const ferries = [1, 2, 3].map((i) =>
+    profiled(54.4 + i * 0.03, 10.4, (s) => (s < 10 ? 8 : s < 150 ? 35 : 0)),
+  );
+  const late = new Set();
+  for (let m = 0; m <= 360; m++) {
+    if (m >= 15 && m < 25) continue; // reception gap
+    ferries.forEach((at, i) => {
+      const fix = m === 10 ? at(10 + 150) : at(m); // the glitch: far ahead
+      const { reason } = d.observe(raw(i + 1, m * MIN + i, ...fix));
+      if (m > 70) late.add(reason);
+    });
+    assert.deepEqual(snap(d, m * MIN + 10).regions, [], `minute ${m}`);
+  }
+  assert.deepEqual([...late], ['plausible'], 'trusted again within the hour');
+});
+
+test('fork: a spoof moved to a second point after two hours is still not adopted', () => {
+  // Anchored ships; two hours at a point ~155 km away, then an hour at a
+  // second point ~80 km from the truth, in another cell; then back.
+  const d = createRegionalGnssDetector({ now: () => T });
+  const ships = [1, 2, 3].map((i) => [54.5 + i * 0.03, 10.4]);
+  const boxes = new Set();
+  let at220 = null;
+  for (let m = 0; m <= 420; m++) {
+    ships.forEach(([lat, lon], i) => {
+      const fix =
+        m >= 40 && m < 160
+          ? [55.9, 10.4]
+          : m >= 160 && m < 220
+            ? [54.6, 11.65]
+            : [lat, lon];
+      d.observe(raw(i + 1, m * MIN + i, ...fix));
+    });
+    const { regions } = snap(d, m * MIN + 10);
+    for (const r of regions) boxes.add(JSON.stringify(r.area));
+    if (m === 255) at220 = regions;
+  }
+  assert.deepEqual([...boxes], [JSON.stringify(TRUE_CELL)]);
+  assert.deepEqual(at220, [], 'aged out 35 minutes after it ended');
+});
+
+test('fork: short steps at an impossible speed are held, never adopted', () => {
+  const d = createRegionalGnssDetector({ now: () => T });
+  for (let m = 0; m <= 40; m++) d.observe(raw(1, m * MIN, 54.5, 10.4));
+  // 9 km in 10 seconds: about 1,750 knots, under the 10 km jump rule.
+  assert.equal(
+    d.observe(raw(1, 40 * MIN + 10_000, 54.58, 10.4)).reason,
+    'too_fast_hold',
+  );
+  // Still trusted where it was: the next fix there is plausible.
+  assert.equal(d.observe(raw(1, 41 * MIN, 54.5, 10.4)).reason, 'plausible');
+});
+
+test('fork: a drag of a few km per report never moves the trusted fix or the region', () => {
+  // Anchored ships dragged 9 km every 10 s for 200 km, held, then released.
+  const d = createRegionalGnssDetector({ now: () => T });
+  const ships = [1, 2, 3].map((i) => [54.5 + i * 0.03, 10.4]);
+  const boxes = new Set();
+  const step = (t, i, fix) => d.observe(raw(i + 1, t + i, ...fix));
+  for (let m = 0; m <= 40; m++)
+    ships.forEach(([lat, lon], i) => step(m * MIN, i, [lat, lon]));
+  for (let k = 1; k <= 22; k++)
+    ships.forEach(([lat, lon], i) =>
+      step(40 * MIN + k * 10_000, i, [lat + k * 0.081, lon]),
+    );
+  for (let m = 45; m <= 240; m++) {
+    ships.forEach(([lat, lon], i) =>
+      step(m * MIN, i, m < 60 ? [lat + 22 * 0.081, lon] : [lat, lon]),
+    );
+    for (const r of snap(d, m * MIN + 10).regions)
+      boxes.add(JSON.stringify(r.area));
+  }
+  for (const box of boxes) assert.equal(box, JSON.stringify(TRUE_CELL));
+  assert.deepEqual(snap(d, 240 * MIN).regions, [], 'and it ages out');
+});
+
+test('fork: a spoof drifting away from its first point is held, not adopted', () => {
+  // Anchored ships; a fake point ~110 km away for 30 minutes, then the fake
+  // drifts east at ~60 kn for 20 minutes and stays there, then back. From the
+  // old trusted fix the drifted points look reachable under 100 kn; only the
+  // suspicion speed keeps them from being trusted.
+  const d = createRegionalGnssDetector({ now: () => T });
+  const ships = [1, 2, 3].map((i) => [54.5 + i * 0.03, 10.4]);
+  const fakeAt = (m) => {
+    if (m < 70) return [55.5, 10.5];
+    const drift = Math.min(m - 70, 20) * ((60 * 1.852) / 60); // km east
+    return [55.5, 10.5 + drift / (111.2 * Math.cos((55.5 * Math.PI) / 180))];
+  };
+  const boxes = new Set();
+  for (let m = 0; m <= 200; m++) {
+    ships.forEach(([lat, lon], i) => {
+      const fix = m >= 40 && m < 110 ? fakeAt(m) : [lat, lon];
+      d.observe(raw(i + 1, m * MIN + i, ...fix));
+    });
+    for (const r of snap(d, m * MIN + 10).regions)
+      boxes.add(JSON.stringify(r.area));
+  }
+  assert.deepEqual([...boxes], [JSON.stringify(TRUE_CELL)]);
+});
+
+test('fork: a ship measured at 40 kn sails on at 40 kn after a glitch and a gap, never held', () => {
+  const d = createRegionalGnssDetector({ now: () => T });
+  const at = sailing(54.5, 10.4, 40);
+  for (let m = 0; m <= 40; m++) d.observe(raw(1, m * MIN, ...at(m)));
+  assert.equal(
+    d.observe(raw(1, 41 * MIN, ...at(41 + 120))).reason,
+    'kinematic_outlier',
+  );
+  // 15 minutes without reports: it reappears ~20 km on, at its own 40 kn
+  // (over the 30 kn floor, inside 1.5 times its measured speed).
+  const after = [];
+  for (let m = 56; m <= 100; m++)
+    after.push(d.observe(raw(1, m * MIN, ...at(m))).reason);
+  assert.deepEqual([...new Set(after)], ['plausible']);
+});

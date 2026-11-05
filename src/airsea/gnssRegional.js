@@ -9,17 +9,19 @@
  * Integration: call `observe()` from the existing AISStream ingest path,
  * passing one new position report per vessel. Never open another AIS socket.
  *
- * Fork rework (three adversarial reviews, 5 November 2026): a vessel's
- * trusted fix moves only by a plausible step from the last one: never to
- * within `outlierAreaKm` of where an impossible jump went while that anomaly
- * is recent, and only at a ship's pace while it is suspect. So a spoof held
- * at one point, or moved to a second, is not adopted, and the alert region
- * stays where the ships were; a ship that sails on is trusted again. Known
- * gaps, by design of a kinematic screen: a track that starts while already
- * spoofed, a spoof that drags positions gradually, one that moves its target
- * slowly enough to look like sailing, and a reception gap mid-spoof can still
- * anchor a vessel on a false fix. Tracks younger than `minTrackAgeMs` never
- * vote.
+ * Fork rework (four adversarial reviews, 5 November 2026): a vessel's
+ * trusted fix moves only by a plausible step from the last one, and a step at
+ * an impossible speed is never adopted, however short. A HARD outlier (over
+ * 100 knots, or jumping away from a point the vessel sat at) puts it under
+ * suspicion for `windowMs`: fixes within `outlierAreaKm` of where the hard
+ * outlier went are held and renew it; fixes elsewhere faster than a ship's
+ * pace are held but renew nothing. So a spoof held at one point, moved to a
+ * second, or dragged at impossible speed is not adopted, the alert region
+ * stays where the ships were, and honest ships (fast craft included) are
+ * trusted again. Known gaps, by design of a kinematic screen: a track that
+ * starts while already spoofed, a reception gap mid-spoof, a drag at ship
+ * speeds, or a drift longer than the suspicion window can still anchor a
+ * vessel on a false fix. Tracks younger than `minTrackAgeMs` never vote.
  */
 
 export const REGIONAL_GNSS_RULES = Object.freeze({
@@ -215,6 +217,9 @@ export function createRegionalGnssDetector({
       speedKnots: 0,
       outlierPoint: null,
       lastOutlierAt: null,
+      lastPoint: point,
+      lastWasOutlier: false,
+      parkedReports: 0,
     });
     if (!prev) {
       tracks.set(id, newTrack());
@@ -254,10 +259,42 @@ export function createRegionalGnssDetector({
     const speedLimit = recentOutlier
       ? Math.max(rules.suspectSpeedKnots, 1.5 * prev.speedKnots)
       : rules.maxSpeedKnots;
-    const impossible = km >= rules.minJumpKm && apparentKnots > speedLimit;
-    if (impossible || inOutlierArea) {
+    const overSuspicionSpeed =
+      km >= rules.minJumpKm && apparentKnots > speedLimit;
+    // A HARD outlier is impossible for any ship: over 100 knots from the
+    // trusted fix, or a jump away from a point the vessel sat at for two or
+    // more outlying reports (a spoof moving on). Only hard outliers and holds
+    // at their point renew suspicion and vote. Over the suspicion speed alone
+    // a ship might still be (a ferry speeding up after a glitch): held, not
+    // adopted, but it neither renews suspicion nor votes, so it cannot freeze.
+    const last = prev.lastPoint;
+    const stepKm = last ? distanceKm(last, point) : 0;
+    const stepHours = last
+      ? (point.observedAt - last.observedAt) / 3600_000
+      : 0;
+    const leavesParkedPoint =
+      prev.parkedReports >= 2 &&
+      stepKm >= rules.minJumpKm &&
+      stepHours > 0 &&
+      stepKm / stepHours / 1.852 > rules.maxSpeedKnots;
+    const hard =
+      km >= rules.minJumpKm &&
+      (apparentKnots > rules.maxSpeedKnots || leavesParkedPoint);
+    const outlying = hard || inOutlierArea || overSuspicionSpeed;
+    // Consecutive outlying reports close together: the vessel sits at a point.
+    prev.parkedReports =
+      outlying && prev.lastWasOutlier && last && stepKm <= rules.outlierAreaKm
+        ? prev.parkedReports + 1
+        : outlying
+          ? 1
+          : 0;
+    prev.lastWasOutlier = outlying;
+    prev.lastPoint = point;
+    if (overSuspicionSpeed && !hard && !inOutlierArea)
+      return { accepted: true, reason: 'suspect_hold', candidate: false };
+    if (hard || inOutlierArea) {
       counters.impossible++;
-      if (impossible) prev.outlierPoint = point;
+      if (hard) prev.outlierPoint = point;
       prev.lastOutlierAt = point.observedAt;
       const sourceCell = regionalCell(
         prev.baseline.lat,
@@ -288,8 +325,14 @@ export function createRegionalGnssDetector({
     // allowed to update the baseline: the ship's real track, also after a
     // spoof ends. Do not use the broadcast speed as an independent source: it
     // too may be wrong.
-    // Its pace between trusted fixes, for the suspicion speed limit above.
-    if (!recentOutlier) prev.speedKnots = apparentKnots;
+    // Steps under 10 km are checked too: one at an impossible speed (a drag of
+    // a few km per report, or a glitch) is held, never adopted.
+    if (km >= 1 && apparentKnots > rules.maxSpeedKnots)
+      return { accepted: true, reason: 'too_fast_hold', candidate: false };
+    // Its pace between trusted fixes, for the suspicion speed limit above;
+    // steps under 1 km are mostly position noise.
+    if (!recentOutlier && km >= 1)
+      prev.speedKnots = Math.min(apparentKnots, rules.maxSpeedKnots);
     prev.baseline = point;
     prev.stableCount = Math.min(3, prev.stableCount + 1);
     return { accepted: true, reason: 'plausible' };

@@ -16,13 +16,14 @@ number there.
   the camera as an alert; without it the screen only observes. No vessel identities, positions or target
   locations leave it, a feed that is not healthy reports uncertain coverage
   rather than a clear sea, and nothing is stored. It is an AIS anomaly screen,
-  not proof of spoofing. Prepared outside this repo and reworked after three
-  adversarial reviews and an external one: a spoof held at one point or moved to
-  another is not adopted as a vessel's position, regions last while the spoof
-  does and age out after it, ships that sail on are trusted again, and local
-  glitches and shared default MMSIs do not count. A vessel first seen mid-spoof,
-  a reception gap mid-spoof, a gradual drag or a slowly moving target can still
-  mislead it (documented). Recent real AIS tracks produced no
+  not proof of spoofing. Prepared outside this repo and reworked after four
+  adversarial reviews and an external one: a spoof held at one point, moved to
+  another or dragged at impossible speed is not adopted as a vessel's position,
+  regions last while the spoof does and age out after it, honest ships
+  (including fast craft after a glitch) are trusted again, and local glitches
+  and shared default MMSIs do not count. A vessel first seen mid-spoof, a
+  reception gap mid-spoof, a drag at ship speeds or a long slow drift can
+  still mislead it (documented). Recent real AIS tracks produced no
   region. See `docs/air-sea-data-providers.md`.
 - **LIVE TV panel.** One live news channel at the foot of the left column, as wide as
   FAST INTELLIGENCE. Eight defaults: Bloomberg, Sky News, Euronews, DW News, CNN

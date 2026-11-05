@@ -37,7 +37,7 @@ draws no aviation areas, and its row says so for every aviation source.
 positions the one AISStream connection already receives for signs that a
 navigation fix went wrong in many ships at once. It opens no connection, keeps
 nothing on disk, and answers `GET /api/airsea/gnss-regions`. Off, that route is
-a 404. The detector was prepared outside this repo and reworked here after three
+a 404. The detector was prepared outside this repo and reworked here after four
 adversarial reviews and an external review.
 
 - **Which reports count.** Class A and B position reports only (not long-range
@@ -48,26 +48,30 @@ adversarial reviews and an external review.
   delay is not close to whole minutes: roughly half of long delays still pass.
   Reports more than 5 minutes old, out of order or repeated are ignored.
 - **What counts as an anomaly.** A vessel is trusted only from fixes that are a
-  plausible move from its last trusted fix. A fix at least 10 km away that
-  implies more than 100 knots is an outlier. After one, the vessel is under
-  suspicion for 30 minutes: fixes within 20 km of where that impossible jump
-  went are outliers too (an old trusted fix makes a long spoof look reachable),
-  and a new trusted fix must be reachable at no more than 30 knots, or 1.5 times
-  the vessel's own earlier speed. A ship that sails on is trusted again. A
-  vessel votes after two plausible fixes and 30 minutes of tracking, for jumps
-  of 50 km or more into another 1° cell. A region is reported when three or more
-  different vessels in one cell voted, within 30 minutes, for the same target
-  cell; it stays reported while the spoof goes on and ages out 30 minutes after
-  the last vote. Silence of 20 minutes since a vessel's last report starts its
-  track afresh. MMSIs must be a ship station's (MID 201-775), not one digit
-  repeated (`222222222`) or a country code with six zeros (`412000000`).
+  plausible move from its last trusted fix, and a step at an impossible speed
+  is never adopted, however short. A hard outlier is a fix at least 10 km away
+  that implies more than 100 knots, or a jump away from a point the vessel sat
+  at for two or more outlying reports (a spoof moving on). After one, the
+  vessel is under suspicion for 30 minutes: fixes within 20 km of where the
+  hard outlier went are held as outliers too, and renew the suspicion; fixes
+  elsewhere that are faster than 30 knots, or 1.5 times the vessel's own
+  measured speed, are held but renew nothing, so a ship that speeds up is
+  trusted again within the half hour. A vessel votes, on hard outliers and
+  holds at their point only, after two plausible fixes and 30 minutes of
+  tracking, for jumps of 50 km or more into another 1° cell. A region is
+  reported when three or more different vessels in one cell voted, within 30
+  minutes, for the same target cell; it stays reported while the spoof goes on
+  and ages out 30 minutes after the last vote. Silence of 20 minutes since a
+  vessel's last report starts its track afresh. MMSIs must be a ship station's
+  (MID 201-775), not one digit repeated (`222222222`) or a country code with
+  six zeros (`412000000`).
 - **Known gaps.** A vessel first seen while already spoofed, a reception gap of
-  20 minutes in the middle of a spoof, a spoof that drags positions away
-  gradually, or one that moves its target slowly enough to look like sailing,
-  can leave a vessel trusted at a false position; a later jump from there is
-  then reported from that false cell. Vessels voting for alternating targets
-  out of step, or for targets either side of a cell edge, are not seen as
-  coherent.
+  20 minutes in the middle of a spoof, a spoof that drags positions away below
+  ship speeds, or one that drifts for longer than the 30-minute suspicion, can
+  leave a vessel trusted at a false position; a later jump from there is then
+  reported from that false cell until it ages out. Vessels voting for
+  alternating targets out of step, or for targets either side of a cell edge,
+  are not seen as coherent.
 - **What it says.** A 1° box with `confidence: low`, `cause_assessment:
 unconfirmed` and vessel counts: no MMSI, no positions, no target location. It
   is an AIS anomaly, not proof of spoofing or jamming, and says nothing about
@@ -90,8 +94,8 @@ unconfirmed` and vessel counts: no MMSI, no positions, no target location. It
   never camera-eligible, near home or not; and the local model never assesses
   it. It can appear on the map and as an ambient tour stop.
 - **Checked.** On 5 November 2026 the recent AIS tracks held by a running
-  instance (7,476 vessels, 88,535 fixes over 137 minutes; tracks are thinned to
-  30 s and 25 m, so one vessel's covers at most about half an hour) produced 30
+  instance (7,578 vessels, 95,911 fixes over 155 minutes; tracks are thinned to
+  30 s and 25 m, so one vessel's covers at most about half an hour) produced 34
   outliers, no vote and no region. The same stream with three injected
   coordinated jumps produced exactly one. The replay skipped the report-time
   rules, which still need a live run. The thresholds are engineering choices,
