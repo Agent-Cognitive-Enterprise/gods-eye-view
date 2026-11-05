@@ -6,7 +6,11 @@
 
 import { greatCircleKm } from '../geoDistance.js';
 import { observationTime, textTokens } from './evidence.js';
-import { CATEGORY_POLICY, isPushReport } from './taxonomy.js';
+import {
+  CATEGORY_POLICY,
+  isAdvisorySubtype,
+  isPushReport,
+} from './taxonomy.js';
 
 /** Subtypes that describe a consequence of another event, linked rather than merged. */
 export const CONSEQUENCE_SUBTYPES = Object.freeze([
@@ -116,6 +120,13 @@ export function matchCandidate(observation, event) {
   if (
     observation.event_key &&
     event.event_keys.some((key) => key.startsWith(`${observation.provider}|`))
+  )
+    return null;
+  // Fork: an advisory joins only its own event (by event_key above), in
+  // either direction, so it never counts as a source for anything else.
+  if (
+    isAdvisorySubtype(observation.subtype) ||
+    isAdvisorySubtype(event.subtype)
   )
     return null;
   // One article can describe several incidents, so a shared lineage still has

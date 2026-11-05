@@ -35,6 +35,12 @@ import { subscribeTrafficSnapshots, trafficSnapshotsSince } from './bus.js';
 import { HOUR_MS, createTrafficHistory } from './history.js';
 import { createWarningService } from './warnings.js';
 import { simplifyGeometry } from '../../../src/airsea/warnings.js';
+import {
+  createRegionalGnssHttpHandler,
+  createRegionalGnssService,
+} from './gnssRegionalService.js';
+import { subscribeRegionalAisPosition } from './gnssRegionalBus.js';
+import { regionalGnssIntelRecords } from './gnssRegionalIntel.js';
 
 export const WINDOWS_MS = Object.freeze([
   15 * 60_000,
@@ -573,6 +579,14 @@ export function airSeaProxy({
 } = {}) {
   const enabled = airSeaEnabled(env) || Boolean(supplied);
   let service = supplied ?? null;
+  // Regional GNSS screen (opt-in): reads the one AISStream connection's
+  // envelopes through gnssRegionalBus.js and keeps nothing on disk.
+  const gnssRegionalEnabled = enabled && env.GEV_GNSS_REGIONAL === '1';
+  let gnssRegional = null;
+  let stopGnssRegional = null;
+  const aisHealth = () =>
+    service?.sources?.().find((entry) => entry.id === 'aisstream')?.status ??
+    (env.AISSTREAM_API_KEY ? 'stale' : 'unconfigured');
   let warnings = suppliedWarnings ?? null;
   const warningsEnabled = env.GEV_AIRSEA_WARNINGS !== '0';
   let listCache = null; // {key, body} of the last /warnings answer
@@ -722,6 +736,24 @@ export function airSeaProxy({
   }
 
   const attach = (server) => {
+    if (gnssRegionalEnabled) {
+      gnssRegional ??= createRegionalGnssService();
+      // One subscription per plugin, even if it is attached again; a closing
+      // server ends only its own.
+      stopGnssRegional?.();
+      const stop = subscribeRegionalAisPosition((envelope, receivedAt) =>
+        gnssRegional.ingestEnvelope(envelope, receivedAt),
+      );
+      stopGnssRegional = stop;
+      server.middlewares.use(
+        '/api/airsea/gnss-regions',
+        createRegionalGnssHttpHandler(gnssRegional, aisHealth),
+      );
+      server.httpServer?.once('close', () => {
+        stop();
+        if (stopGnssRegional === stop) stopGnssRegional = null;
+      });
+    }
     server.middlewares.use('/api/airsea', handler);
     if (!enabled || supplied) return;
     // Created now, not on the first request: it must take in every
@@ -751,7 +783,14 @@ export function airSeaProxy({
     prune.unref?.();
     const stop = startCollector(server, collectionPlan(env));
     ensureWarnings()?.start();
-    const detach = hub?.attach({ service, warnings: ensureWarnings() });
+    const detach = hub?.attach({
+      service,
+      warnings: ensureWarnings(),
+      gnssRegionalRecords: () =>
+        gnssRegional
+          ? regionalGnssIntelRecords(gnssRegional.snapshot(aisHealth()))
+          : [],
+    });
     server.httpServer?.once('close', () => {
       detach?.();
       stop();

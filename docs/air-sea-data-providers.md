@@ -31,6 +31,59 @@ or "no warning".
 There is **no aviation warning source connected**: the Warning Areas layer
 draws no aviation areas, and its row says so for every aviation source.
 
+## Regional GNSS screen (AIS, opt-in)
+
+`GEV_GNSS_REGIONAL=1`, with Air & Sea on and an AIS key, watches the vessel
+positions the one AISStream connection already receives for signs that a
+navigation fix went wrong in many ships at once. It opens no connection, keeps
+nothing on disk, and answers `GET /api/airsea/gnss-regions`. Off, that route is
+a 404. The detector was prepared outside this repo and reworked here after an
+adversarial review.
+
+- **Which reports count.** Class A and B position reports only (not long-range
+  type 27), with the message's own coordinates. The report must carry its own
+  UTC second (`Timestamp` 0-59; 60-63 mean no fix) within 15 s of the second of
+  AISStream's `time_utc`. AISStream does not document `time_utc` as the fix
+  time, so this catches most late relays, though not delays of whole minutes.
+  Reports more than 5 minutes old, out of order or repeated are ignored. The
+  MMSI must be a ship station's (MID 201-775), not a placeholder such as
+  `111111111` or `123456789`.
+- **What counts as an anomaly.** A vessel needs two plausible fixes first. A
+  later fix at least 10 km away that implies more than 100 knots is an outlier
+  and never becomes the vessel's trusted position. Outliers count only from the
+  cell the vessel was trusted in when the anomaly began, and only towards a cell
+  at least two cells away. A region is reported when three or more different
+  vessels in one 1° cell jumped, within 30 minutes, to the same such cell.
+  Silence of 20 minutes since a vessel's last report starts its track afresh. A
+  vessel whose trusted position moves far while it is under suspicion (a long
+  spoof can come to look reachable) never votes again.
+- **What it says.** A 1° box with `confidence: low`, `cause_assessment:
+unconfirmed` and vessel counts: no MMSI, no positions, no target location. It
+  is an AIS anomaly, not proof of spoofing or jamming, and says nothing about
+  where a transmitter is. Receiver artefacts, relays, shared MMSIs and data lag
+  can produce the same pattern. `diagnostic.refusedEnvelopes` counts reports
+  refused, by reason.
+- **Coverage.** Only waters AISStream covers. For its first 10 minutes it says
+  `warming_up`. A feed that is not `healthy`, or no usable report for 5
+  minutes, answers `coverage_uncertain` with no regions; no key answers
+  `unconfigured`. Neither means the sea is clear.
+- **Autopilot.** With the early-warning engine on, each region becomes an
+  analyst record (severity hint 25, regional precision), refreshed every 10
+  minutes while it lasts. Its subtype is an advisory
+  (`ADVISORY_SUBTYPES` in `src/intel/taxonomy.js`): it never joins another event,
+  so it cannot corroborate a news report, and it is never camera-eligible, near
+  home or not. It can appear on the map and as an ambient tour stop.
+- **Checked.** On 5 November 2026 the recent AIS tracks held by a running
+  instance (6,954 vessels, 61,954 fixes over 84 minutes; tracks are thinned to
+  30 s and 25 m, so one vessel's covers at most about half an hour) produced 17
+  outliers and no region. The same stream with three injected coordinated jumps
+  produced exactly one. The replay skipped the report-time rules above, which
+  still need a live run. The thresholds are engineering choices, not calibrated
+  rates.
+
+The existing GNSS Integrity layer (aircraft, from ADS-B navigation accuracy)
+is separate and unchanged.
+
 ## How geometry is treated
 
 - Only geometry a source states is drawn. S-124 polygons, lines and points
