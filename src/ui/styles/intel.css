@@ -683,8 +683,20 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
 }
 .world-overview__head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
+  min-height: 20px;
+}
+/* Title, badges and status wrap as whole words: a status that does not fit
+   beside the badges (LIKELY NEXT in German is twice the English) takes its own
+   line, right-aligned, instead of being cut to an ellipsis. */
+.world-overview__label {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 6px;
+  min-width: 0;
   min-height: 20px;
 }
 .world-overview__head .panel-title {
@@ -707,14 +719,13 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
   color: #ffc400;
 }
 .wo-status {
-  flex: 1 1 auto;
-  overflow: hidden;
+  flex: 1 0 auto;
+  max-width: 100%;
   color: var(--text-secondary);
   font: 9px var(--font-mono);
   letter-spacing: 1px;
   text-align: right;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .wo-toggle {
   flex: 0 0 auto;

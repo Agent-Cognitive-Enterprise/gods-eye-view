@@ -114,12 +114,14 @@ onBeforeUnmount(() => {
 <template>
   <section ref="root" id="world-overview" class="world-overview" :aria-label="t('World overview')">
     <div class="world-overview__head">
-      <span class="panel-title">{{ t('WORLD OVERVIEW') }}</span>
-      <template v-if="open && model">
-        <span class="wo-badge" :class="`wo-badge--${model.mode}`">{{ STATUS[model.mode]?.() }}</span>
-        <span v-if="model.demo" class="wo-badge wo-badge--demo">{{ t('DEMO') }}</span>
-        <span class="wo-status">{{ status }}</span>
-      </template>
+      <div class="world-overview__label">
+        <span class="panel-title">{{ t('WORLD OVERVIEW') }}</span>
+        <template v-if="open && model">
+          <span class="wo-badge" :class="`wo-badge--${model.mode}`">{{ STATUS[model.mode]?.() }}</span>
+          <span v-if="model.demo" class="wo-badge wo-badge--demo">{{ t('DEMO') }}</span>
+          <span v-if="status" class="wo-status">{{ status }}</span>
+        </template>
+      </div>
       <button type="button" class="wo-toggle" :aria-expanded="String(open)" :aria-label="open ? t('Hide map') : t('Show map')" :title="open ? t('Hide map') : t('Show map')" @click="store.act('toggle')">{{ open ? '▾' : '▸' }}</button>
     </div>
     <svg v-if="open && model" class="world-overview__map" :viewBox="viewBox" preserveAspectRatio="xMidYMid meet" role="group" :aria-label="label">

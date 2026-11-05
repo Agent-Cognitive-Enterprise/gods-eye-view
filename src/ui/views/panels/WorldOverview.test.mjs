@@ -3,6 +3,7 @@
 import '../../../testSupport/registerDom.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createApp, nextTick } from 'vue';
 import { createPinia } from 'pinia';
 import { useWorldOverviewStore } from '../../stores/worldOverview.js';
@@ -123,4 +124,20 @@ test('hiding the map removes it and keeps the header', async (t) => {
   root().querySelector('.wo-toggle').click();
   await nextTick();
   assert.ok(root().querySelector('svg'));
+});
+
+test('the status wraps onto its own line rather than being cut off', async (t) => {
+  const { store, root } = mount(t);
+  store.publish(model({ demo: true }));
+  await nextTick();
+  const label = root().querySelector('.world-overview__label');
+  assert.ok(label.contains(root().querySelector('.wo-status')), 'status shares the wrapping label with title and badges');
+  assert.ok(!label.contains(root().querySelector('.wo-toggle')), 'the toggle stays on the first line, outside the wrap');
+  store.publish(model({ next: [], status: 'ready' }));
+  await nextTick();
+  assert.equal(root().querySelector('.wo-status'), null, 'no empty status takes up a line');
+  const css = readFileSync(new URL('../../styles/intel.css', import.meta.url), 'utf8');
+  const rule = /\.wo-status \{([^}]*)\}/.exec(css)[1];
+  assert.doesNotMatch(rule, /text-overflow:\s*ellipsis/);
+  assert.doesNotMatch(rule, /white-space:\s*nowrap/);
 });
