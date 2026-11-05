@@ -3,7 +3,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { allocatePanelFillHeights } from '../panelStackLayout.js';
-import { arePanelCompanions, settleSideAccordion } from './panelAccordion.js';
+import {
+  arePanelCompanions,
+  isDockedPanel,
+  settleSideAccordion,
+} from './panelAccordion.js';
 
 const panel = (id, collapsed = false) => ({
   id,
@@ -99,4 +103,25 @@ test('a corridor with no height gives no height', () => {
     }),
     [0, 0],
   );
+});
+
+test('LIVE TV is docked: never closed by the one-panel rule, and closes nothing', () => {
+  assert.ok(isDockedPanel('live-tv-panel'));
+  assert.ok(!isDockedPanel('data-panel'));
+  assert.deepEqual(
+    settle([panel('data-panel'), panel('live-tv-panel')], 'data-panel'),
+    [],
+  );
+  assert.deepEqual(
+    settle([panel('data-panel'), panel('live-tv-panel')], 'live-tv-panel'),
+    [],
+  );
+  assert.deepEqual(
+    settle(
+      [panel('data-panel'), panel('scene-panel'), panel('live-tv-panel')],
+      'scene-panel',
+    ),
+    ['data-panel'],
+  );
+  assert.deepEqual(settle([panel('live-tv-panel')], 'live-tv-panel'), []);
 });

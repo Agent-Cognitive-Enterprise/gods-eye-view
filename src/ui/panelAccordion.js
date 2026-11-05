@@ -5,6 +5,16 @@ const PANEL_COMPANIONS = Object.freeze({
 });
 
 /**
+ * Fork: panels docked at the foot of their side (LIVE TV). The one-panel rule
+ * never closes them and opening one closes nothing; the other open panel
+ * shares the height above it (src/ui/leftPanelRail.js).
+ */
+const DOCKED_PANELS = Object.freeze(new Set(['live-tv-panel']));
+
+/** @param {string} id Panel id. */
+export const isDockedPanel = (id) => DOCKED_PANELS.has(id);
+
+/**
  * Whether two panels may stay open together despite the one-panel rule.
  * @param {string} first Panel id.
  * @param {string} second Panel id.
@@ -41,8 +51,10 @@ export function settleSideAccordion({
     return;
   }
   const expanded = panels.filter(
-    (panel) => !panel.classList.contains('collapsed'),
+    (panel) =>
+      !panel.classList.contains('collapsed') && !isDockedPanel(panel.id),
   );
+  if (!expanded.length) return;
   const owner =
     expanded.find((panel) => panel.id === preferredPanelId) ||
     expanded.find((panel) => panel.contains(documentRef?.activeElement)) ||

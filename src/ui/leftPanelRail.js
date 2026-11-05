@@ -6,7 +6,7 @@ import {
   resolvePanelStackCorridor,
 } from '../panelStackLayout.js';
 import { measurePanelNaturalHeight } from './panelMeasurement.js';
-import { settleSideAccordion } from './panelAccordion.js';
+import { isDockedPanel, settleSideAccordion } from './panelAccordion.js';
 
 /**
  * The height a stack keeps clear above itself for a rail drawn as a row there
@@ -23,6 +23,9 @@ export function panelRailBand(stack, getComputedStyle) {
   if (rail && getComputedStyle(rail).display === 'none') return 0;
   return band;
 }
+
+/** The most of the lane a docked panel (LIVE TV) may take from the panels above it. */
+export const DOCKED_PANEL_MAX_SHARE = 0.7;
 
 /**
  * Measure and place the left panel rail for one synchronous layout pass.
@@ -182,8 +185,16 @@ export function layoutLeftPanelRail({
     }
   }
 
-  const expandedPanelsInDomOrder = panels.filter(
+  const openInDomOrder = panels.filter(
     (panel) => !panel.classList.contains('collapsed'),
+  );
+  // A docked panel (LIVE TV) is not part of the accordion: it keeps its own
+  // height at the foot of the lane, and the open panels share what is left.
+  const dockedPanels = openInDomOrder.filter((panel) =>
+    isDockedPanel(panel.id),
+  );
+  const expandedPanelsInDomOrder = openInDomOrder.filter(
+    (panel) => !isDockedPanel(panel.id),
   );
   const preferredExpandedPanel = expandedPanelsInDomOrder.find(
     (panel) => panel.id === preferredPanelId,
@@ -203,10 +214,11 @@ export function layoutLeftPanelRail({
   // Clear the prior pass before reading intrinsic heights. The allocated
   // outer height and the inner scroller otherwise feed their constrained
   // size back into the next HUD-mode calculation.
-  for (const panel of expandedPanels) {
+  for (const panel of [...expandedPanels, ...dockedPanels]) {
     panel.style.removeProperty('--left-panel-allocated-height');
   }
   const availableHeight = Math.max(0, safeBottom - safeTop);
+  const docked = dockedPanels.length > 0;
   const naturalExpandedHeights = expandedPanels.map((panel) =>
     measurePanelNaturalHeight(panel, getComputedStyle),
   );
@@ -222,6 +234,18 @@ export function layoutLeftPanelRail({
   let requiredHeight = siblingHeight;
 
   const rowGap = parseFloat(getComputedStyle(stack).rowGap) || 0;
+  // The docked panel's share of the obstacle-safe lane, capped so the panels
+  // above it stay usable; the gap above it belongs to it.
+  const dockLane = Math.max(0, obstacleSafeBottom - obstacleSafeTop);
+  const dockedNaturalHeights = dockedPanels.map((panel) =>
+    measurePanelNaturalHeight(panel, getComputedStyle),
+  );
+  const dockedAllocatedHeights = dockedNaturalHeights.map((height) =>
+    Math.min(height, (dockLane * DOCKED_PANEL_MAX_SHARE) / dockedPanels.length),
+  );
+  const dockedHeight =
+    dockedAllocatedHeights.reduce((sum, height) => sum + height, 0) +
+    rowGap * dockedPanels.length;
   if (expandedPanels.length) requiredHeight += naturalExpandedHeight;
   requiredHeight += rowGap * Math.max(0, laidOutPanels.length - 1);
 
@@ -256,11 +280,14 @@ export function layoutLeftPanelRail({
     : -1;
   const fills = fillIndex >= 0;
   const shouldTail =
+    !docked &&
     !fills &&
     expandedPanels.length > 0 &&
     tailLayoutTop >= obstacleSafeTop - tailTolerance &&
     tailLayoutBottom <= obstacleSafeBottom + tailTolerance;
-  const shouldFocus = fills || (exceedsCenteredCorridor && !shouldTail);
+  // With a docked panel open the lane always runs to its foot, where it sits.
+  const shouldFocus =
+    docked || fills || (exceedsCenteredCorridor && !shouldTail);
   // Focus mode owns the lane, so let every expanded panel share the full
   // obstacle-safe corridor. Tail/normal layouts keep the balanced
   // viewport centering used for compact accordion stacks.
@@ -283,6 +310,7 @@ export function layoutLeftPanelRail({
         0,
         layoutBottom -
           layoutTop -
+          dockedHeight -
           rowGap * Math.max(0, expandedPanels.length - 1),
       )
     : naturalExpandedHeight;
@@ -295,7 +323,9 @@ export function layoutLeftPanelRail({
   const fillHeight = topPinned
     ? Math.max(
         0,
-        stackRect.height - rowGap * Math.max(0, expandedPanels.length - 1),
+        stackRect.height -
+          dockedHeight -
+          rowGap * Math.max(0, expandedPanels.length - 1),
       )
     : expandedAvailableHeight;
   const allocatedExpandedHeights = fills
@@ -313,7 +343,10 @@ export function layoutLeftPanelRail({
       ? panelStackAutoCollapseIndices({
           naturalHeights: naturalExpandedHeights,
           allocatedHeights: allocatedExpandedHeights,
-          collapseLaterPanels: shouldFocus && hud.variant === 'tactical',
+          // A docked panel alone is no reason to fold the panels above it.
+          collapseLaterPanels:
+            (docked ? exceedsCenteredCorridor : shouldFocus) &&
+            hud.variant === 'tactical',
         })
       : [];
   if (autoCollapseIndices.length) {
@@ -348,6 +381,12 @@ export function layoutLeftPanelRail({
       `${allocatedExpandedHeights[index].toFixed(1)}px`,
     );
   });
+  dockedPanels.forEach((panel, index) => {
+    panel.style.setProperty(
+      '--left-panel-allocated-height',
+      `${dockedAllocatedHeights[index].toFixed(1)}px`,
+    );
+  });
 
   stack.classList.toggle('layout-focus', shouldFocus);
   stack.classList.toggle('layout-tail', shouldTail);
@@ -371,6 +410,7 @@ export function layoutLeftPanelRail({
     100
   ).toFixed(2);
   stack.dataset.expandedCount = String(expandedPanels.length);
+  stack.dataset.dockedCount = String(dockedPanels.length);
 
   // Cockpit Display/Radio live in the opposite margin and no longer borrow
   // this corridor: the left accordion's top is solved against left-lane

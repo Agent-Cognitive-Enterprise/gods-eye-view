@@ -830,3 +830,86 @@ test('left rail keeps collapsed panels shown beside Cockpit, still one open', ()
   assert.equal(f.stack.classList.contains('layout-exclusive'), false);
   assert.equal(f.first.getAttribute('aria-hidden'), undefined);
 });
+
+// LIVE TV is docked: the one-panel rule leaves it open, it keeps its own height
+// at the foot of the lane, and the open panel shares what is left above it.
+function dockedFixture(tvHeight, firstHeight) {
+  const f = fixture('left');
+  const tv = element('live-tv-panel', { height: 42, collapsed: true });
+  tv.parentElement = f.stack;
+  f.stack.children = [f.first, f.second, tv];
+  f.expand(tv, tvHeight);
+  if (firstHeight) f.expand(f.first, firstHeight);
+  return { ...f, tv };
+}
+const allocated = (node) =>
+  node.style.getPropertyValue('--left-panel-allocated-height');
+
+test('opening another left panel leaves LIVE TV open, and opening LIVE TV closes nothing', () => {
+  for (const preferred of ['first', 'live-tv-panel']) {
+    const f = dockedFixture(300, 250);
+    f.options.preferredPanelId = preferred;
+    f.run();
+    assert.equal(f.tv.classList.contains('collapsed'), false, preferred);
+    assert.equal(f.first.classList.contains('collapsed'), false, preferred);
+    assert.equal(f.retries(), 0);
+  }
+});
+
+test('the one-panel rule still applies to the panels above LIVE TV', () => {
+  const f = dockedFixture(300, 250);
+  f.expand(f.second, 250);
+  f.options.preferredPanelId = f.second.id;
+  f.run();
+  assert.equal(f.first.classList.contains('collapsed'), true);
+  assert.equal(f.second.classList.contains('collapsed'), false);
+  assert.equal(f.tv.classList.contains('collapsed'), false);
+});
+
+test('LIVE TV keeps its height at the foot; the open panel shares the rest above it', () => {
+  // 900 px viewport: lane 36..864 px. LIVE TV 300 + 12 px gap leaves 516 px.
+  const f = dockedFixture(300, 800);
+  f.options.preferredPanelId = f.first.id;
+  f.run();
+  assert.equal(f.stack.dataset.layoutMode, 'focus');
+  assert.equal(f.stack.dataset.dockedCount, '1');
+  assert.equal(allocated(f.tv), '300.0px');
+  assert.equal(allocated(f.first), '516.0px');
+  assert.equal(
+    f.first.classList.contains('collapsed'),
+    false,
+    'shrinks, never folds',
+  );
+});
+
+test('LIVE TV alone still runs the lane to its foot, so it sits at the bottom', () => {
+  const f = dockedFixture(300);
+  f.run();
+  assert.equal(f.stack.dataset.layoutMode, 'focus');
+  assert.equal(
+    f.stack.style.getPropertyValue('--left-stack-safe-bottom'),
+    '4.000vh',
+  );
+  assert.equal(allocated(f.tv), '300.0px');
+});
+
+test('a tall LIVE TV (its settings open) is capped so the panel above stays usable', () => {
+  const f = dockedFixture(2000, 800);
+  f.options.preferredPanelId = f.first.id;
+  f.run();
+  // 70% of the 828 px lane.
+  assert.equal(allocated(f.tv), '579.6px');
+  assert.ok(parseFloat(allocated(f.first)) > 200);
+});
+
+test('with LIVE TV closed the lane lays out exactly as before', () => {
+  const plain = fixture('left');
+  plain.expand(plain.first, 250);
+  plain.run();
+  const f = dockedFixture(300, 250);
+  f.tv.classList.add('collapsed');
+  f.run();
+  assert.equal(f.stack.dataset.layoutMode, plain.stack.dataset.layoutMode);
+  assert.equal(allocated(f.first), allocated(plain.first));
+  assert.equal(f.stack.dataset.dockedCount, '0');
+});

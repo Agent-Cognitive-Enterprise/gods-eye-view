@@ -835,6 +835,14 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
   min-height: 0;
   pointer-events: auto;
 }
+/* Docked (src/ui/panelAccordion.js): the lane gives it --left-panel-allocated-height
+   at its foot, capped so the panels above stay usable; past that, its body scrolls. */
+#left-panel-stack > #live-tv-panel:not(.collapsed) {
+  max-height: var(--left-panel-allocated-height, none);
+}
+#left-panel-stack > #live-tv-panel:not(.collapsed) > .live-tv-panel-inner {
+  max-height: 100%;
+}
 #live-tv-panel.collapsed #live-tv-body {
   display: none !important;
 }
@@ -842,6 +850,9 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
   display: none;
 }
 #live-tv-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
   font: 11px var(--font-sans);
   color: var(--text-primary);
 }

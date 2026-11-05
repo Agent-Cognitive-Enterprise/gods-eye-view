@@ -5,7 +5,7 @@ import { applicationPinia } from './vueRuntime.js';
 import { displayPanelScroller } from './displayPanelScroll.js';
 import { PanelPositionControls } from './panelPositionControls.js';
 import { PanelLayoutController } from './panelLayoutController.js';
-import { arePanelCompanions } from './panelAccordion.js';
+import { arePanelCompanions, isDockedPanel } from './panelAccordion.js';
 import {
   bindPanelDisclosure,
   collapsePanelOnEscape,
@@ -441,6 +441,8 @@ export class PanelChrome {
       !restore &&
       !nextCollapsed &&
       sideStack &&
+      // A docked panel (LIVE TV) sits below whatever is open.
+      !isDockedPanel(panelId) &&
       // Phone sheets show several rail panels at once.
       !document.body?.classList?.contains('mobile-shell')
     ) {
@@ -449,6 +451,7 @@ export class PanelChrome {
           peer !== panelEl &&
           peer.matches('[data-panel-id]') &&
           !peer.hidden &&
+          !isDockedPanel(peer.id) &&
           !arePanelCompanions(peer.id, panelId)
         ) {
           this.setPanelCollapsed(peer.id, true, {
