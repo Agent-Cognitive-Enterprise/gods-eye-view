@@ -6,6 +6,7 @@ import {
 } from './geometry.js';
 import * as Cesium from 'cesium';
 import { stabilizeBillboardImages } from '../../data/stableBillboardImages.js';
+import { ensureGeoidReady } from '../../data/geoid.js';
 
 const SOURCE_FEATURE_INDEX = '__gevSourceFeatureIndex';
 
@@ -41,6 +42,8 @@ export function createIngestion({ state, parts, source }) {
     const owns = () =>
       generation === state._loadGeneration && !abort.signal.aborted;
 
+    // Fork: the geoid grid puts cable lines at sea level (rendering.js).
+    const geoidReady = ensureGeoidReady().catch(() => null);
     try {
       let cableJson = state._cachedCableJson;
       let landingJson = state._cachedLandingJson;
@@ -114,6 +117,8 @@ export function createIngestion({ state, parts, source }) {
       // wait for in-flight adds — the stale generation's own post-await
       // check here guarantees cleanup by removing exactly the sources THIS
       // generation added.
+      await geoidReady;
+      if (!owns()) return;
       const addResults = await Promise.allSettled([
         viewer.dataSources.add(cableDataSource),
         viewer.dataSources.add(landingDataSource),

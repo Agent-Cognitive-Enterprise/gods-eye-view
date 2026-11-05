@@ -42,6 +42,27 @@ export function cableClassificationTypeForScene(scene) {
 }
 
 /**
+ * Fork: whether cable lines must be clamped to the surface. On the terrain
+ * globe they are not. Primitives there are not depth-tested against terrain,
+ * so a sea-level line draws on top of the globe just as a clamped one does.
+ * Clamping only adds a GroundPolylinePrimitive, whose classification passes
+ * took about half of a GTX 1070 on every frame (docs/PERFORMANCE-WINDOWS.md).
+ * Photoreal tiles do hide what lies beneath them, so there, on an unknown
+ * surface and without a globe, the lines stay clamped. The unclamped lines are
+ * placed at sea level (the geoid) so they meet the coast, and the check is
+ * repeated every frame (`syncCableClamp`) in case depth testing is turned on.
+ * @param {Cesium.ClassificationType} classificationType
+ * @param {Cesium.Scene|null|undefined} scene
+ * @returns {boolean}
+ */
+
+export function cableLinesClampToGround(classificationType, scene) {
+  if (classificationType !== Cesium.ClassificationType.TERRAIN) return true;
+  if (!scene?.globe) return true;
+  return scene.globe.depthTestAgainstTerrain === true;
+}
+
+/**
  * Validate one data source's marker collections WITHOUT mutating anything.
  * Splitting validation from mutation is what makes the fallback honest: a
  * shape failure on the SECOND collection (or the second data source) must

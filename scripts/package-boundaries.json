@@ -2102,9 +2102,10 @@
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
       "src/i18n/locales/zh-Hant.json",
-      "src/data/stableBillboardImages.js"
+      "src/data/stableBillboardImages.js",
+      "src/data/geoid.js"
     ],
-    "external": ["cesium"]
+    "external": ["cesium", "egm96-universal"]
   },
   "bundled-cables": {
     "exports": ["./sources/bundled-cables"],

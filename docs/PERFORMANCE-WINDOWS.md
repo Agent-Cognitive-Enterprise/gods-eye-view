@@ -116,6 +116,63 @@ same CPU and GPU; the freeze was caught about 20 minutes after the baseline. Tha
 the likely cause, not a proven one. In the later A/B rounds, when that page was no
 longer busy, both old and new code held 59.7 to 59.9 fps in every scene.
 
+### 8. Clamped cable lines halve the frame rate while the camera moves (confirmed, fixed)
+
+Measured 5 November 2026 on 4173 with the operator's saved setup: military, air and
+sea traffic, warning areas, anomalies, S2 ghost maps, earthquakes, data centres,
+submarine cables, LIVE TV playing, with the FEEDS, FAST INTELLIGENCE and AUTOPILOT
+panels open. The page held 30 to 33 fps parked with Chrome at 96 to 100 % of the
+GPU, and 15 to 17 fps while the camera flew between shots. Each item was turned off
+in turn in the same page:
+
+| Turned off                         | Parked fps | Chrome's GPU share |
+| ---------------------------------- | ---------- | ------------------ |
+| Nothing                            | 30 to 33   | 98 to 100 %        |
+| Submarine cables                   | 58.5       | 50 %               |
+| Military (its per-frame hold)      | 59.6       | 3 % (idle render)  |
+| Each other layer, or LIVE TV       | 30 to 35   | 97 to 101 %        |
+| Cables still on, lines not clamped | 59.7       | 49 %               |
+
+The cost is the 1,913 cable lines being clamped to the ground. A clamped entity line
+is a `GroundPolylinePrimitive`. In this first round its classification passes cost
+about half of the GPU even over a city with no cable on screen, and military holds
+the scene in continuous render, so they ran on every frame. Thinner lines (1.5 px) changed nothing; a 0.75 resolution scale gave 47 fps.
+
+On the terrain globe the lines are no longer clamped (`cableLinesClampToGround` in
+`src/layers/submarineCables/surface.js`). Primitives there are not depth-tested
+against terrain (`depthTestAgainstTerrain` is off), so the line draws on top of the
+globe as the clamped one did. Each point is placed at sea level from the EGM96 geoid
+(`src/data/geoid.js`), up to about 100 m from ellipsoid height 0, so lines meet the
+coast and their landing pins. On the photoreal stack, an unknown stack, without a
+globe, or on terrain that does hide primitives, the lines stay clamped. The choice
+is checked again on every frame, so depth testing turned on later re-clamps them.
+
+World and regional views looked the same as before. Close, tilted views can differ:
+an unclamped line is not hidden behind a headland or ridge, and it now draws above
+other ground-clamped overlays (ghost maps, perimeters, airspace) instead of being
+painted into the terrain with them.
+
+Re-measured later the same day on 4173, starting each sample only while KoboldCpp
+reported itself idle (see below):
+
+| Cables                 | Parked                    | Rotating                  |
+| ---------------------- | ------------------------- | ------------------------- |
+| Clamped (before)       | 59.9 fps, Chrome GPU 46 % | 30.2 fps, Chrome GPU 98 % |
+| Not clamped (this fix) | 59.5 fps, Chrome GPU 45 % | 56.5 fps, Chrome GPU 36 % |
+| Off                    | not measured              | 58.9 fps, Chrome GPU 38 % |
+
+The gain while the camera moves held up. The parked cost in the first table did not
+reappear in that round, and its cause is not known; an isolated staging copy showed
+no parked difference either. Earlier staging figures were discarded because
+KoboldCpp was generating during the clamped samples.
+
+A second load on the same card was measured but is not app code. KoboldCpp, the
+local model the intel assessor calls, held about 7.2 GB of the 8 GB, and generated
+in 40 % of two-second samples over four minutes, with a prompt rate near 3 to 11
+tokens a second. While it generates the GPU is at 100 % and the page drops to 5 to
+20 fps whatever the layers. Frame-rate samples taken then are not comparable: check
+that the whole-GPU load is not far above Chrome's own share before trusting one.
+
 ## A/B results
 
 Two rounds each, 45 s per scene, values for round 1 / round 2.

@@ -22,6 +22,14 @@ number there.
   animated WebP (1 MB), a full-screen still, and close-ups of the AUTOPILOT panel and
   the world overview, all under `docs/media/fork/`. `README.md` gains one line at the
   top that links to it.
+- **Cable lines no longer halve the frame rate while the camera moves.** On the
+  terrain globe the 1,913 submarine cable lines were clamped to the ground, and
+  Cesium's ground-line passes filled the GPU: rotating the globe on 4173 ran at
+  30 fps with Chrome at 98 % of the GPU. The lines are now drawn unclamped at sea
+  level (the geoid) there, and the same rotation runs at 56.5 fps with Chrome at
+  36 %. On photoreal tiles they stay clamped. World and regional views look the
+  same; in close, tilted views a cable can show through a headland and draws above
+  other ground overlays. See `docs/PERFORMANCE-WINDOWS.md`.
 - **The overnight freeze.** With submarine cables on, the page froze after a few hours
   and did not recover. Cesium draws GeoJSON point pins on a canvas, and a canvas gets
   a new texture-atlas entry every time a billboard is given it, including each time

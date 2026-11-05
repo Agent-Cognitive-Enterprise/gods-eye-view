@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as Cesium from 'cesium';
 import { MAP_STACKS } from '../mapStackController.js';
+import { ensureGeoidReady, geoidHeight } from './geoid.js';
 import {
   CABLE_LABEL_DEPTH_DECISION,
   CABLE_OVERLAY_COLLISION_CAPACITY,
@@ -14,6 +15,7 @@ import {
   applyTranslucentMarkerBlend,
   cableClassificationTypeForScene,
   cableClassificationTypeForStack,
+  cableLinesClampToGround,
   cableReferencePriority,
   createCableOverlayEntry,
   createCableOverlayPublisher,
@@ -248,6 +250,25 @@ test('cable ground lines classify against exactly the active surface on every st
   );
 });
 
+test('cable lines are clamped only where a surface can hide them (fork)', () => {
+  const { TERRAIN, CESIUM_3D_TILE, BOTH } = Cesium.ClassificationType;
+  const globe = (depthTestAgainstTerrain) => ({
+    globe: { show: true, depthTestAgainstTerrain },
+  });
+  // The terrain globe does not depth-test primitives: a sea-level line draws
+  // on top, so the costly ground primitive is skipped.
+  assert.equal(cableLinesClampToGround(TERRAIN, globe(false)), false);
+  assert.equal(cableLinesClampToGround(TERRAIN, globe(undefined)), false);
+  // Terrain that hides primitives, photoreal tiles, unknown surfaces and a
+  // missing globe clamp.
+  assert.equal(cableLinesClampToGround(TERRAIN, globe(true)), true);
+  assert.equal(cableLinesClampToGround(TERRAIN, null), true);
+  assert.equal(cableLinesClampToGround(TERRAIN, {}), true);
+  assert.equal(cableLinesClampToGround(CESIUM_3D_TILE, globe(false)), true);
+  assert.equal(cableLinesClampToGround(BOTH, globe(false)), true);
+  assert.equal(cableLinesClampToGround(undefined, globe(false)), true);
+});
+
 test('a map-stack change re-classifies every cable line once, and destroy detaches the listener', async () => {
   const listeners = new Map();
   const eventTarget = {
@@ -293,6 +314,108 @@ test('a map-stack change re-classifies every cable line once, and destroy detach
     false,
     'destroy must detach the stack listener',
   );
+});
+
+function stackEventTarget() {
+  const listeners = new Map();
+  return {
+    listeners,
+    addEventListener: (name, fn) => listeners.set(name, fn),
+    removeEventListener: (name, fn) => {
+      if (listeners.get(name) === fn) listeners.delete(name);
+    },
+  };
+}
+
+const cableLineOf = (env) =>
+  env.dataSources
+    .find((ds) => /Submarine Cables/.test(ds.name || ''))
+    .entities.values.find((entity) => entity.polyline);
+const clampedOf = (entity) => entity.polyline.clampToGround.getValue();
+
+test('fork: on the terrain globe cable lines load unclamped, at sea level', async () => {
+  const globe = { show: true, depthTestAgainstTerrain: false };
+  const env = await createRealCableLayerHarness({ globe });
+  const line = cableLineOf(env);
+  assert.equal(
+    line.polyline.classificationType.getValue(),
+    Cesium.ClassificationType.TERRAIN,
+  );
+  assert.equal(clampedOf(line), false);
+  // Each point sits on the geoid, not at ellipsoid height 0.
+  await ensureGeoidReady();
+  const positions = line.polyline.positions.getValue(Cesium.JulianDate.now());
+  assert.ok(positions.length >= 2);
+  for (const position of positions) {
+    const point = Cesium.Cartographic.fromCartesian(position);
+    const expected = geoidHeight(
+      Cesium.Math.toDegrees(point.latitude),
+      Cesium.Math.toDegrees(point.longitude),
+    );
+    assert.ok(Math.abs(expected) > 1, 'the fixture crosses a non-zero geoid');
+    assert.ok(
+      Math.abs(point.height - expected) < 0.5,
+      `${point.height} vs ${expected}`,
+    );
+  }
+  env.layer.destroy(env.viewer);
+});
+
+test('fork: a globe that depth-tests terrain keeps the lines clamped, and a change is picked up', async () => {
+  const globe = { show: true, depthTestAgainstTerrain: true };
+  const env = await createRealCableLayerHarness({ globe });
+  const line = cableLineOf(env);
+  assert.equal(clampedOf(line), true);
+  // Turned off later: the next frame unclamps them; turned on again: clamped.
+  globe.depthTestAgainstTerrain = false;
+  env.raiseSweep();
+  assert.equal(clampedOf(line), false);
+  globe.depthTestAgainstTerrain = true;
+  env.raiseSweep();
+  assert.equal(clampedOf(line), true);
+  env.layer.destroy(env.viewer);
+});
+
+test('fork: map-stack switches clamp on photoreal and unclamp on the globe', async () => {
+  const target = stackEventTarget();
+  const globe = { show: true, depthTestAgainstTerrain: false };
+  const env = await createRealCableLayerHarness({
+    globe,
+    mapStackEventTarget: target,
+  });
+  const line = cableLineOf(env);
+  const listener = target.listeners.get('gev:map-stack-changed');
+  assert.equal(clampedOf(line), false);
+  listener({ detail: { activeId: 'photoreal', status: 'ready' } });
+  assert.equal(clampedOf(line), true);
+  listener({ detail: { activeId: 'osm', status: 'ready' } });
+  assert.equal(clampedOf(line), false);
+  // Same classification again (osm to esri-imagery): nothing changes.
+  listener({ detail: { activeId: 'esri-imagery', status: 'ready' } });
+  assert.equal(clampedOf(line), false);
+  listener({ detail: { activeId: 'some-future-stack', status: 'ready' } });
+  assert.equal(clampedOf(line), true, 'an unknown surface clamps');
+  env.layer.destroy(env.viewer);
+});
+
+test('fork: a stack switch before the data loads still decides the clamp', async () => {
+  const target = stackEventTarget();
+  // Boot on photoreal (globe hidden), then switch to the globe before load.
+  const globe = { show: false, depthTestAgainstTerrain: false };
+  const subscribe = target.addEventListener;
+  target.addEventListener = (name, fn) => {
+    subscribe(name, fn);
+    if (name !== 'gev:map-stack-changed') return;
+    globe.show = true;
+    fn({ detail: { activeId: 'osm', status: 'ready' } });
+  };
+  const env = await createRealCableLayerHarness({
+    globe,
+    mapStackEventTarget: target,
+  });
+  assert.ok(target.listeners.has('gev:map-stack-changed'));
+  assert.equal(clampedOf(cableLineOf(env)), false);
+  env.layer.destroy(env.viewer);
 });
 
 test('marker collections blend in a single translucent pass behind a loud shape invariant', async () => {
@@ -1293,6 +1416,7 @@ test('destroy mid-load stays clean and a re-enabled layer reloads exactly once',
 async function createRealCableLayerHarness({
   source,
   mapStackEventTarget = null,
+  globe = undefined,
 } = {}) {
   const hostCalls = [];
   // The sweep gate's motion-fallback clock is FROZEN here and advanced only by
@@ -1342,6 +1466,7 @@ async function createRealCableLayerHarness({
       flyTo() {},
     },
     scene: {
+      ...(globe ? { globe } : {}),
       canvas: { clientHeight: 900 },
       requestRender() {},
       pick() {

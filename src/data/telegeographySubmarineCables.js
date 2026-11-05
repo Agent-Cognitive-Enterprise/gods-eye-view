@@ -24,6 +24,7 @@ export {
   createCableOverlayEntry,
   cableClassificationTypeForStack,
   cableClassificationTypeForScene,
+  cableLinesClampToGround,
   applyTranslucentMarkerBlend,
   createCableReferenceSweepGate,
   updateCableReferenceStem,

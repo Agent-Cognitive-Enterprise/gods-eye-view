@@ -1,7 +1,9 @@
 import * as Cesium from 'cesium';
+import { geoidHeight } from '../../data/geoid.js';
 import {
   probeTranslucentMarkerBlend,
   commitTranslucentMarkerBlend,
+  cableLinesClampToGround,
 } from './surface.js';
 import {
   clampLabel,
@@ -73,9 +75,74 @@ export function createRendering({ state }) {
       : state.cableColor;
     entity.polyline.material = color.withAlpha(0.92);
     entity.polyline.width = 2.5;
-    entity.polyline.clampToGround = true;
+    placeAtSeaLevel(entity);
+    state._cableClamp = cableClamp();
+    entity.polyline.clampToGround = state._cableClamp;
     entity.polyline.classificationType = state._classificationType;
     entity.show = true;
+  }
+
+  /** Fork: the clamp the active surface calls for (see cableLinesClampToGround). */
+
+  function cableClamp() {
+    return cableLinesClampToGround(
+      state._classificationType,
+      state._viewer?.scene,
+    );
+  }
+
+  /**
+   * Fork: put a cable line at sea level. GeoJSON lines sit at ellipsoid height
+   * 0, up to about 100 m from the sea surface, which shows once the line is
+   * not clamped. A clamped line ignores heights, so this is done for every
+   * line. Without the geoid grid the line stays at height 0.
+   */
+
+  function placeAtSeaLevel(entity) {
+    const positions = entity.polyline.positions?.getValue?.(
+      Cesium.JulianDate.now(),
+    );
+    if (!Array.isArray(positions) || positions.length === 0) return;
+    const seaLevel = [];
+    try {
+      for (const position of positions) {
+        const point = Cesium.Cartographic.fromCartesian(position);
+        if (!point) return;
+        seaLevel.push(
+          Cesium.Cartesian3.fromRadians(
+            point.longitude,
+            point.latitude,
+            geoidHeight(
+              Cesium.Math.toDegrees(point.latitude),
+              Cesium.Math.toDegrees(point.longitude),
+            ),
+          ),
+        );
+      }
+    } catch {
+      return; // geoid grid not loaded
+    }
+    entity.polyline.positions = seaLevel;
+  }
+
+  /**
+   * Fork: re-clamp or unclamp the built cable lines when the surface or its
+   * depth testing changes. O(1) when nothing changed, so it runs every frame.
+   * @returns {boolean} Whether the lines changed.
+   */
+
+  function syncCableClamp() {
+    if (!state._cableDataSource) return false;
+    const clamp = cableClamp();
+    if (clamp === state._cableClamp) return false;
+    state._cableClamp = clamp;
+    const entities = state._cableDataSource.entities.values;
+    for (let i = 0; i < entities.length; i++) {
+      const polyline = entities[i].polyline;
+      if (polyline) polyline.clampToGround = clamp;
+    }
+    state._viewer?.scene?.requestRender?.();
+    return true;
   }
 
   /**
@@ -113,20 +180,24 @@ export function createRendering({ state }) {
 
   /**
    * Re-classify every cable ground line for the active surface. One batched
-   * ground-primitive rebuild per stack switch — never per frame.
+   * ground-primitive rebuild per stack switch — never per frame. Fork: then
+   * clamps or unclamps the lines for the new surface (syncCableClamp).
    * @param {Cesium.ClassificationType} next
    */
 
   function applyCableClassification(next) {
-    if (next === undefined || next === state._classificationType) return;
-    state._classificationType = next;
-    if (!state._cableDataSource) return;
-    const entities = state._cableDataSource.entities.values;
-    for (let i = 0; i < entities.length; i++) {
-      const polyline = entities[i].polyline;
-      if (polyline) polyline.classificationType = next;
+    if (next === undefined) return;
+    if (next !== state._classificationType) {
+      state._classificationType = next;
+      if (!state._cableDataSource) return;
+      const entities = state._cableDataSource.entities.values;
+      for (let i = 0; i < entities.length; i++) {
+        const polyline = entities[i].polyline;
+        if (polyline) polyline.classificationType = next;
+      }
+      state._viewer?.scene?.requestRender?.();
     }
-    state._viewer?.scene?.requestRender?.();
+    syncCableClamp();
   }
 
   function styleLandingEntity(entity, feature) {
@@ -265,6 +336,7 @@ export function createRendering({ state }) {
     releaseDataSources,
     updateVisibility,
     styleCableEntity,
+    syncCableClamp,
     applyMarkerBlendOnce,
     applyCableClassification,
     styleLandingEntity,

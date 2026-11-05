@@ -63,6 +63,10 @@ export function createState({ sweepClock, overlayHost }) {
 
   state._classificationType = Cesium.ClassificationType.BOTH;
 
+  /** Fork: whether the built cable lines are clamped (cableLinesClampToGround). */
+
+  state._cableClamp = null;
+
   /** True once both marker collections blend translucent (or the shape probe failed). */
 
   state._markerBlendDone = false;

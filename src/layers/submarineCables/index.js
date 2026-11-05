@@ -40,6 +40,7 @@ export {
 export {
   cableClassificationTypeForStack,
   cableClassificationTypeForScene,
+  cableLinesClampToGround,
   applyTranslucentMarkerBlend,
 } from './surface.js';
 export {
