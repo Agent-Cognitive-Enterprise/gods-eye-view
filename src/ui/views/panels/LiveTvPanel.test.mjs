@@ -92,6 +92,7 @@ test('when every source fails the panel says so and offers to try again', async 
   assert.equal(root().querySelector('iframe, video'), null);
   assert.match(root().textContent, /Could not play this channel/);
   assert.match(root().textContent, /not be available in your region/);
+  assert.equal(root().textContent.match(/Could not play this channel/g).length, 1, 'said once, on the screen');
   assert.ok(button('Try again'));
 });
 

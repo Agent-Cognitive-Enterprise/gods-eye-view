@@ -227,7 +227,7 @@ const listErrors = computed(() => errors.value.filter((e) => e.channel === 0).ma
         </div>
         <p v-else class="live-tv-empty intel-muted">{{ t('Pick a channel to start. Nothing plays until you do.') }}</p>
         <div v-if="current" class="live-tv-controls">
-          <span class="live-tv-status" :class="`is-${status}`" role="status" aria-live="polite">{{ statusText }}<template v-if="host && status !== 'failed'"> · {{ host }}</template></span>
+          <span class="live-tv-status" :class="`is-${status}`" role="status" aria-live="polite"><template v-if="status !== 'failed'">{{ statusText }}<template v-if="host"> · {{ host }}</template></template></span>
           <UiButton v-if="sources.length > 1 && status !== 'failed'" class="data-toggle-chip" @click="nextSource">{{ t('Next source') }}</UiButton>
           <UiButton v-if="status === 'failed'" class="data-toggle-chip" @click="retry">{{ t('Try again') }}</UiButton>
           <UiButton class="data-toggle-chip" :pressed="!muted" pressed-class="active" @click="store.setMuted(!muted)">{{ muted ? t('Unmute') : t('Mute') }}</UiButton>
