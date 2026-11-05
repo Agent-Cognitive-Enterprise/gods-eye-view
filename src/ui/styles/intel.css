@@ -850,9 +850,11 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
   display: none;
 }
 #live-tv-body {
+  display: flex;
   flex: 1 1 auto;
+  flex-direction: column;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
   font: 11px var(--font-sans);
   color: var(--text-primary);
 }
@@ -931,10 +933,13 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
 .live-tv-status.is-live {
   color: #ff8a8a;
 }
+/* The editor scrolls inside the docked panel's share of the lane. */
 .live-tv-settings {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 6px;
+  min-height: 0;
   max-height: 46vh;
   overflow-y: auto;
 }

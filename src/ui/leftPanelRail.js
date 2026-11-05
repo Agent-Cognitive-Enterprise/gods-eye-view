@@ -237,8 +237,9 @@ export function layoutLeftPanelRail({
   // The docked panel's share of the obstacle-safe lane, capped so the panels
   // above it stay usable; the gap above it belongs to it.
   const dockLane = Math.max(0, obstacleSafeBottom - obstacleSafeTop);
+  // Rounded up: a sub-pixel short of its content shows a needless scrollbar.
   const dockedNaturalHeights = dockedPanels.map((panel) =>
-    measurePanelNaturalHeight(panel, getComputedStyle),
+    Math.ceil(measurePanelNaturalHeight(panel, getComputedStyle)),
   );
   const dockedAllocatedHeights = dockedNaturalHeights.map((height) =>
     Math.min(height, (dockLane * DOCKED_PANEL_MAX_SHARE) / dockedPanels.length),
