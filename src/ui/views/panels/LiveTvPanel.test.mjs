@@ -207,3 +207,161 @@ test('only the YouTube player itself can report an error', async (t) => {
   await settle();
   assert.equal(new URL(root().querySelector('iframe').getAttribute('src')).pathname, '/embed/gCNeDWCI0vo');
 });
+
+// A fake YouTube player window, and a message that really comes from it.
+function fakePlayer(frame) {
+  const sent = [];
+  const win = { postMessage: (m) => sent.push(JSON.parse(m)) };
+  Object.defineProperty(frame, 'contentWindow', { value: win, configurable: true });
+  const say = (data, origin = 'https://www.youtube-nocookie.com') => {
+    const event = new Event('message');
+    Object.defineProperties(event, {
+      data: { value: JSON.stringify(data) },
+      origin: { value: origin },
+      source: { value: win },
+    });
+    globalThis.dispatchEvent(event);
+  };
+  return { sent, say };
+}
+const embedPath = (root) => new URL(root().querySelector('iframe').getAttribute('src')).pathname;
+
+test('a real error from the YouTube player moves to the next source', async (t) => {
+  const { root, chip } = mount(t);
+  chip('Euronews').click();
+  await settle();
+  assert.equal(embedPath(root), '/embed/pykpO5kQJ98');
+  fakePlayer(root().querySelector('iframe')).say({ event: 'onError', info: 150 });
+  await settle();
+  assert.equal(embedPath(root), '/embed/live_stream');
+  // The same message from another origin is ignored.
+  fakePlayer(root().querySelector('iframe')).say({ event: 'onError', info: 150 }, 'https://evil.example');
+  await settle();
+  assert.equal(embedPath(root), '/embed/live_stream');
+});
+
+test('the player saying it plays marks the channel LIVE', async (t) => {
+  const { root, chip } = mount(t);
+  chip('CNN').click();
+  await settle();
+  fakePlayer(root().querySelector('iframe')).say({ event: 'infoDelivery', info: { playerState: 1, volume: 60 } });
+  await settle();
+  assert.match(root().querySelector('.live-tv-status').textContent, /^LIVE/);
+});
+
+test('narration ducks to a fifth of the person\'s own level and restores it', async (t) => {
+  const { root, chip } = mount(t);
+  chip('CNN').click();
+  await settle();
+  const player = fakePlayer(root().querySelector('iframe'));
+  player.say({ event: 'infoDelivery', info: { playerState: 1, volume: 60 } });
+  await settle();
+  const speech = (speaking) => globalThis.dispatchEvent(new CustomEvent('gev:speech', { detail: { speaking } }));
+  speech(true);
+  speech(true); // a second voice starts
+  speech(false); // the first ends: still ducked
+  await settle();
+  const volumes = () => player.sent.filter((m) => m.func === 'setVolume').map((m) => m.args[0]);
+  assert.deepEqual(volumes(), [12]);
+  speech(false);
+  await settle();
+  assert.deepEqual(volumes(), [12, 60]);
+});
+
+test('Next source cycles back instead of declaring a playing channel failed', async (t) => {
+  const { root, chip, button } = mount(t);
+  chip('Euronews').click();
+  await settle();
+  button('Next source').click();
+  await settle();
+  assert.equal(embedPath(root), '/embed/live_stream');
+  button('Next source').click();
+  await settle();
+  assert.equal(embedPath(root), '/embed/pykpO5kQJ98');
+  assert.doesNotMatch(root().textContent, /Could not play/);
+});
+
+test('saving the list starts the channel from its first source again', async (t) => {
+  const { root, chip, button, store } = mount(t);
+  chip('Euronews').click();
+  await settle();
+  button('Next source').click();
+  await settle();
+  root().querySelector('.live-tv-gear').click();
+  await settle();
+  const area = root().querySelectorAll('.live-tv-row textarea')[2];
+  area.value = 'https://www.youtube.com/watch?v=pykpO5kQJ98';
+  area.dispatchEvent(new Event('input'));
+  root().querySelector('.live-tv-settings').dispatchEvent(new Event('submit', { cancelable: true }));
+  await settle();
+  assert.equal(store.editing, false);
+  assert.equal(embedPath(root), '/embed/pykpO5kQJ98', 'not a blank screen');
+});
+
+test('duplicate source lines are tried once', async (t) => {
+  const saved = { channels: [{ id: 'x', name: 'X', sources: ['GotlA1KKWoo', 'https://youtu.be/GotlA1KKWoo'] }], selected: null };
+  const { root, chip } = mount(t, { saved });
+  chip('X').click();
+  await settle();
+  fakePlayer(root().querySelector('iframe')).say({ event: 'onError', info: 150 });
+  await settle();
+  assert.match(root().textContent, /Could not play this channel/);
+  assert.equal(root().querySelector('[role="alert"]').textContent.includes('Could not play'), true);
+});
+
+test('a layout that hides the column stops playback', async (t) => {
+  const { root, chip } = mount(t);
+  chip('CNN').click();
+  await settle();
+  assert.ok(root().querySelector('iframe'));
+  const holder = root().parentElement;
+  holder.style.display = 'none';
+  globalThis.dispatchEvent(new Event('resize'));
+  await settle();
+  assert.equal(root().querySelector('iframe'), null);
+  holder.style.display = '';
+  globalThis.dispatchEvent(new Event('resize'));
+  await settle();
+  assert.ok(root().querySelector('iframe'));
+});
+
+test('saving an unchanged list keeps the defaults following the app', async (t) => {
+  const { root, store } = mount(t);
+  root().querySelector('.live-tv-gear').click();
+  await settle();
+  root().querySelector('.live-tv-settings').dispatchEvent(new Event('submit', { cancelable: true }));
+  await settle();
+  assert.equal(store.editing, false);
+  assert.equal(store.custom, false);
+});
+
+test('when the browser will not store the list, nothing changes and it says so', async (t) => {
+  const { root, store, button } = mount(t);
+  root().querySelector('.live-tv-gear').click();
+  await settle();
+  button('Add channel').click();
+  await settle();
+  const last = [...root().querySelectorAll('.live-tv-row')].at(-1);
+  const name = last.querySelector('input');
+  name.value = 'Mine';
+  name.dispatchEvent(new Event('input'));
+  const area = last.querySelector('textarea');
+  area.value = 'GotlA1KKWoo';
+  area.dispatchEvent(new Event('input'));
+  const real = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  const full = {
+    getItem: (key) => real.get ? real.get.call(globalThis).getItem(key) : null,
+    setItem: () => {
+      throw new Error('QuotaExceededError');
+    },
+  };
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, get: () => full });
+  t.after(() => Object.defineProperty(globalThis, 'localStorage', real));
+  root().querySelector('.live-tv-settings').dispatchEvent(new Event('submit', { cancelable: true }));
+  await settle();
+  Object.defineProperty(globalThis, 'localStorage', real);
+  assert.equal(store.editing, true);
+  assert.equal(store.custom, false);
+  assert.equal(store.channels.length, 8);
+  assert.match(root().textContent, /would not save the list/);
+});

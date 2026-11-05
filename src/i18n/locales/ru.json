@@ -3662,5 +3662,6 @@
   "Add channel": "Добавить канал",
   "Reset to defaults": "Вернуть по умолчанию",
   "Save": "Сохранить",
-  "It may not be available in your region, or its address has changed.": "Возможно, он недоступен в вашем регионе или его адрес изменился."
+  "It may not be available in your region, or its address has changed.": "Возможно, он недоступен в вашем регионе или его адрес изменился.",
+  "This browser would not save the list. Nothing was changed.": "Браузер не смог сохранить список. Ничего не изменено."
 }

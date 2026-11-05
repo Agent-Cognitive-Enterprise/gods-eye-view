@@ -1,3 +1,29 @@
+/** How long a YouTube player may take to start before its next source is tried. */
+export const YOUTUBE_STARTUP_MS = 25_000;
+
+/**
+ * Calls `onTimeout` once after `ms` unless the returned stop runs first.
+ * @returns {() => void}
+ */
+export function startupGuard(
+  ms,
+  onTimeout,
+  {
+    setTimer = globalThis.setTimeout,
+    clearTimer = globalThis.clearTimeout,
+  } = {},
+) {
+  let id = setTimer(() => {
+    id = null;
+    onTimeout();
+  }, ms);
+  return () => {
+    if (id === null) return;
+    clearTimer(id);
+    id = null;
+  };
+}
+
 /**
  * Plays one HLS stream into a <video> for LIVE TV (fork feature). hls.js where
  * the browser supports Media Source Extensions, else native HLS. The stream is
@@ -16,6 +42,7 @@ export function attachLiveStream(
     loadHls = () => import('hls.js'),
     onPlaying = () => {},
     onFailure = () => {},
+    onMuted = () => {},
     startupMs = 20_000,
     setTimer = globalThis.setTimeout,
     clearTimer = globalThis.clearTimeout,
@@ -46,6 +73,7 @@ export function attachLiveStream(
       // Autoplay with sound refused: play muted rather than not at all.
       if (!disposed && error?.name === 'NotAllowedError' && !video.muted) {
         video.muted = true;
+        onMuted();
         video.play()?.catch?.(() => fail('autoplay'));
       }
     });

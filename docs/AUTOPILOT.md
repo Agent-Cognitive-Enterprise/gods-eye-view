@@ -21,8 +21,8 @@ overview._
 
 **The AUTOPILOT panel**
 
-- **AUTOPILOT ON / PAUSED / OFF**: follow the highest-priority events, or stay where
-  you are.
+- **AUTOPILOT ON / OFF**: follow the highest-priority events, or stay where you are.
+  Clicking an event pauses it on that event until you resume.
 - **LIVE / DEMO DRILL**: public feeds, or a synthetic drill that never touches the live
   archive.
 - **The shot on screen**, with the reasons it was chosen: severity, number of sources,
@@ -42,14 +42,15 @@ overview._
 ## What it does
 
 - **Public feeds, no paid service.** USGS earthquakes, GDACS, the tsunami warning
-  centres, NWS, NASA EONET, WHO outbreak news, the World Bank, ReliefWeb, and S2
-  GhostMaps incidents. GDELT news is opt-in. Reports from several sources are merged
+  centres, NWS, NASA EONET, WHO outbreak news, the World Bank, and S2 GhostMaps
+  incidents. GDELT news is opt-in, and ReliefWeb needs an approved app name. Reports from several sources are merged
   into one event in a local evidence store.
 - **The camera follows the evidence.** Rule-based scores decide what is shown and for
   how long. A critical event can interrupt; anything else waits its turn. With
   nothing urgent, Autopilot can tour lower-priority events.
 - **Local AI, optional.** A local model can write assessments and narration, and local
-  speech-to-text and text-to-speech handle voice. Nothing goes to a cloud AI.
+  speech-to-text and text-to-speech handle voice. Autopilot sends nothing to a cloud
+  AI; upstream's Gemini voice and typed chat stay optional and need your own key.
 - **Air & Sea and FAST INTELLIGENCE.** Aggregate traffic layers built from the existing
   aircraft and vessel feeds, and a fast lane for push sources.
 - **LIVE TV.** A live news channel at the foot of the left column: Bloomberg, Sky News,

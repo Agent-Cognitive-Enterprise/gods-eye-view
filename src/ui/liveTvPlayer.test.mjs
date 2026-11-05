@@ -2,7 +2,7 @@
 // reported once so the next source can be tried, and stopping releases it all.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { attachLiveStream } from './liveTvPlayer.js';
+import { attachLiveStream, startupGuard } from './liveTvPlayer.js';
 
 function fakeVideo({ native = false } = {}) {
   const listeners = {};
@@ -144,4 +144,43 @@ test('stopping before hls.js has loaded never creates a decoder', async () => {
   stop();
   await flush();
   assert.equal(hls.made.length, 0);
+});
+
+test('a refused autoplay with sound plays muted and says so', async () => {
+  const video = fakeVideo();
+  video.muted = false;
+  let calls = 0;
+  video.play = function () {
+    calls += 1;
+    if (calls === 1) {
+      const error = new Error('no gesture');
+      error.name = 'NotAllowedError';
+      return Promise.reject(error);
+    }
+    return Promise.resolve();
+  };
+  const hls = fakeHls();
+  let mutedReported = 0;
+  attachLiveStream(video, 'https://example.org/a.m3u8', { loadHls: hls.load, onMuted: () => mutedReported++, ...timers() });
+  await flush();
+  hls.made[0].handlers.parsed();
+  await flush();
+  assert.equal(video.muted, true);
+  assert.equal(mutedReported, 1);
+  assert.equal(calls, 2);
+});
+
+test('the startup guard fires once, and never after it is stopped', () => {
+  const clock = timers();
+  let fired = 0;
+  const stop = startupGuard(25000, () => fired++, clock);
+  assert.equal(clock.pending[0].ms, 25000);
+  clock.fire();
+  assert.equal(fired, 1);
+  stop();
+  const clock2 = timers();
+  const stop2 = startupGuard(25000, () => fired++, clock2);
+  stop2();
+  clock2.fire();
+  assert.equal(fired, 1);
 });

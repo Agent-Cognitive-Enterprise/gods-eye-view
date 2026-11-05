@@ -12,6 +12,16 @@ import {
  * it is muted, kept in this browser (src/ui/liveTvChannels.js). The panel owns
  * playback; nothing else reads this. Nothing plays until someone picks a channel.
  */
+const sameChannels = (a, b) =>
+  a.length === b.length &&
+  a.every(
+    (channel, i) =>
+      channel.id === b[i].id &&
+      channel.name === b[i].name &&
+      channel.sources.length === b[i].sources.length &&
+      channel.sources.every((source, j) => source === b[i].sources[j]),
+  );
+
 export const useLiveTvStore = defineStore('gev-live-tv', () => {
   const initial = loadLiveTv();
   const channels = shallowRef(initial.channels);
@@ -55,11 +65,25 @@ export const useLiveTvStore = defineStore('gev-live-tv', () => {
   function saveChannels(list) {
     const { channels: next, errors } = validateChannels(list);
     if (errors.length) return errors;
+    // Saving what is already there keeps the defaults following the app.
+    if (sameChannels(next, channels.value)) {
+      editing.value = false;
+      return [];
+    }
+    const nextSelected = next.some((c) => c.id === selected.value)
+      ? selected.value
+      : null;
+    const written = saveLiveTv({
+      channels: next,
+      custom: true,
+      selected: nextSelected,
+      muted: muted.value,
+    });
+    if (!written) return [{ channel: 0, code: 'storage' }];
     channels.value = next;
     custom.value = true;
-    if (!next.some((c) => c.id === selected.value)) selected.value = null;
+    selected.value = nextSelected;
     editing.value = false;
-    persist();
     return [];
   }
 

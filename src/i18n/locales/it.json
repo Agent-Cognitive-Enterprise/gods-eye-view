@@ -3582,5 +3582,6 @@
   "Add channel": "Aggiungi canale",
   "Reset to defaults": "Ripristina predefiniti",
   "Save": "Salva",
-  "It may not be available in your region, or its address has changed.": "Potrebbe non essere disponibile nella tua regione, oppure il suo indirizzo è cambiato."
+  "It may not be available in your region, or its address has changed.": "Potrebbe non essere disponibile nella tua regione, oppure il suo indirizzo è cambiato.",
+  "This browser would not save the list. Nothing was changed.": "Questo browser non è riuscito a salvare l’elenco. Non è stato cambiato nulla."
 }

@@ -293,6 +293,7 @@ export function createSpeechPlayer({
         new Blob([bytes], { type: 'audio/wav' }),
       );
       const audio = new AudioClass(url);
+      let finishThis = null;
       const done = new Promise((resolve) => {
         const finish = (completed) => {
           URLImpl.revokeObjectURL(url);
@@ -305,9 +306,12 @@ export function createSpeechPlayer({
         audio.addEventListener('ended', () => finish(true), { once: true });
         audio.addEventListener('error', () => finish(false), { once: true });
         current = { audio, finish };
+        finishThis = finish;
       });
       announce(true);
-      audio.play().catch(() => current?.finish(false));
+      // This utterance's own finish: by the time play() rejects (stopped while
+      // starting), a newer utterance may be current.
+      audio.play().catch(() => finishThis(false));
       return done;
     },
     stop() {

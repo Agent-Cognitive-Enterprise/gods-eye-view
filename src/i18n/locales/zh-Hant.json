@@ -3422,5 +3422,6 @@
   "Add channel": "新增頻道",
   "Reset to defaults": "恢復預設",
   "Save": "儲存",
-  "It may not be available in your region, or its address has changed.": "它可能在你所在的地區無法使用，或者網址已變更。"
+  "It may not be available in your region, or its address has changed.": "它可能在你所在的地區無法使用，或者網址已變更。",
+  "This browser would not save the list. Nothing was changed.": "此瀏覽器無法儲存清單。未做任何變更。"
 }

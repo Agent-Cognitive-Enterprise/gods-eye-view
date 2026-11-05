@@ -58,3 +58,40 @@ test('a listener that throws does not stop speech', async () => {
   made[0].listeners.ended();
   assert.equal(await done, true);
 });
+
+test('a play() that rejects after being replaced finishes only its own utterance', async () => {
+  // A real Audio rejects play() when paused before it starts; the rejection
+  // arrives after the replacement has become current.
+  const made = [];
+  class SlowAudio {
+    constructor() {
+      this.listeners = {};
+      made.push(this);
+      this.playing = new Promise((resolve, reject) => {
+        this.reject = reject;
+      });
+    }
+    addEventListener(name, fn) {
+      this.listeners[name] = fn;
+    }
+    play() {
+      return this.playing;
+    }
+    pause() {
+      const error = new Error('interrupted');
+      error.name = 'AbortError';
+      this.reject(error);
+    }
+  }
+  const target = new EventTarget();
+  const heard = [];
+  target.addEventListener('gev:speech', (e) => heard.push(e.detail.speaking));
+  const player = createSpeechPlayer({ AudioClass: SlowAudio, URLImpl: urls, eventTarget: target });
+  player.play(new Uint8Array([1]));
+  player.play(new Uint8Array([2]));
+  await new Promise((r) => setImmediate(r));
+  assert.equal(player.playing, true, 'the second utterance is still current');
+  assert.deepEqual(heard, [true, false, true]);
+  player.stop();
+  assert.deepEqual(heard, [true, false, true, false]);
+});

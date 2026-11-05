@@ -242,7 +242,9 @@ export function loadLiveTv(storage = globalThis.localStorage) {
     channels,
     custom: !!custom,
     selected,
-    muted: saved?.muted !== false,
+    // Every load starts muted: a remembered channel resumes without a click,
+    // and a browser refuses sound then anyway.
+    muted: true,
   };
 }
 

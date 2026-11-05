@@ -136,7 +136,7 @@ test('the defaults are used until someone edits; only then is the list stored', 
   assert.deepEqual(JSON.parse(storage.data[STORAGE_KEY]), { selected: 'cnn', muted: false });
   const again = loadLiveTv(storage);
   assert.equal(again.selected, 'cnn');
-  assert.equal(again.muted, false);
+  assert.equal(again.muted, true, 'every load starts muted, whatever was saved');
   const custom = { channels: [{ id: 'x', name: 'X', sources: ['GotlA1KKWoo'] }], custom: true, selected: 'x', muted: true };
   saveLiveTv(custom, storage);
   const edited = loadLiveTv(storage);

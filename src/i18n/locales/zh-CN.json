@@ -3422,5 +3422,6 @@
   "Add channel": "添加频道",
   "Reset to defaults": "恢复默认",
   "Save": "保存",
-  "It may not be available in your region, or its address has changed.": "它可能在你所在的地区不可用，或者地址已更改。"
+  "It may not be available in your region, or its address has changed.": "它可能在你所在的地区不可用，或者地址已更改。",
+  "This browser would not save the list. Nothing was changed.": "此浏览器无法保存列表。未做任何更改。"
 }
