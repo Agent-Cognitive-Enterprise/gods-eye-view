@@ -8,6 +8,18 @@
  *
  * Integration: call `observe()` from the existing AISStream ingest path,
  * passing one new position report per vessel. Never open another AIS socket.
+ *
+ * Fork rework (three adversarial reviews, 5 November 2026): a vessel's
+ * trusted fix moves only by a plausible step from the last one: never to
+ * within `outlierAreaKm` of where an impossible jump went while that anomaly
+ * is recent, and only at a ship's pace while it is suspect. So a spoof held
+ * at one point, or moved to a second, is not adopted, and the alert region
+ * stays where the ships were; a ship that sails on is trusted again. Known
+ * gaps, by design of a kinematic screen: a track that starts while already
+ * spoofed, a spoof that drags positions gradually, one that moves its target
+ * slowly enough to look like sailing, and a reception gap mid-spoof can still
+ * anchor a vessel on a false fix. Tracks younger than `minTrackAgeMs` never
+ * vote.
  */
 
 export const REGIONAL_GNSS_RULES = Object.freeze({
@@ -18,15 +30,24 @@ export const REGIONAL_GNSS_RULES = Object.freeze({
   minFixGapMs: 5_000,
   maxSpeedKnots: 100,
   minJumpKm: 10,
+  // Fork: a vote needs a jump at least this long, into another cell, so
+  // local glitches never count however the cell grid falls.
+  minVoteJumpKm: 50,
+  // Fork: a track must be watched this long before it votes, so a vessel
+  // first seen mid-spoof (after a restart, say) cannot vote from a false fix.
+  minTrackAgeMs: 30 * 60_000,
+  // Fork: fixes this close to the point an impossible jump went to stay
+  // outliers while the anomaly is recent, so a long spoof is never adopted.
+  outlierAreaKm: 20,
+  // Fork: while under suspicion, a trusted move may not exceed this, or 1.5
+  // times the vessel's own earlier speed if that is higher.
+  suspectSpeedKnots: 30,
   minVessels: 3,
   // A degree-scale area is deliberately an alert region, not a location
-  // estimate for a transmitter or an affected ship.
+  // estimate for a transmitter or an affected ship. Must divide 360.
   cellDeg: 1,
-  // Fork: a vote needs its target this many cells away (Chebyshev, in cells),
-  // so local glitches inside one or two neighbouring cells never count.
-  minTargetCells: 2,
   // Fork: the screen says `warming_up` until it has watched this long.
-  warmupMs: 10 * 60_000,
+  warmupMs: 30 * 60_000,
   maxTrackedVessels: 50_000,
   maxCandidates: 20_000,
 });
@@ -78,24 +99,24 @@ function coarseGeometry(cell, cellDeg) {
 export function cellDistance(a, b, cellDeg = 1) {
   const [ra, ca] = a.split(':').map(Number);
   const [rb, cb] = b.split(':').map(Number);
-  const cols = Math.round(360 / cellDeg);
+  const cols = 360 / cellDeg;
   const dc = Math.abs(ca - cb) % cols;
   return Math.max(Math.abs(ra - rb), Math.min(dc, cols - dc));
 }
 
 /**
  * Fork: a ship station's MMSI: nine digits with a maritime identification
- * digit (MID) of 201-775. Placeholders that many unconfigured transponders
- * share (one repeated digit, 123456789) are refused: one MMSI on several
- * ships is the classic source of fake jumps.
+ * digit (MID) of 201-775. A placeholder of one repeated digit (222222222) is
+ * refused: one MMSI on several ships is the classic source of fake jumps.
  */
 export function validMmsi(id) {
   const text = String(id ?? '');
   if (!/^[0-9]{9}$/.test(text)) return false;
   const mid = Number(text.slice(0, 3));
   if (mid < 201 || mid > 775) return false;
-  if (/^(\d){8}$/.test(text) || text === '123456789') return false;
-  return true;
+  // One digit nine times, or a country code with six zeros (412000000):
+  // defaults that many unconfigured transponders share.
+  return !/^(\d)\1{8}$/.test(text) && !/^\d{3}0{6}$/.test(text);
 }
 
 /**
@@ -109,6 +130,8 @@ export function createRegionalGnssDetector({
   now = () => Date.now(),
   rules = REGIONAL_GNSS_RULES,
 } = {}) {
+  if (!(rules.cellDeg > 0) || 360 % rules.cellDeg !== 0)
+    throw new RangeError('cellDeg must divide 360');
   const tracks = new Map();
   const candidates = new Map();
   const counters = {
@@ -182,30 +205,27 @@ export function createRegionalGnssDetector({
     }
     counters.accepted++;
     const point = { lat: fix.lat, lon: fix.lon, observedAt: fix.observedAt };
-    // Fork: tracks carry `anchorCell` (the trusted cell when an anomaly began,
-    // the only cell this vessel may vote for), `lastOutlierAt`, `suspect`
-    // (an outlier since the last trusted fix) and `tainted` (the trusted fix
-    // moved away during an anomaly, so this vessel never votes again).
-    const makeTrack = (stableCount, from = {}) => ({
+    // A track: the trusted fix (`baseline`), its plausible-fix count, when it
+    // was first seen, its latest report, and where its recent outliers went.
+    const newTrack = () => ({
       baseline: point,
+      stableCount: 1,
+      firstSeenAt: point.observedAt,
       latestAt: point.observedAt,
-      stableCount,
-      anchorCell: from.anchorCell ?? null,
-      lastOutlierAt: from.lastOutlierAt ?? null,
-      suspect: false,
-      tainted: from.tainted ?? false,
+      speedKnots: 0,
+      outlierPoint: null,
+      lastOutlierAt: null,
     });
     if (!prev) {
-      tracks.set(id, makeTrack(1));
+      tracks.set(id, newTrack());
       return { accepted: true, reason: 'warming' };
     }
-    // Fork: a gap is silence since the LAST report, outliers included. Timed
-    // from the trusted fix, a spoof lasting the gap length used to pass as a
-    // feed gap and make the false position the trusted one.
+    // A gap is silence since the LAST report, outliers included; timed from
+    // the trusted fix, a long spoof would pass as a feed gap.
     if (fix.observedAt - prev.latestAt > rules.maxTrackGapMs) {
       counters.gaps++;
       tracks.delete(id);
-      tracks.set(id, makeTrack(1));
+      tracks.set(id, newTrack());
       return { accepted: true, reason: 'gap_reset' };
     }
     // Every report keeps the vessel fresh for eviction, and records its time,
@@ -217,63 +237,62 @@ export function createRegionalGnssDetector({
     if (dt < rules.minFixGapMs) return { accepted: true, reason: 'too_soon' };
     const km = distanceKm(prev.baseline, point);
     const apparentKnots = km / (dt / 3600_000) / 1.852;
-    if (km >= rules.minJumpKm && apparentKnots > rules.maxSpeedKnots) {
+    const cell = regionalCell(point.lat, point.lon, rules.cellDeg);
+    const recentOutlier =
+      prev.lastOutlierAt !== null &&
+      point.observedAt - prev.lastOutlierAt <= rules.windowMs;
+    // Still at the point its last impossible jump went to: an old trusted fix
+    // makes a long spoof look reachable, but it is the same anomaly. The point
+    // is fixed by impossible jumps only, so a vessel sailing on leaves it.
+    const inOutlierArea =
+      recentOutlier &&
+      km >= rules.minJumpKm &&
+      distanceKm(point, prev.outlierPoint) <= rules.outlierAreaKm;
+    // Under suspicion, a new trusted fix must be reachable at a ship's pace
+    // (its own earlier speed, with room), not just at 100 knots: otherwise a
+    // spoof that moves to a second point is adopted from the stale fix.
+    const speedLimit = recentOutlier
+      ? Math.max(rules.suspectSpeedKnots, 1.5 * prev.speedKnots)
+      : rules.maxSpeedKnots;
+    const impossible = km >= rules.minJumpKm && apparentKnots > speedLimit;
+    if (impossible || inOutlierArea) {
       counters.impossible++;
+      if (impossible) prev.outlierPoint = point;
+      prev.lastOutlierAt = point.observedAt;
       const sourceCell = regionalCell(
         prev.baseline.lat,
         prev.baseline.lon,
         rules.cellDeg,
       );
-      const targetCell = regionalCell(point.lat, point.lon, rules.cellDeg);
-      // A new anomaly anchors to the trusted cell; one that ended a window
-      // ago no longer binds the vessel.
-      if (
-        prev.anchorCell === null ||
-        point.observedAt - prev.lastOutlierAt > rules.windowMs
-      )
-        prev.anchorCell = sourceCell;
-      prev.lastOutlierAt = point.observedAt;
-      prev.suspect = true;
       const votes =
         prev.stableCount >= 2 &&
-        !prev.tainted &&
+        point.observedAt - prev.firstSeenAt >= rules.minTrackAgeMs &&
         sourceCell !== null &&
-        targetCell !== null &&
-        sourceCell === prev.anchorCell &&
-        cellDistance(sourceCell, targetCell, rules.cellDeg) >=
-          rules.minTargetCells;
+        cell !== null &&
+        cell !== sourceCell &&
+        km >= rules.minVoteJumpKm;
       if (votes) {
         // Retain only a bounded candidate with no coordinates.
-        const key = `${id}:${sourceCell}:${targetCell}`;
+        const key = `${id}:${sourceCell}:${cell}`;
         candidates.delete(key);
         candidates.set(key, {
           id,
           sourceCell,
-          targetCell,
+          targetCell: cell,
           at: point.observedAt,
         });
       }
       return { accepted: true, reason: 'kinematic_outlier', candidate: votes };
     }
-    // A physically consistent fix is the only fix allowed to update baseline.
-    // Do not use the broadcast speed as an independent source: it too may be
-    // wrong. A trusted fix that moves far while the vessel is suspect is the
-    // anomaly being adopted (a long spoof eventually looks plausible against
-    // an old fix): the vessel is tainted and never votes again.
-    const adopted = prev.suspect && km >= rules.minJumpKm;
-    tracks.delete(id);
-    tracks.set(
-      id,
-      makeTrack(Math.min(3, prev.stableCount + 1), {
-        anchorCell: prev.anchorCell,
-        lastOutlierAt: prev.lastOutlierAt,
-        tainted: prev.tainted || adopted,
-      }),
-    );
-    return {
-      accepted: true,
-      reason: adopted ? 'adopted_tainted' : 'plausible',
-    };
+    // A physically consistent fix away from the outlier area is the only fix
+    // allowed to update the baseline: the ship's real track, also after a
+    // spoof ends. Do not use the broadcast speed as an independent source: it
+    // too may be wrong.
+    // Its pace between trusted fixes, for the suspicion speed limit above.
+    if (!recentOutlier) prev.speedKnots = apparentKnots;
+    prev.baseline = point;
+    prev.stableCount = Math.min(3, prev.stableCount + 1);
+    return { accepted: true, reason: 'plausible' };
   }
 
   function snapshot({ at = now(), feedStatus = 'unknown' } = {}) {
@@ -350,7 +369,6 @@ export function createRegionalGnssDetector({
       diagnostic: {
         ...counters,
         tracked: tracks.size,
-        tainted: [...tracks.values()].filter((t) => t.tainted).length,
         candidateReports: candidates.size,
         lastReportAt,
       },
@@ -359,5 +377,5 @@ export function createRegionalGnssDetector({
     };
   }
 
-  return { observe, snapshot, prune };
+  return { observe, snapshot, prune, rules };
 }

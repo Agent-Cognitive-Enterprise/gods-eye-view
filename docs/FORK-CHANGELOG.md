@@ -10,15 +10,20 @@ number there.
 - **Regional GNSS screen for ships (opt-in, `GEV_GNSS_REGIONAL=1`).** Reads the
   vessel positions the one AISStream connection already receives and reports a
   1° region when three or more ships there jumped implausibly to the same distant
-  cell within 30 minutes: `GET /api/airsea/gnss-regions`, and a low-severity
-  analyst record for the Autopilot that never merges with other events and never
-  takes the camera as an alert. No vessel identities, positions or target
+  cell within 30 minutes: `GET /api/airsea/gnss-regions`. With
+  `GEV_GNSS_REGIONAL_AUTOPILOT=1` as well, each region is a low-severity analyst
+  record for the Autopilot that never merges with other events and never takes
+  the camera as an alert; without it the screen only observes. No vessel identities, positions or target
   locations leave it, a feed that is not healthy reports uncertain coverage
   rather than a clear sea, and nothing is stored. It is an AIS anomaly screen,
-  not proof of spoofing. Prepared outside this repo; an adversarial review found
-  that a long spoof could publish its fake cell and that local glitches counted,
-  both fixed here. Recent real AIS tracks produced no region. See
-  `docs/air-sea-data-providers.md`.
+  not proof of spoofing. Prepared outside this repo and reworked after three
+  adversarial reviews and an external one: a spoof held at one point or moved to
+  another is not adopted as a vessel's position, regions last while the spoof
+  does and age out after it, ships that sail on are trusted again, and local
+  glitches and shared default MMSIs do not count. A vessel first seen mid-spoof,
+  a reception gap mid-spoof, a gradual drag or a slowly moving target can still
+  mislead it (documented). Recent real AIS tracks produced no
+  region. See `docs/air-sea-data-providers.md`.
 - **LIVE TV panel.** One live news channel at the foot of the left column, as wide as
   FAST INTELLIGENCE. Eight defaults: Bloomberg, Sky News, Euronews, DW News, CNN
   (CNN Headlines), France 24, Al Jazeera and RT. Each tries the broadcaster's own HLS

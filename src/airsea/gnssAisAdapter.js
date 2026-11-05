@@ -29,11 +29,13 @@ function epochMs(raw) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+// Fork: finite numbers, or strings that are plainly a number; never booleans,
+// arrays or blanks (Number([]) is 0, Number(true) is 1).
 const number = (value) => {
-  if (value == null) return null;
-  if (typeof value === 'string' && !value.trim()) return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value !== 'string' || !/^\s*-?\d+(\.\d+)?\s*$/.test(value))
+    return null;
+  return Number(value);
 };
 
 /**
@@ -54,9 +56,15 @@ export function classifyRegionalAisEnvelope(envelope, receivedAt) {
   const second = number(msg.Timestamp);
   if (second === null || !Number.isInteger(second) || second < 0 || second > 59)
     return { reason: 'no_fix_second' };
-  const apart = Math.abs(new Date(stamp).getUTCSeconds() - second);
-  if (Math.min(apart, 60 - apart) > TIMESTAMP_TOLERANCE_S)
-    return { reason: 'late_report' };
+  const raw = Math.abs(new Date(stamp).getUTCSeconds() - second);
+  // For the live check of these rules: how far the fix second sits from
+  // time_utc, and how far time_utc lags our own receipt. Numbers only.
+  const timing = {
+    secondsApart: Math.min(raw, 60 - raw),
+    receiptLagMs: Number.isFinite(receivedAt) ? receivedAt - stamp : null,
+  };
+  if (timing.secondsApart > TIMESTAMP_TOLERANCE_S)
+    return { reason: 'late_report', timing };
   // The message's own coordinates only: MetaData repeats a last known position.
   const lat = number(msg.Latitude);
   const lon = number(msg.Longitude);
@@ -72,6 +80,7 @@ export function classifyRegionalAisEnvelope(envelope, receivedAt) {
       provider: 'aisstream',
       timeQuality: 'source',
     },
+    timing,
   };
 }
 

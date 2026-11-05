@@ -4,7 +4,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createIntelEngine } from './engine.js';
 import { createMemoryIntelStore } from './memoryStore.js';
-import { matchCandidate } from './correlate.js';
+import { tourClusters } from './scheduler.js';
+import { createAssessor } from '../../server/providers/intel/assessor.js';
 import { AUTOPILOT_DEFAULTS, isAdvisorySubtype } from './taxonomy.js';
 import { regionalGnssIntelRecords } from '../../server/providers/airsea/gnssRegionalIntel.js';
 
@@ -98,17 +99,41 @@ test('advisory refreshes keep their own event live', () => {
   assert.ok(second.expires_at > first.expires_at);
 });
 
-test('the correlator refuses to pair an advisory with any other event', () => {
-  const [record] = advisory();
-  const observation = { ...record, entities: [], subtype: record.subtype };
-  const event = {
-    event_keys: [],
-    lineage_keys: [],
-    urls: [],
-    category: record.category,
-    subtype: 'outage',
-    tokens: [],
-    entities: [],
+test('an advisory can still be an ambient tour stop', () => {
+  const eng = engine();
+  eng.ingest(advisory());
+  const [event] = eng.activeEvents(T);
+  const clusters = tourClusters([event], { ...AUTOPILOT_DEFAULTS });
+  assert.equal(clusters.length, 1);
+});
+
+test('the assessor never spends the local model on an advisory', async () => {
+  const store = createMemoryIntelStore();
+  const eng = createIntelEngine({
+    store,
+    now: () => T,
+    settings: { ...AUTOPILOT_DEFAULTS, autopilotEnabled: true },
+  });
+  eng.ingest(advisory());
+  const [event] = eng.activeEvents(T);
+  assert.ok(event.attention_score >= 40, 'it would otherwise qualify');
+  let completions = 0;
+  const llm = {
+    status: () => ({ status: 'online', model: 'test-model' }),
+    probe: async () => ({ status: 'online', model: 'test-model' }),
+    busy: async () => false,
+    complete: async () => {
+      completions += 1;
+      throw new Error('test: no model here');
+    },
   };
-  assert.equal(matchCandidate(observation, event), null);
+  const assessor = createAssessor({
+    llm,
+    worlds: () => [{ name: 'live', engine: eng, store, now: T }],
+    enabled: () => true,
+    now: () => T,
+    log: () => {},
+  });
+  await assessor.cycle();
+  assert.equal(completions, 0);
 });

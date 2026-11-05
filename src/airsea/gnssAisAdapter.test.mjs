@@ -8,6 +8,10 @@ import {
   createRegionalGnssService,
   createRegionalGnssHttpHandler,
 } from '../../server/providers/airsea/gnssRegionalService.js';
+import {
+  REGIONAL_GNSS_RULES,
+  createRegionalGnssDetector,
+} from './gnssRegional.js';
 
 const T = Date.parse('2026-11-05T00:00:00Z');
 function envelope(id, minute, lat, lon) {
@@ -48,7 +52,14 @@ test('accepts source UTC microseconds and refuses static/undated envelopes', () 
 
 test('service + HTTP wrapper return only low-confidence coarse regions', () => {
   const at = T + 2 * 60_000;
-  const service = createRegionalGnssService({ now: () => at });
+  // The 30-minute track age is set aside here (tested in gnssRegional.test).
+  const service = createRegionalGnssService({
+    now: () => at,
+    detector: createRegionalGnssDetector({
+      now: () => at,
+      rules: { ...REGIONAL_GNSS_RULES, minTrackAgeMs: 0 },
+    }),
+  });
   for (let i = 1; i <= 3; i++) {
     for (const [min, lat, lon] of [
       [0, 22.1, 31.1],
@@ -148,4 +159,49 @@ test('fork: the service counts refused envelopes by reason, without content', ()
     late_report: 1,
     not_a_position_report: 1,
   });
+});
+
+test('fork: only real numbers count as coordinates and fix seconds', () => {
+  const reason = (change) => {
+    const e = envelope(1, 0, 22.1, 31.1);
+    change(e.Message.PositionReport);
+    return classifyRegionalAisEnvelope(e, T).reason ?? 'ok';
+  };
+  assert.equal(
+    reason((m) => (m.Latitude = '22.1')),
+    'ok',
+    'a numeric string',
+  );
+  assert.equal(
+    reason((m) => (m.Latitude = [])),
+    'no_position',
+  );
+  assert.equal(
+    reason((m) => (m.Latitude = true)),
+    'no_position',
+  );
+  assert.equal(
+    reason((m) => (m.Timestamp = true)),
+    'no_fix_second',
+  );
+  assert.equal(
+    reason((m) => (m.Timestamp = [0])),
+    'no_fix_second',
+  );
+});
+
+test('fork: the service counts how report times compare, in buckets, without content', () => {
+  const service = createRegionalGnssService({ now: () => T });
+  const at = (second, receivedLagMs) => {
+    const e = envelope(1, 0, 22.1, 31.1);
+    e.Message.PositionReport.Timestamp = second;
+    e.MetaData.MMSI = 219000000 + second;
+    service.ingestEnvelope(e, T + receivedLagMs);
+  };
+  at(0, 1_000); // agrees; 1 s after time_utc
+  at(4, 10_000); // 4 s apart; 10 s lag
+  at(30, 200_000); // late; over two minutes
+  const { timing } = service.snapshot('healthy').diagnostic;
+  assert.deepEqual(timing.secondsApart, { '0-2s': 1, '3-5s': 1, '16-30s': 1 });
+  assert.deepEqual(timing.receiptLag, { '0-5s': 1, '5-30s': 1, more: 1 });
 });

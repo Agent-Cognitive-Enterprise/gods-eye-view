@@ -582,8 +582,13 @@ export function airSeaProxy({
   // Regional GNSS screen (opt-in): reads the one AISStream connection's
   // envelopes through gnssRegionalBus.js and keeps nothing on disk.
   const gnssRegionalEnabled = enabled && env.GEV_GNSS_REGIONAL === '1';
+  // Its advisories reach the Autopilot only when asked for separately: until
+  // the time rules are checked against live envelopes, it only observes.
+  const gnssRegionalAutopilot =
+    gnssRegionalEnabled && env.GEV_GNSS_REGIONAL_AUTOPILOT === '1';
   let gnssRegional = null;
   let stopGnssRegional = null;
+  let gnssRegionalServers = 0;
   const aisHealth = () =>
     service?.sources?.().find((entry) => entry.id === 'aisstream')?.status ??
     (env.AISSTREAM_API_KEY ? 'stale' : 'unconfigured');
@@ -738,20 +743,21 @@ export function airSeaProxy({
   const attach = (server) => {
     if (gnssRegionalEnabled) {
       gnssRegional ??= createRegionalGnssService();
-      // One subscription per plugin, even if it is attached again; a closing
-      // server ends only its own.
-      stopGnssRegional?.();
-      const stop = subscribeRegionalAisPosition((envelope, receivedAt) =>
-        gnssRegional.ingestEnvelope(envelope, receivedAt),
-      );
-      stopGnssRegional = stop;
+      // One bus subscription feeds the plugin's one screen while any server
+      // it is attached to is open.
+      if (gnssRegionalServers++ === 0)
+        stopGnssRegional = subscribeRegionalAisPosition(
+          (envelope, receivedAt) =>
+            gnssRegional.ingestEnvelope(envelope, receivedAt),
+        );
       server.middlewares.use(
         '/api/airsea/gnss-regions',
         createRegionalGnssHttpHandler(gnssRegional, aisHealth),
       );
       server.httpServer?.once('close', () => {
-        stop();
-        if (stopGnssRegional === stop) stopGnssRegional = null;
+        if (--gnssRegionalServers > 0) return;
+        stopGnssRegional?.();
+        stopGnssRegional = null;
       });
     }
     server.middlewares.use('/api/airsea', handler);
@@ -786,10 +792,12 @@ export function airSeaProxy({
     const detach = hub?.attach({
       service,
       warnings: ensureWarnings(),
-      gnssRegionalRecords: () =>
-        gnssRegional
-          ? regionalGnssIntelRecords(gnssRegional.snapshot(aisHealth()))
-          : [],
+      ...(gnssRegionalAutopilot && {
+        gnssRegionalRecords: () =>
+          gnssRegional
+            ? regionalGnssIntelRecords(gnssRegional.snapshot(aisHealth()))
+            : [],
+      }),
     });
     server.httpServer?.once('close', () => {
       detach?.();

@@ -36,16 +36,24 @@ function envelope(id, at, lat, lon, type = 'PositionReport') {
   };
 }
 
-/** Three vessels, steady for two fixes, then all jump to one distant cell. */
+/**
+ * Three vessels tracked for 40 minutes (a vessel votes only after 30), then
+ * all jump to one distant cell. Each envelope arrives at its own time.
+ */
 function publishCoherentJumps(now = Date.now()) {
   for (let id = 1; id <= 3; id++) {
     const lat = 22.1 + id * 0.01;
-    publishRegionalAisPosition(envelope(id, now - 180_000, lat, 31.1), now);
+    for (let m = 40; m >= 2; m -= 2) {
+      const at = now - m * 60_000;
+      publishRegionalAisPosition(
+        envelope(id, at, lat + (40 - m) * 0.0005, 31.1),
+        at,
+      );
+    }
     publishRegionalAisPosition(
-      envelope(id, now - 120_000, lat + 0.001, 31.101),
-      now,
+      envelope(id, now - 60_000, 25.1, 35.1),
+      now - 60_000,
     );
-    publishRegionalAisPosition(envelope(id, now - 60_000, 25.1, 35.1), now);
   }
 }
 
@@ -153,9 +161,46 @@ test('closing the server detaches the screen from the bus', async (t) => {
   assert.equal(answer.json.diagnostic.accepted, 0);
 });
 
-test('the real attach path hands the Autopilot a records callback that follows AIS health', async (t) => {
+test('one screen subscription serves every attached server; it ends with the last', async (t) => {
+  const service = { sources: () => [{ id: 'aisstream', status: 'healthy' }] };
+  const plugin = airSeaProxy({ service, env: ON });
+  const servers = [0, 1].map(() => {
+    const mounts = [];
+    const closers = [];
+    plugin.configureServer({
+      middlewares: { use: (prefix, fn) => mounts.push([prefix, fn]) },
+      httpServer: { once: (name, fn) => name === 'close' && closers.push(fn) },
+    });
+    return { mounts, close: () => closers.forEach((fn) => fn()) };
+  });
+  t.after(() => servers.forEach((s) => s.close()));
+  const diagnostic = async () => {
+    const [, route] = servers[0].mounts[0];
+    let body = '';
+    await route(
+      { method: 'GET', url: '/' },
+      { setHeader() {}, end: (b) => (body = b), destroyed: false },
+    );
+    return JSON.parse(body).diagnostic;
+  };
+  const accepted = async () => (await diagnostic()).accepted;
+  publishCoherentJumps();
+  const once = await accepted();
+  assert.ok(once > 0);
+  // Two subscriptions would deliver each envelope twice: the copy would be
+  // refused as a repeat.
+  assert.equal((await diagnostic()).outOfOrder, 0, 'one subscription');
+  servers[1].close(); // the newer server closes; the older still listens
+  publishCoherentJumps(Date.now() + 1);
+  assert.ok((await accepted()) > once, 'the older server is not silenced');
+  servers[0].close();
+  const last = await accepted();
+  publishCoherentJumps(Date.now() + 2);
+  assert.equal(await accepted(), last, 'the last close ends the subscription');
+});
+
+function attachReal(t, extra = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gev-gnss-'));
-  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   let attached = null;
   const hub = {
     attach(shared) {
@@ -171,9 +216,25 @@ test('the real attach path hands the Autopilot a records callback that follows A
       GEV_AIRSEA_COLLECT: '0',
       GEV_AIRSEA_WARNINGS: '0',
       GEV_AIRSEA_DIR: dir,
+      ...extra,
     },
   });
-  assert.equal(typeof attached?.gnssRegionalRecords, 'function');
+  // After the server's own close (hooks run in order): it holds traffic.sqlite.
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  return { app, attached: () => attached };
+}
+
+test('by default the screen only observes: the Autopilot gets no GNSS records', (t) => {
+  const { attached } = attachReal(t);
+  assert.ok(attached(), 'the hub is attached');
+  assert.equal('gnssRegionalRecords' in attached(), false);
+});
+
+test('with the Autopilot flag the real attach path hands over a callback that follows AIS health', async (t) => {
+  const { app, attached } = attachReal(t, {
+    GEV_GNSS_REGIONAL_AUTOPILOT: '1',
+  });
+  assert.equal(typeof attached().gnssRegionalRecords, 'function');
   publishCoherentJumps();
   // The detector holds a pattern, but this test's AIS feed is not healthy:
   // neither the endpoint nor the Autopilot may report it.
@@ -181,7 +242,7 @@ test('the real attach path hands the Autopilot a records callback that follows A
   assert.ok(answer.json.diagnostic.candidateReports >= 3);
   assert.notEqual(answer.json.coverage.feedStatus, 'healthy');
   assert.deepEqual(answer.json.regions, []);
-  assert.deepEqual(attached.gnssRegionalRecords(), []);
+  assert.deepEqual(attached().gnssRegionalRecords(), []);
   app.close();
 });
 

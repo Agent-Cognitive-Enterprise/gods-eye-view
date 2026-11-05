@@ -44,7 +44,11 @@ export function regionalGnssIntelRecords(snapshot) {
       summary: `At least ${region.evidence.coherentTargetVessels} vessels here reported implausible AIS position jumps to the same distant area within 30 minutes. AIS-only advisory: not confirmation of GNSS interference, and no location of its cause.`,
       occurred_at: new Date(region.firstSeenAt).toISOString(),
       published_at: new Date(region.lastSeenAt).toISOString(),
-      valid_until: new Date(region.lastSeenAt + 20 * 60_000).toISOString(),
+      // Fork: as long as the screen keeps the region (its 30-minute window).
+      valid_until: new Date(
+        region.lastSeenAt +
+          (region.evidence?.observationWindowMinutes ?? 30) * 60_000,
+      ).toISOString(),
       location: {
         lat: (south + north) / 2,
         lon: (west + east) / 2,

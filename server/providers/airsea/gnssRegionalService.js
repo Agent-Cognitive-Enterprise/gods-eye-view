@@ -1,26 +1,56 @@
 import { createRegionalGnssDetector } from '../../../src/airsea/gnssRegional.js';
 import { classifyRegionalAisEnvelope } from '../../../src/airsea/gnssAisAdapter.js';
 
+/** Count one value into the first bucket whose upper bound holds it. */
+function bucket(counts, value, bounds) {
+  if (value === null || !Number.isFinite(value)) return;
+  const found = bounds.find(([, top]) => value <= top);
+  const label = found ? found[0] : 'more';
+  counts[label] = (counts[label] ?? 0) + 1;
+}
+const SECONDS_APART = [
+  ['0-2s', 2],
+  ['3-5s', 5],
+  ['6-15s', 15],
+  ['16-30s', 30],
+];
+const RECEIPT_LAG = [
+  ['negative', -1],
+  ['0-5s', 5_000],
+  ['5-30s', 30_000],
+  ['30-120s', 120_000],
+];
+
 /** Sidecar sharing the EXISTING AISStream connection and receiving its envelopes. */
 export function createRegionalGnssService({
   now = () => Date.now(),
   detector = createRegionalGnssDetector({ now }),
 } = {}) {
-  // Fork: why envelopes were not used, so a live run shows whether the time
-  // rules (gnssAisAdapter.js) refuse real traffic. Counts only, no content.
+  // Fork: why envelopes were not used, and how their times compare, so a live
+  // run shows whether the time rules (gnssAisAdapter.js) fit real traffic.
+  // Counts only, no content.
   const refused = {};
+  const timing = { secondsApart: {}, receiptLag: {} };
   return {
     ingestEnvelope(envelope, receivedAt = now()) {
-      const { fix, reason } = classifyRegionalAisEnvelope(envelope, receivedAt);
-      if (!fix) {
-        refused[reason] = (refused[reason] ?? 0) + 1;
-        return { accepted: false, reason };
+      const answer = classifyRegionalAisEnvelope(envelope, receivedAt);
+      if (answer.timing) {
+        bucket(timing.secondsApart, answer.timing.secondsApart, SECONDS_APART);
+        bucket(timing.receiptLag, answer.timing.receiptLagMs, RECEIPT_LAG);
       }
-      return detector.observe(fix);
+      if (!answer.fix) {
+        refused[answer.reason] = (refused[answer.reason] ?? 0) + 1;
+        return { accepted: false, reason: answer.reason };
+      }
+      return detector.observe(answer.fix);
     },
     snapshot(feedStatus) {
       const answer = detector.snapshot({ at: now(), feedStatus });
       answer.diagnostic.refusedEnvelopes = { ...refused };
+      answer.diagnostic.timing = {
+        secondsApart: { ...timing.secondsApart },
+        receiptLag: { ...timing.receiptLag },
+      };
       return answer;
     },
   };
