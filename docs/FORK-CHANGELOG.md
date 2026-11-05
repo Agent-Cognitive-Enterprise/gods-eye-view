@@ -7,6 +7,17 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **LIVE TV panel.** One live news channel at the foot of the left column, as wide as
+  FAST INTELLIGENCE. Eight defaults: Bloomberg, Sky News, Euronews, DW News, CNN
+  (CNN Headlines), France 24, Al Jazeera and RT. Each tries the broadcaster's own HLS
+  stream first where one exists, then its official YouTube live in privacy mode. The
+  gear opens an editor to add, edit, reorder or remove channels; the list is kept in
+  this browser, and the defaults follow the app until it is edited. Nothing loads
+  until a channel is picked, collapsing the panel stops it, it starts muted, and
+  narration from the local voice lowers it (`gev:speech`, from
+  `src/voice/localAudio.js`). Streams are fetched by the browser straight from the
+  broadcasters; the server is not involved. Stream addresses were found in World
+  Monitor's channel list (AGPL-3.0); only the addresses were used, no code.
 - **Showcase page.** `docs/AUTOPILOT.md` shows the Autopilot touring a demo drill: an
   animated WebP (1 MB), a full-screen still, and close-ups of the AUTOPILOT panel and
   the world overview, all under `docs/media/fork/`. `README.md` gains one line at the

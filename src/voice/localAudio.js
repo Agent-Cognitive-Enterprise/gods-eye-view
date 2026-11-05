@@ -266,12 +266,26 @@ export function createMicCapture({
   };
 }
 
-/** Play WAV bytes; resolves when finished or stopped. One utterance at a time. */
+/**
+ * Play WAV bytes; resolves when finished or stopped. One utterance at a time.
+ * Announces `gev:speech` ({speaking}) on `eventTarget` when speech starts and
+ * ends, so other sound (LIVE TV) can step aside.
+ */
 export function createSpeechPlayer({
   AudioClass = globalThis.Audio,
   URLImpl = globalThis.URL,
+  eventTarget = globalThis,
 } = {}) {
   let current = null;
+  const announce = (speaking) => {
+    try {
+      eventTarget?.dispatchEvent?.(
+        new CustomEvent('gev:speech', { detail: { speaking } }),
+      );
+    } catch {
+      // A listener's failure never stops speech.
+    }
+  };
   return {
     play(bytes) {
       this.stop();
@@ -282,13 +296,17 @@ export function createSpeechPlayer({
       const done = new Promise((resolve) => {
         const finish = (completed) => {
           URLImpl.revokeObjectURL(url);
-          if (current?.audio === audio) current = null;
+          if (current?.audio === audio) {
+            current = null;
+            announce(false);
+          }
           resolve(completed);
         };
         audio.addEventListener('ended', () => finish(true), { once: true });
         audio.addEventListener('error', () => finish(false), { once: true });
         current = { audio, finish };
       });
+      announce(true);
       audio.play().catch(() => current?.finish(false));
       return done;
     },

@@ -28,10 +28,11 @@ export const PANEL_RAIL_ITEMS = Object.freeze({
   },
   'street-level-panel': { icon: 'streetview', label: msg('STREET LEVEL') },
   'global-context-panel': { icon: 'radar', label: msg('CONTEXT') },
-  // Fork panels: Autopilot on the right, feed health and Fast Intelligence on the left.
+  // Fork panels: Autopilot on the right; feed health, Fast Intelligence and Live TV on the left.
   'intel-panel': { icon: 'crisis_alert', label: msg('AUTOPILOT') },
   'intel-feeds-panel': { icon: 'rss_feed', label: msg('FEEDS') },
   'fast-intel-panel': { icon: 'bolt', label: msg('FAST INTELLIGENCE') },
+  'live-tv-panel': { icon: 'live_tv', label: msg('LIVE TV') },
 });
 
 /**

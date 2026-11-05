@@ -162,9 +162,13 @@
       "src/intel/overviewWorld.json",
       "src/ui/views/panels/WorldOverview.vue",
       "src/ui/views/panels/WorldOverviewCamera.vue",
-      "src/ui/stores/worldOverview.js"
+      "src/ui/stores/worldOverview.js",
+      "src/ui/views/panels/LiveTvPanel.vue",
+      "src/ui/stores/liveTv.js",
+      "src/ui/liveTvChannels.js",
+      "src/ui/liveTvPlayer.js"
     ],
-    "external": ["vue", "pinia", "vue-i18n"]
+    "external": ["vue", "pinia", "vue-i18n", "hls.js"]
   },
   "viewer": {
     "exports": ["./application/viewer"],

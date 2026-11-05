@@ -819,3 +819,150 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
   margin: 3px 0 0;
   font-size: 10px;
 }
+
+/* LIVE TV (src/ui/views/panels/LiveTvPanel.vue): one live channel at the foot of
+   the left column, as wide as FAST INTELLIGENCE above it. */
+#left-panel-stack > #live-tv-panel {
+  --panel-expanded-width: 360px;
+  position: relative;
+  order: 7;
+  flex: 0 0 auto;
+  width: var(--panel-expanded-width);
+  min-height: 0;
+  pointer-events: auto;
+}
+#live-tv-panel.collapsed #live-tv-body {
+  display: none !important;
+}
+#live-tv-panel .panel-glow {
+  display: none;
+}
+#live-tv-body {
+  font: 11px var(--font-sans);
+  color: var(--text-primary);
+}
+.live-tv-gear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.live-tv-gear .material-symbols-outlined {
+  font-size: 16px;
+}
+.live-tv-gear:hover,
+.live-tv-gear.active {
+  border-color: var(--glass-border);
+  color: var(--text-primary);
+}
+.live-tv-channels,
+.live-tv-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.live-tv-screen {
+  position: relative;
+  margin-top: 6px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+  background: #000;
+}
+.live-tv-media {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #000;
+}
+.live-tv-empty {
+  margin: 6px 0;
+  font-size: 10px;
+}
+.live-tv-screen .live-tv-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 8px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+.live-tv-controls {
+  margin-top: 6px;
+}
+.live-tv-status {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font: 9px var(--font-mono);
+  letter-spacing: 1px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.live-tv-status.is-live {
+  color: #ff8a8a;
+}
+.live-tv-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+.live-tv-settings p {
+  margin: 0;
+  font-size: 10px;
+}
+.live-tv-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 5px;
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+}
+.live-tv-row-head {
+  display: flex;
+  gap: 3px;
+}
+.live-tv-row-head input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.live-tv-row textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font: 10px var(--font-mono);
+  resize: vertical;
+}
+.live-tv-icon {
+  flex: 0 0 auto;
+  width: 22px;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.live-tv-icon:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.live-tv-error {
+  color: #ff8a8a;
+}

@@ -52,6 +52,10 @@ overview._
   speech-to-text and text-to-speech handle voice. Nothing goes to a cloud AI.
 - **Air & Sea and FAST INTELLIGENCE.** Aggregate traffic layers built from the existing
   aircraft and vessel feeds, and a fast lane for push sources.
+- **LIVE TV.** A live news channel at the foot of the left column: Bloomberg, Sky News,
+  Euronews, DW News, CNN, France 24, Al Jazeera and RT to start with, and any YouTube
+  live or HLS stream you add with the gear. It starts muted and steps aside when
+  Autopilot narration speaks.
 - **Runs on one Windows PC**, bound to localhost and your LAN.
 
 ## Read more

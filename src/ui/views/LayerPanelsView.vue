@@ -11,6 +11,7 @@ import SceneOptions from './SceneOptions.vue';
 import SceneShotList from './SceneShotList.vue';
 import CctvPanel from './panels/CctvPanel.vue';
 import FastIntelPanel from './panels/FastIntelPanel.vue';
+import LiveTvPanel from './panels/LiveTvPanel.vue';
 import StreetLevelPanel from './panels/StreetLevelPanel.vue';
 import DrawControls from './panels/DrawControls.vue';
 import GeoImport from './panels/GeoImport.vue';
@@ -104,6 +105,9 @@ async function importChosen(event) {
 
   <!-- Fast Intelligence (fork feature): hidden until its owner presents it. -->
   <FastIntelPanel />
+
+  <!-- LIVE TV (fork feature): one live news channel, at the foot of the column -->
+  <LiveTvPanel />
 
   </div>
   <Teleport to="body">
