@@ -3421,5 +3421,6 @@
   "Sources, one per line": "ソース（1 行に 1 つ）",
   "Add channel": "チャンネルを追加",
   "Reset to defaults": "既定に戻す",
-  "Save": "保存"
+  "Save": "保存",
+  "It may not be available in your region, or its address has changed.": "お住まいの地域では視聴できないか、アドレスが変わった可能性があります。"
 }

@@ -25,7 +25,8 @@
 }
 .intel-panel-inner,
 .intel-feeds-panel-inner,
-.fast-intel-panel-inner {
+.fast-intel-panel-inner,
+.live-tv-panel-inner {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -821,12 +822,15 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
 }
 
 /* LIVE TV (src/ui/views/panels/LiveTvPanel.vue): one live channel at the foot of
-   the left column, as wide as FAST INTELLIGENCE above it. */
+   the left column, as wide as FAST INTELLIGENCE above it. Its glass is the shared
+   panel rule at the top of this file (.live-tv-panel-inner). */
 #left-panel-stack > #live-tv-panel {
   --panel-expanded-width: 360px;
   position: relative;
   order: 7;
   flex: 0 0 auto;
+  /* The foot of the column, above the map credits, whatever is open above it. */
+  margin-top: auto;
   width: var(--panel-expanded-width);
   min-height: 0;
   pointer-events: auto;
@@ -940,7 +944,8 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
   gap: 3px;
 }
 .live-tv-row-head input {
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  width: auto;
   min-width: 0;
 }
 .live-tv-row textarea {

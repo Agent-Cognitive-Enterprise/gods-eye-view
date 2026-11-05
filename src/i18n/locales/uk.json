@@ -3661,5 +3661,6 @@
   "Sources, one per line": "Джерела, по одному в рядку",
   "Add channel": "Додати канал",
   "Reset to defaults": "Повернути типові",
-  "Save": "Зберегти"
+  "Save": "Зберегти",
+  "It may not be available in your region, or its address has changed.": "Можливо, він недоступний у вашому регіоні або його адреса змінилася."
 }

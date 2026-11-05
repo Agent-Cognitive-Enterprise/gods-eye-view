@@ -223,7 +223,7 @@ const listErrors = computed(() => errors.value.filter((e) => e.channel === 0).ma
         <div v-if="current" class="live-tv-screen">
           <video v-if="showing && active?.kind === 'hls'" ref="video" class="live-tv-media" playsinline :aria-label="current.name"></video>
           <iframe v-else-if="showing && embedSrc" :key="embedSrc" ref="frame" class="live-tv-media" :src="embedSrc" :title="current.name" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" @load="frameLoaded"></iframe>
-          <p v-else-if="status === 'failed'" class="live-tv-empty">{{ statusText }}</p>
+          <p v-else-if="status === 'failed'" class="live-tv-empty">{{ statusText }}<br />{{ t('It may not be available in your region, or its address has changed.') }}</p>
         </div>
         <p v-else class="live-tv-empty intel-muted">{{ t('Pick a channel to start. Nothing plays until you do.') }}</p>
         <div v-if="current" class="live-tv-controls">

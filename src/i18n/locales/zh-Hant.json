@@ -3421,5 +3421,6 @@
   "Sources, one per line": "來源，每行一個",
   "Add channel": "新增頻道",
   "Reset to defaults": "恢復預設",
-  "Save": "儲存"
+  "Save": "儲存",
+  "It may not be available in your region, or its address has changed.": "它可能在你所在的地區無法使用，或者網址已變更。"
 }

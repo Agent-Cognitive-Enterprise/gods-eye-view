@@ -67,9 +67,7 @@ test('a YouTube channel plays muted from the privacy-mode host', async (t) => {
   assert.equal(JSON.parse(localStorage.getItem(STORAGE_KEY)).selected, 'cnn');
 });
 
-test('a stream that cannot play gives way to the next source', async (t) => {
-  // No Media Source Extensions here, so the broadcaster's HLS stream fails and
-  // Bloomberg falls through to its YouTube live.
+test('a YouTube video plays first where it is listed first', async (t) => {
   const { root, chip } = mount(t);
   chip('Bloomberg').click();
   await settle();
@@ -78,12 +76,22 @@ test('a stream that cannot play gives way to the next source', async (t) => {
   assert.equal(new URL(frame.getAttribute('src')).pathname, '/embed/QB5BNdBFujE');
 });
 
+test('Sky News falls from its broadcaster stream to its YouTube channel live', async (t) => {
+  const { root, chip } = mount(t);
+  chip('Sky News').click();
+  await settle();
+  const src = new URL(root().querySelector('iframe').getAttribute('src'));
+  assert.equal(src.pathname, '/embed/live_stream');
+  assert.equal(src.searchParams.get('channel'), 'UCoMdktPbSTixAyNGwb-UYkQ');
+});
+
 test('when every source fails the panel says so and offers to try again', async (t) => {
   const { root, chip, button } = mount(t);
   chip('RT').click();
   await settle();
   assert.equal(root().querySelector('iframe, video'), null);
   assert.match(root().textContent, /Could not play this channel/);
+  assert.match(root().textContent, /not be available in your region/);
   assert.ok(button('Try again'));
 });
 

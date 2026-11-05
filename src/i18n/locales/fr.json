@@ -3581,5 +3581,6 @@
   "Sources, one per line": "Sources, une par ligne",
   "Add channel": "Ajouter une chaîne",
   "Reset to defaults": "Rétablir les valeurs par défaut",
-  "Save": "Enregistrer"
+  "Save": "Enregistrer",
+  "It may not be available in your region, or its address has changed.": "Elle n’est peut-être pas disponible dans votre région, ou son adresse a changé."
 }

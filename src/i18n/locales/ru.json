@@ -3661,5 +3661,6 @@
   "Sources, one per line": "Источники, по одному в строке",
   "Add channel": "Добавить канал",
   "Reset to defaults": "Вернуть по умолчанию",
-  "Save": "Сохранить"
+  "Save": "Сохранить",
+  "It may not be available in your region, or its address has changed.": "Возможно, он недоступен в вашем регионе или его адрес изменился."
 }

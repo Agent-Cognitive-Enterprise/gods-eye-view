@@ -22,9 +22,10 @@ export const DEFAULT_CHANNELS = Object.freeze([
   {
     id: 'bloomberg',
     name: 'Bloomberg',
+    // Bloomberg's own stream did not play from Australia; its YouTube live does.
     sources: [
-      'https://bloomberg.com/media-manifest/streams/us.m3u8',
       'https://www.youtube.com/watch?v=QB5BNdBFujE',
+      'https://bloomberg.com/media-manifest/streams/us.m3u8',
       'https://www.youtube.com/channel/UCIALMKvObZNtJ6AmdCLP7Lg',
     ],
   },
@@ -57,6 +58,7 @@ export const DEFAULT_CHANNELS = Object.freeze([
     id: 'cnn',
     name: 'CNN',
     // CNN Headlines, CNN's own free 24/7 live; the full channel needs a TV login.
+    // YouTube blocks it in some regions (Australia, 2026-11-05: "Video unavailable").
     sources: ['https://www.youtube.com/watch?v=GotlA1KKWoo'],
   },
   {

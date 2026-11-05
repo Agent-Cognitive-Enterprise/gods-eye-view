@@ -3821,5 +3821,6 @@
   "Sources, one per line": "المصادر، واحد في كل سطر",
   "Add channel": "إضافة قناة",
   "Reset to defaults": "استعادة الافتراضيات",
-  "Save": "حفظ"
+  "Save": "حفظ",
+  "It may not be available in your region, or its address has changed.": "ربما لا تكون متاحة في منطقتك، أو تغيّر عنوانها."
 }

@@ -3501,5 +3501,6 @@
   "Sources, one per line": "Quellen, eine pro Zeile",
   "Add channel": "Sender hinzufügen",
   "Reset to defaults": "Auf Standard zurücksetzen",
-  "Save": "Speichern"
+  "Save": "Speichern",
+  "It may not be available in your region, or its address has changed.": "Vielleicht ist er in deiner Region nicht verfügbar, oder seine Adresse hat sich geändert."
 }
