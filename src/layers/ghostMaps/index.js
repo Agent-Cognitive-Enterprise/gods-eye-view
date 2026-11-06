@@ -15,15 +15,16 @@ import {
   tn,
 } from '../../i18n/index.js';
 import { createHorizonCull } from '../streetLevel/view.js';
-import {
-  GHOSTMAPS_DEFAULT_WINDOW,
-  GHOSTMAPS_WINDOWS,
-  placemarkAge,
-  shownInWindow,
-} from './age.js';
 import { readGhostMapsKml } from './kml.js';
-import { fieldLabel, parseDescriptionFields, wrapCardText } from './records.js';
-export * from './age.js';
+import {
+  fieldLabel,
+  GHOSTMAPS_AGE_OPTIONS,
+  GHOSTMAPS_DEFAULT_AGE_DAYS,
+  ghostMapsEventDate,
+  isGhostMapsEventExpired,
+  parseDescriptionFields,
+  wrapCardText,
+} from './records.js';
 export * from './catalog.js';
 export * from './records.js';
 export { readGhostMapsKml } from './kml.js';
@@ -33,7 +34,7 @@ export const GHOSTMAPS_LAYER_ID = 's2-ghostmaps';
 export const GHOSTMAPS_OVERLAY_SOURCE_ID = 's2-ghostmaps';
 const PICK_PREFIX = 'ghostmaps:';
 const STORAGE_KEY = 'gev.ghostmaps.products';
-const WINDOW_STORAGE_KEY = 'gev.ghostmaps.window';
+const AGE_STORAGE_KEY = 'gev.ghostmaps.ageDays';
 const ACCENT = '#c8ff00';
 const MAX_ICON_BYTES = 512 * 1024;
 const CARD_HOST_OPTIONS = Object.freeze({
@@ -52,17 +53,6 @@ const PRODUCT_LABELS = Object.freeze({
   'iran-kinetic': msg('Iran Kinetic'),
   'yemen-flot': msg('Yemen FLOT'),
   'latest-drop': msg('Latest Drop'),
-});
-
-/** Chip names for the age windows in `age.js`. */
-const WINDOW_LABELS = Object.freeze({
-  '6h': msg('6 H'),
-  '12h': msg('12 H'),
-  '24h': msg('24 H'),
-  '1w': msg('1 W'),
-  '1m': msg('1 M'),
-  '6m': msg('6 M'),
-  '1y': msg('1 Y'),
 });
 
 /** One distinct fallback marker color per product. */
@@ -101,24 +91,17 @@ function writeStoredSelection(storage, selected) {
   }
 }
 
-function readStoredWindow(storage) {
+function readStoredAge(storage) {
   try {
-    const id = storage?.getItem(WINDOW_STORAGE_KEY);
-    return (
-      GHOSTMAPS_WINDOWS.find((window) => window.id === id) ||
-      GHOSTMAPS_DEFAULT_WINDOW
-    );
+    const raw = storage?.getItem(AGE_STORAGE_KEY);
+    if (raw !== null && raw !== undefined) {
+      const value = JSON.parse(raw);
+      if (GHOSTMAPS_AGE_OPTIONS.includes(value)) return value;
+    }
   } catch {
-    return GHOSTMAPS_DEFAULT_WINDOW;
+    /* unavailable or invalid storage uses the default */
   }
-}
-
-function writeStoredWindow(storage, window) {
-  try {
-    storage?.setItem(WINDOW_STORAGE_KEY, window.id);
-  } catch {
-    /* private window or blocked storage: the choice lasts this session */
-  }
+  return GHOSTMAPS_DEFAULT_AGE_DAYS;
 }
 
 /** A round marker for placemarks whose icon is missing or remote. */
@@ -176,6 +159,7 @@ export function createGhostMapsLayer({
   pointer = null,
   openExternal = null,
   storage = defaultStorage(),
+  now = () => Date.now(),
 } = {}) {
   if (typeof source?.getCatalog !== 'function')
     throw new TypeError('GhostMaps layer requires a catalog source');
@@ -193,8 +177,9 @@ export function createGhostMapsLayer({
   let _selectedLink = null;
   let _lifetime = new AbortController();
   let _selection = readStoredSelection(storage);
-  let _window = readStoredWindow(storage);
-  /** productId → {version, dataSource, urls, count, features} */
+  let _ageDays = readStoredAge(storage);
+  let _expiryTimer = null;
+  /** productId → {version, dataSource, urls, features: Map<index, record>, pins} */
   const _loaded = new Map();
   /** productId → in-flight version */
   const _loading = new Map();
@@ -223,17 +208,40 @@ export function createGhostMapsLayer({
     return (_catalog?.products || []).filter(wanted).map(({ id }) => id);
   }
 
-  function unload(id) {
+  function unload(id, keepSelection = false) {
     const item = _loaded.get(id);
     if (!item) return;
     _loaded.delete(id);
     _viewer?.dataSources?.remove(item.dataSource, true);
     item.urls.forEach((url) => URL.revokeObjectURL(url));
-    if (_selectedKey?.startsWith(`${id}:`)) clearSelection();
+    if (!keepSelection && _selectedKey?.startsWith(`${id}:`)) clearSelection();
+  }
+
+  // Remove expired entities, rather than hiding them: horizon culling must
+  // never make an old pin visible again. Map keys keep surviving picks stable.
+  function expireEvents() {
+    const at = now();
+    let changed = false;
+    for (const [productId, item] of _loaded) {
+      for (const [index, feature] of item.features) {
+        if (!isGhostMapsEventExpired(feature.dateMs, at, _ageDays)) continue;
+        for (const entity of feature.entities)
+          item.dataSource.entities.remove(entity);
+        item.features.delete(index);
+        if (_selectedKey === `${productId}:${index}`) clearSelection();
+        changed = true;
+      }
+      item.pins = item.pins.filter((pin) => item.features.has(pin.index));
+    }
+    if (changed) {
+      notifyRow();
+      render();
+    }
   }
 
   /** Build one product's data source off-scene, then swap it in. */
   async function load(product, signal) {
+    const ageDays = _ageDays;
     const bytes = await source.getFile(product.id, product.version, { signal });
     signal.throwIfAborted();
     const entries = await readZipEntries(bytes);
@@ -263,26 +271,16 @@ export function createGhostMapsLayer({
       const dataSource = new Cesium.CustomDataSource(
         `${GHOSTMAPS_LAYER_ID}:${product.id}`,
       );
-      const features = [];
+      const features = new Map();
       const pins = [];
+      const at = now();
       dataSource.entities.suspendEvents();
       parsed.features.forEach((feature, index) => {
+        const dateMs = ghostMapsEventDate(feature.description);
+        if (isGhostMapsEventExpired(dateMs, at, ageDays)) return;
         const key = `${product.id}:${index}`;
         const { style } = feature;
-        const record = {
-          name: feature.name,
-          folder: feature.folder,
-          description: feature.description,
-          anchor: anchorOf(feature.geometries[0]),
-          ...placemarkAge(parseDescriptionFields(feature.description).fields),
-          inWindow: true,
-          parts: [],
-        };
-        const addPart = (entity) => {
-          const part = { entity, facing: true };
-          record.parts.push(part);
-          return part;
-        };
+        const entities = [];
         feature.geometries.forEach((geometry, part) => {
           const id = `${PICK_PREFIX}${key}:${part}`;
           if (geometry.type === 'point') {
@@ -309,21 +307,19 @@ export function createGhostMapsLayer({
                 disableDepthTestDistance: Number.POSITIVE_INFINITY,
               },
             });
-            const pin = addPart(entity);
-            // The horizon cull owns only `facing`; the age window can keep a
-            // pin hidden while it turns to face the camera.
+            entities.push(entity);
             pins.push({
+              index,
               position,
               get show() {
-                return pin.facing;
+                return entity.show;
               },
               set show(value) {
-                pin.facing = value;
-                entity.show = value && record.inWindow;
+                entity.show = value;
               },
             });
           } else if (geometry.type === 'line') {
-            addPart(
+            entities.push(
               dataSource.entities.add({
                 id,
                 polyline: {
@@ -339,7 +335,7 @@ export function createGhostMapsLayer({
           } else {
             const ring = (points) =>
               Cesium.Cartesian3.fromDegreesArray(points.flat());
-            addPart(
+            entities.push(
               dataSource.entities.add({
                 id,
                 polygon: {
@@ -362,7 +358,7 @@ export function createGhostMapsLayer({
               }),
             );
             if (style.outline !== false)
-              addPart(
+              entities.push(
                 dataSource.entities.add({
                   id: `${id}:outline`,
                   polyline: {
@@ -375,54 +371,35 @@ export function createGhostMapsLayer({
               );
           }
         });
-        features.push(record);
+        features.set(index, {
+          name: feature.name,
+          folder: feature.folder,
+          description: feature.description,
+          dateMs,
+          entities,
+          anchor: anchorOf(feature.geometries[0]),
+        });
       });
       dataSource.entities.resumeEvents();
-      return { version: product.version, dataSource, urls, features, pins };
+      return {
+        version: product.version,
+        ageDays,
+        dataSource,
+        urls,
+        features,
+        pins,
+      };
     } catch (error) {
       urls.forEach((url) => URL.revokeObjectURL(url));
       throw error;
     }
   }
 
-  /** Show one product's placemarks that fall inside the age window. */
-  function applyWindow(item, now = Date.now()) {
-    let changed = false;
-    for (const feature of item.features) {
-      const inWindow = shownInWindow(feature, _window.ms, now);
-      if (inWindow === feature.inWindow) continue;
-      feature.inWindow = inWindow;
-      changed = true;
-      for (const part of feature.parts)
-        part.entity.show = inWindow && part.facing;
-    }
-    return changed;
-  }
-
-  /** Re-judge everything on the globe; time passing ages events out too. */
-  function refreshWindow() {
-    let changed = false;
-    for (const item of _loaded.values()) changed = applyWindow(item) || changed;
-    if (!changed) return;
-    if (_selectedKey && !featureFor(_selectedKey).feature?.inWindow)
-      clearSelection();
-    notifyRow();
-    render();
-  }
-
-  function setWindow(id) {
-    const next = GHOSTMAPS_WINDOWS.find((window) => window.id === id);
-    if (!next || next === _window) return;
-    _window = next;
-    writeStoredWindow(storage, next);
-    refreshWindow();
-    notifyRow();
-  }
-
   /** Bring the globe in line with the catalog and the chip selection. */
   function sync() {
     const run = _queue.then(async () => {
       if (!_enabled || !_viewer || !_catalog) return;
+      expireEvents();
       const signal = _lifetime.signal;
       const products = new Map(_catalog.products.map((p) => [p.id, p]));
       for (const id of [..._loaded.keys()]) {
@@ -431,22 +408,33 @@ export function createGhostMapsLayer({
       }
       for (const product of _catalog.products) {
         if (!wanted(product) || signal.aborted) continue;
-        if (_loaded.get(product.id)?.version === product.version) continue;
+        const loaded = _loaded.get(product.id);
+        if (loaded?.version === product.version && loaded.ageDays === _ageDays)
+          continue;
         _loading.set(product.id, product.version);
         _failed.delete(product.id);
         notifyRow();
         try {
           const next = await load(product, signal);
-          if (signal.aborted || !_enabled) {
+          if (signal.aborted || !_enabled || next.ageDays !== _ageDays) {
             next.urls.forEach((url) => URL.revokeObjectURL(url));
             return;
           }
-          applyWindow(next);
           // Cull before the first frame so far-side pins never flash.
           _horizon.update(next.pins);
           await _viewer.dataSources.add(next.dataSource);
-          // The new edition is on the globe before the old one leaves.
-          unload(product.id);
+          // The new edition is on the globe before the old one leaves. The card
+          // stays only if its index still holds the same report: the server
+          // may answer a pinned version with newer bytes.
+          const index = Number(_selectedKey?.split(':')[1]);
+          const before = loaded?.features.get(index);
+          const after = next.features.get(index);
+          unload(
+            product.id,
+            Boolean(before && after) &&
+              before.name === after.name &&
+              before.description === after.description,
+          );
           _loaded.set(product.id, next);
         } catch (error) {
           if (signal.aborted) return;
@@ -485,12 +473,38 @@ export function createGhostMapsLayer({
     void sync();
   }
 
+  function setAgeDays(ageDays) {
+    if (!GHOSTMAPS_AGE_OPTIONS.includes(ageDays) || ageDays === _ageDays)
+      return;
+    _ageDays = ageDays;
+    try {
+      storage?.setItem(AGE_STORAGE_KEY, JSON.stringify(ageDays));
+    } catch {
+      /* private window or blocked storage: keep the session choice */
+    }
+    expireEvents();
+    // Narrowing only removes markers. A product loaded with a narrower window
+    // keeps its old ageDays, so sync() restores omitted placemarks from the
+    // cached KMZ even though its upstream version has not changed.
+    for (const [id, item] of _loaded)
+      if (
+        item.ageDays === null ||
+        (ageDays !== null && item.ageDays >= ageDays)
+      ) {
+        item.ageDays = ageDays;
+        // A failed wider reload no longer matters; a stale edition retries.
+        _failed.delete(id);
+      }
+    notifyRow();
+    return sync();
+  }
+
   // ---- selection card ----------------------------------------------------
   function featureFor(key) {
     const [productId, index] = key.split(':');
     return {
       product: _catalog?.products.find((p) => p.id === productId) || null,
-      feature: _loaded.get(productId)?.features[Number(index)] || null,
+      feature: _loaded.get(productId)?.features.get(Number(index)) || null,
     };
   }
 
@@ -584,7 +598,7 @@ export function createGhostMapsLayer({
     if (typeof pickId !== 'string' || !pickId.startsWith(PICK_PREFIX))
       return null;
     const [productId, index] = pickId.slice(PICK_PREFIX.length).split(':');
-    return _loaded.get(productId)?.features[Number(index)]
+    return _loaded.get(productId)?.features.has(Number(index))
       ? `${productId}:${index}`
       : null;
   }
@@ -634,31 +648,10 @@ export function createGhostMapsLayer({
     picking?.unregisterPickOwner?.(GHOSTMAPS_LAYER_ID);
   }
 
-  const shownFeatures = (item) =>
-    item.features.filter((feature) => feature.inWindow);
-
   function featureCount() {
     let count = 0;
-    for (const item of _loaded.values()) count += shownFeatures(item).length;
+    for (const item of _loaded.values()) count += item.features.size;
     return count;
-  }
-
-  /** What the age window keeps off the map, for the row's info line. */
-  function hiddenSummary() {
-    let older = 0;
-    let undated = 0;
-    for (const item of _loaded.values())
-      for (const feature of item.features) {
-        if (feature.inWindow) continue;
-        if (feature.at === null) undated += 1;
-        else older += 1;
-      }
-    return older || undated
-      ? t('Hidden: {older} older, {undated} undated', {
-          older: formatNumber(older),
-          undated: formatNumber(undated),
-        })
-      : null;
   }
 
   const layer = {
@@ -678,6 +671,8 @@ export function createGhostMapsLayer({
     enable() {
       _enabled = true;
       _lifetime = new AbortController();
+      if (_expiryTimer === null)
+        _expiryTimer = setInterval(expireEvents, 60_000);
       for (const item of _loaded.values()) item.dataSource.show = true;
       installClickHandler();
       if (!_unsubscribe && typeof source.subscribe === 'function')
@@ -695,6 +690,8 @@ export function createGhostMapsLayer({
 
     disable() {
       _enabled = false;
+      clearInterval(_expiryTimer);
+      _expiryTimer = null;
       _lifetime.abort();
       _unsubscribe?.();
       _unsubscribe = null;
@@ -708,11 +705,11 @@ export function createGhostMapsLayer({
 
     async update(_viewerArg, { signal } = {}) {
       if (!_enabled || signal?.aborted) return false;
+      expireEvents();
       try {
         const catalog = await source.getCatalog({ signal });
         if (!_enabled) return false;
         await applyCatalog(catalog);
-        refreshWindow();
         return true;
       } catch (error) {
         if (signal?.aborted || !_enabled) return false;
@@ -753,44 +750,56 @@ export function createGhostMapsLayer({
             })
         : t('Connecting to the S2 GhostMaps repository…');
       return {
-        chips: [
-          ...products.map((product) => {
-            const loaded = _loaded.get(product.id);
-            const failed = _failed.get(product.id);
-            const shown = loaded ? shownFeatures(loaded).length : 0;
-            return {
-              id: product.id,
-              label: t(PRODUCT_LABELS[product.id] || product.title),
-              active: wanted(product),
-              busy: _loading.has(product.id),
-              state: failed ? 'error' : undefined,
-              color: PRODUCT_COLORS[product.id],
-              title: [
-                product.fileTitle,
-                loaded
-                  ? tn(shown, '{count} placemark', '{count} placemarks', {
-                      count: formatNumber(shown),
-                    })
-                  : null,
-                failed ? t(failed) : null,
-              ]
-                .filter(Boolean)
-                .join(' · '),
-              onClick: () => toggleProduct(product.id),
-            };
-          }),
-          ...GHOSTMAPS_WINDOWS.map((window) => ({
-            id: `window-${window.id}`,
-            label: t(WINDOW_LABELS[window.id]),
-            active: _window === window,
-            title: t(
-              'Show events from this window. Undated events stay hidden; sites and areas are not events and stay on.',
-            ),
-            onClick: () => setWindow(window.id),
+        segmented: {
+          id: 'age',
+          label: t('Event age'),
+          options: GHOSTMAPS_AGE_OPTIONS.map((days) => ({
+            id: `age-${days ?? 'all'}`,
+            label:
+              days === null
+                ? t('All', { context: 'event age filter' })
+                : t('{days}d', { days: formatNumber(days) }),
+            title:
+              days === null
+                ? t('Show markers of every age')
+                : t('Maximum event age: {days}d; undated markers are kept', {
+                    days: formatNumber(days),
+                  }),
+            active: days === _ageDays,
+            onClick: () => setAgeDays(days),
           })),
-        ],
+        },
+        chips: products.map((product) => {
+          const loaded = _loaded.get(product.id);
+          const failed = _failed.get(product.id);
+          return {
+            id: product.id,
+            label: t(PRODUCT_LABELS[product.id] || product.title),
+            active: wanted(product),
+            busy: _loading.has(product.id),
+            state: failed ? 'error' : undefined,
+            color: PRODUCT_COLORS[product.id],
+            title: [
+              product.fileTitle,
+              loaded
+                ? tn(
+                    loaded.features.size,
+                    '{count} placemark',
+                    '{count} placemarks',
+                    {
+                      count: formatNumber(loaded.features.size),
+                    },
+                  )
+                : null,
+              failed ? t(failed) : null,
+            ]
+              .filter(Boolean)
+              .join(' · '),
+            onClick: () => toggleProduct(product.id),
+          };
+        }),
         legend: [],
-        info: [hiddenSummary(), info].filter(Boolean).join(' · '),
+        info: `${_ageDays === null ? t('All markers') : t('Event age: {days}d · undated kept', { days: formatNumber(_ageDays) })} · ${info}`,
         infoTitle: t(
           'S2 Underground publishes these KMZ products to GitHub. New uploads are detected within seconds and replace the previous edition automatically. Click a marker for its report.',
         ),
@@ -800,6 +809,7 @@ export function createGhostMapsLayer({
     getStats() {
       return {
         count: featureCount(),
+        ageDays: _ageDays,
         products: [..._loaded.keys()],
         commit: _catalog?.commit || null,
         lastUpdate: _catalog?.committedAt || _catalog?.changedAt || null,
@@ -816,7 +826,7 @@ export function createGhostMapsLayer({
       if (!_enabled) return [];
       const out = [];
       for (const [productId, item] of _loaded) {
-        for (const feature of shownFeatures(item)) {
+        for (const feature of item.features.values()) {
           if (out.length >= maxCount) return out;
           out.push({
             product: productId,

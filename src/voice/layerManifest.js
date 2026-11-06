@@ -459,10 +459,12 @@ export const VOICE_OFF_LAYERS = Object.freeze({
   'warning-areas': 'warning areas layer (fork, not yet voice-controlled)',
   'traffic-anomalies':
     'traffic anomalies layer (fork, not yet voice-controlled)',
-  // The Realtime prompt is at its 52,000-character budget; voice toggle and
+  // The Realtime prompt is at its 55,500-character budget; voice toggle and
   // query for this layer wait until there is room.
   'drone-airspace':
     'informational airspace layer; no room in the prompt budget',
+  'wildlife-sightings':
+    'community observation layer; no room in the prompt budget',
 });
 
 const TYPE_NAMES = Object.freeze({
