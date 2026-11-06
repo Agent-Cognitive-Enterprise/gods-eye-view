@@ -139,7 +139,10 @@ test('AIS envelopes on the bus become one coarse advisory region, without vessel
   assert.equal(answer.json.status, 'candidate_regions');
   assert.equal(answer.json.regions.length, 1);
   const [region] = answer.json.regions;
-  assert.deepEqual(region.area, { south: 22, west: 31, north: 23, east: 32 });
+  // About a 50 km cell around where the ships were (22.1 N, 31.1 E).
+  const { south, west, north, east } = region.area;
+  assert.ok(south < 22.1 && north > 22.1 && west < 31.1 && east > 31.1);
+  assert.ok(north - south < 1 && east - west < 1);
   assert.equal(region.evidence.coherentTargetVessels, 3);
   const text = JSON.stringify(answer.json);
   assert.doesNotMatch(text, /21000000\d|35\.1|25\.1|mmsi/i);
@@ -271,7 +274,7 @@ test('the AIS ingest tap publishes stored envelopes only and returns the store a
 
 const SNAPSHOT_AT = Date.parse('2026-11-05T00:00:00Z');
 const snapshot = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   status: 'candidate_regions',
   coverage: { feedStatus: 'healthy', stale: false },
   regions: [

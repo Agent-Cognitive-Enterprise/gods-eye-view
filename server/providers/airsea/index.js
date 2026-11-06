@@ -40,6 +40,7 @@ import {
   createRegionalGnssService,
 } from './gnssRegionalService.js';
 import { subscribeRegionalAisPosition } from './gnssRegionalBus.js';
+import { loadNaturalEarthLandGrid } from './gnssGeographyLoader.js';
 import { regionalGnssIntelRecords } from './gnssRegionalIntel.js';
 
 export const WINDOWS_MS = Object.freeze([
@@ -742,7 +743,11 @@ export function airSeaProxy({
 
   const attach = (server) => {
     if (gnssRegionalEnabled) {
-      gnssRegional ??= createRegionalGnssService();
+      // The land grid (about a second to build) gives the on-land and
+      // water-route checks; without it the screen runs on kinematics alone.
+      gnssRegional ??= createRegionalGnssService({
+        geography: loadNaturalEarthLandGrid(),
+      });
       // One bus subscription feeds the plugin's one screen while any server
       // it is attached to is open.
       if (gnssRegionalServers++ === 0)

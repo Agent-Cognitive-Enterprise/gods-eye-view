@@ -1,7 +1,7 @@
 /** Optional advisory-only conversion into the existing Air & Sea intel schema. */
 export function regionalGnssIntelRecords(snapshot) {
   if (
-    snapshot?.schemaVersion !== 1 ||
+    snapshot?.schemaVersion !== 2 ||
     snapshot.status !== 'candidate_regions' ||
     snapshot.coverage?.feedStatus !== 'healthy' ||
     snapshot.coverage?.stale
@@ -13,7 +13,10 @@ export function regionalGnssIntelRecords(snapshot) {
       region?.domain !== 'sea' ||
       region?.confidence !== 'low' ||
       region?.causeAssessment !== 'unconfirmed' ||
-      region?.eventPriority !== 'advisory'
+      region?.eventPriority !== 'advisory' ||
+      // Fork: ships trusted at a spoof landing point may be trusted at a
+      // false position; such a region stays on the endpoint only.
+      region?.evidence?.sourceInLandingZone
     )
       continue;
     const { south, north, west, east } = region.area ?? {};
@@ -41,7 +44,7 @@ export function regionalGnssIntelRecords(snapshot) {
       // Deliberately do not expose vessel IDs, false destinations, exact
       // trajectories, or anything implying transmitter localisation.
       // Fork: the coherent count is the evidence; others jumped elsewhere.
-      summary: `At least ${region.evidence.coherentTargetVessels} vessels here reported implausible AIS position jumps to the same distant area within 30 minutes. AIS-only advisory: not confirmation of GNSS interference, and no location of its cause.`,
+      summary: `At least ${region.evidence.coherentTargetVessels} vessels here reported implausible AIS position jumps to the same distant area within 30 minutes${region.evidence.landTargetVessels ? `, ${region.evidence.landTargetVessels} of them onto land` : ''}. AIS-only advisory: not confirmation of GNSS interference, and no location of its cause.`,
       occurred_at: new Date(region.firstSeenAt).toISOString(),
       published_at: new Date(region.lastSeenAt).toISOString(),
       // Fork: as long as the screen keeps the region (its 30-minute window).
@@ -51,7 +54,8 @@ export function regionalGnssIntelRecords(snapshot) {
       ).toISOString(),
       location: {
         lat: (south + north) / 2,
-        lon: (west + east) / 2,
+        // A region across the dateline has west < -180: normalise its centre.
+        lon: (((((west + east) / 2 + 540) % 360) + 360) % 360) - 180,
         precision: 'region',
         geolocation_status: 'approximate',
         bounds: { south, north, west, east },
@@ -62,6 +66,7 @@ export function regionalGnssIntelRecords(snapshot) {
         cause_assessment: 'unconfirmed',
         coherent_vessels: region.evidence.coherentTargetVessels,
         unique_vessels: region.evidence.uniqueVessels,
+        land_target_vessels: region.evidence.landTargetVessels ?? 0,
         // Fork: a 10-minute bucket, so a region still being reported is a new
         // observation and keeps its event live (the digest covers metrics).
         observed_through: new Date(

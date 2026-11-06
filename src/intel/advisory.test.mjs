@@ -13,7 +13,7 @@ const T = Date.parse('2026-11-05T10:00:00Z');
 
 const advisory = (lastSeenAt = T - 60_000) =>
   regionalGnssIntelRecords({
-    schemaVersion: 1,
+    schemaVersion: 2,
     status: 'candidate_regions',
     coverage: { feedStatus: 'healthy', stale: false },
     regions: [

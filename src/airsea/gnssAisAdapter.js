@@ -43,6 +43,7 @@ const number = (value) => {
  * @returns {{fix: object} | {reason: string}}
  */
 export function classifyRegionalAisEnvelope(envelope, receivedAt) {
+  if (STATIC_TYPES.has(envelope?.MessageType)) return classifyStatic(envelope);
   if (!envelope || !POSITION_TYPES.has(envelope.MessageType))
     return { reason: 'not_a_position_report' };
   const msg = envelope.Message?.[envelope.MessageType];
@@ -79,9 +80,30 @@ export function classifyRegionalAisEnvelope(envelope, receivedAt) {
       receivedAt,
       provider: 'aisstream',
       timeQuality: 'source',
+      transponderClass: envelope.MessageType === 'PositionReport' ? 'A' : 'B',
     },
     timing,
   };
+}
+
+const STATIC_TYPES = new Set(['ShipStaticData', 'StaticDataReport']);
+
+/**
+ * Fork: a static report's ship type, which sets the vessel's speed limits.
+ * Class B sends it in part B of a static data report.
+ */
+function classifyStatic(envelope) {
+  const msg = envelope.Message?.[envelope.MessageType];
+  const meta = envelope.MetaData ?? envelope.Metadata;
+  if (!msg || !meta) return { reason: 'not_a_position_report' };
+  const part = envelope.MessageType === 'StaticDataReport' ? msg.ReportB : msg;
+  if (!part || part.Valid === false || msg.Valid === false)
+    return { reason: 'static_without_type' };
+  const shipType = number(part.Type ?? part.ShipType);
+  if (shipType === null || !Number.isInteger(shipType) || shipType <= 0)
+    return { reason: 'static_without_type' };
+  const mmsi = String(meta.MMSI ?? msg.UserID ?? '').trim();
+  return { static: { mmsi, shipType } };
 }
 
 /** Return null unless we can prove this is an actual position report with source time. */

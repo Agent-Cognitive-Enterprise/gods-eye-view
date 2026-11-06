@@ -51,7 +51,7 @@ test('accepts source UTC microseconds and refuses static/undated envelopes', () 
 });
 
 test('service + HTTP wrapper return only low-confidence coarse regions', () => {
-  const at = T + 2 * 60_000;
+  const at = T + 3 * 60_000;
   // The 30-minute track age is set aside here (tested in gnssRegional.test).
   const service = createRegionalGnssService({
     now: () => at,
@@ -64,7 +64,8 @@ test('service + HTTP wrapper return only low-confidence coarse regions', () => {
     for (const [min, lat, lon] of [
       [0, 22.1, 31.1],
       [1, 22.101, 31.101],
-      [2, 25.1, 35.1],
+      [2, 22.102, 31.102],
+      [3, 25.1, 35.1],
     ]) {
       const e = envelope(i, min, lat + 0.001 * i, lon);
       assert.equal(service.ingestEnvelope(e, T + min * 60_000).accepted, true);
@@ -204,4 +205,67 @@ test('fork: the service counts how report times compare, in buckets, without con
   const { timing } = service.snapshot('healthy').diagnostic;
   assert.deepEqual(timing.secondsApart, { '0-2s': 1, '3-5s': 1, '16-30s': 1 });
   assert.deepEqual(timing.receiptLag, { '0-5s': 1, '5-30s': 1, more: 1 });
+});
+
+test('fork: static reports give the ship type; class B carries it in part B', () => {
+  const meta = {
+    MMSI: 210000001,
+    time_utc: '2026-11-05 00:00:00.000000 +0000 UTC',
+  };
+  const shipStatic = {
+    MessageType: 'ShipStaticData',
+    MetaData: meta,
+    Message: { ShipStaticData: { UserID: 210000001, Valid: true, Type: 80 } },
+  };
+  assert.deepEqual(classifyRegionalAisEnvelope(shipStatic, T), {
+    static: { mmsi: '210000001', shipType: 80 },
+  });
+  const partB = {
+    MessageType: 'StaticDataReport',
+    MetaData: meta,
+    Message: {
+      StaticDataReport: {
+        UserID: 210000001,
+        Valid: true,
+        ReportB: { Valid: true, ShipType: 37 },
+      },
+    },
+  };
+  assert.equal(classifyRegionalAisEnvelope(partB, T).static.shipType, 37);
+  const partA = structuredClone(partB);
+  partA.Message.StaticDataReport.ReportB = { Valid: false, ShipType: 0 };
+  assert.equal(
+    classifyRegionalAisEnvelope(partA, T).reason,
+    'static_without_type',
+  );
+  const untyped = structuredClone(shipStatic);
+  untyped.Message.ShipStaticData.Type = 0;
+  assert.equal(
+    classifyRegionalAisEnvelope(untyped, T).reason,
+    'static_without_type',
+  );
+  // The service hands the type to the detector, which then holds a cargo
+  // ship to cargo-ship speeds.
+  let seen = null;
+  const service = createRegionalGnssService({
+    now: () => T,
+    detector: { observeStatic: (s) => ((seen = s), true), observe: () => ({}) },
+  });
+  assert.deepEqual(service.ingestEnvelope(shipStatic, T), {
+    accepted: true,
+    reason: 'static',
+  });
+  assert.deepEqual(seen, { mmsi: '210000001', shipType: 80, receivedAt: T });
+});
+
+test('fork: position reports say which transponder class sent them', () => {
+  assert.equal(
+    normalizeRegionalAisEnvelope(envelope(1, 0, 22.1, 31.1), T)
+      .transponderClass,
+    'A',
+  );
+  const b = envelope(1, 0, 22.1, 31.1);
+  b.MessageType = 'StandardClassBPositionReport';
+  b.Message = { StandardClassBPositionReport: b.Message.PositionReport };
+  assert.equal(normalizeRegionalAisEnvelope(b, T).transponderClass, 'B');
 });

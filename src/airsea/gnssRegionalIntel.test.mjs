@@ -4,7 +4,7 @@ import { regionalGnssIntelRecords } from '../../server/providers/airsea/gnssRegi
 
 test('candidate AIS region maps to analyst advisory, not verified spoofing', () => {
   const s = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     status: 'candidate_regions',
     coverage: { feedStatus: 'healthy', stale: false },
     regions: [

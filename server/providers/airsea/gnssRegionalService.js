@@ -24,7 +24,8 @@ const RECEIPT_LAG = [
 /** Sidecar sharing the EXISTING AISStream connection and receiving its envelopes. */
 export function createRegionalGnssService({
   now = () => Date.now(),
-  detector = createRegionalGnssDetector({ now }),
+  geography = null,
+  detector = createRegionalGnssDetector({ now, geography }),
 } = {}) {
   // Fork: why envelopes were not used, and how their times compare, so a live
   // run shows whether the time rules (gnssAisAdapter.js) fit real traffic.
@@ -34,6 +35,13 @@ export function createRegionalGnssService({
   return {
     ingestEnvelope(envelope, receivedAt = now()) {
       const answer = classifyRegionalAisEnvelope(envelope, receivedAt);
+      if (answer.static) {
+        const known = detector.observeStatic?.({
+          ...answer.static,
+          receivedAt,
+        });
+        return { accepted: Boolean(known), reason: 'static' };
+      }
       if (answer.timing) {
         bucket(timing.secondsApart, answer.timing.secondsApart, SECONDS_APART);
         bucket(timing.receiptLag, answer.timing.receiptLagMs, RECEIPT_LAG);
