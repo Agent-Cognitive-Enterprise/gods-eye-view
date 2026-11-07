@@ -12,6 +12,7 @@ import {
   aisStreamRows,
   newestAisPositionAt,
 } from './ais-store.js';
+import { tapRegionalAisIngest } from '../airsea/gnssRegionalBus.js';
 // ---------------------------------------------------------------------------
 // AISStream live vessel cache state
 // ---------------------------------------------------------------------------
@@ -260,7 +261,9 @@ function aisAdapter() {
     },
     resolveUrl: () => aisWatchdogPolicy().url,
     buildSubscription: aisStreamSubscription,
-    ingestEnvelope: ingestAisStreamEnvelope,
+    // Fork: the regional GNSS screen reads the same envelopes; it never opens
+    // a socket of its own, and the bus swallows its listeners' errors.
+    ingestEnvelope: tapRegionalAisIngest(ingestAisStreamEnvelope),
     warn: (message) => console.warn(message),
   });
   _aisAdapter.setWatchdogOptions(aisWatchdogBudgets());

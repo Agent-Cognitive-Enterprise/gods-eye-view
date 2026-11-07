@@ -12,6 +12,7 @@ import {
   validateAssessment,
 } from '../../../src/intel/assessment.js';
 import { foregroundActive } from './llmGate.js';
+import { isAdvisorySubtype } from '../../../src/intel/taxonomy.js';
 
 const CYCLE_MS = 15_000;
 const PROBE_EVERY_MS = 60_000;
@@ -66,6 +67,10 @@ export function createAssessor({
         )
           continue;
         if (event.verification === 'retracted') continue;
+        // Fork: advisories (a machine screen's low-confidence output) are not
+        // worth the shared local model's time, and would be retried as they
+        // refresh.
+        if (isAdvisorySubtype(event.subtype)) continue;
         if (
           event.assessment?.model === model &&
           (event.assessment.revision === event.revision ||

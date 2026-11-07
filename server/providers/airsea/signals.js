@@ -355,7 +355,12 @@ export function anomalyRecords(answer) {
  * being refreshed while they stay active: back to normal after
  * RECOVERY_READINGS new readings, and resolved when the warning ends.
  */
-export function airSeaRecords({ service, warnings, followed = new Map() }) {
+export function airSeaRecords({
+  service,
+  warnings,
+  followed = new Map(),
+  gnssRegionalRecords = () => [],
+}) {
   const listed = warnings?.list() ?? [];
   const byId = new Map(listed.map((w) => [w.id, w]));
   const records = [];
@@ -415,6 +420,13 @@ export function airSeaRecords({ service, warnings, followed = new Map() }) {
   for (const domain of ['air', 'sea'])
     if (service.anomalies)
       records.push(...anomalyRecords(service.anomalies({ domain })));
+  // Fork: regional GNSS advisories (gnssRegionalIntel.js). Their failure must
+  // not cost the warning and traffic records above.
+  try {
+    records.push(...gnssRegionalRecords());
+  } catch (error) {
+    console.warn(`[airsea] regional GNSS records failed: ${error?.message}`);
+  }
   return records;
 }
 
