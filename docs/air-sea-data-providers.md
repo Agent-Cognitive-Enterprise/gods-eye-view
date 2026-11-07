@@ -266,7 +266,9 @@ unconfirmed` and vessel counts, including how many false positions were on
   positions. Local-only, like the other Air & Sea layers: remembered per
   browser, never in share links, not voice-controlled. With the route off it
   says the screen is not enabled. With the Autopilot flag, a GNSS advisory the
-  Autopilot shows switches this layer on for as long as it is shown.
+  operator opens in the Autopilot switches this layer on while it is shown
+  (advisories are never tour stops, so this needs the operator). The
+  dateline check is `scripts/qa-gnss-regions.mjs`.
 - **Autopilot.** Off unless `GEV_GNSS_REGIONAL_AUTOPILOT=1` is also set; the
   screen only observes until it has been validated on real anomalies. With
   it and the early-warning engine on, each region becomes an analyst record
