@@ -698,6 +698,8 @@ test('recovery needs three reports even when they are minutes apart', () => {
 
 test('a boat that glitches while slow and then speeds up is confirmed, not frozen', () => {
   const d = detector();
+  // A typed high-speed craft: an unknown vessel earns at most 60 kn.
+  d.observeStatic({ mmsi: mmsi(1), shipType: 40, receivedAt: T });
   const ship = sail(d, 1, GULF, {
     knots: 10,
     everyS: 10,
@@ -717,14 +719,18 @@ test('a boat that glitches while slow and then speeds up is confirmed, not froze
     start: ship.at + 20_000,
     bearing: 0,
   });
-  assert.equal(count(fast.answers, 'reason', 'recovered'), 0);
-  const confirmed = fast.answers.findIndex(
-    (a) => a.reason === 'fast_vessel_confirmed',
+  // Free again, by recovery or by its pace being confirmed, and then
+  // plain sailing.
+  const free = fast.answers.findIndex(
+    (a) => a.reason === 'fast_vessel_confirmed' || a.reason === 'recovered',
   );
-  assert.ok(confirmed > 0, 'confirmed');
+  assert.ok(free > 0, 'free');
+  // Until it has shown 70 kn it may read as suspicious; never as implausible,
+  // and it ends in plain sailing.
   assert.ok(
-    fast.answers.slice(confirmed).every((a) => a.assessment === 'plausible'),
+    fast.answers.slice(free).every((a) => a.assessment !== 'implausible'),
   );
+  assert.ok(fast.answers.slice(-6).every((a) => a.assessment === 'plausible'));
 });
 
 test('a suspicious reappearance that then sits still is not confirmed as a fast boat', () => {
@@ -1201,6 +1207,9 @@ test('one ship back after a gap costs one water-route search, however often it r
   for (let k = 0; k < 5; k++)
     d.observe(fix(1, ship.at + HOUR + k * 1000, back));
   assert.equal(calls, 1);
+  // An hour later the ship has had twice the time: "longer" is checked again.
+  d.observe(fix(1, ship.at + 2 * HOUR, back));
+  assert.equal(calls, 2);
 });
 
 test('a region keeps its id when its first ships drop out and others carry it on', () => {
@@ -1268,11 +1277,16 @@ test('ships first seen where spoofed positions land are no source for a region',
   assert.ok(s.diagnostic.landingCells >= 1);
 });
 
-test('positions within a degree of 0 N 0 E are refused as placeholders', () => {
+test('a coordinate exactly zero near 0 N 0 E is refused as a placeholder; real positions there count', () => {
   const d = detector();
-  for (const p of [where(0.983333, 0), where(0.316667, 0), where(-0.5, 0.9)])
+  for (const p of [where(0.983333, 0), where(0.316667, 0), where(0, -0.4)])
     assert.equal(d.observe(fix(1, 0, p)).reason, 'invalid_position');
-  assert.equal(d.observe(fix(1, 0, where(1.2, 0))).accepted, true);
+  for (const [i, p] of [
+    where(-0.5, 0.9),
+    where(0.31, 0.27),
+    where(1.2, 0),
+  ].entries())
+    assert.equal(d.observe(fix(10 + i, 0, p)).accepted, true);
 });
 
 test('with 50 km region cells, a 20 km neighbourhood still decides what is a local jump', () => {
@@ -1680,8 +1694,9 @@ test('the coherent count leaves out a vessel whose false position went elsewhere
     ),
   );
   const [region] = snap(d, at + 5000).regions;
-  assert.equal(region.evidence.uniqueVessels, 4);
+  assert.equal(region.evidence.uniqueVessels, 3);
   assert.equal(region.evidence.coherentTargetVessels, 3);
+  assert.equal(region.evidence.otherNearbyVessels, 1);
 });
 
 test('an incident that splits in two gives two regions with different ids', async () => {
@@ -2377,4 +2392,379 @@ test('ships whose real reports after a spoof are only suspicious keep no region 
     seen.slice(2).every((n) => n === 0),
     seen.join(''),
   );
+});
+
+// External review of 939e86d5 (7 November 2026).
+
+test('two groups from one area spoofed to two places make two regions of three', () => {
+  const d = detector();
+  const ships = fleet(d, [1, 2, 3, 4, 5, 6], GULF, { gapKm: 2 });
+  const at = ships[5].at + MIN;
+  const A = where(28.4, 56.2);
+  const B = where(24.6, 50.2);
+  ships.forEach((s, k) =>
+    d.observe(fix(s.i, at + k * 1000, move(k < 3 ? A : B, 0.3 * (k % 3), 70))),
+  );
+  const s = snap(d, at + 9000);
+  assert.equal(
+    s.regions.length,
+    2,
+    JSON.stringify(s.regions.map((r) => r.evidence)),
+  );
+  // Two incidents from one seed in the same minute: two ids, two Autopilot keys.
+  assert.notEqual(s.regions[0].id, s.regions[1].id);
+  for (const r of s.regions) {
+    assert.equal(r.evidence.uniqueVessels, 3);
+    assert.equal(r.evidence.coherentTargetVessels, 3);
+  }
+});
+
+test('route searches are budgeted by processing time, not by AIS time', () => {
+  let calls = 0;
+  let clock = 0;
+  const geography = {
+    source: 'toy',
+    inlandKm: () => 0,
+    straightLineClear: () => false,
+    routeKm: () => (calls++, { status: 'route', km: 1 }),
+  };
+  const d = createRegionalGnssDetector({
+    rules: {
+      ...REGIONAL_GNSS_RULES,
+      routeSearchesPerMinute: 60,
+      routeBurst: 4,
+    },
+    now: () => T,
+    geography,
+    clock: () => clock,
+  });
+  const ships = [];
+  for (let i = 1; i <= 40; i++)
+    ships.push(sail(d, i, move(GULF, i, 0), { minutes: 5 }));
+  // Forty ships back after a gap, in one burst, their AIS times alternating
+  // hours apart: the budget allows the burst only.
+  ships.forEach((s, k) =>
+    d.observe(fix(k + 1, s.at + (k % 2 ? 3 : 1) * HOUR, move(s.p, 30, 45))),
+  );
+  assert.equal(calls, 4);
+  // A second of processing later, one more.
+  clock += 1000;
+  d.observe(fix(41, ships[0].at, GULF));
+  d.observe(fix(41, ships[0].at + HOUR, move(GULF, 30, 45)));
+  assert.ok(calls <= 5, `${calls}`);
+});
+
+test('one route search stops at its time limit', async () => {
+  const { createLandGrid } = await import('./gnssGeography.js');
+  // A maze of land strips makes a long search; the clock jumps 1 ms a call.
+  const rings = [];
+  for (let k = 0; k < 40; k++) {
+    const lat = -30 + k * 1.5;
+    const gap = k % 2 ? 10 : -10;
+    rings.push([
+      [-20, lat],
+      [gap - 1, lat],
+      [gap - 1, lat + 0.5],
+      [-20, lat + 0.5],
+    ]);
+    rings.push([
+      [gap + 1, lat],
+      [20, lat],
+      [20, lat + 0.5],
+      [gap + 1, lat + 0.5],
+    ]);
+  }
+  const grid = createLandGrid(rings, { cellDeg: 0.1, channels: [] });
+  let now = 0;
+  const answer = grid.routeKm({ lat: -31, lon: 0 }, { lat: 31, lon: 0 }, 1e6, {
+    clock: () => (now += 1),
+    maxMs: 5,
+  });
+  assert.equal(answer.status, 'unknown');
+  assert.equal(answer.why, 'time');
+});
+
+test('a spoof along a parallel is ambiguous: it votes but cannot make a region alone', () => {
+  const d = detector();
+  const ships = fleet(d, [1, 2, 3, 4], GULF, { gapKm: 4, knots: 0.5 });
+  const at = ships[3].at + MIN;
+  // Each false position keeps its ship's latitude exactly.
+  const answers = ships.map((s, k) =>
+    d.observe(fix(s.i, at + k * 1000, where(s.p.lat, s.p.lon + 1.2))),
+  );
+  assert.ok(
+    answers.every((a) => a.evidence.includes('ambiguous_axis') && a.candidate),
+  );
+  assert.equal(snap(d, at + 9000).regions.length, 0);
+  assert.equal(snap(d, at + 9000).diagnostic.evidence.ambiguous_axis, 4);
+  // With three clear votes beside them, the region forms and counts them.
+  const others = fleet(d, [11, 12, 13], move(GULF, 6, 200), {
+    gapKm: 3,
+    knots: 0.5,
+    start: ships[3].at - 40 * MIN,
+  });
+  others.forEach((s, k) =>
+    d.observe(
+      fix(
+        s.i,
+        at + 5000 + k * 1000,
+        move(where(GULF.lat + 0.02, GULF.lon + 1.2), 0.4 * k, 20),
+      ),
+    ),
+  );
+  const [region] = snap(d, at + 9000).regions;
+  assert.ok(region, 'a region');
+  assert.ok(region.evidence.ambiguousAxisVessels >= 1);
+});
+
+test('an unknown vessel earns at most 60 kn by its own pace', () => {
+  const d = detector();
+  const { answers } = sail(d, 1, GULF, { knots: 80, everyS: 60, minutes: 60 });
+  // It may be confirmed now and then, but 80 kn never becomes plain sailing.
+  assert.ok(count(answers, 'assessment', 'plausible') < answers.length / 2);
+});
+
+test('a region of ships first seen inside a landing zone says its source location is ambiguous', () => {
+  const X = where(54.9, 20.3);
+  const Y = where(54.6, 18.9);
+  const A = where(55.6, 17.2);
+  const d = detector();
+  const tLand = 3 * HOUR;
+  const e = [4, 5, 6].map((i, k) =>
+    sail(d, i, move(X, 0.5 * k, 0), {
+      knots: 0.2,
+      start: tLand - 60 * MIN,
+      minutes: 85,
+      bearing: 30,
+    }),
+  );
+  const a = [1, 2, 3].map((i, k) => ({
+    i,
+    ...sail(d, i, move(A, 3 * k, 0), {
+      start: tLand - 40 * MIN + k * 5 * MIN,
+      minutes: 40,
+      bearing: 30,
+    }),
+  }));
+  a.forEach((s, k) => {
+    for (let t = s.at + MIN; t < e[0].at; t += MIN)
+      d.observe(fix(s.i, t, move(X, 0.4 * k, 120)));
+  });
+  const tr = e[2].at + MIN;
+  e.forEach((_, k) => d.observe(fix(4 + k, tr + k * 1000, move(Y, 2 * k, 45))));
+  const s = snap(d, tr + 5000);
+  const atX = s.regions.find(
+    (r) => r.area.south < X.lat && r.area.north > X.lat,
+  );
+  assert.equal(atX?.sourceLocation, 'ambiguous');
+  const elsewhere = s.regions.filter((r) => r !== atX);
+  assert.ok(elsewhere.every((r) => r.sourceLocation === 'credible'));
+});
+
+test('a typed high-speed craft at 95 kn after a glitch ends its episode by showing that pace', () => {
+  const d = detector();
+  d.observeStatic({ mmsi: mmsi(1), shipType: 40, receivedAt: T });
+  const ship = sail(d, 1, GULF, {
+    knots: 10,
+    everyS: 10,
+    minutes: 10,
+    bearing: 0,
+  });
+  assert.equal(
+    d.observe(fix(1, ship.at + 10_000, move(ship.p, 40, 200))).assessment,
+    'implausible',
+  );
+  // 95 kn each minute reads above its 60 kn screening speed, so it is no
+  // return to the old track: only confirming its pace frees it.
+  const fast = sail(d, 1, move(ship.p, 0.1, 0), {
+    knots: 95,
+    everyS: 60,
+    minutes: 15,
+    start: ship.at + 20_000,
+    bearing: 0,
+  });
+  assert.equal(count(fast.answers, 'reason', 'recovered'), 0);
+  const confirmed = fast.answers.findIndex(
+    (a) => a.reason === 'fast_vessel_confirmed',
+  );
+  assert.ok(confirmed > 0, 'confirmed');
+  assert.ok(
+    fast.answers.slice(confirmed).every((a) => a.assessment === 'plausible'),
+  );
+});
+
+test('a region’s area covers only the ships whose false positions agree', () => {
+  const d = detector();
+  const ships = fleet(d, [1, 2, 3], GULF, { gapKm: 2, knots: 0.5 });
+  // A fourth ship 60 km away, in a neighbouring cell, jumps elsewhere.
+  const far = sail(d, 4, move(GULF, 60, 90), { knots: 0.5 });
+  const at = Math.max(ships[2].at, far.at) + MIN;
+  ships.forEach((s, k) =>
+    d.observe(fix(s.i, at + k * 1000, move(where(28.4, 56.2), 0.3 * k, 70))),
+  );
+  d.observe(fix(4, at + 5000, where(24.6, 50.2)));
+  const [region] = snap(d, at + 9000).regions;
+  assert.equal(region.evidence.cells, 1);
+  // It was nearby, so it is counted apart, and its cell is not the region's.
+  assert.equal(region.evidence.otherNearbyVessels, 1);
+});
+
+test('a vote that began ambiguous counts as clear once its spoof leaves the parallel', () => {
+  const d = detector();
+  const ships = fleet(d, [1, 2, 3], GULF, { gapKm: 4, knots: 0.5 });
+  let at = ships[2].at + MIN;
+  // First at each ship's own latitude, then a little north of it.
+  ships.forEach((s, k) =>
+    d.observe(fix(s.i, at + k * 1000, where(s.p.lat, s.p.lon + 1.2))),
+  );
+  assert.equal(snap(d, at + 5000).regions.length, 0);
+  at += MIN;
+  ships.forEach((s, k) =>
+    d.observe(fix(s.i, at + k * 1000, where(s.p.lat + 0.05, s.p.lon + 1.2))),
+  );
+  assert.equal(snap(d, at + 5000).regions.length, 1);
+});
+
+test('the route-search burst ceiling holds after a long quiet spell', () => {
+  let calls = 0;
+  let clock = 0;
+  const geography = {
+    source: 'toy',
+    inlandKm: () => 0,
+    straightLineClear: () => false,
+    routeKm: () => (calls++, { status: 'route', km: 1 }),
+  };
+  const d = createRegionalGnssDetector({
+    rules: {
+      ...REGIONAL_GNSS_RULES,
+      routeSearchesPerMinute: 60,
+      routeBurst: 4,
+    },
+    now: () => T,
+    geography,
+    clock: () => clock,
+  });
+  const ships = [];
+  for (let i = 1; i <= 40; i++)
+    ships.push(sail(d, i, move(GULF, i, 0), { minutes: 5 }));
+  // One search starts the clock; a quiet minute then refills at most the
+  // burst, not a minute's worth.
+  d.observe(fix(1, ships[0].at + HOUR, move(ships[0].p, 30, 45)));
+  assert.equal(calls, 1);
+  clock += 60_000;
+  ships.forEach((s, k) =>
+    d.observe(fix(k + 1, s.at + HOUR + 1000, move(s.p, 31, 45))),
+  );
+  assert.equal(calls, 5);
+});
+
+test('an unknown vessel that speeds up to 80 kn never sails on plainly', () => {
+  const d = detector();
+  const slow = sail(d, 1, GULF, { knots: 15, everyS: 60, minutes: 15 });
+  const fast = sail(d, 1, slow.p, {
+    knots: 80,
+    everyS: 60,
+    minutes: 60,
+    start: slow.at + MIN,
+  });
+  // Its pace may be confirmed now and then, but 80 kn stays above the 60 kn
+  // an unknown vessel can earn.
+  assert.ok(
+    count(fast.answers, 'assessment', 'plausible') < fast.answers.length / 2,
+  );
+});
+
+test('a found water route is reused for the same position, whatever the budget', () => {
+  let calls = 0;
+  const geography = {
+    source: 'toy',
+    inlandKm: () => 0,
+    straightLineClear: () => false,
+    // A long way round: the ship stays suspicious, judged from the same fix.
+    routeKm: () => (calls++, { status: 'route', km: 900 }),
+  };
+  const d = detector({}, { geography });
+  const ship = sail(d, 1, GULF, { minutes: 5 });
+  const back = move(ship.p, 30, 45);
+  for (let k = 0; k < 5; k++)
+    d.observe(fix(1, ship.at + HOUR + k * 60_000, back));
+  assert.equal(calls, 1);
+});
+
+// Adversarial review of the external-review fixes (7 November 2026).
+
+test('a one-axis fault on a ship sailing north is ambiguous and makes no region', () => {
+  const d = detector();
+  const ships = [1, 2, 3, 4].map((i, k) => ({
+    i,
+    ...sail(d, i, move(GULF, 4 * k, 90), { everyS: 10, bearing: 0 }),
+  }));
+  const answers = [];
+  ships.forEach((s, k) => {
+    let p = s.p;
+    let at = s.at;
+    for (let n = 0; n < 6; n++) {
+      at += 10_000;
+      p = move(p, (12 * 1.852 * 10) / 3600, 0);
+      // The latitude it really has now; the longitude corrupted.
+      answers.push(
+        d.observe(fix(s.i, at + k * 100, { lat: p.lat, lon: p.lon + 1.2 })),
+      );
+    }
+  });
+  assert.ok(
+    answers.every((a) => a.evidence.includes('ambiguous_axis')),
+    JSON.stringify(answers.find((a) => !a.evidence.includes('ambiguous_axis'))),
+  );
+  assert.equal(snap(d, ships[3].at + 70_000).regions.length, 0);
+});
+
+test('ambiguous votes mark no landing zone', () => {
+  const d = detector();
+  const ships = fleet(d, [1, 2, 3, 4], GULF, { gapKm: 4, knots: 0.5 });
+  const at = ships[3].at + MIN;
+  ships.forEach((s, k) =>
+    d.observe(fix(s.i, at + k * 1000, { lat: s.p.lat, lon: s.p.lon + 1.2 })),
+  );
+  assert.equal(snap(d, at + 5000).diagnostic.landingCells, 0);
+  // Ships first seen there ten minutes later, then really spoofed, vote.
+  const P = where(GULF.lat + 0.03, GULF.lon + 1.2);
+  const locals = fleet(d, [21, 22, 23, 24], P, { start: at + 10 * MIN });
+  const t2 = locals[3].at + MIN;
+  const answers = locals.map((s, k) =>
+    d.observe(fix(s.i, t2 + k * 1000, move(s.p, 150, 200))),
+  );
+  assert.ok(answers.every((a) => a.candidate));
+  assert.equal(snap(d, t2 + 9000).regions.length, 1);
+});
+
+test('two incidents from one place to two targets keep two ids that never swap', () => {
+  const d = detector();
+  const ships = fleet(d, [1, 2, 3, 4, 5, 6, 7, 8, 9], GULF, { gapKm: 1.5 });
+  const t = ships[8].at + MIN;
+  const A = where(28.4, 56.2);
+  const B = where(24.6, 50.2);
+  ships
+    .slice(0, 4)
+    .forEach((s, k) => d.observe(fix(s.i, t + k * 1000, move(A, 0.3 * k, 70))));
+  const first = snap(d, t + 9000).regions[0].id;
+  const seen = [];
+  for (let m = 1; m <= 15; m++) {
+    const nB = m < 10 ? 3 : 5;
+    ships.forEach((s, k) => {
+      if (k < 4)
+        d.observe(fix(s.i, t + m * MIN + k * 1000, move(A, 0.3 * k, 70)));
+      else if (k - 4 < nB)
+        d.observe(fix(s.i, t + m * MIN + k * 1000, move(B, 0.3 * (k - 4), 70)));
+    });
+    const s = snap(d, t + m * MIN + 9000);
+    seen.push(s);
+  }
+  const last = seen.at(-1);
+  assert.equal(last.regions.length, 2);
+  assert.notEqual(last.regions[0].id, last.regions[1].id);
+  // The A incident keeps its first id, with its four ships, through B's growth.
+  const a = last.regions.find((r) => r.id === first);
+  assert.ok(a, 'A keeps its id');
+  assert.equal(a.evidence.uniqueVessels, 4);
 });

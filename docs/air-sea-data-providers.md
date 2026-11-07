@@ -59,9 +59,11 @@ where a ship could not have travelled, rather than prove where it is.
     position noise and 15 s of timing slack.
   - Ferries, small craft and unknown vessels may be fast: a suspicious stretch
     joins the vessel's trusted history once it shows that pace itself, over
-    three reports and two minutes, and raises its screening speed. Cargo ships
-    and tankers never do. A ship's own past speed is supporting evidence, never
-    a limit.
+    three reports and two minutes, and raises its screening speed: up to the
+    physical limit, but no higher than 60 kn for a vessel of unknown type, so
+    sustained 60-100 kn never reads as plain sailing for one. Cargo ships and
+    tankers never do. A ship's own past speed is supporting evidence, never a
+    limit.
   - Each step is also checked against the vessel's points up to 10 minutes
     back, so short steps cannot add up to an impossible drag.
 - **Segments.** A vessel's trusted segment is its credible movement history,
@@ -116,19 +118,33 @@ where a ship could not have travelled, rather than prove where it is.
     shortest water route. The Suez, Panama, Kiel and Corinth canals, the
     Bosporus, Dardanelles and Messina are opened by hand. A route that is too
     long marks the move `unknown`, never implausible.
+  - Searches run on the AIS ingest path, so they are bounded. One search
+    stops after 30,000 cells or 20 ms (about 26 ms measured at worst on the
+    real grid) and then gives no route evidence. At most 4 run back to back,
+    refilled at 2 a second by processing time, never by AIS time, which
+    arrives out of order across vessels. A burst of reappearing ships costs at
+    most 4 searches, about 100 ms at worst; then at most 2 a second. A found
+    route is cached per position; "longer than", or a search that gave up, is
+    reused only for a travel budget up to 10% larger. As the limits run on
+    processing time, a replay faster than real time gets less route evidence.
 - **Feed faults.** None of these votes:
   - a corrupted position field: a coordinate collapsed towards 0 while the
-    ship was far from it, a sign flipped, the two swapped, or one coordinate
-    unchanged while the other moves far, allowing for how far the ship could
-    really have moved. Live data had the first: inland vessels near 52° N 5° E
-    reported single positions at their own latitude with a longitude of 0.007
-    to 0.1, several ships within minutes;
+    ship was far from it, a sign flipped, or the two swapped, allowing for how
+    far the ship could really have moved. Live data had the first: inland
+    vessels near 52° N 5° E reported single positions at their own latitude
+    with a longitude of 0.007 to 0.1, several ships within minutes;
   - a stale repeat: a report within 1.5 km of where the ship was minutes or up
     to two hours before;
   - two ships sharing one MMSI: when quarantined reports keep interrupting a
     recovery that then carries on, that MMSI's votes are dropped for a day.
     Not when the interrupting positions lie in a landing zone (below): that
     is a spoof flickering on and off at the edge of its reach.
+- **Ambiguous evidence.** A jump that leaves one coordinate unchanged to 55 m,
+  against the last fix or where the ship would be now on its course
+  (`ambiguous_axis`), could be a corrupted field or a real spoof along a
+  parallel or meridian. It votes and counts in the diagnostics, but a region
+  needs three or more clear votes besides, and it marks no landing zone; the
+  region reports how many ambiguous ones it holds (`ambiguousAxisVessels`).
 - **Votes and regions.**
   - A vessel votes on an implausible jump only if:
     - its trusted segment has two or more reports;
@@ -157,20 +173,27 @@ where a ship could not have travelled, rather than prove where it is.
     spoof that flickers on and off keeps voting.
 
   - A ship that was in a zone before it formed, or arrived long after, still
-    votes. If most ships of a region are trusted inside a zone, the region is
-    kept but marked `sourceInLandingZone: true`, and it is never an Autopilot
-    record: they may be real ships there (a port beside the spoofer) or
-    ships trusted at a false position, and AIS cannot tell which.
+    votes. If most ships of a region were first seen inside a zone, the region
+    is kept but labelled `sourceLocation: "ambiguous"` (with
+    `sourceInLandingZone: true`), and it is never an Autopilot record: they
+    may be real ships there (a port beside the spoofer) or ships trusted at a
+    false position, and AIS cannot tell which. Other regions say
+    `sourceLocation: "credible"`.
 
   - Regions are where the voting ships credibly were, in H3 cells of about
     50 km (resolution 4) counted with their neighbours, so a cluster split by
     a cell edge is one region. It needs three or more vessels whose false
     positions agree: within one resolution-4 cell and its neighbours, up to
     about 130 km apart (at resolution 3, 40% of random independent jumps
-    agreed; at resolution 4, 3%). Cells of 20 km, like UKMTO's anomaly
+    agreed; at resolution 4, 3%). A region is formed from those vessels only:
+    its counts, area and times. Others nearby whose false positions went
+    elsewhere stay free for a second region (and are counted as
+    `otherNearbyVessels`). Cells of 20 km, like UKMTO's anomaly
     mapping, were tried first: in the Baltic replay they were too fine for
     open-sea traffic, and most voting ships fell in no region.
-  - A region keeps its id while its cells overlap, as ships join or leave. It
+  - A region keeps its id while its cells overlap and its false positions
+    still agree, as ships join or leave; two incidents from one place to two
+    targets have two ids. It
     lasts while fresh votes support it and ends 30 minutes after the last.
     Ended regions stay in `recentIncidents` for 24 hours, as history, never as
     alerts.
@@ -178,11 +201,10 @@ where a ship could not have travelled, rather than prove where it is.
     comparison (`grid: 'degree'`), but its landing zones are whole degree
     cells, so there it finds much less.
   - MMSIs must be a ship station's (MID 201-775), not one digit repeated
-    (`222222222`) or a country code with six zeros (`412000000`). Positions
-    within a degree of 0° N 0° E are refused as a transponder without a fix
-    (the Danish data has a fishing vessel at 0.98° N, 0.000000° E).
-  - Water-route searches are cached per position and limited to 120 a minute;
-    a search over the limit gives no route evidence.
+    (`222222222`) or a country code with six zeros (`412000000`). A position
+    within a degree of 0° N 0° E with a coordinate exactly zero is refused as
+    a transponder without a fix (the Danish data has a fishing vessel at
+    0.98° N, 0.000000° E); real positions nearby count.
 - **Known gaps.**
   - A track first seen while already spoofed is trusted as it is.
   - A spoof that moves at a believable speed from a believable start cannot be
@@ -252,7 +274,7 @@ unconfirmed` and vessel counts, including how many false positions were on
 
   | Days             | What is known                                                                                                                 | Regions |
   | ---------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------- |
-  | 1-3 July 2025    | GPSPatron's shipborne measurements: spoofing in the southern Baltic, about 30 hours within 1-3 July                           | 23      |
+  | 1-3 July 2025    | GPSPatron's shipborne measurements: spoofing in the southern Baltic, about 30 hours within 1-3 July                           | 39      |
   | 27-28 March 2025 | Lloyd's List, 31 March: tracks of ships at Gdynia and Gdansk jumping to the Kaliningrad area (dates not given); not a control | 0       |
   | 1-3 July 2019    | before Baltic interference was common (negative control)                                                                      | 0       |
   | 3 November 2026  | an ordinary recent day (negative control)                                                                                     | 0       |
@@ -260,24 +282,28 @@ unconfirmed` and vessel counts, including how many false positions were on
     - Ships in the southern Baltic jumped to points on the Kaliningrad coast
       and to about 55° N 21.5° E by the Curonian Lagoon, many onto land.
     - Voting ships rose from 0-10 an hour to 27 in the 14:00 UTC hour on 1
-      July. The first region formed at 14:30, with up to 10 vessels in one
+      July. The first region formed at 14:30, with up to 9 vessels in one
       region.
     - Regions were present for most of 1 July 14:30 to 2 July 06:35, and
       again from 22:00 on 2 July to 00:05 on 3 July. During the day on 2 July
       2-10 ships an hour voted, too few or too spread out to make three in one
       region within 30 minutes.
-    - All 23 regions are where the voting ships were trusted, at sea between
-      Bornholm, Gotland and the Polish coast (54.9-56.8° N, 14.8-18.7° E).
-      None is at a spoof target.
+    - All 39 regions are where the voting ships were trusted, at sea between
+      Bornholm, Gotland and the Polish coast (54.9-56.8° N, 15.2-18.7° E).
+      None is at a spoof target. There are more than before the external
+      review (23) because a region is now formed only from ships whose false
+      positions agree, and keeps its id only while they do: ships from one
+      area spoofed to the Kaliningrad coast and to the Curonian Lagoon make
+      separate regions, and an incident whose target moves gets a new id.
   - **Landing zones.** The same days with zones switched off
-    (`landingZones: false`) give 25 regions, the same areas split
+    (`landingZones: false`) give 38 regions, the same areas split
     differently. Zones matter little here, as the replay starts before the
     episode; they matter for ships first seen while spoofed. One vessel
     first seen at a spoof point in the Curonian Lagoon renewed a single vote
     for about 8 hours. A single vessel makes no region.
-  - **No false alarm on the controls.** At most 10 ships an hour voted on the
-    July 2019 days and 4 on the March 2025 days, never three coherent in one
-    region.
+  - **No false alarm on the controls.** At most 11 ships an hour voted on the
+    July 2019 days and 9 on the March 2025 days (ambiguous one-axis votes
+    included), never three clear and coherent in one region.
   - **Live finding.** The corrupted-field artefact came from the live AISStream
     feed (6,061 vessels over 17 hours, no region).
 

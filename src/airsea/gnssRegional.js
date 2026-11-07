@@ -40,9 +40,11 @@
  * - A vote needs an implausible jump from a trusted segment continuous for 30
  *   minutes (a gap, recovery or adoption restarts that clock), with a credible
  *   fix at most 30 minutes old; later implausible reports of the same episode
- *   renew it. Feed faults never vote: corrupted position fields, a report
- *   repeating where the ship was earlier (a stale backlog), or two ships
- *   sharing one MMSI. A track restarted at 24 hours during an episode cannot
+ *   renew it. Feed faults never vote: corrupted position fields (a zeroed,
+ *   sign-flipped or swapped coordinate), a report repeating where the ship
+ *   was earlier (a stale backlog), or two ships sharing one MMSI. A jump
+ *   leaving one coordinate unchanged is ambiguous: it votes, but cannot make
+ *   a region on its own, and marks no landing zone. A track restarted at 24 hours during an episode cannot
  *   vote for a day, nor can a ship first seen where other ships' spoofed
  *   positions were landing (it may be trusted at a false position). Regions
  *   are where the voting ships credibly were, in about 50 km H3 cells counted
@@ -72,7 +74,14 @@ export const SPEED_CLASSES = Object.freeze({
   work: Object.freeze({ screening: 30, physical: 50, fastAllowed: false }),
   passenger: Object.freeze({ screening: 40, physical: 60, fastAllowed: true }),
   fast: Object.freeze({ screening: 60, physical: 100, fastAllowed: true }),
-  unknown: Object.freeze({ screening: 40, physical: 100, fastAllowed: true }),
+  // An unknown vessel's own speed raises its screening limit to 60 kn at
+  // most: sustained 60-100 kn earns no unknown vessel a clean record.
+  unknown: Object.freeze({
+    screening: 40,
+    physical: 100,
+    fastAllowed: true,
+    raiseCap: 60,
+  }),
 });
 
 /** The speed class of an AIS ship-type code (ITU-R M.1371). */
@@ -124,9 +133,11 @@ export const REGIONAL_GNSS_RULES = Object.freeze({
   // Kilometres past the (coarse) coastline before a point counts as land.
   landToleranceKm: 10,
   // Only steps at least this long are checked for a water route, and at most
-  // this many route searches run per minute of AIS time.
+  // this many route searches run per minute of processing time.
   routeCheckKm: 20,
   routeSearchesPerMinute: 120,
+  // At most this many searches back to back, whatever the rate allows.
+  routeBurst: 4,
   // A report within this distance of where the ship was minutes or hours
   // earlier is a stale repeat, not a jump.
   staleRepeatKm: 1.5,
@@ -405,6 +416,9 @@ export function createRegionalGnssDetector({
   now = () => Date.now(),
   rules = REGIONAL_GNSS_RULES,
   geography = null,
+  // Processing time, for the route-search budget: AIS times arrive out of
+  // order across vessels and must not refill it.
+  clock = () => performance.now(),
 } = {}) {
   const grid = gridScheme(rules);
   const tracks = new Map();
@@ -437,6 +451,7 @@ export function createRegionalGnssDetector({
     evicted: 0,
   };
   const evidence = {
+    ambiguous_axis: 0,
     speed: 0,
     land: 0,
     route: 0,
@@ -446,7 +461,7 @@ export function createRegionalGnssDetector({
   };
   let lastReportAt = null;
   let lastPruneAt = -Infinity;
-  let routeTokens = rules.routeSearchesPerMinute;
+  let routeTokens = rules.routeBurst;
   let routeClock = null;
   const startedAt = now();
 
@@ -495,9 +510,12 @@ export function createRegionalGnssDetector({
       !isFiniteNumber(fix.lon) ||
       Math.abs(fix.lat) >= 85 ||
       Math.abs(fix.lon) > 180 ||
-      // Null Island: within a degree of 0 N 0 E is a transponder without a
-      // fix (seen in Danish data: a fishing vessel at 0.98 N, 0.000000 E).
-      (Math.abs(fix.lat) < 1 && Math.abs(fix.lon) < 1)
+      // Null Island placeholders: a coordinate exactly zero within a degree
+      // of 0 N 0 E is a transponder without a fix (seen in Danish data: a
+      // fishing vessel at 0.98 N, 0.000000 E). Real positions nearby count.
+      (Math.abs(fix.lat) < 1 &&
+        Math.abs(fix.lon) < 1 &&
+        (fix.lat === 0 || fix.lon === 0))
     )
       return 'invalid_position';
     if (!isFiniteNumber(fix.observedAt) || fix.timeQuality !== 'source')
@@ -535,7 +553,10 @@ export function createRegionalGnssDetector({
         ? track.demonstratedKnots
         : 0;
     const screening = cls.fastAllowed
-      ? Math.max(cls.screening, Math.min(cls.physical, 1.2 * demonstrated))
+      ? Math.max(
+          cls.screening,
+          Math.min(cls.raiseCap ?? cls.physical, 1.2 * demonstrated),
+        )
       : cls.screening;
     return { kind, screening, physical: cls.physical, cls };
   }
@@ -575,13 +596,17 @@ export function createRegionalGnssDetector({
     return { speed, km: distanceKm(segment.tail, point) };
   }
 
-  /** At most `routeSearchesPerMinute` searches, refilled by AIS time. */
-  function routeAllowed(at) {
-    const cap = rules.routeSearchesPerMinute;
-    if (routeClock === null || at < routeClock) routeClock = at;
+  /**
+   * At most `routeSearchesPerMinute` searches, `routeBurst` back to back,
+   * refilled by processing time (monotonic), never by AIS time.
+   */
+  function routeAllowed() {
+    const at = clock();
+    if (routeClock === null) routeClock = at;
+    const elapsed = Math.max(0, at - routeClock);
     routeTokens = Math.min(
-      cap,
-      routeTokens + ((at - routeClock) / 60_000) * cap,
+      rules.routeBurst,
+      routeTokens + (elapsed / 60_000) * rules.routeSearchesPerMinute,
     );
     routeClock = at;
     if (routeTokens < 1) return false;
@@ -592,14 +617,26 @@ export function createRegionalGnssDetector({
   /** The water route from the trusted tail, cached per tail and target. */
   function route(track, tail, point, budgetKm) {
     const key = `${tail.observedAt}:${Math.round(point.lat * 20)}:${Math.round(point.lon * 20)}`;
-    if (track.routeCache?.key === key) return track.routeCache.answer;
-    if (!routeAllowed(point.observedAt)) {
+    const cached = track.routeCache?.key === key ? track.routeCache : null;
+    // A found route's length holds for any budget; "longer than" holds only
+    // for a budget no more than 10% larger than the one it was searched with.
+    if (cached?.answer.status === 'route') return cached.answer;
+    // A search that gave up (time or size) is not repeated for the same
+    // budget either: a held ship would otherwise use the shared budget on
+    // every report.
+    if (
+      (cached?.answer.status === 'longer' ||
+        cached?.answer.status === 'unknown') &&
+      budgetKm <= cached.budgetKm * 1.1
+    )
+      return cached.answer;
+    if (!routeAllowed()) {
       counters.routeSkipped++;
       return { status: 'unknown', why: 'rate' };
     }
     counters.routeSearches++;
     const answer = geography.routeKm(tail, point, budgetKm);
-    track.routeCache = { key, answer };
+    track.routeCache = { key, answer, budgetKm };
     return answer;
   }
 
@@ -658,8 +695,37 @@ export function createRegionalGnssDetector({
           KNOT_KMH *
           ((point.observedAt - tail.observedAt) / 3600_000)) /
         111;
-      encoding = encodingArtefact(tail, point, Math.min(0.005, 0.0005 + reach));
-      if (encoding) found.push('encoding');
+      const artefact = encodingArtefact(
+        tail,
+        point,
+        Math.min(0.005, 0.0005 + reach),
+      );
+      // One coordinate unchanged could be a corrupted field or a real spoof
+      // along a parallel or meridian: ambiguous, so it votes but cannot make
+      // a region on its own. A zeroed, sign-flipped or swapped field is
+      // corruption and never votes.
+      // Ambiguous when the coordinate matches, to 55 m, the last fix or where
+      // the ship would be now on its course: a moving ship's corrupted report
+      // keeps its current latitude, not its last fix's.
+      if (artefact === 'one_axis') {
+        const v = velocityOf(track);
+        const hours = Math.min(
+          24,
+          Math.max(0, (point.observedAt - tail.observedAt) / 3600_000),
+        );
+        const reckoned = {
+          lat: tail.lat + v.lat * hours,
+          lon: tail.lon + v.lon * hours,
+        };
+        if (
+          encodingArtefact(tail, point) === 'one_axis' ||
+          encodingArtefact(reckoned, point) === 'one_axis'
+        )
+          found.push('ambiguous_axis');
+      } else if (artefact) {
+        encoding = artefact;
+        found.push('encoding');
+      }
       // A stale repeat: back where the ship was minutes or hours ago.
       stale = [...track.trusted.ring, ...track.trail].some(
         (p) =>
@@ -854,8 +920,11 @@ export function createRegionalGnssDetector({
         return false;
       existing.at = point.observedAt;
       existing.targetCell = targetCell;
+      // Ambiguous only while the latest report is: a ship sailing east under
+      // a spoof point due north of it matches its longitude for a minute.
+      existing.ambiguous = jump.evidence.includes('ambiguous_axis');
       const here = grid.localCell(point);
-      const landed = here && landings.get(here);
+      const landed = !existing.ambiguous && here && landings.get(here);
       if (landed) {
         // A spoof still holding here: refresh the zone, and its place in
         // the eviction order.
@@ -884,6 +953,7 @@ export function createRegionalGnssDetector({
       sourceLocal: grid.localCell(track.trusted.tail),
       targetCell,
       land: jump.onto,
+      ambiguous: jump.evidence.includes('ambiguous_axis'),
       firstAt: point.observedAt,
       at: point.observedAt,
     });
@@ -1219,7 +1289,10 @@ export function createRegionalGnssDetector({
       markSpoof(track, point, verdict.km);
       const fresh = !votes.has(id);
       const candidate = vote(id, track, point, verdict);
-      if (candidate && fresh) land(id, point);
+      // An ambiguous vote marks no landing zone: a feed fault must not exclude
+      // ships later first seen where it pointed.
+      if (candidate && fresh && !verdict.evidence.includes('ambiguous_axis'))
+        land(id, point);
       return result('implausible', 'implausible_jump', { ...extra, candidate });
     }
     return result('unknown', 'suspect_move', extra);
@@ -1366,101 +1439,125 @@ export function createRegionalGnssDetector({
     const claimed = new Set();
     const regions = [];
     for (const { cell } of seeds) {
-      const members = around(cell).filter((v) => !used.has(v.id));
-      if (members.length < rules.minVessels) continue;
-      // Agreement: the most false positions within one target cell and its
-      // neighbours. Independent jumps to scattered places do not count.
-      const byTarget = new Map();
-      for (const v of members)
-        byTarget.set(v.targetCell, (byTarget.get(v.targetCell) ?? 0) + 1);
-      let focus = null;
-      let focusCount = 0;
-      for (const target of byTarget.keys()) {
-        let n = 0;
-        for (const near of grid.neighbours(target))
-          n += byTarget.get(near) ?? 0;
-        if (n > focusCount || (n === focusCount && target < focus)) {
-          focus = target;
-          focusCount = n;
-        }
-      }
-      if (focusCount < rules.minVessels) continue;
-      const coherent = members.filter((v) => grid.agree(focus, v.targetCell));
-      // Ships trusted where other vessels' spoofed positions landed may be
-      // trusted at a false position, or may really be there (a port beside
-      // the spoofer): AIS cannot tell. Such a region is kept, marked.
-      const inZone = members.filter((v) => {
-        const track = tracks.get(v.id);
-        return (
-          track &&
-          zoneSince(grid.localCell(track.firstPoint), v.id, at) !== null
+      // Each pass forms one region from vessels whose false positions agree;
+      // others nearby stay free for a second, distinct incident. A group that
+      // fails is set aside for this seed only.
+      const setAside = new Set();
+      for (;;) {
+        const members = around(cell).filter(
+          (v) => !used.has(v.id) && !setAside.has(v.id),
         );
-      }).length;
-      for (const v of members) used.add(v.id);
-      const cells = [...new Set(members.map((v) => v.sourceCell))].sort();
-      // Longitudes unwrapped against the first cell, so a region across the
-      // dateline is not a box around the whole world.
-      const boxes = cells.map((c) => grid.bounds(c));
-      const ref = boxes[0].west;
-      for (const b of boxes) {
-        const shift = b.west - ref > 180 ? -360 : ref - b.west > 180 ? 360 : 0;
-        b.west += shift;
-        b.east += shift;
-      }
-      const area = {
-        south: Math.min(...boxes.map((b) => b.south)),
-        north: Math.max(...boxes.map((b) => b.north)),
-        west: Math.min(...boxes.map((b) => b.west)),
-        east: Math.max(...boxes.map((b) => b.east)),
-      };
-      const firstAt = Math.min(...members.map((v) => v.firstAt));
-      const lastAt = Math.max(...members.map((v) => v.at));
-      // The same incident keeps its id while its cells overlap, however its
-      // membership changes; a new one is named by its seed and start.
-      let regionId = null;
-      for (const [known, incident] of incidents)
-        if (
-          incident.active &&
-          !claimed.has(known) &&
-          cells.some((c) => incident.cells.has(c))
-        ) {
-          regionId = known;
-          break;
+        if (members.length < rules.minVessels) break;
+        // Agreement: the most false positions within one target cell and its
+        // neighbours. Independent jumps to scattered places do not count.
+        const byTarget = new Map();
+        for (const v of members)
+          byTarget.set(v.targetCell, (byTarget.get(v.targetCell) ?? 0) + 1);
+        let focus = null;
+        let focusCount = 0;
+        for (const target of byTarget.keys()) {
+          let n = 0;
+          for (const near of grid.neighbours(target))
+            n += byTarget.get(near) ?? 0;
+          if (n > focusCount || (n === focusCount && target < focus)) {
+            focus = target;
+            focusCount = n;
+          }
         }
-      regionId ??= `regional-navigation:${grid.label}:${cell}:${Math.floor(firstAt / 60_000)}`;
-      claimed.add(regionId);
-      const incident = incidents.get(regionId) ?? {
-        firstSeenAt: firstAt,
-        peakVessels: 0,
-      };
-      incident.firstSeenAt = Math.min(incident.firstSeenAt, firstAt);
-      incident.lastSeenAt = lastAt;
-      incident.peakVessels = Math.max(incident.peakVessels, members.length);
-      incident.area = area;
-      incident.cells = new Set(cells);
-      incidents.set(regionId, incident);
-      regions.push({
-        id: regionId,
-        domain: 'sea',
-        observation: 'correlated_ais_kinematic_anomalies',
-        interpretation: 'possible_navigation_integrity_issue',
-        causeAssessment: 'unconfirmed',
-        confidence: 'low', // AISStream is one feed, not independent corroboration.
-        eventPriority: 'advisory', // Never independently trigger a critical camera interrupt.
-        evidence: {
-          uniqueVessels: members.length,
-          coherentTargetVessels: coherent.length,
-          landTargetVessels: coherent.filter((v) => v.land).length,
-          observationWindowMinutes: rules.windowMs / 60_000,
-          independentProviders: 1,
-          aggregation: grid.label,
-          cells: cells.length,
-          sourceInLandingZone: inZone * 2 >= members.length,
-        },
-        area,
-        firstSeenAt: incident.firstSeenAt,
-        lastSeenAt: lastAt,
-      });
+        if (focusCount < rules.minVessels) break;
+        const coherent = members.filter((v) => grid.agree(focus, v.targetCell));
+        // Ambiguous one-axis jumps support a region but cannot make one.
+        const clear = coherent.filter((v) => !v.ambiguous);
+        if (clear.length < rules.minVessels) {
+          for (const v of coherent) setAside.add(v.id);
+          continue;
+        }
+        // Ships trusted where other vessels' spoofed positions landed may be
+        // trusted at a false position, or may really be there (a port beside
+        // the spoofer): AIS cannot tell. Such a region is kept, marked.
+        const inZone = coherent.filter((v) => {
+          const track = tracks.get(v.id);
+          return (
+            track &&
+            zoneSince(grid.localCell(track.firstPoint), v.id, at) !== null
+          );
+        }).length;
+        for (const v of coherent) used.add(v.id);
+        const cells = [...new Set(coherent.map((v) => v.sourceCell))].sort();
+        // Longitudes unwrapped against the first cell, so a region across the
+        // dateline is not a box around the whole world.
+        const boxes = cells.map((c) => grid.bounds(c));
+        const ref = boxes[0].west;
+        for (const b of boxes) {
+          const shift =
+            b.west - ref > 180 ? -360 : ref - b.west > 180 ? 360 : 0;
+          b.west += shift;
+          b.east += shift;
+        }
+        const area = {
+          south: Math.min(...boxes.map((b) => b.south)),
+          north: Math.max(...boxes.map((b) => b.north)),
+          west: Math.min(...boxes.map((b) => b.west)),
+          east: Math.max(...boxes.map((b) => b.east)),
+        };
+        const firstAt = Math.min(...coherent.map((v) => v.firstAt));
+        const lastAt = Math.max(...coherent.map((v) => v.at));
+        // The same incident keeps its id while its cells overlap and its false
+        // positions still agree, however its membership changes; a new one is
+        // named by its seed, its target focus and its start.
+        let regionId = null;
+        for (const [known, incident] of incidents)
+          if (
+            incident.active &&
+            !claimed.has(known) &&
+            cells.some((c) => incident.cells.has(c)) &&
+            (!incident.focus || grid.agree(incident.focus, focus))
+          ) {
+            regionId = known;
+            break;
+          }
+        regionId ??= `regional-navigation:${grid.label}:${cell}:${focus}:${Math.floor(firstAt / 60_000)}`;
+        claimed.add(regionId);
+        const incident = incidents.get(regionId) ?? {
+          firstSeenAt: firstAt,
+          peakVessels: 0,
+        };
+        incident.firstSeenAt = Math.min(incident.firstSeenAt, firstAt);
+        incident.lastSeenAt = lastAt;
+        incident.peakVessels = Math.max(incident.peakVessels, coherent.length);
+        incident.area = area;
+        incident.cells = new Set(cells);
+        incident.focus = focus;
+        incidents.set(regionId, incident);
+        regions.push({
+          id: regionId,
+          domain: 'sea',
+          observation: 'correlated_ais_kinematic_anomalies',
+          interpretation: 'possible_navigation_integrity_issue',
+          causeAssessment: 'unconfirmed',
+          confidence: 'low', // AISStream is one feed, not independent corroboration.
+          eventPriority: 'advisory', // Never independently trigger a critical camera interrupt.
+          // Ships trusted where spoofed positions landed: an ambiguous source
+          // location, labelled so on the endpoint.
+          sourceLocation:
+            inZone * 2 >= coherent.length ? 'ambiguous' : 'credible',
+          evidence: {
+            uniqueVessels: coherent.length,
+            coherentTargetVessels: coherent.length,
+            ambiguousAxisVessels: coherent.length - clear.length,
+            otherNearbyVessels: members.length - coherent.length,
+            landTargetVessels: coherent.filter((v) => v.land).length,
+            observationWindowMinutes: rules.windowMs / 60_000,
+            independentProviders: 1,
+            aggregation: grid.label,
+            cells: cells.length,
+            sourceInLandingZone: inZone * 2 >= coherent.length,
+          },
+          area,
+          firstSeenAt: incident.firstSeenAt,
+          lastSeenAt: lastAt,
+        });
+      }
     }
     regions.sort(
       (a, b) => b.lastSeenAt - a.lastSeenAt || a.id.localeCompare(b.id),

@@ -216,10 +216,22 @@ export function createLandGrid(
    * distance runs between cell centres, so the first land cell is already
    * about one cell (5.5 km at the equator) inland: 6 km lets the coastal
    * row through at any latitude, and land necks up to about two cells wide
-   * open with it. `maxNodes` bounds one search (about 0.2 s at worst).
+   * open with it. `maxNodes` and `maxMs` bound one search (20 ms by default):
+   * past either it answers `unknown`.
    * @returns {{status:'route', km:number} | {status:'longer'} | {status:'unknown', why:string}}
    */
-  function routeKm(a, b, limitKm, { passableKm = 6, maxNodes = 100_000 } = {}) {
+  function routeKm(
+    a,
+    b,
+    limitKm,
+    {
+      passableKm = 6,
+      maxNodes = 30_000,
+      maxMs = 20,
+      clock = () => performance.now(),
+    } = {},
+  ) {
+    const deadline = clock() + maxMs;
     const start = index(a.lat, a.lon);
     const goal = index(b.lat, b.lon);
     if (start < 0 || goal < 0) return { status: 'unknown', why: 'off_grid' };
@@ -273,6 +285,9 @@ export function createLandGrid(
       if (i === goal) return { status: 'route', km: gi };
       if (f - heuristic(i) > gi + 1e-9) continue; // stale entry
       if (++expanded > maxNodes) return { status: 'unknown', why: 'budget' };
+      // A search runs on the AIS ingest path: it stops at its time limit.
+      if (expanded % 2048 === 0 && clock() > deadline)
+        return { status: 'unknown', why: 'time' };
       const r = Math.floor(i / cols);
       const c = i % cols;
       for (let dr = -1; dr <= 1; dr++) {
