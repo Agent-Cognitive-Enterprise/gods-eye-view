@@ -99,12 +99,18 @@ test('advisory refreshes keep their own event live', () => {
   assert.ok(second.expires_at > first.expires_at);
 });
 
-test('an advisory can still be an ambient tour stop', () => {
+test('an advisory is never an ambient tour stop', () => {
   const eng = engine();
   eng.ingest(advisory());
   const [event] = eng.activeEvents(T);
-  const clusters = tourClusters([event], { ...AUTOPILOT_DEFAULTS });
-  assert.equal(clusters.length, 1);
+  // Control: the same event with an ordinary subtype would be a stop.
+  const ordinary = { ...event, subtype: 'earthquake' };
+  assert.equal(
+    tourClusters([ordinary], { ...AUTOPILOT_DEFAULTS }).length,
+    1,
+    'control',
+  );
+  assert.equal(tourClusters([event], { ...AUTOPILOT_DEFAULTS }).length, 0);
 });
 
 test('the assessor never spends the local model on an advisory', async () => {

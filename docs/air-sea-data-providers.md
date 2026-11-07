@@ -264,7 +264,9 @@ unconfirmed` and vessel counts, including how many false positions were on
   - it never joins another event, so it cannot corroborate a news report;
   - it is never camera-eligible, near home or not;
   - the local model never assesses it;
-  - it can appear on the map and as an ambient tour stop.
+  - it is never an ambient tour stop either: it moves the camera only when
+    the operator chooses it;
+  - it can appear on the map and in the event list.
 - **Validation on Danish AIS.** The Danish Maritime Authority's free
   historical AIS (aisdata.ais.dk) covers Danish and southern Baltic waters,
   about 51.5-60° N and 6.5° W-21° E, including Bornholm, Gdansk and the

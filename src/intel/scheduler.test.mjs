@@ -424,6 +424,20 @@ test('tour: retracted, low-confidence, filtered, weak and unlocated events are s
   );
 });
 
+test('tour: GNSS advisories are never tour stops, even as analyst records', () => {
+  const advisory = cooling('gnss', 55.5, 17, 80, {
+    subtype: 'possible_navigation_integrity_anomaly',
+    confidence: 0.5,
+    lineages: [{ source_type: 'analyst', provider: 'airsea' }],
+    camera_eligible: false,
+  });
+  const { log } = runTour([advisory], every(15 * SEC, 2));
+  assert.deepEqual(
+    log.map((d) => d.type),
+    ['idle', 'none'],
+  );
+});
+
 test('tour: analyst incidents (S2) are tour stops despite low scores, never alerts', () => {
   const analyst = (id, lat, lon, extra = {}) =>
     cooling(id, lat, lon, 33, {

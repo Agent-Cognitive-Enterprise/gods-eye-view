@@ -232,8 +232,9 @@ export const isCategory = (value) => CATEGORIES.includes(value);
 
 /**
  * Fork: advisory subtypes. Unverified, machine-derived screens (the regional
- * AIS GNSS screen) are shown and may be tour stops, but they never join another
- * event, so they cannot corroborate one, and never take the camera as an alert.
+ * AIS GNSS screen) are shown on the map and in the event list, but they never
+ * join another event, so they cannot corroborate one, and never move the
+ * camera on their own: not as an alert, not as a tour stop.
  */
 export const ADVISORY_SUBTYPES = Object.freeze(
   new Set(['possible_navigation_integrity_anomaly']),

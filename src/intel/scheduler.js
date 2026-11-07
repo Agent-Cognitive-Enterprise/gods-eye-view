@@ -20,7 +20,7 @@
 //  - with the tour off, the camera returns once to a still global view.
 
 import { clusterEvents } from './clustering.js';
-import { AUTOPILOT_DEFAULTS } from './taxonomy.js';
+import { AUTOPILOT_DEFAULTS, isAdvisorySubtype } from './taxonomy.js';
 
 const FAIRNESS_POINTS_PER_MIN = 0.5;
 const MAX_FAIRNESS_POINTS = 10;
@@ -84,6 +84,9 @@ export function tourClusters(events, s) {
     (e) =>
       TOUR_LIFECYCLES.has(e.lifecycle) &&
       !TOUR_EXCLUDED.has(e.verification) &&
+      // Fork: unvalidated advisories (the AIS GNSS screen) never move the
+      // camera on their own, not even as a tour stop.
+      !isAdvisorySubtype(e.subtype) &&
       !e.posts_held_from_camera &&
       credible(e) &&
       s.categoryRelevance?.[e.category] !== 0 &&

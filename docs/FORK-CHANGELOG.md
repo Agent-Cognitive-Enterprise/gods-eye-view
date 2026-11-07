@@ -12,8 +12,9 @@ number there.
   region of about 50 km when three or more ships there jumped implausibly to the
   same distant area within 30 minutes: `GET /api/airsea/gnss-regions`. With
   `GEV_GNSS_REGIONAL_AUTOPILOT=1` as well, each region is a low-severity analyst
-  record for the Autopilot that never merges with other events and never takes
-  the camera as an alert; without it the screen only observes. No vessel
+  record for the Autopilot that never merges with other events and never moves
+  the camera on its own (not as an alert, not as a tour stop); without it the
+  screen only observes. No vessel
   identities, positions or target locations leave it, a feed that is not
   healthy reports uncertain coverage rather than a clear sea, and nothing is
   stored. It is an AIS anomaly screen, not proof of spoofing.
