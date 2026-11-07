@@ -39,6 +39,14 @@ number there.
 
   See `docs/air-sea-data-providers.md`.
 
+- **Upstream sync to 6e4da23c.** Brings the Wildlife Sightings layer
+  (iNaturalist and Acartia), Rio de Janeiro buses and BRT, traffic Lines and
+  Dots toggles, Cockpit entry with only the ridden aircraft's layer, cyclone
+  selection in shared context, and S2 GhostMaps event-age filtering. The fork's
+  own GhostMaps age window is retired in favour of upstream's "Event age"
+  switch (1 day to all, default 7 days, undated events shown); the Autopilot
+  connector keeps its own date parser, which reads a bare date as the start of
+  that day.
 - **LIVE TV panel.** One live news channel at the foot of the left column, as wide as
   FAST INTELLIGENCE. Eight defaults: Bloomberg, Sky News, Euronews, DW News, CNN
   (CNN Headlines), France 24, Al Jazeera and RT. Each tries the broadcaster's own HLS
@@ -131,11 +139,10 @@ number there.
   than eight languages: the language search field that appears then always
   says `aria-expanded="true"`, and that was read as an open menu. Only controls
   on show count now.
-- **S2 GhostMaps age window.** S2's "Last 30 Days" export reaches back to 2013,
-  so the layer drew years-old events as if current. A 6 H to 1 Y selector
-  (default 1 M, remembered) now judges each placemark by its own Date field. A
-  bare date lasts until that day ends. Undated events stay hidden; sites and
-  areas are not events and stay on.
+- **S2 GhostMaps age window** (retired at the upstream sync to 6e4da23c,
+  which brought upstream's own event-age switch). S2's "Last 30 Days" export
+  reaches back to 2013, so the layer drew years-old events as if current; a
+  6 H to 1 Y selector judged each placemark by its own Date field.
 - **Upstream sync to a725178e.** Brings the Authoring panel (Scenes renamed and
   laid out in steps), one title style for the side panels, the Autostrada del
   Brennero (A22) webcams and an IPv4 retry for FIRMS.
