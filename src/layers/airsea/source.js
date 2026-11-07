@@ -5,14 +5,17 @@ const msg = (text) => text;
 export function createAirSeaSource({
   fetchImpl = (...args) => globalThis.fetch(...args),
 } = {}) {
-  async function get(path, signal) {
+  async function get(
+    path,
+    signal,
+    {
+      off = msg('Air/sea monitoring is not enabled on this server'),
+      failed = msg('Air/sea density unavailable'),
+    } = {},
+  ) {
     const response = await fetchImpl(path, { signal });
     if (!response.ok) {
-      const error = new Error(
-        response.status === 404
-          ? msg('Air/sea monitoring is not enabled on this server')
-          : msg('Air/sea density unavailable'),
-      );
+      const error = new Error(response.status === 404 ? off : failed);
       error.retryable = response.status !== 404;
       throw error;
     }
@@ -58,6 +61,13 @@ export function createAirSeaSource({
     },
     getWarning(id, { signal } = {}) {
       return get(`/api/airsea/warnings/${encodeURIComponent(id)}`, signal);
+    },
+    /** Ship GNSS screen: areas where ships' AIS positions jumped together. */
+    getGnssRegions({ signal } = {}) {
+      return get('/api/airsea/gnss-regions', signal, {
+        off: msg('Ship GNSS screen is not enabled on this server'),
+        failed: msg('Ship GNSS screen unavailable'),
+      });
     },
   };
 }

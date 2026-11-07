@@ -52,6 +52,14 @@ test('the layers that explain an event', () => {
     'traffic-anomalies',
     'air-traffic',
   ]);
+  assert.deepEqual(
+    layersForEvent({
+      event_id: 'evt_3',
+      providers: ['airsea'],
+      subtype: 'possible_navigation_integrity_anomaly',
+    }),
+    ['gnss-ship-regions'],
+  );
   assert.deepEqual(layersForEvent(quake), []);
   assert.deepEqual(layersForEvent(null), []);
 });

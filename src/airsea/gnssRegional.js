@@ -1528,6 +1528,8 @@ export function createRegionalGnssDetector({
         incident.area = area;
         incident.cells = new Set(cells);
         incident.focus = focus;
+        incident.sourceLocation =
+          inZone * 2 >= coherent.length ? 'ambiguous' : 'credible';
         incidents.set(regionId, incident);
         regions.push({
           id: regionId,
@@ -1573,6 +1575,8 @@ export function createRegionalGnssDetector({
         firstSeenAt: incident.firstSeenAt,
         lastSeenAt: incident.lastSeenAt,
         peakVessels: incident.peakVessels,
+        // As last reported: an ambiguous region keeps its caveat in history.
+        sourceLocation: incident.sourceLocation,
         area: incident.area,
       });
     }

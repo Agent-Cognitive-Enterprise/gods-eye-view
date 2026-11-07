@@ -374,6 +374,7 @@ test('return to genuine positions: an explicit recovery, then the region ages ou
   assert.equal(ended.regions.length, 0);
   assert.equal(ended.recentIncidents.length, 1);
   assert.equal(ended.recentIncidents[0].state, 'ended');
+  assert.equal(ended.recentIncidents[0].sourceLocation, 'credible');
   // And a second, later spoof is caught again from the recovered tracks.
   const again = backAt + 3 * HOUR;
   for (const { i } of ships) {
