@@ -156,6 +156,9 @@ same `id` in one file are reported; the later one is kept.
    whose words suggest a disruption (GDELT DOC 2.0, last 3 days). They are
    unverified: never drawn, never scored. The publisher's country is shown,
    which is not necessarily where the event is.
+   A request that fails on the network, or that GDELT answers with 429
+   (one request every 5 s per address) or 5xx, is tried twice more, 6 and
+   15 seconds apart; after that the next try is 15 minutes later.
 2. A reviewer reads the sources, then adds an event to the operator file (or,
    for the shared set, to the bundled file in a pull request), with the
    reach only when a source gives it, and `affected_basis` saying how.

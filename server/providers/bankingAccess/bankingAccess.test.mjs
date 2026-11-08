@@ -236,11 +236,13 @@ test('news is fetched only when enabled, at most hourly, and failures back off',
   const off = createNewsCandidates({ enabled: false, fetchImpl });
   assert.deepEqual(off.snapshot().candidates, []);
   assert.equal(calls, 0);
+  const pauses = [];
   const news = createNewsCandidates({
     enabled: true,
     fetchImpl,
     now: () => clock,
     warn() {},
+    sleep: async (ms) => pauses.push(ms),
   });
   assert.equal(news.snapshot().candidates.length, 0, 'first call starts it');
   await news.settle();
@@ -253,11 +255,58 @@ test('news is fetched only when enabled, at most hourly, and failures back off',
   fail = true;
   news.snapshot();
   await news.settle();
-  assert.equal(calls, 2);
+  assert.equal(calls, 4, 'a 429 is tried three times');
+  assert.deepEqual(pauses, [6_000, 15_000], 'spaced past the 5 s limit');
   const after = news.snapshot();
   assert.equal(after.error, 'news_unavailable');
   assert.equal(after.candidates.length, 1, 'the last list stays');
   clock += 10 * 60_000;
   news.snapshot();
-  assert.equal(calls, 2, 'backs off 15 minutes after a failure');
+  assert.equal(calls, 4, 'backs off 15 minutes after a failure');
+});
+
+test('a transient failure is retried and recovers; a 404 is not retried', async () => {
+  let calls = 0;
+  const warnings = [];
+  const flaky = async () => {
+    calls++;
+    if (calls === 1)
+      throw Object.assign(new TypeError('fetch failed'), {
+        cause: { code: 'UND_ERR_CONNECT_TIMEOUT' },
+      });
+    if (calls === 2) return { ok: false, status: 429, body: { cancel() {} } };
+    return new Response(
+      JSON.stringify({
+        articles: [{ url: 'https://a.example/1', title: 'X' }],
+      }),
+    );
+  };
+  const news = createNewsCandidates({
+    enabled: true,
+    fetchImpl: flaky,
+    now: () => NOW,
+    warn: (m) => warnings.push(String(m)),
+    sleep: async () => {},
+  });
+  news.snapshot();
+  await news.settle();
+  assert.equal(calls, 3);
+  assert.equal(news.snapshot().candidates.length, 1);
+  assert.equal(news.snapshot().error, null);
+  assert.match(
+    warnings[0],
+    /fetch failed \(UND_ERR_CONNECT_TIMEOUT\); retrying/,
+  );
+  let gone = 0;
+  const missing = createNewsCandidates({
+    enabled: true,
+    fetchImpl: async () => (gone++, { ok: false, status: 404, body: null }),
+    now: () => NOW,
+    warn() {},
+    sleep: async () => {},
+  });
+  missing.snapshot();
+  await missing.settle();
+  assert.equal(gone, 1);
+  assert.equal(missing.snapshot().error, 'news_unavailable');
 });
