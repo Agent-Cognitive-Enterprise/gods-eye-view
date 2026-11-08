@@ -3671,5 +3671,9 @@
   "Ambiguous source location": "Local de origem ambíguo",
   "Ended in the last 24 h": "Terminadas nas últimas 24 h",
   "Ship GNSS screen is not enabled on this server": "A triagem GNSS de navios não está ativada neste servidor",
-  "Ship GNSS Screen": "Triagem GNSS de navios"
+  "Ship GNSS Screen": "Triagem GNSS de navios",
+  "Close camera preview": "Fechar prévia da câmera",
+  "Refresh map still": "Atualizar imagem fixa no mapa",
+  "The map still uses a separate request and may show a different moment.": "A imagem no mapa usa uma solicitação separada e pode mostrar outro momento.",
+  "Video plays from Québec 511, which sees your IP address.": "O vídeo é reproduzido a partir do Québec 511, que vê o seu endereço IP."
 }

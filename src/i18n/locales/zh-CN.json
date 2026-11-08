@@ -3511,5 +3511,9 @@
   "Ambiguous source location": "不明确的来源位置",
   "Ended in the last 24 h": "过去 24 小时内结束",
   "Ship GNSS screen is not enabled on this server": "此服务器未启用船舶 GNSS 筛查",
-  "Ship GNSS Screen": "船舶 GNSS 筛查"
+  "Ship GNSS Screen": "船舶 GNSS 筛查",
+  "Close camera preview": "关闭摄像头预览",
+  "Refresh map still": "刷新地图静止画面",
+  "The map still uses a separate request and may show a different moment.": "地图静止画面通过单独的请求获取，可能显示不同的时刻。",
+  "Video plays from Québec 511, which sees your IP address.": "视频从 Québec 511 播放，Québec 511 会看到你的 IP 地址。"
 }

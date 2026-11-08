@@ -3911,5 +3911,9 @@
   "Ambiguous source location": "موقع مصدر ملتبس",
   "Ended in the last 24 h": "انتهت خلال آخر 24 ساعة",
   "Ship GNSS screen is not enabled on this server": "فحص GNSS للسفن غير مفعّل على هذا الخادم",
-  "Ship GNSS Screen": "فحص GNSS للسفن"
+  "Ship GNSS Screen": "فحص GNSS للسفن",
+  "Close camera preview": "إغلاق معاينة الكاميرا",
+  "Refresh map still": "تحديث صورة الخريطة الثابتة",
+  "The map still uses a separate request and may show a different moment.": "تستخدم صورة الخريطة طلبًا منفصلًا وقد تعرض لحظة مختلفة.",
+  "Video plays from Québec 511, which sees your IP address.": "يُشغَّل الفيديو من Québec 511، الذي يرى عنوان IP الخاص بك."
 }
