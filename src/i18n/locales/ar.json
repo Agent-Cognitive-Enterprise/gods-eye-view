@@ -3941,5 +3941,9 @@
   "Affected: {share} of the population": "المتأثرون: {share} من السكان",
   "Systemic (border)": "منهجي (الحدود)",
   "Events may overlap: the range runs from the largest one to their sum": "قد تتداخل الأحداث: يمتد النطاق من أكبرها إلى مجموعها",
-  "Not re-verified since {date}": "لم يُعَد التحقق منذ {date}"
+  "Not re-verified since {date}": "لم يُعَد التحقق منذ {date}",
+  "Close camera preview": "إغلاق معاينة الكاميرا",
+  "Refresh map still": "تحديث صورة الخريطة الثابتة",
+  "The map still uses a separate request and may show a different moment.": "تستخدم صورة الخريطة طلبًا منفصلًا وقد تعرض لحظة مختلفة.",
+  "Video plays from Québec 511, which sees your IP address.": "يُشغَّل الفيديو من Québec 511، الذي يرى عنوان IP الخاص بك."
 }

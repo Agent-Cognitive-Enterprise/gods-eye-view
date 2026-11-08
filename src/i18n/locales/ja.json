@@ -3541,5 +3541,9 @@
   "Affected: {share} of the population": "影響：人口の{share}",
   "Systemic (border)": "システミック（境界）",
   "Events may overlap: the range runs from the largest one to their sum": "事象が重なる可能性があります：範囲は最大の事象から合計までです",
-  "Not re-verified since {date}": "{date}以降再確認されていません"
+  "Not re-verified since {date}": "{date}以降再確認されていません",
+  "Close camera preview": "カメラのプレビューを閉じる",
+  "Refresh map still": "地図上の静止画を更新",
+  "The map still uses a separate request and may show a different moment.": "地図上の静止画は別のリクエストで取得されるため、異なる時点を表示する場合があります。",
+  "Video plays from Québec 511, which sees your IP address.": "動画は Québec 511 から再生され、Québec 511 にはあなたの IP アドレスが見えます。"
 }

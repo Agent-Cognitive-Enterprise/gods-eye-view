@@ -3541,5 +3541,9 @@
   "Affected: {share} of the population": "受影响：占人口 {share}",
   "Systemic (border)": "系统性（边界）",
   "Events may overlap: the range runs from the largest one to their sum": "事件可能重叠：范围从最大的一个到它们的总和",
-  "Not re-verified since {date}": "自 {date} 起未再核实"
+  "Not re-verified since {date}": "自 {date} 起未再核实",
+  "Close camera preview": "关闭摄像头预览",
+  "Refresh map still": "刷新地图静止画面",
+  "The map still uses a separate request and may show a different moment.": "地图静止画面通过单独的请求获取，可能显示不同的时刻。",
+  "Video plays from Québec 511, which sees your IP address.": "视频从 Québec 511 播放，Québec 511 会看到你的 IP 地址。"
 }

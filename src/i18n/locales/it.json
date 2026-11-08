@@ -3701,5 +3701,9 @@
   "Affected: {share} of the population": "Colpiti: {share} della popolazione",
   "Systemic (border)": "Sistemico (bordo)",
   "Events may overlap: the range runs from the largest one to their sum": "Gli eventi possono sovrapporsi: l’intervallo va dal più grande alla loro somma",
-  "Not re-verified since {date}": "Non riverificato dal {date}"
+  "Not re-verified since {date}": "Non riverificato dal {date}",
+  "Close camera preview": "Chiudi anteprima della telecamera",
+  "Refresh map still": "Aggiorna immagine fissa sulla mappa",
+  "The map still uses a separate request and may show a different moment.": "L’immagine sulla mappa usa una richiesta separata e può mostrare un momento diverso.",
+  "Video plays from Québec 511, which sees your IP address.": "Il video viene riprodotto da Québec 511, che vede il tuo indirizzo IP."
 }
