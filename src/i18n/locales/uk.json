@@ -3733,5 +3733,9 @@
   "Reset to defaults": "Повернути типові",
   "Save": "Зберегти",
   "It may not be available in your region, or its address has changed.": "Можливо, він недоступний у вашому регіоні або його адреса змінилася.",
-  "This browser would not save the list. Nothing was changed.": "Браузер не зміг зберегти список. Нічого не змінено."
+  "This browser would not save the list. Nothing was changed.": "Браузер не зміг зберегти список. Нічого не змінено.",
+  "Close camera preview": "Закрити перегляд камери",
+  "Refresh map still": "Оновити кадр на карті",
+  "The map still uses a separate request and may show a different moment.": "Кадр на карті запитується окремо та може показувати інший момент.",
+  "Video plays from Québec 511, which sees your IP address.": "Відео відтворюється з Québec 511, який бачить вашу IP-адресу."
 }

@@ -3653,5 +3653,9 @@
   "Reset to defaults": "Restaurar padrões",
   "Save": "Salvar",
   "It may not be available in your region, or its address has changed.": "Ele pode não estar disponível na sua região, ou o endereço mudou.",
-  "This browser would not save the list. Nothing was changed.": "Este navegador não conseguiu salvar a lista. Nada foi alterado."
+  "This browser would not save the list. Nothing was changed.": "Este navegador não conseguiu salvar a lista. Nada foi alterado.",
+  "Close camera preview": "Fechar prévia da câmera",
+  "Refresh map still": "Atualizar imagem fixa no mapa",
+  "The map still uses a separate request and may show a different moment.": "A imagem no mapa usa uma solicitação separada e pode mostrar outro momento.",
+  "Video plays from Québec 511, which sees your IP address.": "O vídeo é reproduzido a partir do Québec 511, que vê o seu endereço IP."
 }
