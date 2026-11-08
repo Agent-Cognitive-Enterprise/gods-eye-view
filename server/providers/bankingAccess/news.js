@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readResponseJsonCapped } from '../common/http.js';
 
 // News candidates for the banking-access layer (fork feature): articles from
@@ -78,7 +79,8 @@ export function candidatesFromArticles(
     if (titles.has(key)) continue;
     titles.add(key);
     out.push({
-      id: `news:${url.hostname}:${key.slice(0, 60)}`,
+      // Stable per article: a reviewer's decision follows its URL.
+      id: `news:${url.hostname}:${createHash('sha256').update(url.href).digest('hex').slice(0, 16)}`,
       title,
       url: url.href,
       domain: clean(a.domain, 120) ?? url.hostname,
