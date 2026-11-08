@@ -6,6 +6,7 @@ import { createBundledCableSource } from '../layers/submarineCables/bundledSourc
 import { createAdsbGnssSource } from '../layers/gnss/source.js';
 import { createAirSeaSource } from '../layers/airsea/source.js';
 import { createWildlifeSightingsSource } from '../layers/wildlifeSightings/source.js';
+import { createBankingAccessSource } from '../layers/bankingAccess/source.js';
 
 /** Construct the existing reference feeds independently of application setup. */
 export function createReferenceSources() {
@@ -18,5 +19,6 @@ export function createReferenceSources() {
     cables: createBundledCableSource(),
     'gnss-integrity': createAdsbGnssSource(),
     'air-sea': createAirSeaSource(),
+    'banking-access': createBankingAccessSource(),
   };
 }

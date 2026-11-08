@@ -30,6 +30,7 @@ import { gnssIntegrityProxy } from './gnssIntegrity.js';
 import { createGhostMapsWatcher, ghostMapsProxy } from './ghostMaps.js';
 import { intelProxy } from './intel/index.js';
 import { airSeaProxy } from './airsea/index.js';
+import { bankingAccessProxy } from './bankingAccess/index.js';
 import { createAirSeaHub } from './airsea/signals.js';
 import { localVoiceProxy } from './localVoice/index.js';
 import { droneAirspaceProxy } from './droneAirspace.js';
@@ -96,6 +97,7 @@ function localProviderPlugins({
     ghostMapsProxy({ watcher: ghostMapsWatcher }),
     intelProxy({ ghostMapsWatcher, airSeaHub }),
     airSeaProxy({ hub: airSeaHub }),
+    bankingAccessProxy(),
     localVoiceProxy(),
     droneAirspaceProxy(),
     inaturalistProxy(),

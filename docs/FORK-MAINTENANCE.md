@@ -39,7 +39,8 @@ New files are fork-only (`src/intel/`, `server/providers/intel/`,
 `src/ui/fastIntelPresentation.js`, `src/ui/stores/fastIntel.js`,
 `src/ui/views/panels/FastIntelPanel.vue`, `server/providers/localVoice/`, `src/voice/local*.js`, `src/ui/intelConsole.js`,
 `src/ui/styles/intel.css`, `src/ui/dockAutoHide.js`, `src/airsea/`,
-`src/layers/airsea/`, `server/providers/airsea/`, the fork docs and workflows). Upstream files the
+`src/layers/airsea/`, `server/providers/airsea/`, `src/bankingAccess/`, `src/layers/bankingAccess/`,
+`server/providers/bankingAccess/`, the fork docs and workflows). Upstream files the
 fork edits are the merge surface; keep these edits additive and small:
 
 | File                                                                                         | Fork change                                                                                                                |
@@ -59,9 +60,9 @@ fork edits are the merge surface; keep these edits additive and small:
 | `src/ui/panelAccordion.js`, `src/ui/panelChrome.js`                                          | FEEDS and FAST INTELLIGENCE are companions, the one exception to the one-panel rule.                                       |
 | `src/ui/stores/panels.js`, `src/ui/PanelRailView.vue`, `src/ui/kit/UiRail.vue`               | The rail can show more than one item open.                                                                                 |
 | `server/providers/aircraft/opensky.js`, `adsb-lol.js`                                        | One `publishTrafficSnapshot()` call after each cached snapshot (air/sea).                                                  |
-| `src/app/constructCatalog.js`, `src/ui/layerPanel.js`, `src/ui/layerNames.js`                | The four Air & Sea layers, local-only metadata, Air & Sea group.                                                           |
-| `src/sources/reference.js`, `src/app/sourceComposition.js`, `src/voice/layerManifest.js`     | `air-sea` source contract; the four layers listed voice-off.                                                               |
-| `src/creditAttribution.test.mjs`, layer-count tests                                          | Vetted dock-hidden credit selectors; catalog size 41.                                                                      |
+| `src/app/constructCatalog.js`, `src/ui/layerPanel.js`, `src/ui/layerNames.js`                | The Air & Sea and Banking Access layers, local-only metadata, groups.                                                      |
+| `src/sources/reference.js`, `src/app/sourceComposition.js`, `src/voice/layerManifest.js`     | `air-sea` and `banking-access` contracts; the five layers listed voice-off.                                                |
+| `src/creditAttribution.test.mjs`, layer-count tests                                          | Vetted dock-hidden credit selectors; catalog size 43.                                                                      |
 | `src/ui/views/ContextView.vue`, `style.css`                                                  | AUTOPILOT panel and stylesheet import.                                                                                     |
 | `src/voice/commands.js`, `src/voice/providerCapabilities.js`, `src/ui/views/panels/VoiceControl.vue` | Local voice provider entry and translated label.                                                                   |
 | `scripts/package-boundaries.json`                                                            | Owned-module entries for the new modules.                                                                                  |

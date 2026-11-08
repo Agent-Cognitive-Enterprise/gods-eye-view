@@ -1,0 +1,44 @@
+{
+  "meta": {
+    "title": "Reviewed banking-access disruptions",
+    "about": "Each event is entered by hand from its sources and reviewed. country_code is ISO 3166-1 alpha-3 (SSD, PSE, XKX and ESH are mapped to Natural Earth's SDS, PSX, KOS and SAH). event_type: technical_outage, withdrawal_limits, capital_controls, deposit_freeze or bank_failure. severity 1-5 (see docs/banking-access.md). confidence: social, multiple_reports or official. affected_people_est or affected_population_pct may be null when no source gives the reach: the map then shows the extent as unknown. Times are ISO 8601; resolved_time null means ongoing. Use 'official' only when a regulator, central bank or the bank itself is among the sources.",
+    "reviewed": "2026-11-08"
+  },
+  "events": [
+    {
+      "id": "lbn-2019-withdrawal-limits",
+      "country_code": "LBN",
+      "country_name": "Lebanon",
+      "event_type": "withdrawal_limits",
+      "severity": 4,
+      "confidence": "multiple_reports",
+      "start_time": "2019-10-17T00:00:00Z",
+      "last_update_time": "2026-03-01T00:00:00Z",
+      "resolved_time": null,
+      "affected_people_est": null,
+      "affected_population_pct": null,
+      "affected_basis": "No source counts the people under the withdrawal limits. For scale only: a February 2026 Ankura study estimated that about 550,000 depositors may not recover their savings even within the proposed USD 100,000 ceiling.",
+      "summary": "Informal capital controls since the 2019 crisis: deposits held in banks, cash withdrawals capped by central bank circulars 158 and 166 (reported raised to USD 800 and USD 400 a month in June 2025). A deposit recovery law was still under debate in spring 2026.",
+      "sources": [
+        {
+          "title": "Debate grows: Lebanon banking plan may leave 550,000 depositors without full repayment",
+          "url": "https://www.lbcgroup.tv/news/news-bulletin-reports/907155/debate-grows-lebanon-banking-plan-may-leave-550000-depositors-without/en",
+          "publisher": "LBCI",
+          "published": "2026-02"
+        },
+        {
+          "title": "Lebanon's central bank open to raising withdrawal limits under conditions, sources say",
+          "url": "https://www.lbcgroup.tv/news/lebanon-news/919475/lebanons-central-bank-open-to-raising-withdrawal-limits-under-conditions-sources-say/en",
+          "publisher": "LBCI",
+          "published": "2026-03"
+        },
+        {
+          "title": "Lebanon conflict likely to block deposit refund plan",
+          "url": "https://www.agbi.com/economy/2026/03/lebanon-conflict-likely-to-block-deposit-refund-plan-depositors/",
+          "publisher": "AGBI",
+          "published": "2026-03"
+        }
+      ]
+    }
+  ]
+}

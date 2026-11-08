@@ -514,6 +514,13 @@ export const DATA_CREDITS = [
       'optional: ReliefWeb (UN OCHA), The GDELT Project (machine-coded, unverified).',
   },
   {
+    key: 'banking-access',
+    html:
+      'Banking Access: reviewed reports, each with its sources; population: ' +
+      '<a href="https://data.worldbank.org/indicator/SP.POP.TOTL" target="_blank" rel="noopener">World Bank World Development Indicators</a> (CC BY 4.0); ' +
+      'optional news leads: <a href="https://www.gdeltproject.org/about.html" target="_blank" rel="noopener">The GDELT Project</a> (unverified, never drawn).',
+  },
+  {
     key: 'drivebc-cctv',
     html:
       'CCTV cameras &amp; frames (British Columbia): ' +
