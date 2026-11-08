@@ -3663,7 +3663,6 @@
   "multiple reports": "più segnalazioni",
   "official": "ufficiale",
   "Severe": "Grave",
-  "Systemic": "Sistemico",
   "Reach unknown": "Portata sconosciuta",
   "Reviewed reports of people cut off from their money. Shade: the share of the population affected (or people affected), weighted by severity, duration and how well it is confirmed; a resolved event fades over five days. Pattern: solid for bank failure or frozen deposits, stripes for a technical outage, a check for withdrawal limits or capital controls. Estimates come from the sources; a dashed border means no source gives the reach of some event, and a solid outline without a fill means a minimal impact. News leads are not checked and are never drawn.": "Segnalazioni verificate di persone senza accesso al proprio denaro. Colore: la quota di popolazione colpita (o il numero di persone), pesata per gravità, durata e grado di conferma; un evento risolto sfuma in cinque giorni. Motivo: pieno per fallimento bancario o depositi congelati, strisce per un guasto tecnico, scacchi per limiti di prelievo o controlli sui capitali. Le stime vengono dalle fonti; un bordo tratteggiato significa che nessuna fonte indica la portata di un evento, e un contorno continuo senza riempimento indica un impatto minimo. Gli spunti dalle notizie non sono verificati e non vengono mai disegnati.",
   "Duration: {value} h": "Durata: {value} h",
@@ -3699,5 +3698,8 @@
   "Since {date}": "Dal {date}",
   "Sources: {list}": "Fonti: {list}",
   "Estimate: {basis}": "Stima: {basis}",
-  "Affected: {share} of the population": "Colpiti: {share} della popolazione"
+  "Affected: {share} of the population": "Colpiti: {share} della popolazione",
+  "Systemic (border)": "Sistemico (bordo)",
+  "Events may overlap: the range runs from the largest one to their sum": "Gli eventi possono sovrapporsi: l’intervallo va dal più grande alla loro somma",
+  "Not re-verified since {date}": "Non riverificato dal {date}"
 }

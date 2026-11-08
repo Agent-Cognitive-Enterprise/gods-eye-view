@@ -3903,7 +3903,6 @@
   "multiple reports": "تقارير متعددة",
   "official": "رسمي",
   "Severe": "شديد",
-  "Systemic": "منهجي",
   "Reach unknown": "النطاق غير معروف",
   "Reviewed reports of people cut off from their money. Shade: the share of the population affected (or people affected), weighted by severity, duration and how well it is confirmed; a resolved event fades over five days. Pattern: solid for bank failure or frozen deposits, stripes for a technical outage, a check for withdrawal limits or capital controls. Estimates come from the sources; a dashed border means no source gives the reach of some event, and a solid outline without a fill means a minimal impact. News leads are not checked and are never drawn.": "تقارير مُراجَعة عن أشخاص حُرموا من الوصول إلى أموالهم. اللون: نسبة السكان المتأثرين (أو عدد الأشخاص)، مرجّحة بالشدة والمدة ومدى التأكيد؛ ويتلاشى الحدث المنتهي خلال خمسة أيام. النقش: مصمت لانهيار مصرف أو ودائع مجمدة، وخطوط لعطل تقني، ومربعات لحدود السحب أو ضوابط رأس المال. التقديرات مأخوذة من المصادر؛ والحدود المتقطعة تعني أنه لا يوجد مصدر يذكر نطاق حدث ما، والحدود المتصلة بلا تعبئة تعني أثرًا ضئيلًا. خيوط الأخبار غير مُتحقَّق منها ولا تُرسم أبدًا.",
   "Duration: {value} h": "المدة: {value} س",
@@ -3939,5 +3938,8 @@
   "Since {date}": "منذ {date}",
   "Sources: {list}": "المصادر: {list}",
   "Estimate: {basis}": "التقدير: {basis}",
-  "Affected: {share} of the population": "المتأثرون: {share} من السكان"
+  "Affected: {share} of the population": "المتأثرون: {share} من السكان",
+  "Systemic (border)": "منهجي (الحدود)",
+  "Events may overlap: the range runs from the largest one to their sum": "قد تتداخل الأحداث: يمتد النطاق من أكبرها إلى مجموعها",
+  "Not re-verified since {date}": "لم يُعَد التحقق منذ {date}"
 }

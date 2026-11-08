@@ -3503,7 +3503,6 @@
   "multiple reports": "多方报道",
   "official": "官方",
   "Severe": "严重",
-  "Systemic": "系统性",
   "Reach unknown": "影响范围未知",
   "Reviewed reports of people cut off from their money. Shade: the share of the population affected (or people affected), weighted by severity, duration and how well it is confirmed; a resolved event fades over five days. Pattern: solid for bank failure or frozen deposits, stripes for a technical outage, a check for withdrawal limits or capital controls. Estimates come from the sources; a dashed border means no source gives the reach of some event, and a solid outline without a fill means a minimal impact. News leads are not checked and are never drawn.": "经审核的民众无法动用自己资金的报告。颜色：受影响人口比例（或人数），按严重程度、持续时间和确认程度加权；已解决的事件在五天内逐渐淡出。图案：实心表示银行倒闭或存款冻结，条纹表示技术故障，棋盘格表示取款限制或资本管制。估计来自信息来源；虚线边界表示某事件没有来源给出影响范围；无填充的实线轮廓表示影响轻微。新闻线索未经核实，从不绘制在地图上。",
   "Duration: {value} h": "持续：{value} 小时",
@@ -3539,5 +3538,8 @@
   "Since {date}": "自 {date} 起",
   "Sources: {list}": "来源：{list}",
   "Estimate: {basis}": "估计：{basis}",
-  "Affected: {share} of the population": "受影响：占人口 {share}"
+  "Affected: {share} of the population": "受影响：占人口 {share}",
+  "Systemic (border)": "系统性（边界）",
+  "Events may overlap: the range runs from the largest one to their sum": "事件可能重叠：范围从最大的一个到它们的总和",
+  "Not re-verified since {date}": "自 {date} 起未再核实"
 }

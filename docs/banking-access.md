@@ -20,8 +20,12 @@ voice-controlled.
   | High     | 10% to under 25%              | 1 million to under 10 million |
   | Severe   | 25% and over                  | 10 million and over           |
 
-  **Systemic** (dark red, bright border) means an active event of severity 4
-  or 5 reaching at least 25% of the population or 10 million people.
+  **Systemic** (a bright red border, never a darker fill) means an active
+  event of severity 4 or 5 reaching at least 25% of the population or 10
+  million people. The fill always follows the chosen metric, so a country of
+  a billion with 1% affected stays light in **% POPULATION** mode even when
+  the head-count makes it systemic. The border is dashed when some reach is
+  unknown, and an event not re-verified for 30 days is never systemic.
 
 - **Pattern:** the kind of disruption. Solid for bank failure or frozen
   deposits, stripes for a technical outage, a check for withdrawal limits or
@@ -34,12 +38,15 @@ voice-controlled.
   understate), or for past events in **HISTORY** mode. A **Minimal** country
   is a solid outline without a fill. A mode without a figure (a share but no
   head-count, or the reverse) shows the country as reach unknown in that
-  mode, even when it is systemic in the other.
+  mode. Unfilled countries keep an all-but-invisible interior, so clicking
+  anywhere inside them selects them.
 - **Card:** click a country, or its row, for the card. It shows the people and
   share affected, severity, duration (a start date for restrictions over 60
   days), confidence, the sources of the country's events by publisher, when
-  it was last updated or
-  resolved, how the reach was estimated, and the summary. Choosing a row also
+  it was last updated or resolved, how the reach was estimated, and the
+  summary. When several events may overlap, the reach is a range (see below)
+  and the card says so; an ongoing event not re-verified for 30 days says
+  "Not re-verified since …". Choosing a row also
   flies there and pauses the Autopilot; **SOURCE ↗** then opens the lead
   event's first source.
 - **Row:** chips for the two modes, **NEWEST** (list by last update rather
@@ -53,11 +60,12 @@ There is no hover tooltip: the card on click carries the same facts.
 Per event:
 
 ```text
-share_score  = affected_population_pct / 100 × severity_w × duration_w × confidence_w × fade
-people_score = affected_people          × severity_w × duration_w × confidence_w × fade
+share_score  = affected_population_pct / 100 × severity_w × duration_w × confidence_w × fade × stale
+people_score = affected_people          × severity_w × duration_w × confidence_w × fade × stale
 ```
 
 - **severity_w:** 1 → 0.3, 2 → 0.5, 3 → 0.7, 4 → 0.9, 5 → 1.0.
+- **stale:** 0.5 for an ongoing event not re-verified for 30 days, else 1.
 - **duration_w:** under 6 h 0.25, under a day 0.5, under 3 days 0.75, else 1.
   An ongoing event's duration grows until it is resolved.
 - **confidence_w:** `social` 0.4, `multiple_reports` 0.7, `official` 1.0.
@@ -70,8 +78,13 @@ the other is derived from the bundled World Bank population (SP.POP.TOTL,
 latest year, `server/providers/bankingAccess/population.json`). When neither
 is given, the event has no score.
 
-Per country: shares combine as the chance that at least one event bites,
-1 − Π(1 − s); head-counts add up. The most serious live event (severity
+Per country: overlap between events is unknown (two banks may share
+customers), so the reach is a range, from the largest single event (full
+overlap) to their sum (none), capped at 100% and at the population; the list
+shows the lower bound, marked "+" when the range is wider. The colour uses
+the largest single event's score, so a country is never redder than its
+measured disruption. When every event of a country is history, its figures
+are still shown on the card, unscored. The most serious live event (severity
 first, then reach, then the latest) gives the country its type, pattern and
 card, whether or not its reach is known. An event whose `start_time` is still
 in the future is not drawn until it starts, and a `resolved_time` in the
@@ -97,6 +110,7 @@ files are re-read every 30 seconds, so edits show without a restart.
       "confidence": "multiple_reports",
       "start_time": "2026-11-01T00:00:00Z",
       "last_update_time": "2026-11-05T00:00:00Z",
+      "last_verified_time": "2026-11-08T00:00:00Z",
       "resolved_time": null,
       "affected_people_est": null,
       "affected_population_pct": 12,
@@ -125,7 +139,11 @@ files are re-read every 30 seconds, so edits show without a restart.
   bank collapse, licence revoked, capital controls, widespread deposit
   lock-up.
 - `confidence`: `social` (social media only), `multiple_reports`, or
-  `official` (regulator, central bank or the bank itself).
+  `official` (regulator, central bank or the bank itself among the sources).
+- `last_verified_time`: when a reviewer last confirmed the status (still
+  ongoing, or resolved). A report's date is not a confirmation that it still
+  holds: an ongoing event not re-verified for 30 days counts half (it
+  fades) and its card says so. Defaults to `last_update_time`.
 - At least one source with an http(s) URL is required.
 
 An entry that breaks a rule is left out and counted on the row ("Entries to

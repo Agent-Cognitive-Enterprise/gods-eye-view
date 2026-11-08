@@ -23,6 +23,8 @@ export const CONFIDENCE_WEIGHT = Object.freeze({
 });
 /** A resolved event fades to nothing over this long, then is history. */
 export const DECAY_MS = 5 * 24 * 3600_000;
+/** An ongoing event not re-verified for this long counts half: stale. */
+export const STALE_MS = 30 * 24 * 3600_000;
 const HOUR = 3600_000;
 /**
  * ISO 3166-1 codes the bundled Natural Earth pack spells differently: an
@@ -74,7 +76,7 @@ const httpUrl = (value) => {
  * One reviewed event from the data file, checked. Returns `{ event }` or
  * `{ error }` (a short reason): a bad entry is reported, never guessed at.
  */
-export function normalizeEvent(raw) {
+export function normalizeEvent(raw, { now = Date.now() } = {}) {
   if (!raw || typeof raw !== 'object') return { error: 'not an object' };
   const id = text(raw.id, 120);
   if (!id || !/^[\w.:-]+$/.test(id)) return { error: 'missing or bad id' };
@@ -97,6 +99,15 @@ export function normalizeEvent(raw) {
     return fail('resolved_time before start_time');
   const updatedAt = time(raw.last_update_time);
   if (Number.isNaN(updatedAt)) return fail('bad last_update_time');
+  // When a reviewer last confirmed the event's status (still ongoing, or
+  // resolved): a report's date is not a confirmation that it still holds.
+  const verifiedAt = time(raw.last_verified_time);
+  if (Number.isNaN(verifiedAt)) return fail('bad last_verified_time');
+  if (verifiedAt != null && verifiedAt < startedAt)
+    return fail('last_verified_time before start_time');
+  // A day of slack for time zones; later would never go stale.
+  if (verifiedAt != null && verifiedAt > now + 86_400_000)
+    return fail('last_verified_time in the future');
   const people = raw.affected_people_est;
   if (people != null && !(Number.isFinite(people) && people >= 0))
     return fail('affected_people_est must be a number of people');
@@ -124,6 +135,7 @@ export function normalizeEvent(raw) {
       startedAt,
       resolvedAt,
       updatedAt: updatedAt ?? resolvedAt ?? startedAt,
+      verifiedAt: verifiedAt ?? updatedAt ?? resolvedAt ?? startedAt,
       affectedPeople: people ?? null,
       affectedPct: pct ?? null,
       affectedBasis: text(raw.affected_basis),
@@ -159,8 +171,10 @@ export function assessEvent(event, { now, population = null }) {
     (event.affectedPeople != null && population
       ? Math.min(100, (event.affectedPeople / population) * 100)
       : null);
+  const stale = active && now - event.verifiedAt > STALE_MS;
   const weight =
     (upcoming ? 0 : 1) *
+    (stale ? 0.5 : 1) *
     SEVERITY_WEIGHT[event.severity] *
     durationWeight(durationHours) *
     CONFIDENCE_WEIGHT[event.confidence] *
@@ -169,6 +183,7 @@ export function assessEvent(event, { now, population = null }) {
     ...event,
     active,
     upcoming,
+    stale,
     historical: !upcoming && !active && decay === 0,
     decay,
     durationHours,
@@ -188,6 +203,7 @@ export function assessEvent(event, { now, population = null }) {
 export function isSystemic(e) {
   return (
     e.active &&
+    !e.stale &&
     e.severity >= 4 &&
     ((e.affectedPct ?? 0) >= 25 || (e.affectedPeople ?? 0) >= 10_000_000)
   );
@@ -204,30 +220,37 @@ const CLASSES = ['minimal', 'low', 'moderate', 'high', 'severe'];
 
 /**
  * Colour class for a score in a mode ('share' or 'people'): minimal, low,
- * moderate, high, severe; systemic; or unknown when the reach is not known.
+ * moderate, high, severe; or unknown when the reach is not known. The fill
+ * follows the chosen metric only: systemic importance is a separate flag,
+ * drawn as a border, never a darker fill.
  */
-export function scoreClass(score, mode = 'share', systemic = false) {
-  // A mode with no figure says so, even for a systemic event.
+export function scoreClass(score, mode = 'share') {
   if (score == null) return 'unknown';
-  if (systemic) return 'systemic';
   const bounds = BOUNDS[mode] ?? BOUNDS.share;
   const k = bounds.findIndex((b) => score < b);
   return CLASSES[k === -1 ? 4 : k];
 }
 
-// Several events in one country: the chance that at least one bites.
-const union = (scores) => {
-  const known = scores.filter((s) => s != null);
-  if (!known.length) return null;
-  return 1 - known.reduce((rest, s) => rest * (1 - Math.min(1, s)), 1);
-};
+// Reach across several events: overlap between them is unknown (two banks
+// may share customers), so the figure is a range, from the largest single
+// event (full overlap) to their sum (none), capped at the population.
+function reachRange(events, key, cap) {
+  const known = events.map((e) => e[key]).filter((v) => v != null);
+  if (!known.length) return { low: null, high: null };
+  const low = Math.max(...known);
+  const sum = known.reduce((n, v) => n + v, 0);
+  return { low, high: cap == null ? sum : Math.min(cap, sum) };
+}
 
 /**
  * Countries with at least one event that is not yet history (or every event,
- * with `history`). Each says its strongest event's type, its total reach and
- * a class per mode.
+ * with `history`). Each says its lead event's type, its reach as a range, and
+ * a class per mode. `populationOf(iso3)` caps the head-count range.
  */
-export function aggregateCountries(assessed, { history = false } = {}) {
+export function aggregateCountries(
+  assessed,
+  { history = false, populationOf = () => null } = {},
+) {
   const byCountry = new Map();
   for (const e of assessed) {
     if (e.upcoming || (e.historical && !history)) continue;
@@ -250,31 +273,41 @@ export function aggregateCountries(assessed, { history = false } = {}) {
     );
     const live = events.filter((e) => !e.historical);
     const lead = events[0];
-    const known = live.filter((e) => e.affectedPeople != null);
-    const people = known.length
-      ? known.reduce((n, e) => n + e.affectedPeople, 0)
-      : null;
-    const pcts = live.filter((e) => e.affectedPct != null);
-    const pct = pcts.length
-      ? Math.min(
-          100,
-          pcts.reduce((n, e) => n + e.affectedPct, 0),
-        )
-      : null;
+    // History keeps its figures for the card; only live events are scored.
+    const counted = live.length ? live : events;
+    const people = reachRange(counted, 'affectedPeople', populationOf(iso3));
+    const pct = reachRange(counted, 'affectedPct', 100);
     const systemic = live.some(isSystemic);
-    const share = live.length ? union(live.map((e) => e.scores.share)) : null;
-    const heads = live.map((e) => e.scores.people).filter((s) => s != null);
-    const reach = heads.length ? heads.reduce((n, s) => n + s, 0) : null;
+    // Scored on the largest single event: the lower bound of the reach, so
+    // a country is never redder than its measured disruption.
+    const best = (key) => {
+      const v = live.map((e) => e.scores[key]).filter((x) => x != null);
+      return v.length ? Math.max(...v) : null;
+    };
+    const share = best('share');
+    const reach = best('people');
     countries.push({
       iso3,
       countryName: lead.countryName,
       leadEventId: lead.id,
       active: live.some((e) => e.active),
       historical: live.length === 0,
+      stale: lead.stale === true,
       type: lead.type,
       severity: lead.severity,
-      affectedPeople: people,
-      affectedPct: pct,
+      affectedPeople: people.low,
+      affectedPeopleHigh: people.high,
+      affectedPct: pct.low,
+      affectedPctHigh: pct.high,
+      // A range is shown: several events with a known figure may overlap.
+      overlapPossible:
+        (people.high ?? 0) > (people.low ?? 0) ||
+        (pct.high ?? 0) > (pct.low ?? 0),
+      // Head-count and share come from different events (no population to
+      // derive one from the other): shown apart, never as one figure.
+      mixedFigures: counted.some(
+        (e) => (e.affectedPeople == null) !== (e.affectedPct == null),
+      ),
       // A live event whose reach no source gives: the shade may understate.
       reachUnknown: live.some(
         (e) => e.affectedPeople == null && e.affectedPct == null,
@@ -288,12 +321,13 @@ export function aggregateCountries(assessed, { history = false } = {}) {
       },
       classes: live.length
         ? {
-            share: scoreClass(share, 'share', systemic),
-            people: scoreClass(reach, 'people', systemic),
+            share: scoreClass(share, 'share'),
+            people: scoreClass(reach, 'people'),
           }
         : { share: 'history', people: 'history' },
       decay: Math.max(...events.map((e) => e.decay)),
       updatedAt: Math.max(...events.map((e) => e.updatedAt)),
+      verifiedAt: Math.max(...events.map((e) => e.verifiedAt)),
       eventIds: events.map((e) => e.id),
     });
   }

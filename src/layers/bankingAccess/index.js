@@ -25,7 +25,6 @@ export const BANKING_CLASS_COLORS = Object.freeze({
   moderate: '#ff9f1c',
   high: '#ff4d2e',
   severe: '#c1121f',
-  systemic: '#7a0010',
   unknown: '#9fb3c8',
   history: '#8a8f98',
 });
@@ -33,6 +32,8 @@ const SYSTEMIC_BORDER = '#ff2d55';
 const OVERLAY_SOURCE_ID = 'banking-access';
 const PICK_PREFIX = 'banking-access:';
 const MAX_LIST = 12;
+// Card lines do not wrap: longer text is cut, the full text is in the data.
+const CARD_TEXT = 90;
 const CARD_OPTIONS = Object.freeze({
   cohortLimit: 1,
   collisionCapacity: 1,
@@ -60,7 +61,6 @@ const CLASS_TEXT = Object.freeze({
   moderate: msg('Moderate'),
   high: msg('High'),
   severe: msg('Severe'),
-  systemic: msg('Systemic'),
   unknown: msg('Reach unknown'),
 });
 export const BANKING_ACCESS_DISCLAIMER = msg(
@@ -236,16 +236,26 @@ export function createBankingAccessLayer({
         !country.historical &&
         cls !== 'minimal' &&
         cls !== 'unknown';
+      // Systemic importance is a bright border; the fill keeps to the metric.
+      const systemic = country.systemic && !country.historical;
       const borderColor = country.historical
         ? Cesium.Color.fromCssColorString(BANKING_CLASS_COLORS.history)
-        : cls === 'systemic'
+        : systemic
           ? Cesium.Color.fromCssColorString(SYSTEMIC_BORDER)
           : country.active
             ? color
             : Cesium.Color.fromCssColorString(BANKING_CLASS_COLORS.history);
       // Dashed: history, or some live event's reach is not known.
+      // Dashed whenever some reach is unknown, systemic or not.
       const dashed =
         country.historical || intensity == null || country.reachUnknown;
+      const holesOf = (holes) =>
+        holes.map(
+          (hole) =>
+            new Cesium.PolygonHierarchy(
+              hole.map(([lon, lat]) => Cesium.Cartesian3.fromDegrees(lon, lat)),
+            ),
+        );
       shape.polygons.forEach(([outer, ...holes], index) => {
         const positions = outer.map(([lon, lat]) =>
           Cesium.Cartesian3.fromDegrees(lon, lat),
@@ -253,36 +263,24 @@ export function createBankingAccessLayer({
         entities.push(
           new Cesium.Entity({
             id: `${PICK_PREFIX}${country.iso3}:${index}`,
-            polygon: filled
-              ? {
-                  hierarchy: new Cesium.PolygonHierarchy(
-                    positions,
-                    holes.map(
-                      (hole) =>
-                        new Cesium.PolygonHierarchy(
-                          hole.map(([lon, lat]) =>
-                            Cesium.Cartesian3.fromDegrees(lon, lat),
-                          ),
-                        ),
-                    ),
-                  ),
-                  material: fillMaterial(
+            // Unfilled countries keep an all-but-invisible interior, so a
+            // click anywhere inside still selects them.
+            polygon: {
+              hierarchy: new Cesium.PolygonHierarchy(positions, holesOf(holes)),
+              material: filled
+                ? fillMaterial(
                     country,
-                    color.withAlpha(
-                      // Systemic reads as dark red even over desert or snow.
-                      Math.max(
-                        cls === 'systemic' ? 0.7 : 0,
-                        (0.2 + 0.4 * intensity) * fade,
-                      ),
-                    ),
+                    color.withAlpha((0.2 + 0.4 * intensity) * fade),
                     patterns,
+                  )
+                : new Cesium.ColorMaterialProperty(
+                    Cesium.Color.WHITE.withAlpha(0.01),
                   ),
-                }
-              : undefined,
+            },
             polyline: {
               positions: [...positions, positions[0]],
               clampToGround: true,
-              width: cls === 'systemic' ? 3 : 2,
+              width: systemic ? 3 : 2,
               material: dashed
                 ? new Cesium.PolylineDashMaterialProperty({
                     color: borderColor.withAlpha(0.9),
@@ -308,25 +306,45 @@ export function createBankingAccessLayer({
     const events = eventsOf(country);
     const lead = leadOf(country);
     const name = country.countryName || _shapes?.get(country.iso3)?.name;
+    // A range when several events may overlap: largest single event to the
+    // capped sum.
+    const range = (low, high, fmt) =>
+      high != null && high > low ? `${fmt(low)}–${fmt(high)}` : fmt(low);
+    const people =
+      country.affectedPeople != null &&
+      range(country.affectedPeople, country.affectedPeopleHigh, compact);
+    const share =
+      country.affectedPct != null &&
+      range(country.affectedPct, country.affectedPctHigh, percent);
     const affected =
-      country.affectedPeople != null
-        ? country.affectedPct != null
-          ? t('Affected: {people} ({share} of the population)', {
-              people: compact(country.affectedPeople),
-              share: percent(country.affectedPct),
-            })
-          : t('Affected: {people}', { people: compact(country.affectedPeople) })
-        : country.affectedPct != null
-          ? t('Affected: {share} of the population', {
-              share: percent(country.affectedPct),
-            })
-          : t('Affected: not known');
+      people && share && !country.mixedFigures
+        ? t('Affected: {people} ({share} of the population)', { people, share })
+        : people && share
+          ? `${t('Affected: {people}', { people })} · ${t(
+              'Affected: {share} of the population',
+              { share },
+            )}`
+          : people
+            ? t('Affected: {people}', { people })
+            : share
+              ? t('Affected: {share} of the population', { share })
+              : t('Affected: not known');
     const details = [
       country.reachUnknown &&
       (country.affectedPeople != null || country.affectedPct != null)
         ? `${affected} · ${t('Reach unknown')}`
         : affected,
     ];
+    if (country.overlapPossible)
+      details.push(
+        t(
+          'Events may overlap: the range runs from the largest one to their sum',
+        ),
+      );
+    if (lead?.stale)
+      details.push(
+        t('Not re-verified since {date}', { date: day(lead.verifiedAt) }),
+      );
     if (lead) {
       details.push(
         [
@@ -359,15 +377,15 @@ export function createBankingAccessLayer({
         details.push(
           t('Estimate: {basis}', {
             basis:
-              lead.affectedBasis.length > 160
-                ? `${lead.affectedBasis.slice(0, 157)}…`
+              lead.affectedBasis.length > CARD_TEXT
+                ? `${lead.affectedBasis.slice(0, CARD_TEXT - 1)}…`
                 : lead.affectedBasis,
           }),
         );
       if (lead.summary)
         details.push(
-          lead.summary.length > 160
-            ? `${lead.summary.slice(0, 157)}…`
+          lead.summary.length > CARD_TEXT
+            ? `${lead.summary.slice(0, CARD_TEXT - 1)}…`
             : lead.summary,
         );
     }
@@ -500,13 +518,16 @@ export function createBankingAccessLayer({
   }
 
   function countryItem(c) {
+    // The lower bound, marked when several events may add more.
+    const more = (low, high) => (high != null && high > low ? '+' : '');
     const value =
       _mode === 'people'
         ? c.affectedPeople != null
-          ? compact(c.affectedPeople)
+          ? compact(c.affectedPeople) +
+            more(c.affectedPeople, c.affectedPeopleHigh)
           : '?'
         : c.affectedPct != null
-          ? percent(c.affectedPct)
+          ? percent(c.affectedPct) + more(c.affectedPct, c.affectedPctHigh)
           : '?';
     return {
       id: c.iso3,
@@ -719,15 +740,7 @@ export function createBankingAccessLayer({
             notifyRow();
           },
         });
-      const legend = [
-        'low',
-        'moderate',
-        'high',
-        'severe',
-        'systemic',
-        'minimal',
-        'unknown',
-      ]
+      const legend = ['low', 'moderate', 'high', 'severe', 'minimal', 'unknown']
         .map((cls) => ({
           label: t(CLASS_TEXT[cls]),
           color: BANKING_CLASS_COLORS[cls],
@@ -735,6 +748,15 @@ export function createBankingAccessLayer({
             .length,
         }))
         .filter((item, i) => i < 4 || item.count > 0);
+      const systemicCount = countries().filter(
+        (c) => c.systemic && !c.historical,
+      ).length;
+      if (systemicCount)
+        legend.push({
+          label: t('Systemic (border)'),
+          color: SYSTEMIC_BORDER,
+          count: systemicCount,
+        });
       return {
         chips,
         info: _lastError ? translateFeedError(_lastError) : summaryLine(),

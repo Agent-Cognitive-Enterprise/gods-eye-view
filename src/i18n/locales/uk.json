@@ -3743,7 +3743,6 @@
   "multiple reports": "кілька повідомлень",
   "official": "офіційно",
   "Severe": "Тяжкий",
-  "Systemic": "Системний",
   "Reach unknown": "Охоплення невідоме",
   "Reviewed reports of people cut off from their money. Shade: the share of the population affected (or people affected), weighted by severity, duration and how well it is confirmed; a resolved event fades over five days. Pattern: solid for bank failure or frozen deposits, stripes for a technical outage, a check for withdrawal limits or capital controls. Estimates come from the sources; a dashed border means no source gives the reach of some event, and a solid outline without a fill means a minimal impact. News leads are not checked and are never drawn.": "Перевірені повідомлення про людей, позбавлених доступу до своїх грошей. Колір: частка ураженого населення (або кількість людей) з урахуванням тяжкості, тривалості та ступеня підтвердження; завершена подія згасає за п’ять днів. Візерунок: суцільний — банкрутство банку або заморожені вклади, смуги — технічний збій, клітинка — ліміти на зняття або контроль за рухом капіталу. Оцінки взято з джерел; пунктирна межа означає, що жодне джерело не називає охоплення якоїсь події, а суцільний контур без заливки — мінімальний вплив. Новинні зачіпки не перевірено, і вони ніколи не показуються на мапі.",
   "Duration: {value} h": "Тривалість: {value} год",
@@ -3779,5 +3778,8 @@
   "Since {date}": "З {date}",
   "Sources: {list}": "Джерела: {list}",
   "Estimate: {basis}": "Оцінка: {basis}",
-  "Affected: {share} of the population": "Уражено: {share} населення"
+  "Affected: {share} of the population": "Уражено: {share} населення",
+  "Systemic (border)": "Системний (межа)",
+  "Events may overlap: the range runs from the largest one to their sum": "Події можуть перетинатися: діапазон — від найбільшої до їхньої суми",
+  "Not re-verified since {date}": "Не перевірялося повторно з {date}"
 }

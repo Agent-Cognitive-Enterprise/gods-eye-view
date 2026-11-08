@@ -131,16 +131,15 @@ test('the snapshot lists live countries; history adds past ones', () => {
   };
   const live = bankingAccessSnapshot(args);
   assert.equal(live.schemaVersion, 1);
-  assert.deepEqual(
-    live.countries.map((c) => c.iso3),
-    ['LBN'],
-  );
-  assert.ok(live.countries[0].population > 0);
-  assert.equal(
-    live.countries[0].classes.share,
-    'unknown',
-    'no source counts it',
-  );
+  assert.deepEqual(live.countries.map((c) => c.iso3).sort(), [
+    'LBN',
+    'PRY',
+    'SRB',
+  ]);
+  const lbn = live.countries.find((c) => c.iso3 === 'LBN');
+  assert.ok(lbn.population > 0);
+  assert.equal(lbn.classes.share, 'unknown', 'no source counts it');
+  assert.equal(lbn.stale, true, 'last verified in March');
   assert.equal(live.news.enabled, false);
   const soon = bankingAccessSnapshot({
     ...args,

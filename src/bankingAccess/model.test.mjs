@@ -154,8 +154,7 @@ test('class bounds per mode', () => {
   assert.equal(scoreClass(500_000, 'people'), 'moderate');
   assert.equal(scoreClass(5_000_000, 'people'), 'high');
   assert.equal(scoreClass(50_000_000, 'people'), 'severe');
-  assert.equal(scoreClass(0.001, 'share', true), 'systemic');
-  assert.equal(scoreClass(null, 'people', true), 'unknown', 'no figure');
+  assert.equal(scoreClass(null, 'people'), 'unknown', 'no figure');
   assert.equal(reachIntensity(10_000), 0);
   assert.equal(reachIntensity(100_000_000), 1);
 });
@@ -224,6 +223,117 @@ test('the most serious live event leads, even with its reach unknown', () => {
   assert.equal(c.classes.share, 'minimal');
 });
 
+test('a large head-count marks systemic without reddening a small share', () => {
+  const big = assessEvent(
+    ok({
+      country_code: 'IND',
+      event_type: 'deposit_freeze',
+      severity: 5,
+      affected_people_est: 12_000_000,
+    }),
+    { now: NOW, population: 1_200_000_000 },
+  );
+  const [c] = aggregateCountries([big]);
+  assert.equal(c.systemic, true);
+  assert.equal(c.affectedPct, 1);
+  assert.equal(c.classes.share, 'low', '1% stays light in % mode');
+  assert.equal(c.classes.people, 'severe');
+});
+
+test('figures from different events are flagged, never merged', () => {
+  const a = assessEvent(ok({ id: 'a', affected_people_est: 5_000_000 }), {
+    now: NOW,
+    population: null,
+  });
+  const b = assessEvent(
+    ok({ id: 'b', affected_people_est: null, affected_population_pct: 2 }),
+    { now: NOW, population: null },
+  );
+  const [c] = aggregateCountries([a, b]);
+  assert.equal(c.mixedFigures, true);
+  assert.equal(c.overlapPossible, false, 'no range is shown');
+});
+
+test('the reach range never exceeds the population', () => {
+  const pop = 1_000_000;
+  const e1 = assessEvent(ok({ id: 'e1', affected_people_est: 800_000 }), {
+    now: NOW,
+    population: pop,
+  });
+  const e2 = assessEvent(ok({ id: 'e2', affected_people_est: 700_000 }), {
+    now: NOW,
+    population: pop,
+  });
+  const [c] = aggregateCountries([e1, e2], { populationOf: () => pop });
+  assert.equal(c.affectedPeople, 800_000);
+  assert.equal(c.affectedPeopleHigh, 1_000_000);
+  assert.equal(c.affectedPctHigh, 100);
+});
+
+test('an ongoing event not re-verified for 30 days counts half and says so', () => {
+  const fresh = assessEvent(
+    ok({ last_verified_time: '2026-11-05T00:00:00Z' }),
+    {
+      now: NOW,
+      population: 5_000_000,
+    },
+  );
+  const old = assessEvent(
+    ok({
+      start_time: '2026-02-01T00:00:00Z',
+      last_verified_time: '2026-03-01T00:00:00Z',
+    }),
+    {
+      now: NOW,
+      population: 5_000_000,
+    },
+  );
+  assert.equal(fresh.stale, false);
+  assert.equal(old.stale, true);
+  assert.ok(Math.abs(old.scores.share - fresh.scores.share / 2) < 1e-12);
+  assert.equal(aggregateCountries([old])[0].stale, true);
+  assert.match(
+    normalizeEvent(raw({ last_verified_time: 'soon' })).error,
+    /last_verified_time/,
+  );
+  assert.match(
+    normalizeEvent(raw({ last_verified_time: '2026-10-01T00:00:00Z' })).error,
+    /before start_time/,
+  );
+  assert.match(
+    normalizeEvent(raw({ last_verified_time: '2026-11-20T00:00:00Z' }), {
+      now: NOW,
+    }).error,
+    /future/,
+  );
+  // A stale severe event is no longer flagged systemic.
+  const staleBig = assessEvent(
+    ok({
+      severity: 5,
+      affected_people_est: 20_000_000,
+      last_verified_time: '2026-03-01T00:00:00Z',
+      start_time: '2026-02-01T00:00:00Z',
+    }),
+    { now: NOW, population: 50_000_000 },
+  );
+  assert.equal(isSystemic(staleBig), false);
+});
+
+test('a country whose events are all history keeps their figures', () => {
+  const past = assessEvent(
+    ok({
+      start_time: '2026-01-01T00:00:00Z',
+      resolved_time: '2026-01-02T00:00:00Z',
+    }),
+    { now: NOW, population: 5_000_000 },
+  );
+  const [c] = aggregateCountries([past], { history: true });
+  assert.equal(c.historical, true);
+  assert.equal(c.affectedPeople, 1_000_000);
+  assert.equal(c.affectedPct, 20);
+  assert.equal(c.scores.share, null, 'history is not scored');
+});
+
 test('countries combine their live events; history only when asked', () => {
   const pop = 5_000_000;
   const a = assessEvent(ok({ id: 'a', affected_people_est: 500_000 }), {
@@ -251,11 +361,15 @@ test('countries combine their live events; history only when asked', () => {
   const [lbn] = aggregateCountries([a, b, old]);
   assert.equal(aggregateCountries([a, b, old]).length, 1);
   assert.equal(lbn.iso3, 'LBN');
-  assert.equal(lbn.affectedPeople, 1_000_000);
-  assert.equal(lbn.affectedPct, 20);
+  // Overlap unknown: a range from the largest event to the sum.
+  assert.equal(lbn.affectedPeople, 500_000);
+  assert.equal(lbn.affectedPeopleHigh, 1_000_000);
+  assert.equal(lbn.affectedPct, 10);
+  assert.equal(lbn.affectedPctHigh, 20);
+  assert.equal(lbn.overlapPossible, true);
   assert.equal(lbn.type, 'withdrawal_limits', 'the strongest event leads');
-  assert.ok(lbn.scores.share > a.scores.share);
-  assert.ok(lbn.scores.share < a.scores.share + b.scores.share);
+  // Scored on the largest single event, never on the sum.
+  assert.equal(lbn.scores.share, a.scores.share);
   assert.deepEqual(lbn.eventIds.sort(), ['a', 'b']);
   const all = aggregateCountries([a, b, old], { history: true });
   const jpn = all.find((c) => c.iso3 === 'JPN');

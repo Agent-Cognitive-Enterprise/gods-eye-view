@@ -91,7 +91,7 @@ function memoryStorage() {
   };
 }
 
-function setup({ answer = ANSWER, error = null } = {}) {
+function setup({ answer = ANSWER, error = null, click = false } = {}) {
   const requests = [];
   const source = {
     getSnapshot: async (options) => {
@@ -117,14 +117,30 @@ function setup({ answer = ANSWER, error = null } = {}) {
     scene: { requestRender() {} },
     camera: { flyTo: (o) => flights.push(o) },
   };
+  // A click harness: the real handler path, with the scene pick faked.
+  const handler = { action: null };
+  const clickOptions = click
+    ? {
+        screenSpaceEventHandlerFactory: () => ({
+          setInputAction: (fn) => (handler.action = fn),
+          destroy() {},
+        }),
+        picking: {
+          resolvePickId: (picked) => picked?.id?.id ?? null,
+          isOwnedByOtherLayer: () => false,
+        },
+        pointer: { isPointerFree: () => true },
+      }
+    : {};
   const layer = createBankingAccessLayer({
     source,
     storage: memoryStorage(),
     overlayHost,
     loadCountries: async () => PACK,
+    ...clickOptions,
   });
   layer.init(viewer);
-  return { layer, viewer, requests, cards, flights, dataSources };
+  return { layer, viewer, requests, cards, flights, dataSources, handler };
 }
 
 test('geometry: rings decode, the main part frames the country', () => {
@@ -189,7 +205,9 @@ test('an unknown reach is an outline only', async () => {
   layer.enable();
   await layer.update(viewer);
   const [entity] = dataSources[0].entities.values;
-  assert.equal(entity.polygon, undefined);
+  // An all-but-invisible interior keeps it clickable.
+  assert.ok(entity.polygon);
+  assert.ok(entity.polygon.material.color.getValue().alpha < 0.05);
   assert.ok(entity.polyline);
   assert.equal(layer.getRowControls().list.items[0].lead, '?');
 });
@@ -332,9 +350,92 @@ test('a minimal class is an outline; an unknown reach beside a known one is dash
   layer.enable();
   await layer.update(viewer);
   const [entity] = dataSources[0].entities.values;
-  assert.equal(entity.polygon, undefined);
+  // An all-but-invisible interior keeps it clickable.
+  assert.ok(entity.polygon);
+  assert.ok(entity.polygon.material.color.getValue().alpha < 0.05);
   assert.equal(
     entity.polyline.material.constructor.name,
     'PolylineDashMaterialProperty',
   );
+});
+
+test('clicking inside an unfilled country selects it and shows its card', async () => {
+  const answer = {
+    ...ANSWER,
+    countries: [
+      country({
+        affectedPeople: null,
+        affectedPct: null,
+        intensity: { share: null, people: null },
+        classes: { share: 'unknown', people: 'unknown' },
+        reachUnknown: true,
+      }),
+    ],
+  };
+  const { layer, viewer, cards, dataSources, handler } = setup({
+    answer,
+    click: true,
+  });
+  layer.enable();
+  await layer.update(viewer);
+  const [interior] = dataSources[0].entities.values;
+  viewer.scene.pick = () => ({ id: interior });
+  handler.action({ position: { x: 10, y: 10 } });
+  assert.equal(layer.getStats().selected, 'LBN');
+  assert.match(cards.at(-1)[0].details[0], /Affected: not known/);
+  // A click on empty globe clears it.
+  viewer.scene.pick = () => undefined;
+  handler.action({ position: { x: 1, y: 1 } });
+  assert.equal(layer.getStats().selected, null);
+});
+
+test('overlapping events show a range; a stale lead says so; systemic is a border', async () => {
+  const answer = structuredClone(ANSWER);
+  Object.assign(answer.countries[0], {
+    affectedPeople: 500_000,
+    affectedPeopleHigh: 900_000,
+    affectedPct: 9,
+    affectedPctHigh: 16,
+    overlapPossible: true,
+    systemic: true,
+  });
+  Object.assign(answer.events[0], {
+    stale: true,
+    verifiedAt: Date.UTC(2026, 2, 1),
+  });
+  const { layer, viewer, cards, dataSources } = setup({ answer });
+  layer.enable();
+  await layer.update(viewer);
+  layer.setParams({ select: 'LBN' });
+  const [card] = cards.at(-1);
+  assert.match(
+    card.details[0],
+    /Affected: 500K–900K \(9%–16% of the population\)/,
+  );
+  assert.match(card.details[1], /Events may overlap/);
+  assert.match(card.details[2], /Not re-verified since Mar 1, 2026/);
+  assert.equal(layer.getRowControls().list.items[0].lead, '9%+');
+  const [entity] = dataSources[0].entities.values;
+  assert.equal(entity.polyline.width.getValue(), 3, 'systemic border');
+  assert.ok(
+    layer
+      .getRowControls()
+      .legend.some((l) => /Systemic \(border\)/.test(l.label)),
+  );
+});
+
+test('a systemic country with some reach unknown keeps the dash, in the systemic colour', async () => {
+  const answer = {
+    ...ANSWER,
+    countries: [country({ systemic: true, reachUnknown: true })],
+  };
+  const { layer, viewer, dataSources } = setup({ answer });
+  layer.enable();
+  await layer.update(viewer);
+  const [entity] = dataSources[0].entities.values;
+  assert.equal(
+    entity.polyline.material.constructor.name,
+    'PolylineDashMaterialProperty',
+  );
+  assert.equal(entity.polyline.width.getValue(), 3);
 });

@@ -92,7 +92,10 @@ export function bankingAccessSnapshot({
       population: population.table.get(event.iso3)?.population ?? null,
     }),
   );
-  const countries = aggregateCountries(assessed, { history }).map((c) => ({
+  const countries = aggregateCountries(assessed, {
+    history,
+    populationOf: (iso3) => population.table.get(iso3)?.population ?? null,
+  }).map((c) => ({
     ...c,
     population: population.table.get(c.iso3)?.population ?? null,
     populationYear: population.table.get(c.iso3)?.year ?? null,
@@ -110,6 +113,7 @@ export function bankingAccessSnapshot({
     counts: {
       events: events.length,
       active: assessed.filter((e) => e.active).length,
+      stale: assessed.filter((e) => e.stale).length,
       fading: assessed.filter((e) => !e.active && !e.historical && !e.upcoming)
         .length,
       upcoming: assessed.filter((e) => e.upcoming).length,

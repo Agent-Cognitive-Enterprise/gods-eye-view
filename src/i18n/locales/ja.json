@@ -3503,7 +3503,6 @@
   "multiple reports": "複数の報道",
   "official": "公式",
   "Severe": "深刻",
-  "Systemic": "システミック",
   "Reach unknown": "影響範囲不明",
   "Reviewed reports of people cut off from their money. Shade: the share of the population affected (or people affected), weighted by severity, duration and how well it is confirmed; a resolved event fades over five days. Pattern: solid for bank failure or frozen deposits, stripes for a technical outage, a check for withdrawal limits or capital controls. Estimates come from the sources; a dashed border means no source gives the reach of some event, and a solid outline without a fill means a minimal impact. News leads are not checked and are never drawn.": "自分のお金にアクセスできなくなった人々に関する確認済みの報告。色：影響を受けた人口の割合（または人数）を、深刻度・期間・確認の度合いで重み付け。解決した事象は5日かけて薄れます。模様：塗りつぶしは銀行破綻または預金凍結、縞は技術的障害、市松は引き出し制限または資本規制。推計は出典に基づきます。破線の境界は影響範囲を示す出典がない事象があることを、塗りのない実線の輪郭は影響が軽微であることを意味します。ニュースの手がかりは未確認で、地図には描きません。",
   "Duration: {value} h": "期間：{value}時間",
@@ -3539,5 +3538,8 @@
   "Since {date}": "{date}以降",
   "Sources: {list}": "出典：{list}",
   "Estimate: {basis}": "推計：{basis}",
-  "Affected: {share} of the population": "影響：人口の{share}"
+  "Affected: {share} of the population": "影響：人口の{share}",
+  "Systemic (border)": "システミック（境界）",
+  "Events may overlap: the range runs from the largest one to their sum": "事象が重なる可能性があります：範囲は最大の事象から合計までです",
+  "Not re-verified since {date}": "{date}以降再確認されていません"
 }

@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Reviewed banking-access disruptions",
-    "about": "Each event is entered by hand from its sources and reviewed. country_code is ISO 3166-1 alpha-3 (SSD, PSE, XKX and ESH are mapped to Natural Earth's SDS, PSX, KOS and SAH). event_type: technical_outage, withdrawal_limits, capital_controls, deposit_freeze or bank_failure. severity 1-5 (see docs/banking-access.md). confidence: social, multiple_reports or official. affected_people_est or affected_population_pct may be null when no source gives the reach: the map then shows the extent as unknown. Times are ISO 8601; resolved_time null means ongoing. Use 'official' only when a regulator, central bank or the bank itself is among the sources.",
+    "about": "Each event is entered by hand from its sources and reviewed. country_code is ISO 3166-1 alpha-3 (SSD, PSE, XKX and ESH are mapped to Natural Earth's SDS, PSX, KOS and SAH). event_type: technical_outage, withdrawal_limits, capital_controls, deposit_freeze or bank_failure. severity 1-5 (see docs/banking-access.md). confidence: social, multiple_reports or official. affected_people_est or affected_population_pct may be null when no source gives the reach: the map then shows the extent as unknown. Times are ISO 8601; resolved_time null means ongoing. Use 'official' only when a regulator, central bank or the bank itself is among the sources. last_verified_time is when a reviewer last confirmed the status (still ongoing, or resolved); an ongoing event not re-verified for 30 days counts half and says so on its card.",
     "reviewed": "2026-11-08"
   },
   "events": [
@@ -37,6 +37,91 @@
           "url": "https://www.agbi.com/economy/2026/03/lebanon-conflict-likely-to-block-deposit-refund-plan-depositors/",
           "publisher": "AGBI",
           "published": "2026-03"
+        }
+      ],
+      "last_verified_time": "2026-03-01T00:00:00Z"
+    },
+    {
+      "id": "pry-2026-11-ueno-bank-resolution",
+      "country_code": "PRY",
+      "country_name": "Paraguay",
+      "event_type": "bank_failure",
+      "severity": 5,
+      "confidence": "official",
+      "start_time": "2026-11-02T00:00:00-03:00",
+      "last_update_time": "2026-11-07T00:00:00Z",
+      "last_verified_time": "2026-11-07T00:00:00Z",
+      "resolved_time": null,
+      "affected_people_est": null,
+      "affected_population_pct": null,
+      "affected_basis": "No source counts the people cut off. For scale only: press reports of almost 3 million clients (Perfil; El Cronista says 3 million); clients are not verified as unique people. Insured deposits (up to 75 minimum wages) are being paid from the Deposit Guarantee Fund; one report says about 1.2 million clients were refunded within two days.",
+      "summary": "The Central Bank of Paraguay opened a resolution procedure for ueno bank on 2 November 2026 after its solvency ratio fell below half the required minimum, and suspended its services. The central bank says the case is specific to this bank.",
+      "sources": [
+        {
+          "title": "Banco Central inicia el procedimiento de resolución de ueno bank",
+          "url": "https://www.bcp.gov.py/en/web/institucional/w/banco-central-inicia-el-procedimiento-de-resolucion-de-ueno-bank",
+          "publisher": "Banco Central del Paraguay",
+          "published": "2026-11-02"
+        },
+        {
+          "title": "Que pasó con el Ueno Bank en Paraguay y qué sucederá con los ahorros de casi 3 millones de clientes",
+          "url": "https://www.perfil.com/economia/que-paso-con-el-ueno-bank-en-paraguay-y-que-sucedera-con-los-ahorros-de-casi-3-millones-de-clientes-akRIu5P10Qk5",
+          "publisher": "Perfil",
+          "published": "2026-11"
+        },
+        {
+          "title": "Paraguay interviene ueno bank: el quinto banco privado del país entra en resolución",
+          "url": "https://www.cronista.com/finanzas-mercados/paraguay-interviene-ueno-bank-el-quinto-banco-privado-del-pais-con-3-millones-de-clientes-entra-en-resolucion-por-falta-de-solvencia/",
+          "publisher": "El Cronista",
+          "published": "2026-11"
+        },
+        {
+          "title": "Crisis de Ueno Bank: ¿Qué pasará con el dinero de los clientes del banco de Paraguay?",
+          "url": "https://www.elfinanciero.com.mx/mundo/2026/11/07/crisis-de-ueno-bank-que-pasara-con-el-dinero-de-los-clientes-del-banco-de-paraguay-esto-sabemos/",
+          "publisher": "El Financiero",
+          "published": "2026-11-07"
+        }
+      ]
+    },
+    {
+      "id": "srb-2026-10-alta-banka-licence-revoked",
+      "country_code": "SRB",
+      "country_name": "Serbia",
+      "event_type": "bank_failure",
+      "severity": 5,
+      "confidence": "multiple_reports",
+      "start_time": "2026-10-30T00:00:00+01:00",
+      "last_update_time": "2026-11-04T00:00:00Z",
+      "last_verified_time": "2026-11-04T00:00:00Z",
+      "resolved_time": null,
+      "affected_people_est": null,
+      "affected_population_pct": null,
+      "affected_basis": "No source gives the number of clients. The bank held just under 3% of Serbian banking assets. The National Bank of Serbia's own notice was not found; the decision is reported as quoted from it.",
+      "summary": "The National Bank of Serbia's executive board revoked ALTA banka's licence on 30 October 2026 and found the conditions for bankruptcy met; accounts, cards and branches were suspended. The Deposit Insurance Agency is to pay insured deposits (up to EUR 50,000) within seven working days.",
+      "sources": [
+        {
+          "title": "Serbian Central Bank Revokes ALTA Banka Licence, ALTA Banka Owner Gets Arrested",
+          "url": "https://www.bta.bg/en/news/balkans/1238423-serbian-central-bank-revokes-alta-banka-licence-alta-banka-owner-gets-arrested",
+          "publisher": "BTA",
+          "published": "2026-10-31"
+        },
+        {
+          "title": "ALTA Bank Loses Its Licence: What Clients and Creditors Need to Know",
+          "url": "https://ceelegalmatters.com/countries/serbia/alta-bank-loses-its-licence-what-clients-and-creditors-need-to-know/",
+          "publisher": "CEE Legal Matters",
+          "published": "2026-11"
+        },
+        {
+          "title": "Alta banka ostala bez dozvole za rad, oglasila se Narodna banka Srbije",
+          "url": "https://biznis.kurir.rs/info-biz/10149285/alta-banka-ostala-bez-dozvole-za-rad-oglasila-se-narodna-banka-srbije",
+          "publisher": "Kurir",
+          "published": "2026-10-31"
+        },
+        {
+          "title": "Paragraf dnevne vesti",
+          "url": "https://www.paragraf.rs/dnevne-vesti/041126/041126-vest8.html",
+          "publisher": "Paragraf",
+          "published": "2026-11-04"
         }
       ]
     }
