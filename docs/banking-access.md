@@ -157,8 +157,10 @@ same `id` in one file are reported; the later one is kept.
    unverified: never drawn, never scored. The publisher's country is shown,
    which is not necessarily where the event is.
    A request that fails on the network, or that GDELT answers with 429
-   (one request every 5 s per address) or 5xx, is tried twice more, 6 and
-   15 seconds apart; after that the next try is 15 minutes later.
+   (one request every 5 s per address) or 5xx, is tried twice more, 20 and
+   60 seconds apart; after that the next try is 15 minutes later. Requests
+   go over IPv4 only (as for FIRMS), because Node's address auto-selection
+   timed out connecting to GDELT.
 2. A reviewer reads the sources, then adds an event to the operator file (or,
    for the shared set, to the bundled file in a pull request), with the
    reach only when a source gives it, and `affected_basis` saying how.

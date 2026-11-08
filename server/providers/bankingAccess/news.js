@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import https from 'node:https';
+import { Readable } from 'node:stream';
 import { readResponseJsonCapped } from '../common/http.js';
 
 // News candidates for the banking-access layer (fork feature): articles from
@@ -19,7 +21,49 @@ const RETRY_MS = 15 * 60_000;
 const TIMEOUT_MS = 45_000;
 // GDELT allows one request every 5 s per address and answers more with 429;
 // a transient network error or 429 is retried after these pauses.
-const ATTEMPT_PAUSES_MS = Object.freeze([6_000, 15_000]);
+// On 2026-11-08 it answered 429 to retries 6 and 15 s apart, so the pauses
+// are longer.
+const ATTEMPT_PAUSES_MS = Object.freeze([20_000, 60_000]);
+
+/**
+ * GET over IPv4 only, as server/providers/firms.js does (#68): Node's
+ * address auto-selection gives each address a short connect timeout, and
+ * connecting to GDELT from here took longer (UND_ERR_CONNECT_TIMEOUT).
+ * Redirects are not followed. Resolves to a fetch-style Response.
+ */
+export function getIpv4(url, { signal, headers = {} } = {}) {
+  return new Promise((resolve, reject) => {
+    const request = https.request(
+      url,
+      {
+        method: 'GET',
+        signal,
+        headers,
+        family: 4,
+        autoSelectFamily: false,
+        agent: false,
+      },
+      (response) => {
+        try {
+          const status = response.statusCode || 500;
+          if (status < 200 || status > 599)
+            throw new Error(`GDELT answered ${status}`);
+          resolve(
+            new Response(Readable.toWeb(response), {
+              status,
+              statusText: response.statusMessage || '',
+            }),
+          );
+        } catch (error) {
+          response.destroy();
+          reject(error);
+        }
+      },
+    );
+    request.on('error', reject);
+    request.end();
+  });
+}
 const MAX_BYTES = 2 * 1024 * 1024;
 const MAX_CANDIDATES = 40;
 
@@ -96,7 +140,7 @@ export function candidatesFromArticles(
 /** The candidate store: `snapshot()` never waits on the network. */
 export function createNewsCandidates({
   enabled = false,
-  fetchImpl = (...args) => globalThis.fetch(...args),
+  fetchImpl = getIpv4,
   now = () => Date.now(),
   warn = (...args) => console.warn(...args),
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
