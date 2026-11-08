@@ -216,6 +216,12 @@ test('news candidates: http links only, one per headline, known URLs dropped', (
     ['https://d.example/5', 'https://a.example/1'],
   );
   assert.equal(out[0].title, 'Capital controls imposed');
+  assert.match(out[0].id, /^news:d\.example:[0-9a-f]{16}$/);
+  // The id follows the URL, not the headline.
+  const again = candidatesFromArticles({
+    articles: [{ url: 'https://d.example/5', title: 'Headline changed' }],
+  });
+  assert.equal(again[0].id, out[0].id);
   assert.equal(out[1].seenAt, Date.UTC(2026, 10, 8, 9, 30));
   assert.match(newsUrl(), /api\.gdeltproject\.org\/api\/v2\/doc\/doc\?/);
 });
@@ -263,6 +269,30 @@ test('news is fetched only when enabled, at most hourly, and failures back off',
   clock += 10 * 60_000;
   news.snapshot();
   assert.equal(calls, 4, 'backs off 15 minutes after a failure');
+});
+
+test('a timeout is retried too', async () => {
+  let calls = 0;
+  const news = createNewsCandidates({
+    enabled: true,
+    fetchImpl: async () => {
+      calls++;
+      if (calls < 3)
+        throw new DOMException(
+          'The operation was aborted due to timeout',
+          'TimeoutError',
+        );
+      return new Response(JSON.stringify({ articles: [] }));
+    },
+    now: () => NOW,
+    warn() {},
+    sleep: async () => {},
+  });
+  news.snapshot();
+  await news.settle();
+  assert.equal(calls, 3);
+  assert.equal(news.snapshot().error, null);
+  assert.ok(news.snapshot().fetchedAt);
 });
 
 test('a transient failure is retried and recovers; a 404 is not retried', async () => {
