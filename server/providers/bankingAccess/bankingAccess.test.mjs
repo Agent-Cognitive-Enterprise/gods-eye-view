@@ -262,7 +262,7 @@ test('news is fetched only when enabled, at most hourly, and failures back off',
   news.snapshot();
   await news.settle();
   assert.equal(calls, 4, 'a 429 is tried three times');
-  assert.deepEqual(pauses, [6_000, 15_000], 'spaced past the 5 s limit');
+  assert.deepEqual(pauses, [20_000, 60_000], 'spaced well past the 5 s limit');
   const after = news.snapshot();
   assert.equal(after.error, 'news_unavailable');
   assert.equal(after.candidates.length, 1, 'the last list stays');
