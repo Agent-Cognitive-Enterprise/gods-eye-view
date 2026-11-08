@@ -31,6 +31,7 @@ import { createApplicationGnssIntegrity } from './layers/gnss.js';
 import { createApplicationTrafficDensity } from './layers/airSeaTraffic.js';
 import { createApplicationGhostMaps } from './layers/ghostMaps.js';
 import { createApplicationDroneAirspace } from './layers/droneAirspace.js';
+import { createApplicationBankingAccess } from './layers/bankingAccess.js';
 import { createApplicationWildlifeSightings } from './layers/wildlifeSightings.js';
 import { createApplicationCables } from './layers/submarineCables.js';
 import { createOsmOverlayLayers } from '../data/osmOverlays.js';
@@ -52,6 +53,8 @@ export const LOCAL_ONLY_LAYER_METADATA = Object.freeze([
   Object.freeze({ id: 'warning-areas', disposition: 'local-only' }),
   Object.freeze({ id: 'traffic-anomalies', disposition: 'local-only' }),
   Object.freeze({ id: 'gnss-ship-regions', disposition: 'local-only' }),
+  // Fork: banking-access disruptions, remembered per browser, not in links.
+  Object.freeze({ id: 'banking-access', disposition: 'local-only' }),
   // Voice search results belong to this session, like a receiver to this machine.
   Object.freeze({ id: 'osm-places', disposition: 'local-only' }),
 ]);
@@ -146,6 +149,7 @@ export function createApplicationCatalog({
         createApplicationDroneAirspace({
           source: sources['drone-airspace'],
         }),
+        createApplicationBankingAccess({ source: sources['banking-access'] }),
         createApplicationWildlifeSightings({
           source: sources['wildlife-sightings'],
           groundFloor: surface.groundFloor,
