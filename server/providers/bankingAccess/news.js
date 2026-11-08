@@ -14,7 +14,11 @@ export const NEWS_QUERY =
 const API = 'https://api.gdeltproject.org/api/v2/doc/doc';
 const REFRESH_MS = 3600_000;
 const RETRY_MS = 15 * 60_000;
-const TIMEOUT_MS = 20_000;
+// A full query took about 15 s on 2026-11-08.
+const TIMEOUT_MS = 45_000;
+// GDELT allows one request every 5 s per address and answers more with 429;
+// a transient network error or 429 is retried after these pauses.
+const ATTEMPT_PAUSES_MS = Object.freeze([6_000, 15_000]);
 const MAX_BYTES = 2 * 1024 * 1024;
 const MAX_CANDIDATES = 40;
 
@@ -93,6 +97,7 @@ export function createNewsCandidates({
   fetchImpl = (...args) => globalThis.fetch(...args),
   now = () => Date.now(),
   warn = (...args) => console.warn(...args),
+  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 } = {}) {
   let candidates = [];
   let fetchedAt = null;
@@ -100,18 +105,46 @@ export function createNewsCandidates({
   let nextAt = 0;
   let running = null;
 
-  async function refresh(knownUrls) {
-    const response = await fetchImpl(newsUrl(), {
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-      redirect: 'error',
-      headers: {
-        Accept: 'application/json',
-        'User-Agent': 'gods-eye-view-banking-access/1.0',
-      },
-    });
+  // One request; a retryable failure is marked so refresh tries again.
+  async function attempt() {
+    let response;
+    try {
+      response = await fetchImpl(newsUrl(), {
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+        redirect: 'error',
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': 'gods-eye-view-banking-access/1.0',
+        },
+      });
+    } catch (e) {
+      // undici says only "fetch failed"; the reason is in the cause.
+      const why = e?.cause?.code ?? e?.cause?.message ?? e?.name;
+      throw Object.assign(
+        new Error(`${e?.message ?? 'fetch failed'}${why ? ` (${why})` : ''}`),
+        { retryable: true },
+      );
+    }
     if (!response.ok) {
-      await response.body?.cancel();
-      throw new Error(`GDELT answered ${response.status}`);
+      await response.body?.cancel?.();
+      throw Object.assign(new Error(`GDELT answered ${response.status}`), {
+        retryable: response.status === 429 || response.status >= 500,
+      });
+    }
+    return response;
+  }
+
+  async function refresh(knownUrls) {
+    let response;
+    for (let i = 0; ; i++) {
+      try {
+        response = await attempt();
+        break;
+      } catch (e) {
+        if (!e.retryable || i >= ATTEMPT_PAUSES_MS.length) throw e;
+        warn(`[banking-access] news candidates: ${e.message}; retrying`);
+        await sleep(ATTEMPT_PAUSES_MS[i]);
+      }
     }
     const payload = await readResponseJsonCapped(response, MAX_BYTES);
     candidates = candidatesFromArticles(payload, { knownUrls });
