@@ -3540,7 +3540,6 @@
   "Countries: {count}": "国：{count}",
   "Active events: {count}": "進行中の事象：{count}",
   "Entries to fix: {count}": "修正が必要な項目：{count}",
-  "news leads unavailable": "ニュースの手がかりを取得できません",
   "News leads: {count}": "ニュースの手がかり：{count}",
   "PAST": "過去",
   "Banking access monitor unavailable": "銀行アクセス監視を利用できません",
@@ -3572,5 +3571,8 @@
   "1 wk/s": "1週間/秒",
   "Play speed": "再生速度",
   "Scroll or pinch to zoom, drag to move along · double-click to see it all": "スクロールまたはピンチでズーム、ドラッグで移動 · ダブルクリックで全体表示",
-  "1 min/s": "1分/秒"
+  "1 min/s": "1分/秒",
+  "News leads DEGRADED: next try {time}": "ニュースの手がかり：劣化中、次の試行 {time}",
+  "News leads: starting": "ニュースの手がかり：開始中",
+  "News leads: {count}, list from {time}": "ニュースの手がかり：{count}（{time}時点の一覧）"
 }

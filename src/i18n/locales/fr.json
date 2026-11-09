@@ -3700,7 +3700,6 @@
   "Countries: {count}": "Pays : {count}",
   "Active events: {count}": "Événements actifs : {count}",
   "Entries to fix: {count}": "Entrées à corriger : {count}",
-  "news leads unavailable": "pistes d’actualité indisponibles",
   "News leads: {count}": "Pistes d’actualité : {count}",
   "PAST": "PASSÉ",
   "Banking access monitor unavailable": "Suivi de l’accès bancaire indisponible",
@@ -3732,5 +3731,8 @@
   "1 wk/s": "1 sem/s",
   "Play speed": "Vitesse de lecture",
   "Scroll or pinch to zoom, drag to move along · double-click to see it all": "Faites défiler ou pincez pour zoomer, glissez pour vous déplacer · double-clic pour tout voir",
-  "1 min/s": "1 min/s"
+  "1 min/s": "1 min/s",
+  "News leads DEGRADED: next try {time}": "Pistes d’actualité DÉGRADÉES : prochain essai {time}",
+  "News leads: starting": "Pistes d’actualité : démarrage",
+  "News leads: {count}, list from {time}": "Pistes d’actualité : {count}, liste du {time}"
 }

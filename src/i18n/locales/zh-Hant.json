@@ -3540,7 +3540,6 @@
   "Countries: {count}": "國家：{count}",
   "Active events: {count}": "進行中的事件：{count}",
   "Entries to fix: {count}": "待修正條目：{count}",
-  "news leads unavailable": "新聞線索無法使用",
   "News leads: {count}": "新聞線索：{count}",
   "PAST": "過去",
   "Banking access monitor unavailable": "銀行存取監測無法使用",
@@ -3572,5 +3571,8 @@
   "1 wk/s": "1 週/秒",
   "Play speed": "播放速度",
   "Scroll or pinch to zoom, drag to move along · double-click to see it all": "捲動或雙指縮放，拖曳以移動 · 按兩下查看全部",
-  "1 min/s": "1 分鐘/秒"
+  "1 min/s": "1 分鐘/秒",
+  "News leads DEGRADED: next try {time}": "新聞線索：已降級，下次嘗試 {time}",
+  "News leads: starting": "新聞線索：正在啟動",
+  "News leads: {count}, list from {time}": "新聞線索：{count}，列表時間 {time}"
 }

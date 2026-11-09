@@ -3940,7 +3940,6 @@
   "Countries: {count}": "الدول: {count}",
   "Active events: {count}": "الأحداث الجارية: {count}",
   "Entries to fix: {count}": "إدخالات تحتاج إلى تصحيح: {count}",
-  "news leads unavailable": "خيوط الأخبار غير متاحة",
   "News leads: {count}": "خيوط الأخبار: {count}",
   "PAST": "سابق",
   "Banking access monitor unavailable": "مراقبة الوصول المصرفي غير متاحة",
@@ -3972,5 +3971,8 @@
   "1 wk/s": "أسبوع/ث",
   "Play speed": "سرعة التشغيل",
   "Scroll or pinch to zoom, drag to move along · double-click to see it all": "مرّر أو اقرص للتكبير، واسحب للتنقل · انقر نقرًا مزدوجًا لرؤية الكل",
-  "1 min/s": "دقيقة/ث"
+  "1 min/s": "دقيقة/ث",
+  "News leads DEGRADED: next try {time}": "خيوط الأخبار: متدهورة، المحاولة التالية {time}",
+  "News leads: starting": "خيوط الأخبار: قيد البدء",
+  "News leads: {count}, list from {time}": "خيوط الأخبار: {count}، قائمة من {time}"
 }

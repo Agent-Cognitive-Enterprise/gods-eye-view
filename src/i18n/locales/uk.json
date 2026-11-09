@@ -3780,7 +3780,6 @@
   "Countries: {count}": "Країни: {count}",
   "Active events: {count}": "Активні події: {count}",
   "Entries to fix: {count}": "Записів до виправлення: {count}",
-  "news leads unavailable": "новинні зачіпки недоступні",
   "News leads: {count}": "Новинні зачіпки: {count}",
   "PAST": "МИНУЛЕ",
   "Banking access monitor unavailable": "Моніторинг доступу до банків недоступний",
@@ -3812,5 +3811,8 @@
   "1 wk/s": "1 тиж/с",
   "Play speed": "Швидкість відтворення",
   "Scroll or pinch to zoom, drag to move along · double-click to see it all": "Прокрутіть або зведіть пальці для масштабу, перетягніть для переміщення · подвійне клацання — показати все",
-  "1 min/s": "1 хв/с"
+  "1 min/s": "1 хв/с",
+  "News leads DEGRADED: next try {time}": "Новинні зачіпки: ЗБІЙ, наступна спроба {time}",
+  "News leads: starting": "Новинні зачіпки: завантаження",
+  "News leads: {count}, list from {time}": "Новинні зачіпки: {count}, список від {time}"
 }
