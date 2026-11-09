@@ -88,6 +88,8 @@ const PANEL_GROUPS = [
       'local-firms',
       'fire-perimeters',
       'gnss-integrity',
+      // Fork: banking-access disruptions.
+      'banking-access',
       's2-ghostmaps',
     ],
   },

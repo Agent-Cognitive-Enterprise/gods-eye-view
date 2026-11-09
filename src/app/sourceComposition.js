@@ -66,6 +66,7 @@ export const CATALOG_SOURCE_CONTRACTS = Object.freeze({
     ],
   ),
   's2-ghostmaps': contract(['s2-ghostmaps'], ['getCatalog', 'getFile']),
+  'banking-access': contract(['banking-access'], ['getSnapshot']),
   'drone-airspace': contract(['drone-airspace'], ['getSnapshot']),
   'wildlife-sightings': contract(['wildlife-sightings'], ['getSnapshot']),
   cables: contract(['telegeography-submarine-cables'], ['fetch']),
