@@ -3518,7 +3518,6 @@
   "Countries: {count}": "國家：{count}",
   "Active events: {count}": "進行中的事件：{count}",
   "Entries to fix: {count}": "待修正條目：{count}",
-  "news leads unavailable": "新聞線索無法使用",
   "News leads: {count}": "新聞線索：{count}",
   "PAST": "過去",
   "Banking access monitor unavailable": "銀行存取監測無法使用",
@@ -3545,5 +3544,8 @@
   "Close camera preview": "關閉攝影機預覽",
   "Refresh map still": "重新整理地圖靜態畫面",
   "The map still uses a separate request and may show a different moment.": "地圖靜態畫面使用獨立請求，顯示的時間可能不同。",
-  "Video plays from Québec 511, which sees your IP address.": "影片從 Québec 511 播放，Québec 511 會看到你的 IP 位址。"
+  "Video plays from Québec 511, which sees your IP address.": "影片從 Québec 511 播放，Québec 511 會看到你的 IP 位址。",
+  "News leads DEGRADED: next try {time}": "新聞線索：已降級，下次嘗試 {time}",
+  "News leads: starting": "新聞線索：正在啟動",
+  "News leads: {count}, list from {time}": "新聞線索：{count}，列表時間 {time}"
 }

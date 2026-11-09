@@ -3758,7 +3758,6 @@
   "Countries: {count}": "Країни: {count}",
   "Active events: {count}": "Активні події: {count}",
   "Entries to fix: {count}": "Записів до виправлення: {count}",
-  "news leads unavailable": "новинні зачіпки недоступні",
   "News leads: {count}": "Новинні зачіпки: {count}",
   "PAST": "МИНУЛЕ",
   "Banking access monitor unavailable": "Моніторинг доступу до банків недоступний",
@@ -3785,5 +3784,8 @@
   "Close camera preview": "Закрити перегляд камери",
   "Refresh map still": "Оновити кадр на карті",
   "The map still uses a separate request and may show a different moment.": "Кадр на карті запитується окремо та може показувати інший момент.",
-  "Video plays from Québec 511, which sees your IP address.": "Відео відтворюється з Québec 511, який бачить вашу IP-адресу."
+  "Video plays from Québec 511, which sees your IP address.": "Відео відтворюється з Québec 511, який бачить вашу IP-адресу.",
+  "News leads DEGRADED: next try {time}": "Новинні зачіпки: ЗБІЙ, наступна спроба {time}",
+  "News leads: starting": "Новинні зачіпки: завантаження",
+  "News leads: {count}, list from {time}": "Новинні зачіпки: {count}, список від {time}"
 }

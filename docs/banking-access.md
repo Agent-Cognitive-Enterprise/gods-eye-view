@@ -157,8 +157,17 @@ same `id` in one file are reported; the later one is kept.
    unverified: never drawn, never scored. The publisher's country is shown,
    which is not necessarily where the event is.
    A request that fails on the network, or that GDELT answers with 429
-   (one request every 5 s per address) or 5xx, is tried twice more, 20 and
-   60 seconds apart; after that the next try is 15 minutes later. Requests
+   (one request every 5 s per address) or 5xx, is tried at most twice more
+   within a refresh, with exponential backoff and jitter (about 15-30 s, then
+   30-60 s). After a failed refresh the next one waits 15 minutes, doubling
+   with each consecutive failure up to 4 hours, with jitter: a circuit
+   breaker. The route reports `news.status`: `ok`, `starting`, `stale` (the
+   last good list is over two hours old), `degraded`
+   (the last refresh failed) or `circuit_open` (three or more in a row),
+   with `consecutiveFailures`, `lastError`, `lastAttemptAt` and
+   `nextAttemptAt`. A degraded feed is shown as DEGRADED on the row, never as
+   zero leads; an answer without an articles list counts as a failure. The news fetch runs inside the banking route only; it never
+   holds up the early-warning engine or any other feed. Requests
    go over IPv4 only (as for FIRMS), because Node's address auto-selection
    timed out connecting to GDELT.
 2. A reviewer reads the sources, then adds an event to the operator file (or,

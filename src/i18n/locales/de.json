@@ -3598,7 +3598,6 @@
   "Countries: {count}": "Länder: {count}",
   "Active events: {count}": "Aktive Ereignisse: {count}",
   "Entries to fix: {count}": "Zu korrigierende Einträge: {count}",
-  "news leads unavailable": "Nachrichtenhinweise nicht verfügbar",
   "News leads: {count}": "Nachrichtenhinweise: {count}",
   "PAST": "VERGANGEN",
   "Banking access monitor unavailable": "Bankzugangs-Monitor nicht verfügbar",
@@ -3625,5 +3624,8 @@
   "Close camera preview": "Kameravorschau schließen",
   "Refresh map still": "Kartenstandbild aktualisieren",
   "The map still uses a separate request and may show a different moment.": "Das Kartenstandbild wird separat abgerufen und kann einen anderen Moment zeigen.",
-  "Video plays from Québec 511, which sees your IP address.": "Das Video wird von Québec 511 abgespielt, das Ihre IP-Adresse sieht."
+  "Video plays from Québec 511, which sees your IP address.": "Das Video wird von Québec 511 abgespielt, das Ihre IP-Adresse sieht.",
+  "News leads DEGRADED: next try {time}": "Nachrichtenhinweise GESTÖRT: nächster Versuch {time}",
+  "News leads: starting": "Nachrichtenhinweise: werden geladen",
+  "News leads: {count}, list from {time}": "Nachrichtenhinweise: {count}, Liste vom {time}"
 }

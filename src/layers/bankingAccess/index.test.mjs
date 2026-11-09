@@ -439,3 +439,38 @@ test('a systemic country with some reach unknown keeps the dash, in the systemic
   );
   assert.equal(entity.polyline.width.getValue(), 3);
 });
+
+test('a failed news fetch reads DEGRADED, never as zero leads', async () => {
+  const answer = {
+    ...ANSWER,
+    news: {
+      enabled: true,
+      status: 'circuit_open',
+      fetchedAt: null,
+      nextAttemptAt: Date.UTC(2026, 10, 9, 1, 30),
+      candidates: [],
+    },
+  };
+  const { layer, viewer } = setup({ answer });
+  layer.enable();
+  await layer.update(viewer);
+  const info = layer.getRowControls().info;
+  assert.match(info, /News leads DEGRADED: next try/);
+  assert.doesNotMatch(info, /News leads: 0/);
+});
+
+test('a stale list says how old it is', async () => {
+  const answer = {
+    ...ANSWER,
+    news: {
+      enabled: true,
+      status: 'stale',
+      fetchedAt: Date.UTC(2026, 10, 9, 0, 0),
+      candidates: [{ id: 'n1', title: 'x', url: 'https://a.example/1' }],
+    },
+  };
+  const { layer, viewer } = setup({ answer });
+  layer.enable();
+  await layer.update(viewer);
+  assert.match(layer.getRowControls().info, /News leads: 1, list from/);
+});

@@ -506,13 +506,32 @@ export function createBankingAccessLayer({
         }),
       );
     const news = _answer.news;
+    // A failed fetch is DEGRADED, never a quiet day with zero leads.
     if (news?.enabled)
       parts.push(
-        news.error
-          ? t('news leads unavailable')
-          : t('News leads: {count}', {
-              count: formatNumber(news.candidates?.length ?? 0),
-            }),
+        news.status === 'degraded' || news.status === 'circuit_open'
+          ? t('News leads DEGRADED: next try {time}', {
+              time: news.nextAttemptAt
+                ? formatDate(news.nextAttemptAt, {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })
+                : '—',
+            })
+          : news.status === 'starting' || news.fetchedAt == null
+            ? t('News leads: starting')
+            : news.status === 'stale'
+              ? t('News leads: {count}, list from {time}', {
+                  count: formatNumber(news.candidates?.length ?? 0),
+                  time: formatDate(news.fetchedAt, {
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  }),
+                })
+              : t('News leads: {count}', {
+                  count: formatNumber(news.candidates?.length ?? 0),
+                }),
       );
     return parts.join(' · ');
   }
