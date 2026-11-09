@@ -3723,5 +3723,14 @@
   "Affected: {share} of the population": "Afetados: {share} da população",
   "Systemic (border)": "Sistêmico (borda)",
   "Events may overlap: the range runs from the largest one to their sum": "Os eventos podem se sobrepor: a faixa vai do maior à soma deles",
-  "Not re-verified since {date}": "Não reverificado desde {date}"
+  "Not re-verified since {date}": "Não reverificado desde {date}",
+  "World time": "Hora do mundo",
+  "Back to live": "Voltar ao vivo",
+  "Live": "Ao vivo",
+  "1 h/s": "1 h/s",
+  "1 d/s": "1 d/s",
+  "1 wk/s": "1 sem/s",
+  "Play speed": "Velocidade de reprodução",
+  "Scroll or pinch to zoom, drag to move along · double-click to see it all": "Role ou faça pinça para ampliar, arraste para se mover · clique duplo para ver tudo",
+  "1 min/s": "1 min/s"
 }

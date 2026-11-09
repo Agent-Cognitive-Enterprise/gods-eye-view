@@ -3803,5 +3803,14 @@
   "Affected: {share} of the population": "Пострадали: {share} населения",
   "Systemic (border)": "Системный (граница)",
   "Events may overlap: the range runs from the largest one to their sum": "События могут пересекаться: диапазон — от крупнейшего до их суммы",
-  "Not re-verified since {date}": "Не перепроверялось с {date}"
+  "Not re-verified since {date}": "Не перепроверялось с {date}",
+  "World time": "Мировое время",
+  "Back to live": "Вернуться к прямому эфиру",
+  "Live": "Сейчас",
+  "1 h/s": "1 ч/с",
+  "1 d/s": "1 дн/с",
+  "1 wk/s": "1 нед/с",
+  "Play speed": "Скорость воспроизведения",
+  "Scroll or pinch to zoom, drag to move along · double-click to see it all": "Прокрутите или сведите пальцы для масштаба, перетащите для перемещения · двойной щелчок — показать всё",
+  "1 min/s": "1 мин/с"
 }

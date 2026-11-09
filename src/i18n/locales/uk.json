@@ -3803,5 +3803,14 @@
   "Affected: {share} of the population": "Уражено: {share} населення",
   "Systemic (border)": "Системний (межа)",
   "Events may overlap: the range runs from the largest one to their sum": "Події можуть перетинатися: діапазон — від найбільшої до їхньої суми",
-  "Not re-verified since {date}": "Не перевірялося повторно з {date}"
+  "Not re-verified since {date}": "Не перевірялося повторно з {date}",
+  "World time": "Світовий час",
+  "Back to live": "Повернутися до прямого ефіру",
+  "Live": "Зараз",
+  "1 h/s": "1 год/с",
+  "1 d/s": "1 дн/с",
+  "1 wk/s": "1 тиж/с",
+  "Play speed": "Швидкість відтворення",
+  "Scroll or pinch to zoom, drag to move along · double-click to see it all": "Прокрутіть або зведіть пальці для масштабу, перетягніть для переміщення · подвійне клацання — показати все",
+  "1 min/s": "1 хв/с"
 }

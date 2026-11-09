@@ -108,6 +108,7 @@
     "Landsat 8/9",
     "Latin",
     "Layout",
+    "Live",
     "London",
     "Los Angeles",
     "MIL",
@@ -235,6 +236,7 @@
   ],
   "es": [
     "1 H",
+    "1 min/s",
     "1090 MHz",
     "12 H",
     "15 MIN",
@@ -386,6 +388,7 @@
   "fr": [
     "% POPULATION",
     "1 H",
+    "1 min/s",
     "1090 MHz",
     "12 H",
     "15 MIN",
@@ -604,6 +607,7 @@
   ],
   "it": [
     "1 H",
+    "1 min/s",
     "1090 MHz",
     "12 H",
     "15 MIN",
@@ -861,6 +865,7 @@
   ],
   "pt": [
     "1 H",
+    "1 min/s",
     "1090 MHz",
     "12 H",
     "15 MIN",

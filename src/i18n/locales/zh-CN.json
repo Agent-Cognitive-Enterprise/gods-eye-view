@@ -3563,5 +3563,14 @@
   "Affected: {share} of the population": "受影响：占人口 {share}",
   "Systemic (border)": "系统性（边界）",
   "Events may overlap: the range runs from the largest one to their sum": "事件可能重叠：范围从最大的一个到它们的总和",
-  "Not re-verified since {date}": "自 {date} 起未再核实"
+  "Not re-verified since {date}": "自 {date} 起未再核实",
+  "World time": "世界时间",
+  "Back to live": "返回实时",
+  "Live": "实时",
+  "1 h/s": "1 小时/秒",
+  "1 d/s": "1 天/秒",
+  "1 wk/s": "1 周/秒",
+  "Play speed": "播放速度",
+  "Scroll or pinch to zoom, drag to move along · double-click to see it all": "滚动或双指缩放，拖动以移动 · 双击查看全部",
+  "1 min/s": "1 分钟/秒"
 }

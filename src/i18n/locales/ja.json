@@ -3563,5 +3563,14 @@
   "Affected: {share} of the population": "影響：人口の{share}",
   "Systemic (border)": "システミック（境界）",
   "Events may overlap: the range runs from the largest one to their sum": "事象が重なる可能性があります：範囲は最大の事象から合計までです",
-  "Not re-verified since {date}": "{date}以降再確認されていません"
+  "Not re-verified since {date}": "{date}以降再確認されていません",
+  "World time": "世界時刻",
+  "Back to live": "ライブに戻る",
+  "Live": "ライブ",
+  "1 h/s": "1時間/秒",
+  "1 d/s": "1日/秒",
+  "1 wk/s": "1週間/秒",
+  "Play speed": "再生速度",
+  "Scroll or pinch to zoom, drag to move along · double-click to see it all": "スクロールまたはピンチでズーム、ドラッグで移動 · ダブルクリックで全体表示",
+  "1 min/s": "1分/秒"
 }

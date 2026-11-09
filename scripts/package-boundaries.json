@@ -170,7 +170,11 @@
       "src/ui/stores/liveTv.js",
       "src/ui/liveTvChannels.js",
       "src/ui/liveTvPlayer.js",
-      "src/ui/surfaceKeyboard.js"
+      "src/ui/surfaceKeyboard.js",
+      "src/time/worldClock.js",
+      "src/ui/kit/UiIcon.vue",
+      "src/ui/stores/worldTime.js",
+      "src/ui/views/panels/WorldTimeline.vue"
     ],
     "external": ["vue", "pinia", "vue-i18n", "hls.js"]
   },
@@ -1204,7 +1208,8 @@
       "src/ui/views/panels/WildlifeSightingCard.vue",
       "src/ui/wildlifeSightingPlacement.js",
       "src/overlays/worldOverlayChrome.js",
-      "src/layers/wildlifeSightings/photoText.js"
+      "src/layers/wildlifeSightings/photoText.js",
+      "src/time/worldClock.js"
     ],
     "external": ["cesium", "vue", "pinia", "vue-i18n"]
   },
@@ -1417,7 +1422,9 @@
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
       "src/i18n/locales/zh-Hant.json",
-      "src/ui/unitLabels.js"
+      "src/ui/unitLabels.js",
+      "src/time/worldClock.js",
+      "src/time/julian.js"
     ],
     "external": ["cesium"]
   },
@@ -1474,7 +1481,9 @@
       "src/i18n/locales/ru.json",
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
-      "src/i18n/locales/zh-Hant.json"
+      "src/i18n/locales/zh-Hant.json",
+      "src/time/worldClock.js",
+      "src/time/julian.js"
     ],
     "external": ["cesium"]
   },
@@ -1663,7 +1672,8 @@
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
       "src/i18n/locales/zh-Hant.json",
-      "src/ui/unitLabels.js"
+      "src/ui/unitLabels.js",
+      "src/time/worldClock.js"
     ],
     "external": ["cesium", "satellite.js"]
   },
@@ -1704,7 +1714,8 @@
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
       "src/i18n/locales/zh-Hant.json",
-      "src/data/stableBillboardImages.js"
+      "src/data/stableBillboardImages.js",
+      "src/time/worldClock.js"
     ],
     "external": ["cesium"]
   },
@@ -2029,7 +2040,8 @@
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
       "src/i18n/locales/zh-Hant.json",
-      "src/layers/streetLevel/providers/mapillary/policy.js"
+      "src/layers/streetLevel/providers/mapillary/policy.js",
+      "src/time/worldClock.js"
     ],
     "external": ["cesium", "pbf", "@mapbox/vector-tile", "mapillary-js"]
   },
@@ -3395,7 +3407,10 @@
       "src/ui/wildlifeSightingPlacement.js",
       "src/overlays/worldOverlayChrome.js",
       "src/layers/wildlifeSightings/photoText.js",
-      "src/layers/wildlifeSightings/performance.js"
+      "src/layers/wildlifeSightings/performance.js",
+      "src/time/viewerClock.js",
+      "src/time/worldClock.js",
+      "src/time/julian.js"
     ],
     "external": [
       "hls.js",
@@ -4062,7 +4077,9 @@
       "src/layers/wildlifeSightings/sprites.js",
       "src/overlays/worldOverlayChrome.js",
       "src/layers/wildlifeSightings/photoText.js",
-      "src/layers/wildlifeSightings/performance.js"
+      "src/layers/wildlifeSightings/performance.js",
+      "src/time/worldClock.js",
+      "src/time/julian.js"
     ],
     "external": [
       "hls.js",
@@ -4216,7 +4233,8 @@
       "src/i18n/locales/ru.json",
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
-      "src/i18n/locales/zh-Hant.json"
+      "src/i18n/locales/zh-Hant.json",
+      "src/time/worldClock.js"
     ],
     "external": []
   },
@@ -4762,7 +4780,8 @@
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
       "src/i18n/locales/zh-Hant.json",
-      "src/overlays/worldOverlayChrome.js"
+      "src/overlays/worldOverlayChrome.js",
+      "src/time/worldClock.js"
     ],
     "external": ["cesium", "egm96-universal", "pbf"]
   },
@@ -4815,7 +4834,8 @@
       "src/i18n/locales/ru.json",
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
-      "src/i18n/locales/zh-Hant.json"
+      "src/i18n/locales/zh-Hant.json",
+      "src/time/worldClock.js"
     ],
     "external": ["cesium", "pbf"]
   },
@@ -4937,7 +4957,8 @@
       "src/data/detectionPolicy.js",
       "src/scopeMaskPolicy.js",
       "src/i18n/marker.js",
-      "src/visualStylePolicy.js"
+      "src/visualStylePolicy.js",
+      "src/time/worldClock.js"
     ],
     "external": []
   },
@@ -5306,6 +5327,11 @@
       "src/layers/wildlifeSightings/gridViewport.js",
       "src/layers/wildlifeSightings/performance.js"
     ],
+    "external": []
+  },
+  "time": {
+    "exports": ["./time"],
+    "modules": ["src/time/worldClock.js"],
     "external": []
   }
 }
