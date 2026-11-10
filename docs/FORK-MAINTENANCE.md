@@ -60,15 +60,15 @@ fork edits are the merge surface; keep these edits additive and small:
 | `src/ui/panelAccordion.js`, `src/ui/panelChrome.js`                                          | FEEDS and FAST INTELLIGENCE are companions, the one exception to the one-panel rule.                                       |
 | `src/ui/stores/panels.js`, `src/ui/PanelRailView.vue`, `src/ui/kit/UiRail.vue`               | The rail can show more than one item open.                                                                                 |
 | `server/providers/aircraft/opensky.js`, `adsb-lol.js`                                        | One `publishTrafficSnapshot()` call after each cached snapshot (air/sea).                                                  |
-| `src/app/constructCatalog.js`, `src/ui/layerPanel.js`, `src/ui/layerNames.js`                | The Air & Sea and Banking Access layers, local-only metadata, groups.                                                      |
-| `src/sources/reference.js`, `src/app/sourceComposition.js`, `src/voice/layerManifest.js`     | `air-sea` and `banking-access` contracts; the five layers listed voice-off.                                                |
-| `src/creditAttribution.test.mjs`, layer-count tests                                          | Vetted dock-hidden credit selectors; catalog size 43.                                                                      |
+| `src/app/constructCatalog.js`, `src/ui/layerPanel.js`, `src/ui/layerNames.js`                | The five Air & Sea layers and Banking Access, local-only metadata, groups.                                                 |
+| `src/sources/reference.js`, `src/app/sourceComposition.js`, `src/voice/layerManifest.js`     | `air-sea` and `banking-access` contracts; the six layers listed voice-off.                                                 |
+| `src/creditAttribution.test.mjs`, layer-count tests                                          | Vetted dock-hidden credit selectors; catalog size 44.                                                                      |
 | `src/ui/views/ContextView.vue`, `style.css`                                                  | AUTOPILOT panel and stylesheet import.                                                                                     |
 | `src/voice/commands.js`, `src/voice/providerCapabilities.js`, `src/ui/views/panels/VoiceControl.vue` | Local voice provider entry and translated label.                                                                   |
 | `scripts/package-boundaries.json`                                                            | Owned-module entries for the new modules.                                                                                  |
 | `src/i18n/locales/*.json`, `src/i18n/same-as-english.json`                                   | Added strings (append-only).                                                                                               |
 | `src/data/dataCredits.js`, `DATA_SOURCES.md`, `.env.example`                                 | One credit entry, source rows and notes, commented settings.                                                               |
-| `server/providers/vessels/ais-live.js`                                                       | One condition: the machine-wide AIS lease in `server/providers/isolation.js`.                                              |
+| `server/providers/vessels/ais-live.js`                                                       | The AIS lease (`isolation.js`); ingest is wrapped by `tapRegionalAisIngest`.                                               |
 | `README.md`                                                                                  | One line at the top linking `docs/AUTOPILOT.md`; on a conflict, keep upstream, re-add it.                                  |
 
 The merge check flags conflicts and both-sides changes in these areas

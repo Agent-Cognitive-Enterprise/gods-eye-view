@@ -21,6 +21,7 @@ import { lifecycleAt } from './lifecycle.js';
 import { ruleSeverity, scoreEvent, verificationOf } from './scoring.js';
 import {
   CATEGORY_POLICY,
+  isAdvisorySubtype,
   isPostsOnly,
   isPushReport,
   isSocialOnly,
@@ -459,6 +460,8 @@ export function createIntelEngine({ store, now, settings = {} }) {
       camera_eligible:
         enabled &&
         !postsHeld &&
+        // Fork: an advisory may be a tour stop, never an alert.
+        !isAdvisorySubtype(event.subtype) &&
         life.focus_eligible &&
         score.confidence >= (config.minimumCameraConfidence ?? 0) &&
         (event.location.lat !== null || event.location.region_code !== null),

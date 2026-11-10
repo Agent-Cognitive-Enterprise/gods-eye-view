@@ -25,6 +25,8 @@ export function layersForEvent(event) {
     return ['traffic-anomalies', 'air-traffic'];
   if (event.subtype === 'sea_traffic_anomaly')
     return ['traffic-anomalies', 'sea-traffic'];
+  if (event.subtype === 'possible_navigation_integrity_anomaly')
+    return ['gnss-ship-regions'];
   return [];
 }
 
