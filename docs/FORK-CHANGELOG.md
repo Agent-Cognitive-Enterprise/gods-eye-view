@@ -7,6 +7,39 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **Regional GNSS screen for ships (opt-in, `GEV_GNSS_REGIONAL=1`).** Reads the
+  vessel positions the one AISStream connection already receives and reports a
+  region of about 50 km when three or more ships there jumped implausibly to the
+  same distant area within 30 minutes: `GET /api/airsea/gnss-regions`. With
+  `GEV_GNSS_REGIONAL_AUTOPILOT=1` as well, each region is a low-severity analyst
+  record for the Autopilot that never merges with other events and never moves
+  the camera on its own (not as an alert, not as a tour stop); without it the
+  screen only observes. No vessel
+  identities, positions or target locations leave it, a feed that is not
+  healthy reports uncertain coverage rather than a clear sea, and nothing is
+  stored. It is an AIS anomaly screen, not proof of spoofing.
+  - Prepared outside this repo, then redesigned after five adversarial reviews
+    and an external one.
+  - Each report is plausible, implausible or unknown. Speed limits depend on
+    ship type.
+  - A vessel's credible history is a trusted segment kept for 24 hours.
+    Anything it cannot explain is quarantined, and an episode ends only with
+    an explicit recovery away from the false position.
+  - AIS silence is never evidence.
+  - A Natural Earth land grid adds on-land and water-route checks.
+  - Feed faults never vote: corrupted position fields (seen in live data),
+    stale repeats and shared MMSIs.
+  - Checked on nine days of Danish Maritime Authority AIS. It reported the
+    documented July 2025 Baltic spoofing from 30 minutes into the surge, with
+    regions where the ships were. It reported nothing on the July 2019 and
+    November 2026 control days, or on two March 2025 days around a reported
+    event. Ships first seen where spoofed positions were landing do not
+    vote; regions whose ships are trusted where spoofs landed are marked and
+    kept from the Autopilot.
+    Known limits, including a restart during a spoof, are documented.
+
+  See `docs/air-sea-data-providers.md`.
+
 - **Upstream sync to 6e4da23c.** Brings the Wildlife Sightings layer
   (iNaturalist and Acartia), Rio de Janeiro buses and BRT, traffic Lines and
   Dots toggles, Cockpit entry with only the ridden aircraft's layer, cyclone

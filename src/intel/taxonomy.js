@@ -229,6 +229,17 @@ export const SCORE_WEIGHTS = Object.freeze({
 });
 
 export const isCategory = (value) => CATEGORIES.includes(value);
+
+/**
+ * Fork: advisory subtypes. Unverified, machine-derived screens (the regional
+ * AIS GNSS screen) are shown on the map and in the event list, but they never
+ * join another event, so they cannot corroborate one, and never move the
+ * camera on their own: not as an alert, not as a tour stop.
+ */
+export const ADVISORY_SUBTYPES = Object.freeze(
+  new Set(['possible_navigation_integrity_anomaly']),
+);
+export const isAdvisorySubtype = (subtype) => ADVISORY_SUBTYPES.has(subtype);
 export const isSourceType = (value) => SOURCE_TYPES.includes(value);
 export const isVerification = (value) => VERIFICATION_STATES.includes(value);
 export const isPrecision = (value) => LOCATION_PRECISIONS.includes(value);
