@@ -42,6 +42,12 @@ const vOwnedValue = {
 // "5 minutes" in the UI language, with the count's plural form ("15 دقيقة").
 const minutesLabel = (count) =>
   formatNumber(count, { style: 'unit', unit: 'minute', unitDisplay: 'long' });
+// "Local" is also the News panel's local-news tab; the voice provider (on
+// this computer) has its own entry.
+const providerLabel = (option) =>
+  option.value === 'local'
+    ? t('Local', { context: 'voice provider' })
+    : t(option.label);
 const optional = (value) => (value == null ? undefined : String(value));
 // The root's machine-state attributes, which the dock and theme CSS select on.
 const rootData = (root) => ({
@@ -69,7 +75,7 @@ const frameStyle = (panel) => ({
       <span class="gev-active-border" aria-hidden="true"></span>
       <label v-if="!view.panel" id="gev-voice-provider-field" class="gev-voice-provider-field" :hidden="view.provider.hidden">
         <span>{{ t('Voice provider') }}</span>
-        <UiSelect id="gev-voice-provider" class="gev-field" :aria-label="t('Voice provider')" :title="view.provider.title" :model-value="view.provider.value" @update:model-value="emit('provider-change', $event)"><option v-for="option in view.provider.options" :key="option.value" :value="option.value">{{ t(option.label) }}</option></UiSelect>
+        <UiSelect id="gev-voice-provider" class="gev-field" :aria-label="t('Voice provider')" :title="view.provider.title" :model-value="view.provider.value" @update:model-value="emit('provider-change', $event)"><option v-for="option in view.provider.options" :key="option.value" :value="option.value">{{ providerLabel(option) }}</option></UiSelect>
       </label>
       <div class="gev-voice-heading">
         <div class="gev-voice-kicker">{{ t('AI AGENT') }}</div>

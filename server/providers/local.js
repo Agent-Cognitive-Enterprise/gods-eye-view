@@ -28,12 +28,14 @@ import { weatherProxy } from './weather.js';
 import { firePerimetersProxy } from './firePerimeters.js';
 import { gnssIntegrityProxy } from './gnssIntegrity.js';
 import { createGhostMapsWatcher, ghostMapsProxy } from './ghostMaps.js';
+import { shipwrecksProxy } from './shipwrecks.js';
 import { intelProxy } from './intel/index.js';
 import { airSeaProxy } from './airsea/index.js';
 import { bankingAccessProxy } from './bankingAccess/index.js';
 import { createAirSeaHub } from './airsea/signals.js';
 import { localVoiceProxy } from './localVoice/index.js';
 import { droneAirspaceProxy } from './droneAirspace.js';
+import { newsProxy } from './news.js';
 import { inaturalistProxy } from './inaturalist/observations.js';
 import { acartiaProxy } from './acartia.js';
 import { cycloneProxy } from './cyclones.js';
@@ -95,11 +97,13 @@ function localProviderPlugins({
     firePerimetersProxy(),
     gnssIntegrityProxy(),
     ghostMapsProxy({ watcher: ghostMapsWatcher }),
+    shipwrecksProxy(),
     intelProxy({ ghostMapsWatcher, airSeaHub }),
     airSeaProxy({ hub: airSeaHub }),
     bankingAccessProxy(),
     localVoiceProxy(),
     droneAirspaceProxy(),
+    newsProxy(),
     inaturalistProxy(),
     acartiaProxy(),
     keySetupEndpoint(),
