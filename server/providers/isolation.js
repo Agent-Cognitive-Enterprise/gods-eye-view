@@ -19,6 +19,10 @@ export const SHARED_SECRETS = Object.freeze([
   'OPENSKY_CLIENT_ID',
   'OPENSKY_CLIENT_SECRET',
   'OPENSKY_CREDENTIALS_FILE',
+  // News keys with a daily allowance counted per process: a staging server
+  // would spend the live instance's share.
+  'WORLDNEWSAPI_KEY',
+  'LIVEUAMAP_API_KEY',
 ]);
 
 /** Ports of the live instances and their model; a staging server may not take them. */

@@ -128,7 +128,7 @@ const frameStyle = (panel) => ({
           <section id="gev-voice-settings-panel" role="tabpanel" aria-labelledby="gev-voice-settings-tab" :hidden="view.voicePanel.settingsHidden">
             <label id="gev-voice-provider-field" class="gev-voice-provider-field" :hidden="view.provider.hidden">
               <span>{{ t('AI Provider') }}</span>
-              <UiSelect id="gev-voice-provider" class="gev-field" :aria-label="t('AI Provider')" :title="view.provider.title" :model-value="view.provider.value" @update:model-value="emit('provider-change', $event)"><option v-for="option in view.provider.options" :key="option.value" :value="option.value">{{ option.label }}</option></UiSelect>
+              <UiSelect id="gev-voice-provider" class="gev-field" :aria-label="t('AI Provider')" :title="view.provider.title" :model-value="view.provider.value" @update:model-value="emit('provider-change', $event)"><option v-for="option in view.provider.options" :key="option.value" :value="option.value">{{ providerLabel(option) }}</option></UiSelect>
             </label>
             <p class="gev-voice-settings-note">{{ t('The selected AI provider is shared by voice and chat.') }}</p>
             <div id="gev-settings-chat">

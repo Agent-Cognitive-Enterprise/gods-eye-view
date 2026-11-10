@@ -18,11 +18,20 @@ const safe = { root: 'C:/stage', port: 4178, tripwire: false, envFiles: {} };
 
 test('an isolated environment has no shared credential, and .env cannot fill one', () => {
   const env = isolatedEnvironment(
-    { AISSTREAM_API_KEY: 'real', OPENSKY_CLIENT_SECRET: 'real', PATH: 'p' },
+    {
+      AISSTREAM_API_KEY: 'real',
+      OPENSKY_CLIENT_SECRET: 'real',
+      WORLDNEWSAPI_KEY: 'real',
+      LIVEUAMAP_API_KEY: 'real',
+      PATH: 'p',
+    },
     { port: 4178, stateDir: 'C:/stage/state' },
   );
   for (const name of SHARED_SECRETS)
     assert.equal(env[name], '', `${name} is empty, not undefined`);
+  // The paid news keys have a per-process daily allowance.
+  assert.ok(SHARED_SECRETS.includes('WORLDNEWSAPI_KEY'));
+  assert.ok(SHARED_SECRETS.includes('LIVEUAMAP_API_KEY'));
   assert.equal(env.PATH, 'p');
   assert.equal(
     isolatedEnvironment(
