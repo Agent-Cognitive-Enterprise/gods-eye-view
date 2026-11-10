@@ -40,6 +40,7 @@ export const LAYER_NAME_KEYS = Object.freeze({
   'warning-areas': msg('Warning Areas'),
   'traffic-anomalies': msg('Traffic Anomalies'),
   'gnss-ship-regions': msg('Ship GNSS Screen'),
+  'banking-access': msg('Banking Access'),
   'drone-airspace': msg('Prohibited & Restricted Airspace'),
   'wildlife-sightings': msg('Wildlife Sightings'),
   's2-ghostmaps': msg('S2 GhostMaps'),

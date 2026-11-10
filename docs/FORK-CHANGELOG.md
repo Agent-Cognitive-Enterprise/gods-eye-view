@@ -48,6 +48,19 @@ number there.
 
   See `docs/air-sea-data-providers.md`.
 
+- **Banking Access layer.** Countries where people are cut off from their
+  money, in the Events group: light amber to dark red by the share of the
+  population affected (or, in PEOPLE mode, the number of people), weighted by
+  severity, duration and confidence. A resolved event fades over five days,
+  then shows only in HISTORY. The fill pattern says the kind of disruption:
+  solid for bank failure or frozen deposits, stripes for a technical outage,
+  a check for withdrawal limits or capital controls. An event without a known
+  reach is an outline only. Clicking a country shows its card. Events are
+  reviewed by hand, with their sources, in a bundled file plus an optional
+  operator file (`GEV_BANKING_ACCESS_EVENTS`); optional news leads from GDELT
+  (`GEV_BANKING_NEWS=1`) are listed for review, never drawn. Population from
+  a bundled World Bank snapshot. See `docs/banking-access.md`.
+
 - **Upstream sync to 6e4da23c.** Brings the Wildlife Sightings layer
   (iNaturalist and Acartia), Rio de Janeiro buses and BRT, traffic Lines and
   Dots toggles, Cockpit entry with only the ridden aircraft's layer, cyclone

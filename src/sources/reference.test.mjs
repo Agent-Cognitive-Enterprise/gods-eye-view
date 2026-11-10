@@ -21,8 +21,11 @@ test('reference factories retain compatibility without starting acquisition or s
     'cables',
     'gnss-integrity',
     'air-sea',
+    'banking-access',
   ]);
   assert.notEqual(first['air-sea'], second['air-sea']);
+  assert.notEqual(first['banking-access'], second['banking-access']);
+  assert.equal(typeof first['banking-access'].getSnapshot, 'function');
   assert.equal(typeof first['air-sea'].getDensity, 'function');
   assert.notEqual(first.earthquakes, second.earthquakes);
   assert.notEqual(first['air-quality'], second['air-quality']);
