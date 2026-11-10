@@ -1503,8 +1503,11 @@ export function createRegionalGnssDetector({
         const firstAt = Math.min(...coherent.map((v) => v.firstAt));
         const lastAt = Math.max(...coherent.map((v) => v.at));
         // The same incident keeps its id while its cells overlap and its false
-        // positions still agree, however its membership changes; a new one is
-        // named by its seed, its target focus and its start.
+        // positions still agree, however its membership changes. A new one gets
+        // a random id: an id built from its cells, target focus or start would
+        // publish where the false positions landed (the seed and start can be
+        // read from the area and times, so even a hash of them could be
+        // reversed over the few hundred thousand target cells).
         let regionId = null;
         for (const [known, incident] of incidents)
           if (
@@ -1516,7 +1519,7 @@ export function createRegionalGnssDetector({
             regionId = known;
             break;
           }
-        regionId ??= `regional-navigation:${grid.label}:${cell}:${focus}:${Math.floor(firstAt / 60_000)}`;
+        regionId ??= `regional-navigation:${globalThis.crypto.randomUUID()}`;
         claimed.add(regionId);
         const incident = incidents.get(regionId) ?? {
           firstSeenAt: firstAt,
