@@ -196,7 +196,7 @@ where a ship could not have travelled, rather than prove where it is.
     targets have two ids. It
     lasts while fresh votes support it and ends 30 minutes after the last.
     Ended regions stay in `recentIncidents` for 24 hours, as history, never as
-    alerts.
+    alerts, with their last `sourceLocation`.
   - The screen uses the H3 cells; the 1° grid remains in the code for
     comparison (`grid: 'degree'`), but its landing zones are whole degree
     cells, so there it finds much less.
@@ -255,6 +255,20 @@ unconfirmed` and vessel counts, including how many false positions were on
   `unconfigured`. Neither means the sea is clear. AISStream's coverage of the
   Gulf, Hormuz and the Gulf of Oman is close to none: on 6 November 2026 the
   running instance held 13 vessels in that whole area.
+- **Map (Ship GNSS Screen layer).** In the Air & Sea group of the Layers panel.
+  It reads the same route once a minute while on, and draws each region's box
+  where the ships were: orange for a credible source location, grey for an
+  ambiguous one. Incidents that ended in the last 24 hours are drawn as
+  outlines, grey if their source location was ambiguous (the ENDED chip
+  hides them). The row says the screen's status, the
+  region count and how many vessels it tracks, and lists the regions; choosing
+  one flies there and pauses the Autopilot. It shows no ships and no false
+  positions. Local-only, like the other Air & Sea layers: remembered per
+  browser, never in share links, not voice-controlled. With the route off it
+  says the screen is not enabled. With the Autopilot flag, a GNSS advisory the
+  operator opens in the Autopilot switches this layer on while it is shown
+  (advisories are never tour stops, so this needs the operator). The
+  dateline check is `scripts/qa-gnss-regions.mjs`.
 - **Autopilot.** Off unless `GEV_GNSS_REGIONAL_AUTOPILOT=1` is also set; the
   screen only observes until it has been validated on real anomalies. With
   it and the early-warning engine on, each region becomes an analyst record

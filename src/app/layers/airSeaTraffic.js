@@ -1,6 +1,7 @@
 import { createTrafficDensityLayer } from '../../layers/airsea/index.js';
 import { createWarningAreasLayer } from '../../layers/airsea/warnings.js';
 import { createTrafficAnomaliesLayer } from '../../layers/airsea/anomalies.js';
+import { createShipGnssRegionsLayer } from '../../layers/airsea/gnssRegions.js';
 import { createCellShare } from '../../airsea/cellShare.js';
 
 /**
@@ -14,5 +15,6 @@ export function createApplicationTrafficDensity(base) {
     createTrafficDensityLayer({ ...options, domain: 'sea' }),
     createWarningAreasLayer(options),
     createTrafficAnomaliesLayer(options),
+    createShipGnssRegionsLayer(options),
   ];
 }

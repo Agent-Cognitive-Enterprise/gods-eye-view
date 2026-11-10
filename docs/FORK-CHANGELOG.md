@@ -7,6 +7,14 @@ number there.
 
 ## Unreleased (branch `feature/global-early-warning-autopilot`)
 
+- **Ship GNSS Screen layer.** Draws the regional GNSS screen's regions on the
+  globe, in the Air & Sea group: orange where the ships' source location is
+  credible, grey where it is ambiguous, and outlines for incidents that ended
+  in the last 24 hours. The row gives the screen's status and lists the
+  regions; choosing one flies there. It shows no ships and no false positions,
+  and needs `GEV_GNSS_REGIONAL=1` on the server. Local-only and remembered per
+  browser, like the other Air & Sea layers.
+
 - **Regional GNSS screen for ships (opt-in, `GEV_GNSS_REGIONAL=1`).** Reads the
   vessel positions the one AISStream connection already receives and reports a
   region of about 50 km when three or more ships there jumped implausibly to the

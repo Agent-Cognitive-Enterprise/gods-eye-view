@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { latLngToCell as targetCellOf } from 'h3-js';
 import {
   createRegionalGnssDetector,
   distanceKm,
@@ -219,6 +220,20 @@ test('coordinated anomaly: three ships jumping to one point make one region wher
   const [region] = s.regions;
   assert.equal(region.evidence.coherentTargetVessels, 3);
   assert.equal(region.evidence.aggregation, 'h3-r4');
+  // The id is opaque: no cell, and so no target location, can be read from it.
+  assert.match(
+    region.id,
+    /^regional-navigation:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+  );
+  assert.ok(
+    !region.id.includes(
+      targetCellOf(
+        target.lat,
+        target.lon,
+        REGIONAL_GNSS_RULES.h3TargetResolution,
+      ),
+    ),
+  );
   assert.equal(region.eventPriority, 'advisory');
   const { south, north, west, east } = region.area;
   assert.ok(
@@ -374,6 +389,7 @@ test('return to genuine positions: an explicit recovery, then the region ages ou
   assert.equal(ended.regions.length, 0);
   assert.equal(ended.recentIncidents.length, 1);
   assert.equal(ended.recentIncidents[0].state, 'ended');
+  assert.equal(ended.recentIncidents[0].sourceLocation, 'credible');
   // And a second, later spoof is caught again from the recovered tracks.
   const again = backAt + 3 * HOUR;
   for (const { i } of ships) {

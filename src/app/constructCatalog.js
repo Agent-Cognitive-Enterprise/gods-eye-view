@@ -52,6 +52,7 @@ export const LOCAL_ONLY_LAYER_METADATA = Object.freeze([
   Object.freeze({ id: 'sea-traffic', disposition: 'local-only' }),
   Object.freeze({ id: 'warning-areas', disposition: 'local-only' }),
   Object.freeze({ id: 'traffic-anomalies', disposition: 'local-only' }),
+  Object.freeze({ id: 'gnss-ship-regions', disposition: 'local-only' }),
   // Voice search results belong to this session, like a receiver to this machine.
   Object.freeze({ id: 'osm-places', disposition: 'local-only' }),
 ]);
