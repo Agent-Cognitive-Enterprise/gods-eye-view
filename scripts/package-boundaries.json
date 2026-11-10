@@ -170,7 +170,15 @@
       "src/ui/stores/liveTv.js",
       "src/ui/liveTvChannels.js",
       "src/ui/liveTvPlayer.js",
-      "src/ui/surfaceKeyboard.js"
+      "src/ui/surfaceKeyboard.js",
+      "src/ui/views/panels/CockpitRadar.vue",
+      "src/ui/views/panels/CockpitOrbital.vue",
+      "src/ui/ownerFlag.js",
+      "src/ui/ownerFlagSheet.js",
+      "src/time/worldClock.js",
+      "src/ui/kit/UiIcon.vue",
+      "src/ui/stores/worldTime.js",
+      "src/ui/views/panels/WorldTimeline.vue"
     ],
     "external": ["vue", "pinia", "vue-i18n", "hls.js"]
   },
@@ -236,7 +244,8 @@
       "src/layers/wildlifeSightings/acartiaTaxa.js",
       "server/providers/inaturalist/grid.js",
       "src/layers/wildlifeSightings/gridViewport.js",
-      "server/providers/inaturalist/queue.js"
+      "server/providers/inaturalist/queue.js",
+      "server/providers/common/compress.js"
     ],
     "external": ["ws"]
   },
@@ -323,13 +332,14 @@
       "src/i18n/marker.js",
       "src/data/tomtomTiles.js",
       "server/providers/common/same-site.js",
-      "src/localRequestGate.mjs"
+      "src/localRequestGate.mjs",
+      "src/data/tileBudget.js"
     ],
     "external": []
   },
   "traffic-source": {
     "exports": ["./sources/traffic"],
-    "modules": ["src/data/tomtomTiles.js"],
+    "modules": ["src/data/tomtomTiles.js", "src/data/tileBudget.js"],
     "external": []
   },
   "firms-csv": {
@@ -936,7 +946,27 @@
       "src/i18n/locales/zh-CN.json",
       "src/i18n/locales/zh-Hant.json",
       "src/ui/layerNames.js",
-      "src/ui/unitLabels.js"
+      "src/ui/unitLabels.js",
+      "src/ui/cockpitOrbitalView.js",
+      "src/ui/cockpitOrbitalFocus.js",
+      "src/ui/cockpitOrbitalSignals.js",
+      "src/ui/cockpitOrbitalSatellites.js",
+      "src/cockpitOrbitalSatellites.js",
+      "src/layers/installations/classLabel.js",
+      "src/data/installationNames.js",
+      "src/i18n/marker.js",
+      "src/data/placeBelow.js",
+      "src/layers/satellites/sensors.js",
+      "src/data/adminBoundaries.js",
+      "src/data/bundledJson.js",
+      "src/data/retryableLoad.js",
+      "src/cockpitSubjects.js",
+      "src/cockpitRadar.js",
+      "src/cockpitLook.js",
+      "src/cockpitOrbital.js",
+      "src/cockpitOrbitalFocus.js",
+      "src/geoDistance.js",
+      "src/data/motionModel.js"
     ],
     "external": ["cesium"]
   },
@@ -1203,7 +1233,30 @@
       "src/ui/views/panels/WildlifeSightingCard.vue",
       "src/ui/wildlifeSightingPlacement.js",
       "src/overlays/worldOverlayChrome.js",
-      "src/layers/wildlifeSightings/photoText.js"
+      "src/layers/wildlifeSightings/photoText.js",
+      "src/cockpitSubjects.js",
+      "src/cockpitRadar.js",
+      "src/cockpitLook.js",
+      "src/cockpitOrbital.js",
+      "src/cockpitOrbitalFocus.js",
+      "src/geoDistance.js",
+      "src/data/motionModel.js",
+      "src/data/satelliteClassMask.js",
+      "src/ui/cockpitOrbitalView.js",
+      "src/ui/cockpitOrbitalFocus.js",
+      "src/ui/cockpitOrbitalSignals.js",
+      "src/ui/cockpitOrbitalSatellites.js",
+      "src/cockpitOrbitalSatellites.js",
+      "src/layers/installations/classLabel.js",
+      "src/data/placeBelow.js",
+      "src/ui/placePacksLoading.js",
+      "src/ui/ownerFlag.js",
+      "src/ui/ownerFlagSheet.js",
+      "src/layers/satellites/sensors.js",
+      "src/data/adminBoundaries.js",
+      "src/data/bundledJson.js",
+      "src/data/retryableLoad.js",
+      "src/time/worldClock.js"
     ],
     "external": ["cesium", "vue", "pinia", "vue-i18n"]
   },
@@ -1235,7 +1288,9 @@
       "src/ui/styles/first-run.css",
       "src/ui/styles/provider-settings.css",
       "src/ui/styles/weather.css",
-      "src/ui/styles/recent-imagery.css"
+      "src/ui/styles/recent-imagery.css",
+      "src/ui/styles/cockpitBridge.css",
+      "src/ui/styles/cockpitRadar.css"
     ],
     "external": []
   },
@@ -1416,7 +1471,10 @@
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
       "src/i18n/locales/zh-Hant.json",
-      "src/ui/unitLabels.js"
+      "src/ui/unitLabels.js",
+      "src/data/satelliteClassMask.js",
+      "src/time/worldClock.js",
+      "src/time/julian.js"
     ],
     "external": ["cesium"]
   },
@@ -1473,7 +1531,10 @@
       "src/i18n/locales/ru.json",
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
-      "src/i18n/locales/zh-Hant.json"
+      "src/i18n/locales/zh-Hant.json",
+      "src/data/satelliteClassMask.js",
+      "src/time/worldClock.js",
+      "src/time/julian.js"
     ],
     "external": ["cesium"]
   },
@@ -1504,7 +1565,8 @@
       "src/data/trackingClickGesture.js",
       "src/layers/aircraft/classification.js",
       "src/layers/aircraft/index.js",
-      "src/data/inputOwnership.js"
+      "src/data/inputOwnership.js",
+      "src/data/satelliteClassMask.js"
     ],
     "external": ["cesium"]
   },
@@ -1545,7 +1607,9 @@
       "src/i18n/locales/ru.json",
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
-      "src/i18n/locales/zh-Hant.json"
+      "src/i18n/locales/zh-Hant.json",
+      "src/layers/vessels/cockpitSubject.js",
+      "src/geoDistance.js"
     ],
     "external": ["cesium"]
   },
@@ -1662,7 +1726,16 @@
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
       "src/i18n/locales/zh-Hant.json",
-      "src/ui/unitLabels.js"
+      "src/ui/unitLabels.js",
+      "src/data/satelliteClassMask.js",
+      "src/layers/satellites/cockpitSubject.js",
+      "src/layers/satellites/classes.js",
+      "src/layers/satellites/sensors.js",
+      "src/data/ucsSatellites.js",
+      "src/data/imagingSensors.js",
+      "src/data/bundledJson.js",
+      "src/data/retryableLoad.js",
+      "src/time/worldClock.js"
     ],
     "external": ["cesium", "satellite.js"]
   },
@@ -1703,7 +1776,8 @@
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
       "src/i18n/locales/zh-Hant.json",
-      "src/data/stableBillboardImages.js"
+      "src/data/stableBillboardImages.js",
+      "src/time/worldClock.js"
     ],
     "external": ["cesium"]
   },
@@ -1754,7 +1828,8 @@
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
       "src/i18n/locales/zh-Hant.json",
-      "src/layers/installations/classLabel.js"
+      "src/layers/installations/classLabel.js",
+      "src/data/tileBudget.js"
     ],
     "external": ["cesium", "@mapbox/vector-tile", "pbf"]
   },
@@ -1862,7 +1937,8 @@
       "src/i18n/locales/ru.json",
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
-      "src/i18n/locales/zh-Hant.json"
+      "src/i18n/locales/zh-Hant.json",
+      "src/data/tileBudget.js"
     ],
     "external": ["cesium", "pbf", "@mapbox/vector-tile"]
   },
@@ -2028,7 +2104,8 @@
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
       "src/i18n/locales/zh-Hant.json",
-      "src/layers/streetLevel/providers/mapillary/policy.js"
+      "src/layers/streetLevel/providers/mapillary/policy.js",
+      "src/time/worldClock.js"
     ],
     "external": ["cesium", "pbf", "@mapbox/vector-tile", "mapillary-js"]
   },
@@ -2065,7 +2142,8 @@
       "src/i18n/locales/ru.json",
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
-      "src/i18n/locales/zh-Hant.json"
+      "src/i18n/locales/zh-Hant.json",
+      "src/data/tileBudget.js"
     ],
     "external": ["cesium", "@mapbox/vector-tile", "pbf"]
   },
@@ -2114,7 +2192,8 @@
       "src/i18n/locales/ru.json",
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
-      "src/i18n/locales/zh-Hant.json"
+      "src/i18n/locales/zh-Hant.json",
+      "src/data/satelliteClassMask.js"
     ],
     "external": ["cesium"]
   },
@@ -3388,7 +3467,32 @@
       "src/ui/wildlifeSightingPlacement.js",
       "src/overlays/worldOverlayChrome.js",
       "src/layers/wildlifeSightings/photoText.js",
-      "src/layers/wildlifeSightings/performance.js"
+      "src/layers/wildlifeSightings/performance.js",
+      "src/cockpitSubjects.js",
+      "src/cockpitRadar.js",
+      "src/cockpitLook.js",
+      "src/cockpitOrbital.js",
+      "src/cockpitOrbitalFocus.js",
+      "src/data/satelliteClassMask.js",
+      "src/data/tileBudget.js",
+      "src/layers/satellites/cockpitSubject.js",
+      "src/ui/cockpitOrbitalView.js",
+      "src/ui/cockpitOrbitalFocus.js",
+      "src/ui/cockpitOrbitalSignals.js",
+      "src/ui/cockpitOrbitalSatellites.js",
+      "src/cockpitOrbitalSatellites.js",
+      "src/data/placeBelow.js",
+      "src/ui/placePacksLoading.js",
+      "src/ui/ownerFlag.js",
+      "src/ui/ownerFlagSheet.js",
+      "src/layers/vessels/cockpitSubject.js",
+      "src/time/viewerClock.js",
+      "src/time/worldClock.js",
+      "src/time/julian.js",
+      "src/layers/satellites/classes.js",
+      "src/layers/satellites/sensors.js",
+      "src/data/ucsSatellites.js",
+      "src/data/imagingSensors.js"
     ],
     "external": [
       "hls.js",
@@ -4049,7 +4153,17 @@
       "src/layers/wildlifeSightings/sprites.js",
       "src/overlays/worldOverlayChrome.js",
       "src/layers/wildlifeSightings/photoText.js",
-      "src/layers/wildlifeSightings/performance.js"
+      "src/layers/wildlifeSightings/performance.js",
+      "src/data/satelliteClassMask.js",
+      "src/data/tileBudget.js",
+      "src/layers/satellites/cockpitSubject.js",
+      "src/layers/vessels/cockpitSubject.js",
+      "src/time/worldClock.js",
+      "src/time/julian.js",
+      "src/layers/satellites/classes.js",
+      "src/layers/satellites/sensors.js",
+      "src/data/ucsSatellites.js",
+      "src/data/imagingSensors.js"
     ],
     "external": [
       "hls.js",
@@ -4137,7 +4251,8 @@
       "src/data/placeBoundaries.js",
       "src/data/placeNames.js",
       "src/data/local_data/us_census_places/files.js",
-      "src/data/local_data/wof_neighborhoods/files.js"
+      "src/data/local_data/wof_neighborhoods/files.js",
+      "src/data/tileBudget.js"
     ],
     "external": [
       "cesium",
@@ -4203,7 +4318,9 @@
       "src/i18n/locales/ru.json",
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
-      "src/i18n/locales/zh-Hant.json"
+      "src/i18n/locales/zh-Hant.json",
+      "src/data/satelliteClassMask.js",
+      "src/time/worldClock.js"
     ],
     "external": []
   },
@@ -4254,7 +4371,15 @@
       "src/visualStylePolicy.js",
       "src/ui/rail/fieldValue.js",
       "src/ui/kit/UiSlider.js",
-      "src/ui/i18n.js"
+      "src/ui/i18n.js",
+      "src/cockpitSubjects.js",
+      "src/cockpitRadar.js",
+      "src/cockpitLook.js",
+      "src/cockpitOrbital.js",
+      "src/cockpitOrbitalFocus.js",
+      "src/cockpitOrbitalSatellites.js",
+      "src/geoDistance.js",
+      "src/data/motionModel.js"
     ],
     "external": ["cesium", "vue", "pinia", "vue-i18n"]
   },
@@ -4487,7 +4612,8 @@
       "src/sources/httpBody.js",
       "src/i18n/marker.js",
       "src/sources/vectorTiles.js",
-      "src/sources/phaseTiming.js"
+      "src/sources/phaseTiming.js",
+      "src/data/tileBudget.js"
     ],
     "external": ["@mapbox/vector-tile", "pbf"]
   },
@@ -4532,7 +4658,8 @@
       "src/sources/requestDeadline.js",
       "src/data/local_data/osm_military_names/names.json",
       "src/data/bundledJson.js",
-      "src/data/retryableLoad.js"
+      "src/data/retryableLoad.js",
+      "src/data/tileBudget.js"
     ],
     "external": ["@mapbox/vector-tile", "pbf"]
   },
@@ -4548,7 +4675,15 @@
   },
   "satellites-source": {
     "exports": ["./layers/satellites/source"],
-    "modules": ["src/layers/satellites/source.js"],
+    "modules": [
+      "src/layers/satellites/source.js",
+      "src/layers/satellites/classes.js",
+      "src/layers/satellites/sensors.js",
+      "src/data/ucsSatellites.js",
+      "src/data/imagingSensors.js",
+      "src/data/bundledJson.js",
+      "src/data/retryableLoad.js"
+    ],
     "external": []
   },
   "traffic-source-factory": {
@@ -4568,7 +4703,8 @@
       "src/sources/vectorTiles.js",
       "src/sources/phaseTiming.js",
       "src/layers/traffic/roadModes.js",
-      "src/data/flowMatch.js"
+      "src/data/flowMatch.js",
+      "src/data/tileBudget.js"
     ],
     "external": ["@mapbox/vector-tile", "pbf"]
   },
@@ -4748,7 +4884,8 @@
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
       "src/i18n/locales/zh-Hant.json",
-      "src/overlays/worldOverlayChrome.js"
+      "src/overlays/worldOverlayChrome.js",
+      "src/time/worldClock.js"
     ],
     "external": ["cesium", "egm96-universal", "pbf"]
   },
@@ -4801,7 +4938,8 @@
       "src/i18n/locales/ru.json",
       "src/i18n/locales/uk.json",
       "src/i18n/locales/zh-CN.json",
-      "src/i18n/locales/zh-Hant.json"
+      "src/i18n/locales/zh-Hant.json",
+      "src/time/worldClock.js"
     ],
     "external": ["cesium", "pbf"]
   },
@@ -4923,7 +5061,9 @@
       "src/data/detectionPolicy.js",
       "src/scopeMaskPolicy.js",
       "src/i18n/marker.js",
-      "src/visualStylePolicy.js"
+      "src/visualStylePolicy.js",
+      "src/data/satelliteClassMask.js",
+      "src/time/worldClock.js"
     ],
     "external": []
   },
@@ -5074,7 +5214,8 @@
       "src/tools/globePanel.js",
       "src/tools/queries/panelRequest.js",
       "src/geoDistance.js",
-      "src/visualStylePolicy.js"
+      "src/visualStylePolicy.js",
+      "src/data/satelliteClassMask.js"
     ],
     "external": ["satellite.js"]
   },
@@ -5166,7 +5307,12 @@
       "src/layers/alpr/records.js",
       "src/layers/alpr/tileRecords.js",
       "src/sources/infrastructureData.js",
-      "src/sources/eventPacks.js"
+      "src/sources/eventPacks.js",
+      "src/data/tileBudget.js",
+      "src/layers/satellites/classes.js",
+      "src/layers/satellites/sensors.js",
+      "src/data/ucsSatellites.js",
+      "src/data/imagingSensors.js"
     ],
     "external": ["@mapbox/vector-tile", "pbf"]
   },
@@ -5178,7 +5324,8 @@
       "src/data/firmsIntensity.js",
       "src/data/layerState.js",
       "src/data/layerStateTokenReservations.json",
-      "src/visualStylePolicy.js"
+      "src/visualStylePolicy.js",
+      "src/data/satelliteClassMask.js"
     ],
     "external": []
   },
@@ -5292,6 +5439,11 @@
       "src/layers/wildlifeSightings/gridViewport.js",
       "src/layers/wildlifeSightings/performance.js"
     ],
+    "external": []
+  },
+  "time": {
+    "exports": ["./time"],
+    "modules": ["src/time/worldClock.js"],
     "external": []
   }
 }
