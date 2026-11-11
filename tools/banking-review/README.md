@@ -38,9 +38,23 @@ keeps that state out of the repository if they are run here by mistake.
    with it alone, the same test ran `ls` without asking.) File edits,
    including the new report, are accepted without asking only inside
    `work\`. An edit anywhere else would need an approval, which a headless
-   run cannot give, so it is refused. Reading files and fetching web pages
-   are not confined to `work\`. The prompt treats web content as data,
-   never as instructions. The run is stopped after 90 minutes.
+   run cannot give, so it is refused. The run is stopped after 90 minutes.
+
+   **Known limit:** reading files (Read, Glob, Grep) and fetching web pages
+   are not confined to `work\`. The reviewer runs under the operator's own
+   Windows account, so it could read that account's other files and could
+   send what it read to a web address. Untrusted news content could try to
+   make it do so. Defences today:
+   - the prompt treats web content as data, never as instructions;
+   - the evaluation includes two prompt-injection traps;
+   - nothing can be written outside `work\`;
+   - no command can be run.
+
+   These are not filesystem or network isolation. The stronger defence is
+   to run the review under a restricted Windows account that can read only
+   its working files, with no credentials of its own and, ideally, web
+   access limited to what the review needs. That is not set up yet.
+
 4. **Stage and validate**: the two working copies are first staged
    (`logs\staged\<time>\`, checked by SHA-256). The staged copies are then
    validated (`validate-events.mjs`), so what is promoted is exactly what
@@ -89,6 +103,19 @@ keeps that state out of the repository if they are run here by mistake.
 
    Staged copies older than 14 days are removed.
 
+   The promotion is journalled and eventually consistent, not atomically
+   visible: the two files are replaced one after the other. If the second
+   replacement fails, they disagree until the next run completes the
+   journal. What that affects is narrow:
+   - **The map:** the app reads only the events file. It shows either the
+     whole old or the whole new version, or its last good copy while a file
+     is missing.
+   - **The decision ledger:** only the review scripts read it, and the next
+     run completes the journal before it reads anything.
+
+   Strict simultaneous visibility would need immutable versioned pairs and a
+   single active-version pointer; not done.
+
 6. **Evidence** (`archive-evidence.mjs`): snapshots of each decided lead's
    page and of event sources, with SHA-256 and HTTP status. Only public
    http(s) hosts are fetched: every address is checked when connecting, so
@@ -96,6 +123,16 @@ keeps that state out of the repository if they are run here by mistake.
    the same way, with at most 3 redirects. A body is cut at 3 MB. Each
    request times out after 20 s of silence, and reading a body is limited
    to 20 s.
+
+   Evidence capture is best-effort: many news sites refuse automated
+   downloads. It is not a condition of a COMPLETE run, but it is reported
+   on its own, in the status line and the ledger (`evidence`):
+   - **complete:** every page saved;
+   - **partial:** some saved;
+   - **failed:** none saved;
+   - **none:** nothing to save;
+   - **error:** the archiver did not answer.
+
 7. **Ledger and report**: one line per run in `logs\runs.jsonl`. The status
    is COMPLETE (a completed news fetch, a clean review, every fresh lead
    decided, validated and applied, and a report), DEGRADED (the same without
@@ -150,7 +187,13 @@ Example ledger line:
   "pending": 0,
   "reviewed": true,
   "promoted": true,
-  "finishedAt": "2026-11-11T13:02:08"
+  "finishedAt": "2026-11-11T13:02:08",
+  "evidence": {
+    "date": "2026-11-11",
+    "state": "partial",
+    "saved": 4,
+    "notSaved": 4
+  }
 }
 ```
 
@@ -180,7 +223,8 @@ nothing is posted:
   1. The second promotion is made to fail. The run is FAILED and the
      promotion journalled, with the events file replaced and the ledger not.
   2. The next run completes the promotion before fetching leads, runs its
-     follow-up steps, and is COMPLETE.
+     follow-up steps, reports its evidence capture on its own, and is
+     COMPLETE.
   3. A journal that cannot be completed blocks the review.
   4. A documented correction is applied and flagged for the operator.
   5. A finished promotion whose journal cannot be removed blocks the review

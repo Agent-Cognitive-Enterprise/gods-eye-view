@@ -84,6 +84,9 @@ try {
   Expect ((Get-Content $ledgerFile -Raw) -match 'check-lead-1') 'after run 2 the ledger holds the decision'
   Expect ((Get-Content $eventsFile -Raw) -match 'check-event-1') 'after run 2 the events file holds the event'
   Expect ($r2.status -eq 'COMPLETE') "run 2 is COMPLETE (was $($r2.status))"
+  # The stand-in pages (example.invalid) cannot be fetched: evidence capture
+  # is reported on its own as failed, and the run is still COMPLETE.
+  Expect ($r2.evidence -and $r2.evidence.state -eq 'failed') "run 2 reports its evidence capture on its own (state $($r2.evidence.state))"
 
   # 3. A journal that cannot be completed blocks the review.
   $missing = Join-Path $box 'logs\staged\missing\reviewed-leads.json'

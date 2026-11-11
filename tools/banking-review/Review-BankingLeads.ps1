@@ -107,10 +107,16 @@ function Commit-Together([object[]]$files, [string]$date, [string[]]$corrections
 
 # After a promotion, in the run that completed it (the same run or the
 # next): corrections are flagged for the operator, and the evidence for the
-# review's date is archived.
+# review's date is archived. Evidence capture is best-effort, not a
+# condition of a COMPLETE run, but its outcome is reported on its own:
+# complete (every page saved), partial, failed (none saved), none (nothing
+# to save) or error (the archiver did not answer). Returns that outcome.
 function Complete-Followups($j, $notes) {
-  try { Run-Followups $j $notes }
-  catch { Say "a follow-up step of the promotion failed (the promotion itself is done): $($_.Exception.Message)" }
+  try { return Run-Followups $j $notes }
+  catch {
+    Say "a follow-up step of the promotion failed (the promotion itself is done): $($_.Exception.Message)"
+    return [pscustomobject]@{ date = $j.date; state = 'error'; saved = $null; notSaved = $null }
+  }
 }
 function Run-Followups($j, $notes) {
   $corrected = @($j.corrections | Where-Object { $_ })
@@ -118,10 +124,23 @@ function Run-Followups($j, $notes) {
     Attention "earlier decisions corrected ($($j.date)), please check: $($corrected -join ', ')"
     $notes.Add("**Earlier decisions corrected on $($j.date), for the operator to check:** $($corrected -join ', '). Each correction (reason and evidence) is in reviewed-leads.json under ``corrections``.")
   }
+  $outcome = [pscustomobject]@{ date = $j.date; state = 'none'; saved = 0; notSaved = 0 }
   if ($j.date) {
     $archive = (& node (Join-Path $Dir 'archive-evidence.mjs') $j.date 2>&1 | Out-String).Trim()
+    $archiveExit = $LASTEXITCODE
     Say "evidence ($($j.date)): $archive"
+    $counts = $null
+    try { $counts = ($archive -split "`n" | Select-Object -Last 1) | ConvertFrom-Json } catch {}
+    if ($archiveExit -ne 0 -or -not $counts -or $null -eq $counts.archived) { $outcome.state = 'error'; $outcome.saved = $null; $outcome.notSaved = $null }
+    else {
+      $outcome.saved = [int]$counts.archived
+      $outcome.notSaved = [int]$counts.failed
+      $outcome.state = if ($outcome.saved + $outcome.notSaved -eq 0) { 'none' }
+        elseif ($outcome.notSaved -eq 0) { 'complete' }
+        elseif ($outcome.saved -eq 0) { 'failed' } else { 'partial' }
+    }
   }
+  return $outcome
 }
 
 New-Item -ItemType Directory -Force (Join-Path $Dir 'logs'), (Join-Path $Dir 'reports'), (Join-Path $Dir 'backups'), (Join-Path $Work 'reports'), (Join-Path $Work 'leads') | Out-Null
@@ -169,6 +188,7 @@ try {
 try {
   Say "start $Date"
   $runStart = Get-Date
+  $evidence = $null
   $notes = New-Object System.Collections.Generic.List[string]
 
   # A promotion cut short earlier (a crash, a failed replace) is completed
@@ -187,7 +207,7 @@ try {
     if ($recovered) {
       Say 'completed an interrupted promotion from logs\promotion.json'
       $notes.Add("An earlier promotion (review of $($recovered.date)) had not finished; it was completed from its journal before this run.")
-      Complete-Followups $recovered $notes
+      $evidence = Complete-Followups $recovered $notes
       # The live files are in place, but a journal that cannot be removed
       # would make this run's own promotion fail after a full review.
       if (Test-Path -LiteralPath $Journal) {
@@ -301,7 +321,7 @@ try {
           Attention "promoting the review's edits failed ($Date): $why; $next"
           $notes.Add("**Promoting the validated edits failed** ($why); $next. This run is not complete.")
         }
-        if ($committed) { Complete-Followups $committed $notes }
+        if ($committed) { $evidence = Complete-Followups $committed $notes }
       } elseif ($valExit -eq 0) {
         Attention "the validator's answer could not be read ($Date), so nothing was applied: $check"
         $notes.Add("**The validator's answer could not be read, so nothing was applied:** ``$check``")
@@ -351,6 +371,7 @@ try {
     fresh = $(if ($leadInfo) { @($leadInfo.fresh).Count } else { 0 })
     decided = $decided; pending = $pending
     reviewed = $reviewed; promoted = $promoted; finishedAt = (Get-Date -Format s)
+    evidence = $(if ($evidence) { [ordered]@{ date = $evidence.date; state = $evidence.state; saved = $evidence.saved; notSaved = $evidence.notSaved } } else { $null })
   }
   [System.IO.File]::AppendAllText((Join-Path $Dir 'logs\runs.jsonl'), (($entry | ConvertTo-Json -Compress) + "`n"), $Utf8)
   # The metric: one unattended run is expected per day since the first; a
@@ -376,6 +397,15 @@ try {
   }
   $pct = if ($days) { [math]::Round(100 * $completeDays / $days) } else { 0 }
   $statusLine = "**Run status: $runStatus** ($($entry.trigger); $decided leads decided, $pending pending). Unattended days (the 09:00 run or its catch-up) with a complete intelligence assessment: $completeDays of $days ($pct%; $missed missed); leads decided in complete unattended runs: $leadsReviewed."
+  if ($evidence) {
+    $statusLine += switch ($evidence.state) {
+      'complete' { " Evidence: complete ($($evidence.saved) pages saved)." }
+      'partial' { " Evidence: partial ($($evidence.saved) of $($evidence.saved + $evidence.notSaved) pages saved; the rest refused or unreachable)." }
+      'failed' { " Evidence: failed (none of $($evidence.notSaved) pages saved)." }
+      'none' { ' Evidence: none to save.' }
+      default { ' Evidence: unknown (the archiver did not answer).' }
+    }
+  }
   Say "status: $runStatus; complete days $completeDays/$days"
 
   # 6. Report.
