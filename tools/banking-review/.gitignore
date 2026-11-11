@@ -1,0 +1,12 @@
+# Live state the scripts keep next to themselves when run from a folder:
+# never committed. Run them from a host folder (see README.md).
+events.local.json
+reviewed-leads.json
+leads/
+logs/
+work/
+backups/
+evidence/
+reports/
+spotcheck/
+eval/runs/

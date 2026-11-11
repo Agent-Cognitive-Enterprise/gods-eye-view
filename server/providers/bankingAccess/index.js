@@ -39,17 +39,16 @@ export function loadPopulation(file = POPULATION) {
 }
 
 /**
- * Every event checked; bad entries listed by reason.
- * A file becomes its origin's last good copy (`good`, origin ->
- * { entries, at }) only when it reads and every entry in it is valid.
- * When a re-read fails (half-written, not valid JSON, unreadable, missing,
- * too large) or holds an invalid entry, and a last good copy exists in
- * `lastGood`, that copy is shown instead and the file is listed in
- * `degraded` with the copy's time; the invalid entries are still listed, so
- * they can be fixed. A reviewed incident therefore never drops off the map
- * because of a torn write or a bad edit, and a bad edit never becomes the
- * copy to fall back to. Without a last good copy, a file's valid entries
- * are shown (and kept as its copy) and its invalid ones listed.
+ * Every event checked; bad entries listed by reason, each once.
+ * Each origin has a last good copy (`good`, origin -> { entries, at }). A
+ * file read whole with every entry valid becomes that copy and is shown.
+ * A read that fails (half-written, not valid JSON, unreadable, missing, too
+ * large) shows the copy from `lastGood`, if there is one, and lists the
+ * file in `degraded` with the copy's time. A file holding an invalid entry
+ * is in `degraded` on every load: with a copy, the copy is shown (the bad
+ * write never replaces it); on a first read, its valid entries are shown
+ * and become the copy. A reviewed incident therefore never drops off the
+ * map because of a torn write or a bad edit.
  * To remove every operator event, write an empty "events" list.
  */
 export function loadEvents({

@@ -232,7 +232,7 @@ try {
   # 6. Report.
   if (Test-Path $workReport) { $body = [System.IO.File]::ReadAllText($workReport, $Utf8) }
   else {
-    $body = "## Banking Access daily review: $Date`n`nNo report was produced. Lead fetch: ``$fetch``.`n`n🤖 Generated with [Claude Code](https://claude.com/claude-code)`n"
+    $body = "## Banking Access daily review: $Date`n`nNo report was produced. Lead fetch: ``$fetch``.`n`n$([char]::ConvertFromUtf32(0x1F916)) Generated with [Claude Code](https://claude.com/claude-code)`n"
     Attention "no report was produced ($Date)"
   }
   # The status line goes right under the heading.
