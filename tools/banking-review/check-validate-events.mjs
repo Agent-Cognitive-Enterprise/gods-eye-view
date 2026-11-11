@@ -19,7 +19,23 @@ const write = (name, value) => {
   fs.writeFileSync(f, JSON.stringify(value, null, 2));
   return f;
 };
-const events = write('events.json', { events: [] });
+const liveEvent = {
+  id: 'live-1',
+  country_code: 'PSE',
+  country_name: 'Palestine',
+  event_type: 'technical_outage',
+  severity: 2,
+  confidence: 'social',
+  start_time: '2026-11-01T00:00:00Z',
+  last_verified_time: '2026-11-10T00:00:00Z',
+  affected_people_est: null,
+  affected_population_pct: null,
+  affected_basis: 'Not given by any source.',
+  summary: 'A live event.',
+  sources: [{ title: 'S', url: 'https://example.org/live-1' }],
+};
+const hostEvents = write('host-events.json', { events: [liveEvent] });
+let events = write('events.json', { events: [liveEvent] });
 const rejected = { decision: 'rejected', reason: 'Not a disruption.', url: 'https://example.org/a', title: 'A', reviewedAt: '2026-11-10', eventId: null };
 const pending = { decision: 'pending', reason: 'Unconfirmed.', url: 'https://example.org/b', title: 'B', reviewedAt: '2026-11-10', eventId: null };
 const host = write('host.json', { leads: { a: rejected, b: pending } });
@@ -28,7 +44,7 @@ const leadsToday = (fresh) => write('today.json', { date: DATE, fresh: fresh.map
 function run(work, fresh = []) {
   const workFile = write('work.json', work);
   try {
-    const out = execFileSync(process.execPath, [path.join(here, 'validate-events.mjs'), appRoot, events, workFile, host, leadsToday(fresh)], { encoding: 'utf8' });
+    const out = execFileSync(process.execPath, [path.join(here, 'validate-events.mjs'), appRoot, events, workFile, host, leadsToday(fresh), hostEvents], { encoding: 'utf8' });
     return { ok: true, ...JSON.parse(out) };
   } catch (e) {
     return { ok: false, ...JSON.parse(e.stdout) };
@@ -77,10 +93,36 @@ const cases = [
   ['a correction without a reason fails', () => {
     const r = run({ leads: { a: confirmed, b: pending }, corrections: [correction({ reason: '' })] });
     assert.equal(r.ok, false);
+    assert.match(r.problems.join(' '), /needs a reason/);
   }],
   ['a correction dated another day fails', () => {
     const r = run({ leads: { a: confirmed, b: pending }, corrections: [correction({ at: '2026-11-01' })] });
     assert.equal(r.ok, false);
+    assert.match(r.problems.join(' '), /is not dated today/);
+  }],
+  ['a correction whose evidence includes something that is not a URL fails', () => {
+    const r = run({ leads: { a: confirmed, b: pending }, corrections: [correction({ evidence: ['https://example.org/x', 'not a url'] })] });
+    assert.equal(r.ok, false);
+    assert.match(r.problems.join(' '), /http\(s\) URLs only/);
+  }],
+  ['a decision for a lead not offered today fails', () => {
+    const r = run({ leads: { a: rejected, b: pending, stray: { ...rejected, reviewedAt: DATE } } });
+    assert.equal(r.ok, false);
+    assert.match(r.problems.join(' '), /stray was not offered today/);
+  }],
+  ['a new decision naming a missing event fails; naming an existing one passes', () => {
+    const lead = { ...rejected, decision: 'duplicate', reviewedAt: DATE };
+    const missing = run({ leads: { a: rejected, b: pending, n: { ...lead, eventId: 'no-such-event' } } }, ['n']);
+    assert.equal(missing.ok, false);
+    assert.match(missing.problems.join(' '), /names event no-such-event, which does not exist/);
+    assert.equal(run({ leads: { a: rejected, b: pending, n: { ...lead, eventId: 'live-1' } } }, ['n']).ok, true);
+  }],
+  ['removing an event of the live operator file fails', () => {
+    events = write('events.json', { events: [] });
+    const r = run({ leads: { a: rejected, b: pending } });
+    events = write('events.json', { events: [liveEvent] });
+    assert.equal(r.ok, false);
+    assert.match(r.problems.join(' '), /live-1 was removed from the operator file/);
   }],
   ['a correction for an unchanged decision fails', () => {
     const r = run({ leads: { a: rejected, b: pending }, corrections: [correction({ to: rejected })] });
@@ -103,6 +145,12 @@ const cases = [
     assert.equal(r.ok, false);
     assert.match(r.problems.join(' '), /earlier correction 0 \(a\) was changed/);
     assert.equal(run({ leads: { a: confirmed, b: pending }, corrections: [] }).ok, false);
+  }],
+  ['a host corrections list that is not a list is reported, not a crash', () => {
+    fs.writeFileSync(host, JSON.stringify({ leads: { a: rejected, b: pending }, corrections: {} }));
+    const r = run({ leads: { a: rejected, b: pending } });
+    assert.equal(r.ok, false);
+    assert.match(r.problems.join(' '), /"corrections" is not a list; fix it by hand/);
   }],
 ];
 let failed = 0;

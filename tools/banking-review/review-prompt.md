@@ -59,9 +59,9 @@ You are the daily reviewer for the Banking Access layer of God's Eye View (GEV).
    }
    ```
 
-   Keep every existing entry exactly as it is, in every field. Leads you decided earlier as `pending` come back among today's fresh leads; decide those normally.
+   Record decisions only for the leads listed in today's `fresh`. Keep every other existing entry exactly as it is, in every field. A lead decided earlier as `pending` that is listed in `fresh` today is decided normally; leave pending entries that are not listed in `fresh` alone. Do not remove events from `events.review.json`, and give an `eventId` only for an event that exists.
 
-   If you find that an earlier decision (not a pending one offered again today) was wrong, you may change it only with a correction. Change the entry, and append to the top-level `"corrections"` list of `reviewed-leads.json` (create it if missing; never change or remove earlier corrections):
+   If you find that an earlier decision was wrong, you may change it only with a correction. First copy the entry, unchanged, into `from`; then change the entry and copy it, as changed, into `to`. Append the correction to the top-level `"corrections"` list of `reviewed-leads.json` (create it if missing; never change or remove earlier corrections):
 
    ```json
    {
@@ -70,7 +70,7 @@ You are the daily reviewer for the Banking Access layer of God's Eye View (GEV).
      "from": { "...": "the earlier entry, exactly as it was" },
      "to": { "...": "the entry as you changed it, exactly" },
      "reason": "one or two sentences: what was wrong and why",
-     "evidence": ["https://... (the source that shows it)"]
+     "evidence": ["https://... (the sources that show it; URLs only)"]
    }
    ```
 

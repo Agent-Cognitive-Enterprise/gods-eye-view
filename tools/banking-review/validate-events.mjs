@@ -1,5 +1,5 @@
 // Check the reviewer's working copies before they replace the live state.
-// Usage: node validate-events.mjs <appRoot> <events.review.json> <reviewed-leads work copy> <reviewed-leads host copy> <leads/<date>.json>
+// Usage: node validate-events.mjs <appRoot> <events.review.json> <reviewed-leads work copy> <reviewed-leads host copy> <leads/<date>.json> [<events.local.json host copy>]
 // Fails (exit 1) on any problem; prints JSON, with the ids of any earlier
 // decisions corrected today (`corrections`), which the wrapper flags for the
 // operator.
@@ -13,11 +13,16 @@
 //     "to": <the new decision, exactly>, "reason": <a sentence>,
 //     "evidence": [<http(s) URL>, ...] }
 // The list is append-only: earlier corrections may not change.
+//
+// A new decision is only for a lead offered today (in today's `fresh`). An
+// event in the host's operator file may be updated but not removed. A
+// decision new or changed today that names an `eventId` must name an event
+// that exists (bundled or in the operator file).
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const [appRoot, eventsFile, leadsWork, leadsHost, todayFile] = process.argv.slice(2);
+const [appRoot, eventsFile, leadsWork, leadsHost, todayFile, eventsHost] = process.argv.slice(2);
 const { loadEvents } = await import(
   pathToFileURL(path.join(appRoot, 'server/providers/bankingAccess/index.js')).href
 );
@@ -32,6 +37,18 @@ try {
 } catch (e) {
   problems.push(`events file: ${e.message}`);
 }
+// No event of the live operator file is removed.
+if (eventsHost && fs.existsSync(eventsHost)) {
+  let before = [];
+  try {
+    before = JSON.parse(fs.readFileSync(eventsHost, 'utf8')).events ?? [];
+  } catch (e) {
+    problems.push(`host events file: ${e.message}`);
+  }
+  const kept = new Set(raw.map((e) => e?.id));
+  for (const e of before) if (e?.id && !kept.has(e.id)) problems.push(`events: ${e.id} was removed from the operator file`);
+}
+const eventIds = new Set(events.map((e) => e.id));
 for (const e of raw) {
   const id = e?.id ?? '?';
   if (!e?.last_verified_time) problems.push(`${id}: last_verified_time is required`);
@@ -52,7 +69,7 @@ const canon = (v) =>
       ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon(v[k])]))
       : v;
 const same = (a, b) => JSON.stringify(canon(a)) === JSON.stringify(canon(b));
-const httpUrl = (u) => typeof u === 'string' && /^https?:\/\/\S+$/.test(u);
+const httpUrl = (u) => typeof u === 'string' && /^https?:\/\/[^\s/]+\S*$/.test(u);
 let workDoc = null;
 let work = null;
 try {
@@ -73,13 +90,21 @@ if (work) {
   // Corrections: append-only; each new one documents exactly one change.
   const hostCorrections = hostDoc.corrections ?? [];
   const workCorrections = workDoc.corrections ?? [];
-  if (!Array.isArray(workCorrections)) problems.push('reviewed-leads: "corrections" is not a list');
+  const fresh = new Set((today.fresh ?? []).map((c) => c.id));
+  // New decisions: only for leads offered today.
+  for (const id of Object.keys(work))
+    if (!(id in host) && !fresh.has(id)) problems.push(`reviewed-leads: ${id} was not offered today`);
+  // Decisions new or changed today name only events that exist.
+  for (const [id, d] of Object.entries(work))
+    if (d?.eventId && !(id in host && same(host[id], d)) && !eventIds.has(d.eventId))
+      problems.push(`reviewed-leads: ${id} names event ${d.eventId}, which does not exist`);
+  if (!Array.isArray(hostCorrections)) problems.push('reviewed-leads (host): "corrections" is not a list; fix it by hand');
+  else if (!Array.isArray(workCorrections)) problems.push('reviewed-leads: "corrections" is not a list');
   else {
     if (workCorrections.length < hostCorrections.length) problems.push('reviewed-leads: earlier corrections were dropped');
     hostCorrections.forEach((c, i) => {
       if (!same(c, workCorrections[i])) problems.push(`reviewed-leads: earlier correction ${i} (${c?.id}) was changed`);
     });
-    const fresh = new Set((today.fresh ?? []).map((c) => c.id));
     const added = workCorrections.slice(hostCorrections.length);
     const used = new Set();
     for (const [id, before] of Object.entries(host)) {
@@ -99,8 +124,8 @@ if (work) {
       if (!same(c.to, after)) problems.push(`reviewed-leads: correction of ${id}: "to" is not the new decision`);
       if (typeof c.reason !== 'string' || c.reason.trim().length < 10)
         problems.push(`reviewed-leads: correction of ${id} needs a reason`);
-      if (!Array.isArray(c.evidence) || !c.evidence.some(httpUrl))
-        problems.push(`reviewed-leads: correction of ${id} needs evidence (an http(s) URL)`);
+      if (!Array.isArray(c.evidence) || !c.evidence.length || !c.evidence.every(httpUrl))
+        problems.push(`reviewed-leads: correction of ${id} needs evidence: http(s) URLs only`);
       corrected.push(id);
     }
     added.forEach((c, i) => {

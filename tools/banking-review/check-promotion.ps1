@@ -11,6 +11,8 @@
 #     is gone), then reviews normally: COMPLETE.
 #  3. A journal whose staged copy is missing. Expect: nothing is reviewed,
 #     the run is FAILED and the journal is kept for the operator.
+#  4. The stand-in reviewer corrects an earlier decision, documented.
+#     Expect: COMPLETE, the correction applied, and flagged for the operator.
 # Usage: powershell -File check-promotion.ps1 [-AppRoot C:\Users\user\gev-fast]
 param([string]$AppRoot = 'C:\Users\user\gev-fast', [int]$Port = 4199)
 $ErrorActionPreference = 'Stop'
@@ -46,7 +48,11 @@ function Log { Get-Content (Join-Path $box 'logs\review.log') -Raw -Encoding utf
 $app = Start-Process -FilePath 'node' -ArgumentList "`"$(Join-Path $here 'check\fake-app.mjs')`"", $Port -WindowStyle Hidden -PassThru
 $holder = $null
 try {
-  Start-Sleep -Seconds 2
+  $up = $false
+  for ($i = 0; $i -lt 40 -and -not $up; $i++) {
+    try { Invoke-RestMethod "http://127.0.0.1:$Port/api/banking-access" -TimeoutSec 2 | Out-Null; $up = $true } catch { Start-Sleep -Milliseconds 250 }
+  }
+  if (-not $up) { throw "the stand-in app did not answer on port $Port (is it in use?)" }
   # 1. The second promotion fails.
   $ready = Join-Path $box 'lock-held'
   $holder = Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -PassThru -ArgumentList '-NoProfile', '-Command',
@@ -69,9 +75,11 @@ try {
   Run-Wrapper
   $r2 = Last-Run
   Expect ((Log) -match 'completed an interrupted promotion') 'run 2 completes the journalled promotion first'
+  Expect ((Log) -match 'evidence \(\d{4}-\d{2}-\d{2}\)') 'run 2 runs the follow-up steps of the completed promotion'
   Expect (-not (Test-Path $journal)) 'run 2 removes the journal'
-  $match = @($j.files | Where-Object { (Get-FileHash -Algorithm SHA256 $_.to).Hash -eq $_.sha256 }).Count
-  Expect ($match -eq 2 -or ((Get-Content $ledgerFile -Raw) -match 'check-lead-1' -and (Get-Content $eventsFile -Raw) -match 'check-event-1')) 'after run 2 both live files hold the reviewed state'
+  Expect ($r2.fresh -eq 0) "run 2 completed the promotion before fetching leads (fresh $($r2.fresh): the lead was already decided)"
+  Expect ((Get-Content $ledgerFile -Raw) -match 'check-lead-1') 'after run 2 the ledger holds the decision'
+  Expect ((Get-Content $eventsFile -Raw) -match 'check-event-1') 'after run 2 the events file holds the event'
   Expect ($r2.status -eq 'COMPLETE') "run 2 is COMPLETE (was $($r2.status))"
 
   # 3. A journal that cannot be completed blocks the review.
@@ -86,6 +94,17 @@ try {
   Expect (-not ($tail -match 'claude exit')) 'run 3 reviews nothing'
   Expect ($r3.status -eq 'FAILED') "run 3 is FAILED (was $($r3.status))"
   Expect (Test-Path $journal) 'run 3 keeps the journal for the operator'
+
+  # 4. A documented correction of an earlier decision is applied and flagged.
+  Remove-Item $journal
+  New-Item -ItemType File (Join-Path $box 'work\make-correction') | Out-Null
+  $notesBefore = (Get-Content (Join-Path $box 'attention.txt') -Raw).Length
+  Run-Wrapper
+  $r4 = Last-Run
+  Expect ($r4.status -eq 'COMPLETE') "run 4 with a documented correction is COMPLETE (was $($r4.status))"
+  $ledger4 = Get-Content $ledgerFile -Raw | ConvertFrom-Json
+  Expect (@($ledger4.corrections).Count -eq 1 -and $ledger4.leads.'check-lead-1'.decision -eq 'duplicate') 'run 4 applied the correction'
+  Expect ((Get-Content (Join-Path $box 'attention.txt') -Raw).Substring($notesBefore) -match 'earlier decisions corrected') 'run 4 flags the correction for the operator'
 } finally {
   if ($holder) { Stop-Process -Id $holder.Id -Force -ErrorAction SilentlyContinue }
   Stop-Process -Id $app.Id -Force -ErrorAction SilentlyContinue

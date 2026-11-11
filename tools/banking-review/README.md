@@ -41,32 +41,54 @@ keeps that state out of the repository if they are run here by mistake.
    run cannot give, so it is refused. Reading files and fetching web pages
    are not confined to `work\`. The prompt treats web content as data,
    never as instructions. The run is stopped after 90 minutes.
-4. **Validate** (`validate-events.mjs`): the working copies are checked with
-   the app's own loader and the review's rules. Every entry must be valid,
-   and a fresh lead must be decided today. Earlier decisions are immutable:
-   none may be dropped, and none may change in any field, except a
-   `pending` lead offered again today. Any other change needs a correction
-   appended to the `corrections` list of `reviewed-leads.json`, holding:
+4. **Stage and validate**: the two working copies are first staged
+   (`logs\staged\<time>\`, checked by SHA-256). The staged copies are then
+   validated (`validate-events.mjs`), so what is promoted is exactly what
+   was validated. The checks use the app's own loader and the review's
+   rules:
+   - every entry must be valid;
+   - no event of the live operator file may be removed;
+   - a new decision may be made only for a lead offered today (`fresh`),
+     and every fresh lead must be decided today;
+   - a decision new or changed today may name only an `eventId` that
+     exists.
+
+   Earlier decisions are immutable: none may be dropped, and none may change
+   in any field, except a `pending` lead offered again today. Any other
+   change needs a correction appended to the `corrections` list of
+   `reviewed-leads.json`, holding:
    - the lead `id`, and `at`, today's date;
    - `from` and `to`, the entry exactly as it was and as it is now;
    - a `reason`;
-   - `evidence`, at least one http(s) URL.
+   - `evidence`, one or more http(s) URLs (nothing else).
 
    The list is append-only. Corrections pass validation but are flagged:
    the run raises an attention note and the report names them, for the
-   operator to check.
+   operator to check. The validator's verdict is read from its standard
+   output only; a verdict that cannot be read applies nothing.
 
-5. **Promote** both live files as one. Each working copy is staged and
-   checked by SHA-256. Then a journal (`logs\promotion.json`) is written:
-   the single commit point. Before it, nothing live has changed; after it,
-   the promotion is completed. Each live file is replaced through a verified
-   temporary copy and an atomic rename, then checked again. Every step
-   stops on error. A run whose promotion fails is FAILED, never COMPLETE.
-   If a promotion is cut short (a crash, a failed replace), the next run
-   first completes it from the journal, before it reads anything. If it
-   cannot, nothing is reviewed and the journal is kept for the operator.
-   On any failure before the journal, nothing is applied, and the day's
-   leads come back.
+5. **Promote** both live files as one. The staged copies are checked again
+   against their hashes. Then a journal (`logs\promotion.json`, with the
+   review's date and any corrections) is written: the single commit point.
+   Before it, nothing live has changed; after it, the promotion is
+   completed. Each live file is replaced through a verified temporary copy
+   and a rename, then checked again. On Windows PowerShell 5.1 the rename
+   removes the old file just before moving the new one in, so a reader may
+   for an instant find no file; the app then shows its last good copy.
+   Every step stops on error. A run whose promotion fails is FAILED, never
+   COMPLETE.
+   - **Cut short** (a crash, a failed replace): the next run first
+     completes the promotion from the journal, before it reads anything,
+     including a catch-up that would otherwise have nothing to do. It then
+     runs the promotion's follow-up steps: the corrections note, and the
+     evidence for the review's date.
+   - **Cannot be completed:** nothing is reviewed and the journal is kept
+     for the operator.
+   - **Failure before the journal:** nothing is applied, and the day's leads
+     come back.
+
+   Staged copies older than 14 days are removed.
+
 6. **Evidence** (`archive-evidence.mjs`): snapshots of each decided lead's
    page and of event sources, with SHA-256 and HTTP status. Only public
    http(s) hosts are fetched: every address is checked when connecting, so
@@ -138,21 +160,27 @@ fetch completed.)
 Host checks, not part of the app's unit suite; nothing live is touched and
 nothing is posted:
 
-- `node check-validate-events.mjs [appRoot]` exercises the validator in 13
+- `node check-validate-events.mjs [appRoot]` exercises the validator in 18
   cases:
   - an earlier decision changed silently, or only in its metadata, fails;
   - a documented correction passes and is reported;
-  - a correction with the wrong `from`, no reason, no evidence or another
-    date fails;
+  - a correction with the wrong `from`, no reason, no evidence, evidence
+    that is not a URL, or another date fails;
   - a pending lead offered again may be decided;
-  - earlier corrections cannot change.
+  - a decision for a lead not offered today fails;
+  - a new decision naming a missing event fails;
+  - removing a live event fails;
+  - earlier corrections cannot change;
+  - a malformed host corrections list is reported, not a crash.
 - `powershell -File check-promotion.ps1 [-AppRoot <app>]` runs the whole
-  wrapper three times in a sandbox, with a stand-in app (`check\fake-app.mjs`)
+  wrapper four times in a sandbox, with a stand-in app (`check\fake-app.mjs`)
   and a stand-in reviewer (`check\fake-reviewer.cmd`):
   1. The second promotion is made to fail. The run is FAILED and the
      promotion journalled, with the events file replaced and the ledger not.
-  2. The next run completes the promotion first, then is COMPLETE.
+  2. The next run completes the promotion before fetching leads, runs its
+     follow-up steps, and is COMPLETE.
   3. A journal that cannot be completed blocks the review.
+  4. A documented correction is applied and flagged for the operator.
 
 ## Evaluation harness (`eval\`)
 

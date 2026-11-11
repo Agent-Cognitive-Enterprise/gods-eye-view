@@ -16,6 +16,14 @@ const ledgerFile = path.join(process.cwd(), 'reviewed-leads.json');
 const ledger = JSON.parse(fs.readFileSync(ledgerFile, 'utf8'));
 for (const lead of today.fresh ?? [])
   ledger.leads[lead.id] = { decision: 'rejected', reason: 'Check run: not a disruption.', url: lead.url, title: lead.title, reviewedAt: date, eventId: null };
+// With a "make-correction" file here: correct the earlier decision of
+// check-lead-1 (rejected) to a duplicate of check-event-1, documented.
+if (fs.existsSync(path.join(process.cwd(), 'make-correction')) && ledger.leads['check-lead-1']) {
+  const from = ledger.leads['check-lead-1'];
+  const to = { ...from, decision: 'duplicate', reason: 'Check run: the same incident as check-event-1.', reviewedAt: date, eventId: 'check-event-1' };
+  ledger.leads['check-lead-1'] = to;
+  ledger.corrections = [...(ledger.corrections ?? []), { id: 'check-lead-1', at: date, from, to, reason: 'Check run: it was the same incident all along.', evidence: ['https://example.invalid/check-evidence'] }];
+}
 fs.writeFileSync(ledgerFile, JSON.stringify(ledger, null, 2) + '\n');
 
 const eventsFile = path.join(process.cwd(), 'events.review.json');

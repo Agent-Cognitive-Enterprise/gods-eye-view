@@ -10,11 +10,13 @@
 #    headless run cannot give. Reads and web fetches are not confined.
 # 4. Validate the working copies with the app's own loader and the review's
 #    rules (earlier decisions change only through a documented correction).
-#    Only then promote both live files together: staged, verified by hash,
-#    and journalled (logs\promotion.json) before either is replaced, so a
-#    promotion cut short is completed by the next run before anything else.
-#    On failure before the journal, nothing live changed and the day's
-#    leads come back; a run whose promotion did not complete is FAILED.
+#    The copies are staged first and the staged copies validated, so what
+#    is promoted is what was validated. Both live files are then promoted
+#    together, journalled (logs\promotion.json) before either is replaced,
+#    so a promotion cut short is completed by the next run before anything
+#    else, with its follow-up steps. On failure before the journal, nothing
+#    live changed and the day's leads come back; a run whose promotion did
+#    not complete is FAILED.
 # 5. Post the report on PR #6.
 # Scheduled by the task "GEV Banking Leads Review" (daily 09:00, Sydney time),
 # and by "GEV Banking Leads Review (catch-up)" (13:00 and 17:00, -CatchUp):
@@ -48,10 +50,14 @@ function Get-Sha([string]$file) { (Get-FileHash -Algorithm SHA256 -LiteralPath $
 $Journal = Join-Path $Dir 'logs\promotion.json'
 
 # Finish the journalled promotion: each staged file replaces its live file
-# through a verified temporary copy and an atomic rename, then is checked
-# again. A file already in place is left alone, so finishing is safe to
-# repeat. Throws on any failure; removes the journal only when every live
-# file matches its staged copy.
+# through a verified temporary copy and a rename, then is checked again. The
+# rename replaces the file in place (on Windows PowerShell 5.1 the old file
+# is removed just before the move, so a reader may for an instant find no
+# file; the app then shows its last good copy). A file already in place is
+# left alone, so finishing is safe to repeat. Throws on any failure. Once
+# every live file matches, the journal is removed; if that alone fails, the
+# promotion still counts as done and the next run removes the journal.
+# Returns the journal (date, corrections) for the follow-up steps.
 function Complete-Promotion {
   $j = Get-Content -LiteralPath $Journal -Raw -Encoding utf8 -ErrorAction Stop | ConvertFrom-Json
   if (-not $j.files -or @($j.files).Count -lt 1) { throw 'the promotion journal lists no files' }
@@ -65,27 +71,53 @@ function Complete-Promotion {
     Move-Item -LiteralPath $tmp -Destination $f.to -Force -ErrorAction Stop
     if ((Get-Sha $f.to) -ne $f.sha256) { throw "$($f.to) does not match after replacing" }
   }
-  Remove-Item -LiteralPath $Journal -ErrorAction Stop
+  try { Remove-Item -LiteralPath $Journal -ErrorAction Stop }
+  catch { Say "the promotion is complete, but its journal could not be removed: $($_.Exception.Message)" }
+  return $j
 }
 
-# Promote several files as one: stage each (verified), write the journal
-# (the single commit point: before it nothing live has changed, after it the
-# promotion is completed, now or by the next run), then complete it.
-function Promote-Together([object[]]$pairs) {
+# Stage the working copies as one promotion: copied to logs\staged\<time>\
+# and checked by hash. Returns the staged files, in order. Nothing live
+# changes here.
+function Stage-Together([object[]]$pairs) {
   if (Test-Path -LiteralPath $Journal) { throw 'an earlier promotion is still journalled' }
   $stage = Join-Path $Dir ('logs\staged\' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
   New-Item -ItemType Directory -Force $stage -ErrorAction Stop | Out-Null
-  $files = @(foreach ($pair in $pairs) {
+  return ,@(foreach ($pair in $pairs) {
     $staged = Join-Path $stage (Split-Path $pair.to -Leaf)
     Copy-Item -LiteralPath $pair.from -Destination $staged -Force -ErrorAction Stop
     $sha = Get-Sha $staged
     if ($sha -ne (Get-Sha $pair.from)) { throw "staging $($pair.from) failed" }
-    [ordered]@{ staged = $staged; to = $pair.to; sha256 = $sha }
+    [pscustomobject]@{ staged = $staged; to = $pair.to; sha256 = $sha }
   })
+}
+
+# Commit staged files: check they are unchanged since staging (and so since
+# validation), write the journal (the single commit point: before it
+# nothing live has changed, after it the promotion is completed, now or by
+# the next run), then complete it.
+function Commit-Together([object[]]$files, [string]$date, [string[]]$corrections) {
+  foreach ($f in $files) { if ((Get-Sha $f.staged) -ne $f.sha256) { throw "staged copy changed after validation: $($f.staged)" } }
   $tmp = "$Journal.tmp"
-  [System.IO.File]::WriteAllText($tmp, ([ordered]@{ startedAt = (Get-Date -Format s); files = $files } | ConvertTo-Json -Depth 4), $Utf8)
+  $doc = [ordered]@{ startedAt = (Get-Date -Format s); date = $date; corrections = @($corrections); files = @($files) }
+  [System.IO.File]::WriteAllText($tmp, ($doc | ConvertTo-Json -Depth 4), $Utf8)
   Move-Item -LiteralPath $tmp -Destination $Journal -Force -ErrorAction Stop
-  Complete-Promotion
+  return Complete-Promotion
+}
+
+# After a promotion, in the run that completed it (the same run or the
+# next): corrections are flagged for the operator, and the evidence for the
+# review's date is archived.
+function Complete-Followups($j, $notes) {
+  $corrected = @($j.corrections | Where-Object { $_ })
+  if ($corrected.Count) {
+    Attention "earlier decisions corrected ($($j.date)), please check: $($corrected -join ', ')"
+    $notes.Add("**Earlier decisions corrected on $($j.date), for the operator to check:** $($corrected -join ', '). Each correction (reason and evidence) is in reviewed-leads.json under ``corrections``.")
+  }
+  if ($j.date) {
+    $archive = (& node (Join-Path $Dir 'archive-evidence.mjs') $j.date 2>&1 | Out-String).Trim()
+    Say "evidence ($($j.date)): $archive"
+  }
 }
 
 New-Item -ItemType Directory -Force (Join-Path $Dir 'logs'), (Join-Path $Dir 'reports'), (Join-Path $Dir 'backups'), (Join-Path $Work 'reports'), (Join-Path $Work 'leads') | Out-Null
@@ -109,7 +141,7 @@ if ($CatchUp) {
   $all = Read-Ledger -Quiet
   $today = @($all | Where-Object { $Unattended -contains $_.trigger -and $_.date -eq $Date })
   $done = @($today | Where-Object { $_.status -eq 'COMPLETE' })
-  if ($done.Count) { Say "catch-up: today already has a complete run; nothing to do"; exit 0 }
+  if ($done.Count -and -not (Test-Path -LiteralPath $Journal)) { Say "catch-up: today already has a complete run; nothing to do"; exit 0 }
   # The 09:00 run may still be going (its limit is 3 h): the lock below
   # then makes this run exit rather than overlap.
   Say "catch-up: today's unattended runs so far: $(if ($today.Count) { ($today | ForEach-Object { $_.status }) -join ', ' } else { 'none' })"
@@ -140,14 +172,22 @@ try {
   $blocked = $false
   if (Test-Path -LiteralPath $Journal) {
     try {
-      Complete-Promotion
+      $recovered = Complete-Promotion
       Say 'completed an interrupted promotion from logs\promotion.json'
-      $notes.Add('An earlier promotion that had been cut short was completed from its journal before this run.')
+      $notes.Add("An earlier promotion (review of $($recovered.date)) that had been cut short was completed from its journal before this run.")
+      Complete-Followups $recovered $notes
     } catch {
       $blocked = $true
       Attention "an interrupted promotion could not be completed ($Date): $($_.Exception.Message). Nothing was reviewed; fix it (logs\promotion.json), then run again."
       $notes.Add("**An earlier promotion that had been cut short could not be completed** ($($_.Exception.Message)); nothing was reviewed.")
     }
+  }
+
+  # Staged copies older than 14 days go (never while a journal exists).
+  if (-not (Test-Path -LiteralPath $Journal)) {
+    Get-ChildItem (Join-Path $Dir 'logs\staged') -Directory -ErrorAction SilentlyContinue |
+      Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-14) } |
+      Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
   }
 
   # An earlier run today keeps its evidence: its prompt and transcript are
@@ -215,38 +255,44 @@ try {
     Attention "lead fetch failed ($Date): $fetch"
   }
 
-  # 4. Validate, then promote.
+  # 4. Stage, validate the staged copies, then promote them.
   $promoted = $false
   if ($reviewed) {
-    $check = (& node (Join-Path $Dir 'validate-events.mjs') $AppRoot (Join-Path $Work 'events.review.json') (Join-Path $Work 'reviewed-leads.json') (Join-Path $Dir 'reviewed-leads.json') $leadsFile 2>&1 | Out-String).Trim()
-    if ($LASTEXITCODE -eq 0) {
-      try {
-        Promote-Together @(
-          @{ from = (Join-Path $Work 'events.review.json'); to = (Join-Path $Dir 'events.local.json') },
-          @{ from = (Join-Path $Work 'reviewed-leads.json'); to = (Join-Path $Dir 'reviewed-leads.json') })
-        $promoted = $true
-        Say "promoted: $check"
-      } catch {
-        $why = $_.Exception.Message
-        $journalled = Test-Path -LiteralPath $Journal
-        $next = if ($journalled) { 'it is journalled, and the next run completes it before anything else' } else { 'nothing live was changed' }
-        Attention "promoting the review's edits failed ($Date): $why; $next"
-        $notes.Add("**Promoting the validated edits failed** ($why); $next. This run is not complete.")
-      }
-      if ($promoted) {
-        # Earlier decisions corrected today: for the operator to check.
-        $corrected = @()
-        try { $corrected = @(($check | ConvertFrom-Json).corrections) } catch {}
-        if ($corrected.Count) {
-          Attention "earlier decisions corrected ($Date), please check: $($corrected -join ', ')"
-          $notes.Add("**Earlier decisions corrected today, for the operator to check:** $($corrected -join ', '). Each correction (reason and evidence) is in reviewed-leads.json under ``corrections``.")
+    $staged = $null
+    try {
+      $staged = Stage-Together @(
+        @{ from = (Join-Path $Work 'events.review.json'); to = (Join-Path $Dir 'events.local.json') },
+        @{ from = (Join-Path $Work 'reviewed-leads.json'); to = (Join-Path $Dir 'reviewed-leads.json') })
+    } catch {
+      Attention "staging the review's edits failed ($Date): $($_.Exception.Message); nothing live was changed"
+      $notes.Add("**Staging the review's edits failed** ($($_.Exception.Message)); nothing live was changed. This run is not complete.")
+    }
+    if ($staged) {
+      # The validator's answer is its stdout; its stderr goes to a log.
+      $valErr = Join-Path $Dir 'logs\validate-stderr.txt'
+      $check = (& node (Join-Path $Dir 'validate-events.mjs') $AppRoot $staged[0].staged $staged[1].staged (Join-Path $Dir 'reviewed-leads.json') $leadsFile (Join-Path $Dir 'events.local.json') 2> $valErr | Out-String).Trim()
+      $valExit = $LASTEXITCODE
+      $verdict = $null
+      try { $verdict = $check | ConvertFrom-Json } catch {}
+      if ($valExit -eq 0 -and $verdict -and $null -ne $verdict.corrections) {
+        try {
+          $committed = Commit-Together $staged $Date @($verdict.corrections)
+          $promoted = $true
+          Say "promoted: $check"
+          Complete-Followups $committed $notes
+        } catch {
+          $why = $_.Exception.Message
+          $next = if (Test-Path -LiteralPath $Journal) { 'it is journalled, and the next run completes it before anything else' } else { 'nothing live was changed' }
+          Attention "promoting the review's edits failed ($Date): $why; $next"
+          $notes.Add("**Promoting the validated edits failed** ($why); $next. This run is not complete.")
         }
-        $archive = (& node (Join-Path $Dir 'archive-evidence.mjs') $Date 2>&1 | Out-String).Trim()
-        Say "evidence: $archive"
+      } elseif ($valExit -eq 0) {
+        Attention "the validator's answer could not be read ($Date), so nothing was applied: $check"
+        $notes.Add("**The validator's answer could not be read, so nothing was applied:** ``$check``")
+      } else {
+        Attention "the review's edits failed validation and were not applied ($Date): $check"
+        $notes.Add("**The review's edits failed validation and were not applied** (the day's leads will be reviewed again): ``$check``")
       }
-    } else {
-      Attention "the review's edits failed validation and were not applied ($Date): $check"
-      $notes.Add("**The review's edits failed validation and were not applied** (the day's leads will be reviewed again): ``$check``")
     }
   }
 
@@ -256,7 +302,7 @@ try {
   #    DEGRADED: the same but without a completed news fetch (the feed was
   #    degraded: not a quiet day). FAILED: anything else.
   $leadInfo = $null
-  if (Test-Path $leadsFile) { try { $leadInfo = Get-Content $leadsFile -Raw -Encoding utf8 | ConvertFrom-Json } catch {} }
+  if (-not $blocked -and (Test-Path $leadsFile)) { try { $leadInfo = Get-Content $leadsFile -Raw -Encoding utf8 | ConvertFrom-Json } catch {} }
   $workReport = Join-Path $Work "reports\$Date.md"
   $runStatus = if (-not ($reviewed -and $promoted -and (Test-Path $workReport))) { 'FAILED' }
     elseif ($leadInfo -and $leadInfo.newsComplete) { 'COMPLETE' } else { 'DEGRADED' }
