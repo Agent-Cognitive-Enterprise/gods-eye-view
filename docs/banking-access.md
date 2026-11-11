@@ -102,9 +102,11 @@ operator can keep their own file outside the repo and point
 bundled ones, and an event with the same `id` replaces the bundled one. Both
 files are re-read every 30 seconds, so edits show without a restart.
 
-A file that cannot be read on a re-read (half-written, not valid JSON, no
-`events` list, too large, unreadable or missing) keeps the events of its
-last good read: the row says **Events file DEGRADED: showing the copy from**
+A file becomes the copy to fall back to only when it reads and every entry
+in it is valid. A re-read that fails (half-written, not valid JSON, no
+`events` list, too large, unreadable or missing) or that holds an invalid
+entry (a required field missing, say) keeps the events of the last good
+copy, and the invalid entries are listed so they can be fixed: the row says **Events file DEGRADED: showing the copy from**
 its time, the route lists the file under `degraded`, and the problem is
 listed. A reviewed incident never drops off the map because a write was
 caught half-way. Nothing is kept from before the server started, so after a

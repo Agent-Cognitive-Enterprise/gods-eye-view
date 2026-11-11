@@ -39,12 +39,17 @@ export function loadPopulation(file = POPULATION) {
 }
 
 /**
- * Every event checked; bad entries listed by reason, the rest kept.
- * A file that cannot be read (half-written, not valid JSON, unreadable or
- * missing) keeps the entries of its last good read, from `lastGood`
- * (origin -> { entries, at }), so a reviewed incident never drops off the
- * map while the file is being replaced; the file is listed in `degraded`
- * with the time of that copy. `good` is the new lastGood for the next load.
+ * Every event checked; bad entries listed by reason.
+ * A file becomes its origin's last good copy (`good`, origin ->
+ * { entries, at }) only when it reads and every entry in it is valid.
+ * When a re-read fails (half-written, not valid JSON, unreadable, missing,
+ * too large) or holds an invalid entry, and a last good copy exists in
+ * `lastGood`, that copy is shown instead and the file is listed in
+ * `degraded` with the copy's time; the invalid entries are still listed, so
+ * they can be fixed. A reviewed incident therefore never drops off the map
+ * because of a torn write or a bad edit, and a bad edit never becomes the
+ * copy to fall back to. Without a last good copy, a file's valid entries
+ * are shown (and kept as its copy) and its invalid ones listed.
  * To remove every operator event, write an empty "events" list.
  */
 export function loadEvents({
@@ -59,10 +64,10 @@ export function loadEvents({
   const degraded = [];
   const files = [['bundled', bundled], ...(local ? [['local', local]] : [])];
   for (const [origin, file] of files) {
+    const kept = lastGood.get(origin);
     let raw;
     try {
       raw = readEvents(file);
-      good.set(origin, { entries: raw, at: now });
     } catch (error) {
       // The browser sees this: say what is wrong, never the path.
       const why =
@@ -73,7 +78,6 @@ export function loadEvents({
             : error.code
               ? 'cannot be read'
               : error.message;
-      const kept = lastGood.get(origin);
       if (!kept) {
         problems.push(`${origin} file: ${why}`);
         continue;
@@ -81,6 +85,30 @@ export function loadEvents({
       problems.push(`${origin} file: ${why}; showing its last good copy`);
       degraded.push({ origin, reason: why, lastGoodAt: kept.at });
       raw = kept.entries;
+    }
+    // A file just read: every entry checked before it may become the copy.
+    if (!degraded.some((d) => d.origin === origin)) {
+      const checked = raw.map((entry) => ({
+        entry,
+        ...normalizeEvent(entry, { now }),
+      }));
+      const invalid = checked.filter((c) => c.error);
+      for (const c of invalid) problems.push(`${origin}: ${c.error}`);
+      if (invalid.length && kept) {
+        problems.push(
+          `${origin} file: ${invalid.length} invalid ${invalid.length === 1 ? 'entry' : 'entries'}; showing its last good copy`,
+        );
+        degraded.push({
+          origin,
+          reason: 'invalid entries',
+          lastGoodAt: kept.at,
+        });
+        raw = kept.entries;
+      } else {
+        // Valid entries only: a copy never carries an entry that fails.
+        raw = checked.filter((c) => !c.error).map((c) => c.entry);
+        good.set(origin, { entries: raw, at: now });
+      }
     }
     const seen = new Set();
     for (const entry of raw) {

@@ -247,6 +247,95 @@ test('every way a file can fail to read keeps the last good copy', () => {
   rmSync(path.dirname(local), { recursive: true, force: true });
 });
 
+test('an invalid entry in a readable file never replaces the last good copy', () => {
+  const good = {
+    id: 'valid-1',
+    country_code: 'PSE',
+    event_type: 'technical_outage',
+    severity: 2,
+    confidence: 'social',
+    start_time: '2026-11-01T00:00:00Z',
+    sources: [{ url: 'https://example.org/valid' }],
+  };
+  const local = tempFile({ events: [good] });
+  const first = loadEvents({ local, now: NOW });
+  assert.ok(first.events.find((e) => e.id === 'valid-1'));
+  // Valid JSON, but the replacement entry lacks event_type and sources.
+  const { event_type: _type, sources: _sources, ...broken } = good;
+  writeFileSync(local, JSON.stringify({ events: [broken] }));
+  const bad = loadEvents({ local, now: NOW + 30_000, lastGood: first.good });
+  const kept = bad.events.find((e) => e.id === 'valid-1');
+  assert.ok(kept, 'the reviewed incident stays on the map');
+  assert.equal(kept.type, 'technical_outage');
+  assert.deepEqual(bad.degraded, [
+    { origin: 'local', reason: 'invalid entries', lastGoodAt: NOW },
+  ]);
+  assert.ok(bad.problems.some((p) => /^local: valid-1: /.test(p)));
+  assert.ok(
+    bad.problems.some((p) =>
+      /1 invalid entry; showing its last good copy/.test(p),
+    ),
+  );
+  // The bad edit did not become the copy: a torn write next still falls
+  // back to the original, with its original time.
+  writeFileSync(local, '{"events": [');
+  const torn = loadEvents({ local, now: NOW + 60_000, lastGood: bad.good });
+  assert.equal(
+    torn.events.find((e) => e.id === 'valid-1').type,
+    'technical_outage',
+  );
+  assert.deepEqual(torn.degraded, [
+    { origin: 'local', reason: 'not valid JSON', lastGoodAt: NOW },
+  ]);
+  // Fixed: the new valid file is shown and becomes the copy.
+  writeFileSync(local, JSON.stringify({ events: [{ ...good, severity: 4 }] }));
+  const fixed = loadEvents({ local, now: NOW + 90_000, lastGood: torn.good });
+  assert.deepEqual(fixed.degraded, []);
+  assert.equal(fixed.events.find((e) => e.id === 'valid-1').severity, 4);
+  assert.equal(fixed.good.get('local').at, NOW + 90_000);
+  // An empty list still clears, as a valid file.
+  writeFileSync(local, JSON.stringify({ events: [] }));
+  const cleared = loadEvents({
+    local,
+    now: NOW + 120_000,
+    lastGood: fixed.good,
+  });
+  assert.equal(
+    cleared.events.find((e) => e.id === 'valid-1'),
+    undefined,
+  );
+  assert.deepEqual(cleared.degraded, []);
+});
+
+test('without a last good copy, a file shows its valid entries and keeps only those', () => {
+  const ok = {
+    id: 'mixed-ok',
+    country_code: 'PSE',
+    event_type: 'technical_outage',
+    severity: 2,
+    confidence: 'social',
+    start_time: '2026-11-01T00:00:00Z',
+    sources: [{ url: 'https://example.org/mixed' }],
+  };
+  const local = tempFile({
+    events: [ok, { id: 'mixed-bad', country_code: 'PSE' }],
+  });
+  const first = loadEvents({ local, now: NOW });
+  assert.ok(first.events.find((e) => e.id === 'mixed-ok'));
+  assert.ok(first.problems.some((p) => /^local: mixed-bad: /.test(p)));
+  assert.deepEqual(first.degraded, []);
+  // Its copy holds the valid entry only: a torn write shows it and lists no
+  // error for the invalid one again.
+  assert.deepEqual(
+    first.good.get('local').entries.map((e) => e.id),
+    ['mixed-ok'],
+  );
+  writeFileSync(local, '{');
+  const torn = loadEvents({ local, now: NOW + 30_000, lastGood: first.good });
+  assert.ok(torn.events.find((e) => e.id === 'mixed-ok'));
+  assert.ok(!torn.problems.some((p) => /mixed-bad/.test(p)));
+});
+
 test('the route keeps the last good operator events across reloads', async () => {
   const entry = {
     id: 'route-1',
