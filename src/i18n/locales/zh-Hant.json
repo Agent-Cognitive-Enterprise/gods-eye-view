@@ -3829,5 +3829,6 @@
   "News leads DEGRADED: next try {time}": "新聞線索：已降級，下次嘗試 {time}",
   "News leads: starting": "新聞線索：正在啟動",
   "News leads: {count}, list from {time}": "新聞線索：{count}，列表時間 {time}",
-  "voice provider|Local": "本機"
+  "voice provider|Local": "本機",
+  "Events file DEGRADED: showing the copy from {time}": "事件檔案降級：顯示 {time} 的副本"
 }

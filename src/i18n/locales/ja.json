@@ -3829,5 +3829,6 @@
   "News leads DEGRADED: next try {time}": "ニュースの手がかり：劣化中、次の試行 {time}",
   "News leads: starting": "ニュースの手がかり：開始中",
   "News leads: {count}, list from {time}": "ニュースの手がかり：{count}（{time}時点の一覧）",
-  "voice provider|Local": "ローカル"
+  "voice provider|Local": "ローカル",
+  "Events file DEGRADED: showing the copy from {time}": "イベントファイル劣化: {time} の版を表示中"
 }

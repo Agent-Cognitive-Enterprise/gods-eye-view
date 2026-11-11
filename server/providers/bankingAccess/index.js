@@ -38,19 +38,31 @@ export function loadPopulation(file = POPULATION) {
   return { table, meta: doc.meta ?? {} };
 }
 
-/** Every event checked; bad entries listed by reason, the rest kept. */
+/**
+ * Every event checked; bad entries listed by reason, the rest kept.
+ * A file that cannot be read (half-written, not valid JSON, unreadable or
+ * missing) keeps the entries of its last good read, from `lastGood`
+ * (origin -> { entries, at }), so a reviewed incident never drops off the
+ * map while the file is being replaced; the file is listed in `degraded`
+ * with the time of that copy. `good` is the new lastGood for the next load.
+ * To remove every operator event, write an empty "events" list.
+ */
 export function loadEvents({
   bundled = BUNDLED,
   local = null,
   now = Date.now(),
+  lastGood = new Map(),
 } = {}) {
   const byId = new Map();
   const problems = [];
+  const good = new Map(lastGood);
+  const degraded = [];
   const files = [['bundled', bundled], ...(local ? [['local', local]] : [])];
   for (const [origin, file] of files) {
     let raw;
     try {
       raw = readEvents(file);
+      good.set(origin, { entries: raw, at: now });
     } catch (error) {
       // The browser sees this: say what is wrong, never the path.
       const why =
@@ -61,8 +73,14 @@ export function loadEvents({
             : error.code
               ? 'cannot be read'
               : error.message;
-      problems.push(`${origin} file: ${why}`);
-      continue;
+      const kept = lastGood.get(origin);
+      if (!kept) {
+        problems.push(`${origin} file: ${why}`);
+        continue;
+      }
+      problems.push(`${origin} file: ${why}; showing its last good copy`);
+      degraded.push({ origin, reason: why, lastGoodAt: kept.at });
+      raw = kept.entries;
     }
     const seen = new Set();
     for (const entry of raw) {
@@ -78,13 +96,14 @@ export function loadEvents({
       byId.set(event.id, { ...event, origin });
     }
   }
-  return { events: [...byId.values()], problems };
+  return { events: [...byId.values()], problems, degraded, good };
 }
 
 /** The route's answer as of `now`. */
 export function bankingAccessSnapshot({
   events,
   problems = [],
+  degraded = [],
   population,
   news,
   now,
@@ -124,6 +143,8 @@ export function bankingAccessSnapshot({
       historical: assessed.filter((e) => e.historical).length,
     },
     problems,
+    // Events files shown from their last good copy (origin, reason, when).
+    degraded,
     population: {
       source: population.meta.source ?? null,
       license: population.meta.license ?? null,
@@ -149,9 +170,11 @@ export function bankingAccessProxy({
   const allow = makeRateLimiter({ windowMs: 60_000, max: 60, globalMax: 600 });
   let loaded = null;
   let loadedAt = -Infinity;
+  let lastGood = new Map();
   const current = () => {
     if (!loaded || now() - loadedAt > RELOAD_MS) {
-      loaded = loadEvents({ bundled, local, now: now() });
+      loaded = loadEvents({ bundled, local, now: now(), lastGood });
+      lastGood = loaded.good;
       if (localFile && !local)
         loaded.problems.push(
           'GEV_BANKING_ACCESS_EVENTS must be an absolute path',
@@ -178,12 +201,13 @@ export function bankingAccessProxy({
     if (route !== '/' && route !== '')
       return json(404, { error: 'unknown_route' });
     if (!allow(clientKey(req))) return json(429, { error: 'rate_limited' });
-    const { events, problems } = current();
+    const { events, problems, degraded } = current();
     json(
       200,
       bankingAccessSnapshot({
         events,
         problems,
+        degraded,
         population,
         news,
         now: now(),

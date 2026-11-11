@@ -4259,5 +4259,6 @@
   "News leads DEGRADED: next try {time}": "خيوط الأخبار: متدهورة، المحاولة التالية {time}",
   "News leads: starting": "خيوط الأخبار: قيد البدء",
   "News leads: {count}, list from {time}": "خيوط الأخبار: {count}، قائمة من {time}",
-  "voice provider|Local": "محلي"
+  "voice provider|Local": "محلي",
+  "Events file DEGRADED: showing the copy from {time}": "ملف الأحداث متدهور: تُعرض النسخة من {time}"
 }

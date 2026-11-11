@@ -3915,5 +3915,6 @@
   "News leads DEGRADED: next try {time}": "Nachrichtenhinweise GESTÖRT: nächster Versuch {time}",
   "News leads: starting": "Nachrichtenhinweise: werden geladen",
   "News leads: {count}, list from {time}": "Nachrichtenhinweise: {count}, Liste vom {time}",
-  "voice provider|Local": "Lokal"
+  "voice provider|Local": "Lokal",
+  "Events file DEGRADED: showing the copy from {time}": "Ereignisdatei BEEINTRÄCHTIGT: angezeigt wird die Fassung von {time}"
 }

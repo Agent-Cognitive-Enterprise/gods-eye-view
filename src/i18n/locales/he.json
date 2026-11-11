@@ -4001,5 +4001,6 @@
   "Local voice is not set up on this computer.": "קול מקומי אינו מוגדר במחשב הזה.",
   "Local speech-to-text is not running.": "המרת הדיבור לטקסט המקומית אינה פועלת.",
   "The local model is offline.": "המודל המקומי אינו מקוון.",
-  "Microphone unavailable. Local voice needs microphone access on this computer.": "המיקרופון אינו זמין. קול מקומי צריך גישה למיקרופון במחשב הזה."
+  "Microphone unavailable. Local voice needs microphone access on this computer.": "המיקרופון אינו זמין. קול מקומי צריך גישה למיקרופון במחשב הזה.",
+  "Events file DEGRADED: showing the copy from {time}": "קובץ האירועים במצב מופחת: מוצג העותק מ־{time}"
 }

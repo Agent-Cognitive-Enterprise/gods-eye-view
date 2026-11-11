@@ -3829,5 +3829,6 @@
   "News leads DEGRADED: next try {time}": "新闻线索：已降级，下次尝试 {time}",
   "News leads: starting": "新闻线索：正在启动",
   "News leads: {count}, list from {time}": "新闻线索：{count}，列表时间 {time}",
-  "voice provider|Local": "本地"
+  "voice provider|Local": "本地",
+  "Events file DEGRADED: showing the copy from {time}": "事件文件降级：显示 {time} 的副本"
 }

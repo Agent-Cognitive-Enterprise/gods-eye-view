@@ -4001,5 +4001,6 @@
   "News leads DEGRADED: next try {time}": "Pistas de noticias DEGRADADAS: próximo intento {time}",
   "News leads: starting": "Pistas de noticias: iniciando",
   "News leads: {count}, list from {time}": "Pistas de noticias: {count}, lista del {time}",
-  "voice provider|Local": "Local"
+  "voice provider|Local": "Local",
+  "Events file DEGRADED: showing the copy from {time}": "Archivo de eventos DEGRADADO: se muestra la copia de {time}"
 }

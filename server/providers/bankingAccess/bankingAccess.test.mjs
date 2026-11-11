@@ -147,6 +147,95 @@ test('the loader judges future dates by the clock it is given', () => {
   assert.equal(later.problems.length, 0);
 });
 
+test('a half-written operator file keeps its last good events, labelled degraded', () => {
+  const entry = {
+    id: 'kept-1',
+    country_code: 'PSE',
+    event_type: 'technical_outage',
+    severity: 2,
+    confidence: 'social',
+    start_time: '2026-11-01T00:00:00Z',
+    sources: [{ url: 'https://example.org/kept' }],
+  };
+  const local = tempFile({ events: [entry] });
+  const first = loadEvents({ local, now: NOW });
+  assert.ok(first.events.find((e) => e.id === 'kept-1'));
+  assert.deepEqual(first.degraded, []);
+  // A partial write: the reviewed incident stays, said to be from the last
+  // good read, and the problem is listed.
+  writeFileSync(local, '{"events": [{"id": "kept-1", "country');
+  const torn = loadEvents({ local, now: NOW + 30_000, lastGood: first.good });
+  assert.ok(torn.events.find((e) => e.id === 'kept-1'));
+  assert.deepEqual(torn.degraded, [
+    { origin: 'local', reason: 'not valid JSON', lastGoodAt: NOW },
+  ]);
+  assert.ok(
+    torn.problems.some((p) =>
+      /not valid JSON; showing its last good copy/.test(p),
+    ),
+  );
+  // The last good copy is kept through repeated failures, with its own time.
+  const again = loadEvents({ local, now: NOW + 60_000, lastGood: torn.good });
+  assert.equal(again.degraded[0].lastGoodAt, NOW);
+  // The snapshot carries the label to the browser.
+  const snap = bankingAccessSnapshot({
+    events: torn.events,
+    problems: torn.problems,
+    degraded: torn.degraded,
+    population: loadPopulation(),
+    news: createNewsCandidates({ enabled: false, now: () => NOW }),
+    now: NOW,
+  });
+  assert.deepEqual(snap.degraded, torn.degraded);
+  // Fixed: back to the file itself, no longer degraded.
+  writeFileSync(local, JSON.stringify({ events: [{ ...entry, severity: 3 }] }));
+  const fixed = loadEvents({ local, now: NOW + 90_000, lastGood: again.good });
+  assert.deepEqual(fixed.degraded, []);
+  assert.equal(fixed.events.find((e) => e.id === 'kept-1').severity, 3);
+  // Without an earlier good read, nothing is invented.
+  writeFileSync(local, '{');
+  const never = loadEvents({ local, now: NOW });
+  assert.equal(
+    never.events.find((e) => e.id === 'kept-1'),
+    undefined,
+  );
+  assert.deepEqual(never.degraded, []);
+  // An emptied list is a good read: the operator's way to remove events.
+  writeFileSync(local, JSON.stringify({ events: [] }));
+  const emptied = loadEvents({ local, now: NOW, lastGood: first.good });
+  assert.equal(
+    emptied.events.find((e) => e.id === 'kept-1'),
+    undefined,
+  );
+  assert.deepEqual(emptied.degraded, []);
+});
+
+test('the route keeps the last good operator events across reloads', async () => {
+  const entry = {
+    id: 'route-1',
+    country_code: 'PSE',
+    event_type: 'technical_outage',
+    severity: 2,
+    confidence: 'social',
+    start_time: '2026-11-01T00:00:00Z',
+    sources: [{ url: 'https://example.org/route' }],
+  };
+  const local = tempFile({ events: [entry] });
+  let clock = NOW;
+  const plugin = bankingAccessProxy({
+    env: { GEV_BANKING_ACCESS_EVENTS: local },
+    now: () => clock,
+  });
+  const before = await call(plugin);
+  assert.deepEqual(before.body.degraded, []);
+  writeFileSync(local, '{"events": [');
+  clock += 31_000;
+  const during = await call(plugin);
+  assert.equal(during.body.degraded.length, 1);
+  assert.equal(during.body.degraded[0].lastGoodAt, NOW);
+  assert.ok(during.body.events.some((e) => e.id === 'route-1'));
+});
+
 test('the snapshot lists live countries; history adds past ones', () => {
   const { events } = loadEvents();
   const args = {

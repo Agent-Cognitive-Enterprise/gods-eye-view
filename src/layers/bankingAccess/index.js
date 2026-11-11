@@ -499,6 +499,19 @@ export function createBankingAccessLayer({
         count: formatNumber(_answer.counts?.active ?? 0),
       }),
     ];
+    // An events file that could not be read: the map shows its last good
+    // copy, and says from when.
+    const degraded = _answer.degraded ?? [];
+    if (degraded.length)
+      parts.push(
+        t('Events file DEGRADED: showing the copy from {time}', {
+          time: formatDate(Math.min(...degraded.map((d) => d.lastGoodAt)), {
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+        }),
+      );
     if (_answer.problems?.length)
       parts.push(
         t('Entries to fix: {count}', {

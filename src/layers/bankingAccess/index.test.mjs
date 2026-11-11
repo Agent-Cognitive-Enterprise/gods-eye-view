@@ -459,6 +459,26 @@ test('a failed news fetch reads DEGRADED, never as zero leads', async () => {
   assert.doesNotMatch(info, /News leads: 0/);
 });
 
+test('an events file shown from its last good copy says so, and from when', async () => {
+  const answer = {
+    ...ANSWER,
+    problems: ['local file: not valid JSON; showing its last good copy'],
+    degraded: [
+      {
+        origin: 'local',
+        reason: 'not valid JSON',
+        lastGoodAt: Date.UTC(2026, 10, 9, 0, 0),
+      },
+    ],
+  };
+  const { layer, viewer } = setup({ answer });
+  layer.enable();
+  await layer.update(viewer);
+  const info = layer.getRowControls().info;
+  assert.match(info, /Events file DEGRADED: showing the copy from/);
+  assert.match(info, /Entries to fix: 1/);
+});
+
 test('a stale list says how old it is', async () => {
   const answer = {
     ...ANSWER,
