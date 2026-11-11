@@ -9,8 +9,12 @@
 #    inside work\; an edit elsewhere would need an approval, which a
 #    headless run cannot give. Reads and web fetches are not confined.
 # 4. Validate the working copies with the app's own loader and the review's
-#    rules; only then replace the live files (atomically). On failure both
-#    stay as they were, so the day's leads come back tomorrow.
+#    rules (earlier decisions change only through a documented correction).
+#    Only then promote both live files together: staged, verified by hash,
+#    and journalled (logs\promotion.json) before either is replaced, so a
+#    promotion cut short is completed by the next run before anything else.
+#    On failure before the journal, nothing live changed and the day's
+#    leads come back; a run whose promotion did not complete is FAILED.
 # 5. Post the report on PR #6.
 # Scheduled by the task "GEV Banking Leads Review" (daily 09:00, Sydney time),
 # and by "GEV Banking Leads Review (catch-up)" (13:00 and 17:00, -CatchUp):
@@ -27,7 +31,9 @@ param(
   [switch]$Scheduled,
   # Set by the catch-up task: run only if today has no complete unattended
   # run yet. Counts as unattended (trigger "catch-up").
-  [switch]$CatchUp
+  [switch]$CatchUp,
+  # The reviewer binary. Only tests replace it (with a stand-in reviewer).
+  [string]$ClaudeExe = 'C:\Users\user\.local\bin\claude.exe'
 )
 $ErrorActionPreference = 'Continue'
 $Dir = $PSScriptRoot
@@ -38,10 +44,48 @@ $Note = 'D:\Users\user\Desktop\GEV banking review needs attention.txt'
 $Utf8 = New-Object System.Text.UTF8Encoding $false
 function Say([string]$text) { [System.IO.File]::AppendAllText($Log, ("{0} {1}`r`n" -f (Get-Date -Format s), $text), $Utf8) }
 function Attention([string]$text) { Say "ATTENTION: $text"; [System.IO.File]::AppendAllText($Note, ("{0} {1}`r`n" -f (Get-Date -Format s), $text), $Utf8) }
-function Promote([string]$from, [string]$to) {
-  $tmp = "$to.tmp"
-  Copy-Item $from $tmp -Force
-  Move-Item $tmp $to -Force
+function Get-Sha([string]$file) { (Get-FileHash -Algorithm SHA256 -LiteralPath $file -ErrorAction Stop).Hash }
+$Journal = Join-Path $Dir 'logs\promotion.json'
+
+# Finish the journalled promotion: each staged file replaces its live file
+# through a verified temporary copy and an atomic rename, then is checked
+# again. A file already in place is left alone, so finishing is safe to
+# repeat. Throws on any failure; removes the journal only when every live
+# file matches its staged copy.
+function Complete-Promotion {
+  $j = Get-Content -LiteralPath $Journal -Raw -Encoding utf8 -ErrorAction Stop | ConvertFrom-Json
+  if (-not $j.files -or @($j.files).Count -lt 1) { throw 'the promotion journal lists no files' }
+  foreach ($f in @($j.files)) {
+    if ((Test-Path -LiteralPath $f.to) -and (Get-Sha $f.to) -eq $f.sha256) { continue }
+    if (-not (Test-Path -LiteralPath $f.staged)) { throw "staged copy missing: $($f.staged)" }
+    if ((Get-Sha $f.staged) -ne $f.sha256) { throw "staged copy changed: $($f.staged)" }
+    $tmp = "$($f.to).tmp"
+    Copy-Item -LiteralPath $f.staged -Destination $tmp -Force -ErrorAction Stop
+    if ((Get-Sha $tmp) -ne $f.sha256) { throw "temporary copy for $($f.to) does not match" }
+    Move-Item -LiteralPath $tmp -Destination $f.to -Force -ErrorAction Stop
+    if ((Get-Sha $f.to) -ne $f.sha256) { throw "$($f.to) does not match after replacing" }
+  }
+  Remove-Item -LiteralPath $Journal -ErrorAction Stop
+}
+
+# Promote several files as one: stage each (verified), write the journal
+# (the single commit point: before it nothing live has changed, after it the
+# promotion is completed, now or by the next run), then complete it.
+function Promote-Together([object[]]$pairs) {
+  if (Test-Path -LiteralPath $Journal) { throw 'an earlier promotion is still journalled' }
+  $stage = Join-Path $Dir ('logs\staged\' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+  New-Item -ItemType Directory -Force $stage -ErrorAction Stop | Out-Null
+  $files = @(foreach ($pair in $pairs) {
+    $staged = Join-Path $stage (Split-Path $pair.to -Leaf)
+    Copy-Item -LiteralPath $pair.from -Destination $staged -Force -ErrorAction Stop
+    $sha = Get-Sha $staged
+    if ($sha -ne (Get-Sha $pair.from)) { throw "staging $($pair.from) failed" }
+    [ordered]@{ staged = $staged; to = $pair.to; sha256 = $sha }
+  })
+  $tmp = "$Journal.tmp"
+  [System.IO.File]::WriteAllText($tmp, ([ordered]@{ startedAt = (Get-Date -Format s); files = $files } | ConvertTo-Json -Depth 4), $Utf8)
+  Move-Item -LiteralPath $tmp -Destination $Journal -Force -ErrorAction Stop
+  Complete-Promotion
 }
 
 New-Item -ItemType Directory -Force (Join-Path $Dir 'logs'), (Join-Path $Dir 'reports'), (Join-Path $Dir 'backups'), (Join-Path $Work 'reports'), (Join-Path $Work 'leads') | Out-Null
@@ -90,6 +134,22 @@ try {
   Say "start $Date"
   $notes = New-Object System.Collections.Generic.List[string]
 
+  # A promotion cut short earlier (a crash, a failed replace) is completed
+  # first, from its journal, before anything reads the live files. If it
+  # cannot be, nothing is reviewed: the live files may disagree.
+  $blocked = $false
+  if (Test-Path -LiteralPath $Journal) {
+    try {
+      Complete-Promotion
+      Say 'completed an interrupted promotion from logs\promotion.json'
+      $notes.Add('An earlier promotion that had been cut short was completed from its journal before this run.')
+    } catch {
+      $blocked = $true
+      Attention "an interrupted promotion could not be completed ($Date): $($_.Exception.Message). Nothing was reviewed; fix it (logs\promotion.json), then run again."
+      $notes.Add("**An earlier promotion that had been cut short could not be completed** ($($_.Exception.Message)); nothing was reviewed.")
+    }
+  }
+
   # An earlier run today keeps its evidence: its prompt and transcript are
   # moved, and its lead snapshot copied, to logs\runs\ with its time.
   $runsDir = Join-Path $Dir 'logs\runs'
@@ -107,8 +167,13 @@ try {
   }
 
   # 1. Leads (waits for a completed refresh).
-  $fetch = (& node (Join-Path $Dir 'fetch-leads.mjs') $Date $BaseUrl 2>&1 | Out-String).Trim()
-  $fetchExit = $LASTEXITCODE
+  if ($blocked) {
+    $fetch = 'not run: an interrupted promotion could not be completed'
+    $fetchExit = 3
+  } else {
+    $fetch = (& node (Join-Path $Dir 'fetch-leads.mjs') $Date $BaseUrl 2>&1 | Out-String).Trim()
+    $fetchExit = $LASTEXITCODE
+  }
   Say "fetch ($fetchExit): $fetch"
   $leadsFile = Join-Path $Dir "leads\$Date.json"
 
@@ -133,7 +198,7 @@ try {
     $out = Join-Path $Dir "logs\claude-$Date.txt"
     $text = [System.IO.File]::ReadAllText((Join-Path $Dir 'review-prompt.md'), $Utf8).Replace('{DATE}', $Date)
     [System.IO.File]::WriteAllText($promptFile, $text, $Utf8)
-    $claude = 'C:\Users\user\.local\bin\claude.exe'
+    $claude = $ClaudeExe
     $cmd = "`"$claude`" -p --permission-mode acceptEdits --tools WebSearch WebFetch Read Glob Grep Edit Write --allowedTools WebSearch WebFetch Read Glob Grep --output-format text < `"$promptFile`" > `"$out`" 2>&1"
     $proc = Start-Process -FilePath 'cmd.exe' -ArgumentList '/d', '/s', '/c', "`"$cmd`"" -WorkingDirectory $Work -WindowStyle Hidden -PassThru
     if (-not $proc.WaitForExit(90 * 60 * 1000)) {
@@ -146,7 +211,7 @@ try {
       $reviewed = ($proc.ExitCode -eq 0)
       if (-not $reviewed) { $notes.Add("**The reviewer exited with code $($proc.ExitCode); its edits were not applied.**") }
     }
-  } else {
+  } elseif (-not $blocked) {
     Attention "lead fetch failed ($Date): $fetch"
   }
 
@@ -155,12 +220,30 @@ try {
   if ($reviewed) {
     $check = (& node (Join-Path $Dir 'validate-events.mjs') $AppRoot (Join-Path $Work 'events.review.json') (Join-Path $Work 'reviewed-leads.json') (Join-Path $Dir 'reviewed-leads.json') $leadsFile 2>&1 | Out-String).Trim()
     if ($LASTEXITCODE -eq 0) {
-      Promote (Join-Path $Work 'events.review.json') (Join-Path $Dir 'events.local.json')
-      Promote (Join-Path $Work 'reviewed-leads.json') (Join-Path $Dir 'reviewed-leads.json')
-      Say "promoted: $check"
-      $promoted = $true
-      $archive = (& node (Join-Path $Dir 'archive-evidence.mjs') $Date 2>&1 | Out-String).Trim()
-      Say "evidence: $archive"
+      try {
+        Promote-Together @(
+          @{ from = (Join-Path $Work 'events.review.json'); to = (Join-Path $Dir 'events.local.json') },
+          @{ from = (Join-Path $Work 'reviewed-leads.json'); to = (Join-Path $Dir 'reviewed-leads.json') })
+        $promoted = $true
+        Say "promoted: $check"
+      } catch {
+        $why = $_.Exception.Message
+        $journalled = Test-Path -LiteralPath $Journal
+        $next = if ($journalled) { 'it is journalled, and the next run completes it before anything else' } else { 'nothing live was changed' }
+        Attention "promoting the review's edits failed ($Date): $why; $next"
+        $notes.Add("**Promoting the validated edits failed** ($why); $next. This run is not complete.")
+      }
+      if ($promoted) {
+        # Earlier decisions corrected today: for the operator to check.
+        $corrected = @()
+        try { $corrected = @(($check | ConvertFrom-Json).corrections) } catch {}
+        if ($corrected.Count) {
+          Attention "earlier decisions corrected ($Date), please check: $($corrected -join ', ')"
+          $notes.Add("**Earlier decisions corrected today, for the operator to check:** $($corrected -join ', '). Each correction (reason and evidence) is in reviewed-leads.json under ``corrections``.")
+        }
+        $archive = (& node (Join-Path $Dir 'archive-evidence.mjs') $Date 2>&1 | Out-String).Trim()
+        Say "evidence: $archive"
+      }
     } else {
       Attention "the review's edits failed validation and were not applied ($Date): $check"
       $notes.Add("**The review's edits failed validation and were not applied** (the day's leads will be reviewed again): ``$check``")

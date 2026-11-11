@@ -59,13 +59,29 @@ You are the daily reviewer for the Banking Access layer of God's Eye View (GEV).
    }
    ```
 
-   Keep all existing entries.
+   Keep every existing entry exactly as it is, in every field. Leads you decided earlier as `pending` come back among today's fresh leads; decide those normally.
+
+   If you find that an earlier decision (not a pending one offered again today) was wrong, you may change it only with a correction. Change the entry, and append to the top-level `"corrections"` list of `reviewed-leads.json` (create it if missing; never change or remove earlier corrections):
+
+   ```json
+   {
+     "id": "<lead id>",
+     "at": "{DATE}",
+     "from": { "...": "the earlier entry, exactly as it was" },
+     "to": { "...": "the entry as you changed it, exactly" },
+     "reason": "one or two sentences: what was wrong and why",
+     "evidence": ["https://... (the source that shows it)"]
+   }
+   ```
+
+   Any other change to an earlier entry fails validation, and nothing from the run is applied. Corrections are flagged for the operator to check.
 4. **Write `reports/{DATE}.md`**, concise. It must begin with the heading `## Banking Access daily review: {DATE}` and have these sections:
    - **Summary:** one line with counts. Take the counts from today's decisions as written in `reviewed-leads.json`, after writing them, so the summary and the lists agree.
    - **New leads:** how many were fresh, out of how many fetched.
    - **Confirmed incidents:** country, type, severity, confidence, status, and sources as links.
    - **Rejected / duplicate / pending:** id or title, with a short reason each.
    - **Changed statuses:** re-verified, resolved or updated events.
+   - **Corrections:** each earlier decision you corrected, with what changed, the reason and the evidence; or "none".
    - **Coverage and retrieval errors:** the leads file's `problems` and `routeProblems`, plus pages you could not open.
 
    End the report with the line `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
