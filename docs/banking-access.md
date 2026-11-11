@@ -78,12 +78,15 @@ the other is derived from the bundled World Bank population (SP.POP.TOTL,
 latest year, `server/providers/bankingAccess/population.json`). When neither
 is given, the event has no score.
 
-Per country: overlap between events is unknown (two banks may share
-customers), so the reach is a range, from the largest single event (full
-overlap) to their sum (none), capped at 100% and at the population; the list
-shows the lower bound, marked "+" when the range is wider. The colour uses
-the largest single event's score, so a country is never redder than its
-measured disruption. When every event of a country is history, its figures
+Per country, reach and colour say who is cut off now: they come from the
+country's active events. A resolved event still fading is recent history: it
+colours the country only while nothing there is active, and the people it
+reached never count towards an ongoing disruption's reach. Overlap between
+events is unknown (two banks may share customers), so the reach is a range,
+from the largest single event (full overlap) to their sum (none), capped at
+100% and at the population; the list shows the lower bound, marked "+" when
+the range is wider. The colour uses the largest single event's score, so a
+country is never redder than its measured disruption. When every event of a country is history, its figures
 are still shown on the card, unscored. The most serious live event (severity
 first, then reach, then the latest) gives the country its type, pattern and
 card, whether or not its reach is known. An event whose `start_time` is still
@@ -143,7 +146,10 @@ files are re-read every 30 seconds, so edits show without a restart.
 - `last_verified_time`: when a reviewer last confirmed the status (still
   ongoing, or resolved). A report's date is not a confirmation that it still
   holds: an ongoing event not re-verified for 30 days counts half (it
-  fades) and its card says so. Defaults to `last_update_time`.
+  fades) and its card says so. Defaults to `last_update_time`, then to a
+  `resolved_time` that has passed, then to `start_time`; a planned end still
+  ahead confirms nothing. Neither `last_verified_time` nor `last_update_time`
+  may lie more than a day ahead: the entry is refused.
 - At least one source with an http(s) URL is required.
 
 An entry that breaks a rule is left out and counted on the row ("Entries to

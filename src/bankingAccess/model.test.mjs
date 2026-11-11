@@ -376,3 +376,75 @@ test('countries combine their live events; history only when asked', () => {
   assert.equal(jpn.historical, true);
   assert.deepEqual(jpn.classes, { share: 'history', people: 'history' });
 });
+
+test('a resolved event still fading never adds to an ongoing one', () => {
+  // A resolved outage that reached half the country, and an ongoing one
+  // reaching 1%: the country is cut off at 1% now, not up to 51%.
+  const resolved = assessEvent(
+    ok({
+      id: 'old-1',
+      event_type: 'technical_outage',
+      affected_people_est: null,
+      affected_population_pct: 50,
+      resolved_time: new Date(NOW - DECAY_MS / 2).toISOString(),
+    }),
+    { now: NOW, population: 5_000_000 },
+  );
+  const ongoing = assessEvent(
+    ok({
+      id: 'new-1',
+      affected_people_est: null,
+      affected_population_pct: 1,
+    }),
+    { now: NOW, population: 5_000_000 },
+  );
+  assert.equal(resolved.historical, false);
+  assert.ok(resolved.scores.share > ongoing.scores.share);
+  const [both] = aggregateCountries([resolved, ongoing]);
+  assert.equal(both.active, true);
+  assert.equal(both.leadEventId, 'new-1');
+  assert.equal(both.affectedPct, 1);
+  assert.equal(both.affectedPctHigh, 1);
+  assert.equal(both.affectedPeople, 50_000);
+  assert.equal(both.affectedPeopleHigh, 50_000);
+  assert.equal(both.overlapPossible, false);
+  assert.equal(both.scores.share, ongoing.scores.share);
+  // With nothing active, the fading event still shades its country, as
+  // recent history.
+  const [fading] = aggregateCountries([resolved]);
+  assert.equal(fading.active, false);
+  assert.equal(fading.historical, false);
+  assert.equal(fading.affectedPct, 50);
+  assert.equal(fading.scores.share, resolved.scores.share);
+});
+
+test('a future update date cannot stand in for a verification', () => {
+  // No last_verified_time: the update date is used, so it must not lie ahead.
+  assert.match(
+    normalizeEvent(raw({ last_update_time: '2026-12-01T00:00:00Z' }), {
+      now: NOW,
+    }).error,
+    /last_update_time in the future/,
+  );
+  // Within the day of slack, accepted.
+  assert.equal(
+    normalizeEvent(
+      raw({ last_update_time: new Date(NOW + 12 * HOUR).toISOString() }),
+      { now: NOW },
+    ).error,
+    undefined,
+  );
+  // A planned end still ahead confirms nothing: without a verification or
+  // update date, the event is as old as its start and goes stale on time.
+  const { event } = normalizeEvent(
+    raw({
+      start_time: '2026-02-01T00:00:00Z',
+      resolved_time: '2027-01-01T00:00:00Z',
+    }),
+    { now: NOW },
+  );
+  assert.equal(event.verifiedAt, Date.parse('2026-02-01T00:00:00Z'));
+  const planned = assessEvent(event, { now: NOW, population: 5_000_000 });
+  assert.equal(planned.active, true);
+  assert.equal(planned.stale, true);
+});

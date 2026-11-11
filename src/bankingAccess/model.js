@@ -99,6 +99,10 @@ export function normalizeEvent(raw, { now = Date.now() } = {}) {
     return fail('resolved_time before start_time');
   const updatedAt = time(raw.last_update_time);
   if (Number.isNaN(updatedAt)) return fail('bad last_update_time');
+  // A day of slack for time zones. An update dated later would stand in for
+  // a verification (below) and keep the event from ever going stale.
+  if (updatedAt != null && updatedAt > now + 86_400_000)
+    return fail('last_update_time in the future');
   // When a reviewer last confirmed the event's status (still ongoing, or
   // resolved): a report's date is not a confirmation that it still holds.
   const verifiedAt = time(raw.last_verified_time);
@@ -124,6 +128,7 @@ export function normalizeEvent(raw, { now = Date.now() } = {}) {
     }))
     .filter((s) => s.url);
   if (!sources.length) return fail('at least one source with a URL');
+  const pastEnd = resolvedAt != null && resolvedAt <= now ? resolvedAt : null;
   return {
     event: {
       id,
@@ -134,8 +139,10 @@ export function normalizeEvent(raw, { now = Date.now() } = {}) {
       confidence: raw.confidence,
       startedAt,
       resolvedAt,
-      updatedAt: updatedAt ?? resolvedAt ?? startedAt,
-      verifiedAt: verifiedAt ?? updatedAt ?? resolvedAt ?? startedAt,
+      updatedAt: updatedAt ?? pastEnd ?? startedAt,
+      // Without a verification date, the latest date that has passed: a
+      // planned end still ahead confirms nothing yet.
+      verifiedAt: verifiedAt ?? updatedAt ?? pastEnd ?? startedAt,
       affectedPeople: people ?? null,
       affectedPct: pct ?? null,
       affectedBasis: text(raw.affected_basis),
@@ -273,15 +280,21 @@ export function aggregateCountries(
     );
     const live = events.filter((e) => !e.historical);
     const lead = events[0];
-    // History keeps its figures for the card; only live events are scored.
-    const counted = live.length ? live : events;
+    // Reach and shade say who is cut off now: from the active events when
+    // there are any. A resolved event still fading is recent history: it
+    // shades the country only while nothing there is active, and its people
+    // never count towards an ongoing disruption's reach.
+    const active = live.filter((e) => e.active);
+    const current = active.length ? active : live;
+    // History keeps its figures for the card.
+    const counted = current.length ? current : events;
     const people = reachRange(counted, 'affectedPeople', populationOf(iso3));
     const pct = reachRange(counted, 'affectedPct', 100);
     const systemic = live.some(isSystemic);
     // Scored on the largest single event: the lower bound of the reach, so
     // a country is never redder than its measured disruption.
     const best = (key) => {
-      const v = live.map((e) => e.scores[key]).filter((x) => x != null);
+      const v = current.map((e) => e.scores[key]).filter((x) => x != null);
       return v.length ? Math.max(...v) : null;
     };
     const share = best('share');
@@ -290,7 +303,7 @@ export function aggregateCountries(
       iso3,
       countryName: lead.countryName,
       leadEventId: lead.id,
-      active: live.some((e) => e.active),
+      active: active.length > 0,
       historical: live.length === 0,
       stale: lead.stale === true,
       type: lead.type,
@@ -309,7 +322,7 @@ export function aggregateCountries(
         (e) => (e.affectedPeople == null) !== (e.affectedPct == null),
       ),
       // A live event whose reach no source gives: the shade may understate.
-      reachUnknown: live.some(
+      reachUnknown: current.some(
         (e) => e.affectedPeople == null && e.affectedPct == null,
       ),
       systemic,
