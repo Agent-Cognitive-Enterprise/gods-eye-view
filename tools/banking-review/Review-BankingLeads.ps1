@@ -3,8 +3,10 @@
 # 2. Copy the state into work\ (the reviewer's only writable folder):
 #    reviewed-leads.json, events.review.json (from the live events.local.json),
 #    today's leads and the bundled events.
-# 3. Headless Claude reviews there (prompt on stdin; acceptEdits limits edits
-#    to work\; no Write/Edit grant, so nothing outside it can be written).
+# 3. Headless Claude reviews there (prompt on stdin). acceptEdits accepts
+#    file edits without asking only inside work\; an edit elsewhere would
+#    need an approval, which a headless run cannot give. No shell: Bash and
+#    PowerShell are disallowed. Reads and web fetches are not confined.
 # 4. Validate the working copies with the app's own loader and the review's
 #    rules; only then replace the live files (atomically). On failure both
 #    stay as they were, so the day's leads come back tomorrow.
@@ -131,7 +133,7 @@ try {
     $text = [System.IO.File]::ReadAllText((Join-Path $Dir 'review-prompt.md'), $Utf8).Replace('{DATE}', $Date)
     [System.IO.File]::WriteAllText($promptFile, $text, $Utf8)
     $claude = 'C:\Users\user\.local\bin\claude.exe'
-    $cmd = "`"$claude`" -p --permission-mode acceptEdits --allowedTools WebSearch WebFetch Read Glob Grep --output-format text < `"$promptFile`" > `"$out`" 2>&1"
+    $cmd = "`"$claude`" -p --permission-mode acceptEdits --allowedTools WebSearch WebFetch Read Glob Grep --disallowedTools Bash PowerShell --output-format text < `"$promptFile`" > `"$out`" 2>&1"
     $proc = Start-Process -FilePath 'cmd.exe' -ArgumentList '/d', '/s', '/c', "`"$cmd`"" -WorkingDirectory $Work -WindowStyle Hidden -PassThru
     if (-not $proc.WaitForExit(90 * 60 * 1000)) {
       & taskkill.exe /T /F /PID $proc.Id | Out-Null

@@ -10,3 +10,5 @@ evidence/
 reports/
 spotcheck/
 eval/runs/
+# Files written next to the live ones before an atomic replace.
+*.tmp
