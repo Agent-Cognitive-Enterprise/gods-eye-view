@@ -267,9 +267,9 @@ export function aggregateCountries(
   }
   const countries = [];
   for (const [iso3, events] of byCountry) {
-    // The lead is the most serious live event (severity first, then reach,
-    // then the latest), whether or not its reach is known: it gives the
-    // country its type, pattern and card.
+    // The lead is the most serious current event (active before fading,
+    // then severity, then reach, then the latest), whether or not its reach
+    // is known: it gives the country its type, pattern and card.
     events.sort(
       (a, b) =>
         Number(a.historical) - Number(b.historical) ||

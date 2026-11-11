@@ -121,6 +121,32 @@ test("an operator's file adds and replaces events; bad entries are reported", ()
   assert.ok(!missing.problems[0].includes(tmpdir()), 'no path to the browser');
 });
 
+test('the loader judges future dates by the clock it is given', () => {
+  const local = tempFile({
+    events: [
+      {
+        id: 'ahead',
+        country_code: 'PSE',
+        event_type: 'technical_outage',
+        severity: 2,
+        confidence: 'social',
+        start_time: '2026-11-01T00:00:00Z',
+        last_update_time: '2026-11-25T00:00:00Z',
+        sources: [{ url: 'https://example.org/ahead' }],
+      },
+    ],
+  });
+  const early = loadEvents({ local, now: NOW });
+  assert.equal(
+    early.events.find((e) => e.id === 'ahead'),
+    undefined,
+  );
+  assert.match(early.problems.join(' '), /last_update_time in the future/);
+  const later = loadEvents({ local, now: Date.UTC(2026, 11, 1) });
+  assert.ok(later.events.find((e) => e.id === 'ahead'));
+  assert.equal(later.problems.length, 0);
+});
+
 test('the snapshot lists live countries; history adds past ones', () => {
   const { events } = loadEvents();
   const args = {
