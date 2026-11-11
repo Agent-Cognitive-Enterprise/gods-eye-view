@@ -499,8 +499,8 @@ export function createBankingAccessLayer({
         count: formatNumber(_answer.counts?.active ?? 0),
       }),
     ];
-    // An events file that could not be read: the map shows its last good
-    // copy, and says from when.
+    // An events file that could not be read, or holds an invalid entry: the
+    // map shows its last good copy, and says from when.
     const degraded = _answer.degraded ?? [];
     if (degraded.length)
       parts.push(

@@ -93,22 +93,25 @@ export function loadEvents({
         ...normalizeEvent(entry, { now }),
       }));
       const invalid = checked.filter((c) => c.error);
+      // Each invalid entry is listed once, here (the copy shown holds none).
       for (const c of invalid) problems.push(`${origin}: ${c.error}`);
       if (invalid.length && kept) {
-        problems.push(
-          `${origin} file: ${invalid.length} invalid ${invalid.length === 1 ? 'entry' : 'entries'}; showing its last good copy`,
-        );
-        degraded.push({
-          origin,
-          reason: 'invalid entries',
-          lastGoodAt: kept.at,
-        });
+        // The last good copy, unchanged.
         raw = kept.entries;
       } else {
-        // Valid entries only: a copy never carries an entry that fails.
+        // Valid entries only: a copy never carries an entry that fails. On
+        // a first read with invalid entries this is the copy from now on.
         raw = checked.filter((c) => !c.error).map((c) => c.entry);
         good.set(origin, { entries: raw, at: now });
       }
+      // A file holding an invalid entry is DEGRADED on every load, with the
+      // time of the copy shown, whether or not a copy existed before.
+      if (invalid.length)
+        degraded.push({
+          origin,
+          reason: 'invalid entries',
+          lastGoodAt: good.get(origin).at,
+        });
     }
     const seen = new Set();
     for (const entry of raw) {

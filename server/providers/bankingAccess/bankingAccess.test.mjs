@@ -270,12 +270,9 @@ test('an invalid entry in a readable file never replaces the last good copy', ()
   assert.deepEqual(bad.degraded, [
     { origin: 'local', reason: 'invalid entries', lastGoodAt: NOW },
   ]);
+  // The invalid entry is listed once, and nothing else is counted.
+  assert.deepEqual(bad.problems.filter((p) => p.startsWith('local')).length, 1);
   assert.ok(bad.problems.some((p) => /^local: valid-1: /.test(p)));
-  assert.ok(
-    bad.problems.some((p) =>
-      /1 invalid entry; showing its last good copy/.test(p),
-    ),
-  );
   // The bad edit did not become the copy: a torn write next still falls
   // back to the original, with its original time.
   writeFileSync(local, '{"events": [');
@@ -323,7 +320,15 @@ test('without a last good copy, a file shows its valid entries and keeps only th
   const first = loadEvents({ local, now: NOW });
   assert.ok(first.events.find((e) => e.id === 'mixed-ok'));
   assert.ok(first.problems.some((p) => /^local: mixed-bad: /.test(p)));
-  assert.deepEqual(first.degraded, []);
+  // DEGRADED from the first load, and the same on the next: the result does
+  // not depend on whether a copy existed yet.
+  const expected = [
+    { origin: 'local', reason: 'invalid entries', lastGoodAt: NOW },
+  ];
+  assert.deepEqual(first.degraded, expected);
+  const second = loadEvents({ local, now: NOW + 30_000, lastGood: first.good });
+  assert.deepEqual(second.degraded, expected);
+  assert.deepEqual(second.problems, first.problems);
   // Its copy holds the valid entry only: a torn write shows it and lists no
   // error for the invalid one again.
   assert.deepEqual(

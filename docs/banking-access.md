@@ -102,16 +102,21 @@ operator can keep their own file outside the repo and point
 bundled ones, and an event with the same `id` replaces the bundled one. Both
 files are re-read every 30 seconds, so edits show without a restart.
 
-A file becomes the copy to fall back to only when it reads and every entry
-in it is valid. A re-read that fails (half-written, not valid JSON, no
-`events` list, too large, unreadable or missing) or that holds an invalid
-entry (a required field missing, say) keeps the events of the last good
-copy, and the invalid entries are listed so they can be fixed: the row says **Events file DEGRADED: showing the copy from**
-its time, the route lists the file under `degraded`, and the problem is
-listed. A reviewed incident never drops off the map because a write was
-caught half-way. Nothing is kept from before the server started, so after a
-restart a missing or unreadable file shows no events. To remove every operator event,
-write an empty list (`{"events": []}`) rather than deleting the file.
+Each events file has a last good copy to fall back to. A file read whole,
+with every entry valid, becomes that copy. A re-read that fails
+(half-written, not valid JSON, no `events` list, too large, unreadable or
+missing), or a file holding an invalid entry (a required field missing,
+say), is shown from the copy instead: the row says **Events file
+DEGRADED: showing the copy from** its time, the route lists the file under
+`degraded`, and each invalid entry is listed so it can be fixed. Until it
+is, the rest of that write (other edits, new entries) is held back too. A
+reviewed incident never drops off the map because a write was caught
+half-way or an edit went wrong. When the server first reads a file holding
+invalid entries, its valid entries become the copy, and the file reads
+DEGRADED from then on until fixed. Nothing is kept from before the server
+started, so after a restart a missing or unreadable file shows no events.
+To remove every operator event, write an empty list (`{"events": []}`)
+rather than deleting the file.
 
 ```json
 {
