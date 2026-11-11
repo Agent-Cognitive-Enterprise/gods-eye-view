@@ -109,6 +109,10 @@ function Commit-Together([object[]]$files, [string]$date, [string[]]$corrections
 # next): corrections are flagged for the operator, and the evidence for the
 # review's date is archived.
 function Complete-Followups($j, $notes) {
+  try { Run-Followups $j $notes }
+  catch { Say "a follow-up step of the promotion failed (the promotion itself is done): $($_.Exception.Message)" }
+}
+function Run-Followups($j, $notes) {
   $corrected = @($j.corrections | Where-Object { $_ })
   if ($corrected.Count) {
     Attention "earlier decisions corrected ($($j.date)), please check: $($corrected -join ', ')"
@@ -164,6 +168,7 @@ try {
 }
 try {
   Say "start $Date"
+  $runStart = Get-Date
   $notes = New-Object System.Collections.Generic.List[string]
 
   # A promotion cut short earlier (a crash, a failed replace) is completed
@@ -171,15 +176,25 @@ try {
   # cannot be, nothing is reviewed: the live files may disagree.
   $blocked = $false
   if (Test-Path -LiteralPath $Journal) {
+    $recovered = $null
     try {
       $recovered = Complete-Promotion
-      Say 'completed an interrupted promotion from logs\promotion.json'
-      $notes.Add("An earlier promotion (review of $($recovered.date)) that had been cut short was completed from its journal before this run.")
-      Complete-Followups $recovered $notes
     } catch {
       $blocked = $true
       Attention "an interrupted promotion could not be completed ($Date): $($_.Exception.Message). Nothing was reviewed; fix it (logs\promotion.json), then run again."
       $notes.Add("**An earlier promotion that had been cut short could not be completed** ($($_.Exception.Message)); nothing was reviewed.")
+    }
+    if ($recovered) {
+      Say 'completed an interrupted promotion from logs\promotion.json'
+      $notes.Add("An earlier promotion (review of $($recovered.date)) had not finished; it was completed from its journal before this run.")
+      Complete-Followups $recovered $notes
+      # The live files are in place, but a journal that cannot be removed
+      # would make this run's own promotion fail after a full review.
+      if (Test-Path -LiteralPath $Journal) {
+        $blocked = $true
+        Attention "the promotion journal (logs\promotion.json) could not be removed ($Date); the live files are complete. Nothing was reviewed; remove it, then run again."
+        $notes.Add('**The promotion journal could not be removed** (the live files are complete); nothing was reviewed.')
+      }
     }
   }
 
@@ -275,22 +290,24 @@ try {
       $verdict = $null
       try { $verdict = $check | ConvertFrom-Json } catch {}
       if ($valExit -eq 0 -and $verdict -and $null -ne $verdict.corrections) {
+        $committed = $null
         try {
           $committed = Commit-Together $staged $Date @($verdict.corrections)
           $promoted = $true
           Say "promoted: $check"
-          Complete-Followups $committed $notes
         } catch {
           $why = $_.Exception.Message
           $next = if (Test-Path -LiteralPath $Journal) { 'it is journalled, and the next run completes it before anything else' } else { 'nothing live was changed' }
           Attention "promoting the review's edits failed ($Date): $why; $next"
           $notes.Add("**Promoting the validated edits failed** ($why); $next. This run is not complete.")
         }
+        if ($committed) { Complete-Followups $committed $notes }
       } elseif ($valExit -eq 0) {
         Attention "the validator's answer could not be read ($Date), so nothing was applied: $check"
         $notes.Add("**The validator's answer could not be read, so nothing was applied:** ``$check``")
       } else {
-        Attention "the review's edits failed validation and were not applied ($Date): $check"
+        $shown = if ($check) { $check } else { 'the validator gave no answer; its error is in logs\validate-stderr.txt' }
+        Attention "the review's edits failed validation and were not applied ($Date): $shown"
         $notes.Add("**The review's edits failed validation and were not applied** (the day's leads will be reviewed again): ``$check``")
       }
     }
@@ -302,7 +319,7 @@ try {
   #    DEGRADED: the same but without a completed news fetch (the feed was
   #    degraded: not a quiet day). FAILED: anything else.
   $leadInfo = $null
-  if (-not $blocked -and (Test-Path $leadsFile)) { try { $leadInfo = Get-Content $leadsFile -Raw -Encoding utf8 | ConvertFrom-Json } catch {} }
+  if (-not $blocked -and (Test-Path $leadsFile) -and (Get-Item $leadsFile).LastWriteTime -ge $runStart) { try { $leadInfo = Get-Content $leadsFile -Raw -Encoding utf8 | ConvertFrom-Json } catch {} }
   $workReport = Join-Path $Work "reports\$Date.md"
   $runStatus = if (-not ($reviewed -and $promoted -and (Test-Path $workReport))) { 'FAILED' }
     elseif ($leadInfo -and $leadInfo.newsComplete) { 'COMPLETE' } else { 'DEGRADED' }

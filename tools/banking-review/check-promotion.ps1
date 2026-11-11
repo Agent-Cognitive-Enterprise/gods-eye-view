@@ -13,6 +13,9 @@
 #     the run is FAILED and the journal is kept for the operator.
 #  4. The stand-in reviewer corrects an earlier decision, documented.
 #     Expect: COMPLETE, the correction applied, and flagged for the operator.
+#  5. A finished promotion whose journal cannot be removed (held open).
+#     Expect: nothing is reviewed and the run is FAILED, not a full review
+#     that then fails to promote.
 # Usage: powershell -File check-promotion.ps1 [-AppRoot C:\Users\user\gev-fast]
 param([string]$AppRoot = 'C:\Users\user\gev-fast', [int]$Port = 4199)
 $ErrorActionPreference = 'Stop'
@@ -105,6 +108,30 @@ try {
   $ledger4 = Get-Content $ledgerFile -Raw | ConvertFrom-Json
   Expect (@($ledger4.corrections).Count -eq 1 -and $ledger4.leads.'check-lead-1'.decision -eq 'duplicate') 'run 4 applied the correction'
   Expect ((Get-Content (Join-Path $box 'attention.txt') -Raw).Substring($notesBefore) -match 'earlier decisions corrected') 'run 4 flags the correction for the operator'
+  Remove-Item (Join-Path $box 'work\make-correction')
+
+  # 5. A finished promotion whose journal cannot be removed: nothing is
+  #    reviewed (the run's own promotion would fail after a full review).
+  $doneDir = Join-Path $box 'logs\staged\done'
+  New-Item -ItemType Directory -Force $doneDir | Out-Null
+  $files = @(foreach ($live in $eventsFile, $ledgerFile) {
+    $copy = Join-Path $doneDir (Split-Path $live -Leaf)
+    Copy-Item $live $copy
+    [ordered]@{ staged = $copy; to = $live; sha256 = (Get-FileHash -Algorithm SHA256 $live).Hash }
+  })
+  [System.IO.File]::WriteAllText($journal, ([ordered]@{ startedAt = (Get-Date -Format s); date = 'done'; corrections = @(); files = $files } | ConvertTo-Json -Depth 4))
+  $ready5 = Join-Path $box 'journal-held'
+  $holder = Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -PassThru -ArgumentList '-NoProfile', '-Command',
+    "`$f = [System.IO.File]::Open('$journal', 'Open', 'Read', 'Read'); New-Item -ItemType File '$ready5' | Out-Null; Start-Sleep -Seconds 600"
+  for ($i = 0; $i -lt 60 -and -not (Test-Path $ready5); $i++) { Start-Sleep -Milliseconds 250 }
+  $before5 = (Log).Length
+  Run-Wrapper
+  $r5 = Last-Run
+  $tail5 = (Log).Substring($before5)
+  Expect ($tail5 -match 'journal could not be removed|could not be removed') 'run 5 reports the journal it cannot remove'
+  Expect (-not ($tail5 -match 'claude exit')) 'run 5 reviews nothing'
+  Expect ($r5.status -eq 'FAILED') "run 5 is FAILED (was $($r5.status))"
+  Stop-Process -Id $holder.Id -Force; $holder = $null
 } finally {
   if ($holder) { Stop-Process -Id $holder.Id -Force -ErrorAction SilentlyContinue }
   Stop-Process -Id $app.Id -Force -ErrorAction SilentlyContinue

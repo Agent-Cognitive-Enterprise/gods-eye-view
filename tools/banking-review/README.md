@@ -130,7 +130,9 @@ Unattended runs are the 09:00 run and its catch-ups; manual runs never count.
 Each day since 2026-11-09 expects one. A day's best unattended run counts
 once. A day with none is MISSED. Today counts once its run is in the ledger
 or after 12:00. A run is credited only with the decisions it made: leads new
-or changed against the copy backed up when it started.
+or changed against the copy backed up when it started. Decisions applied
+when a later run completes a cut-short promotion are credited to neither
+run (the first is FAILED; the second did not make them).
 
 Example ledger line:
 
@@ -173,7 +175,7 @@ nothing is posted:
   - earlier corrections cannot change;
   - a malformed host corrections list is reported, not a crash.
 - `powershell -File check-promotion.ps1 [-AppRoot <app>]` runs the whole
-  wrapper four times in a sandbox, with a stand-in app (`check\fake-app.mjs`)
+  wrapper five times in a sandbox, with a stand-in app (`check\fake-app.mjs`)
   and a stand-in reviewer (`check\fake-reviewer.cmd`):
   1. The second promotion is made to fail. The run is FAILED and the
      promotion journalled, with the events file replaced and the ledger not.
@@ -181,6 +183,8 @@ nothing is posted:
      follow-up steps, and is COMPLETE.
   3. A journal that cannot be completed blocks the review.
   4. A documented correction is applied and flagged for the operator.
+  5. A finished promotion whose journal cannot be removed blocks the review
+     (rather than a full review that then fails to promote).
 
 ## Evaluation harness (`eval\`)
 
