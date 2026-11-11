@@ -4088,5 +4088,5 @@
   "News leads: starting": "Новинні зачіпки: завантаження",
   "News leads: {count}, list from {time}": "Новинні зачіпки: {count}, список від {time}",
   "voice provider|Local": "Локально",
-  "Events file DEGRADED: showing the copy from {time}": "Файл подій ПОШКОДЖЕНО: показано копію від {time}"
+  "Events file DEGRADED: showing the copy from {time}": "Файл подій: ЗБІЙ, показано копію від {time}"
 }

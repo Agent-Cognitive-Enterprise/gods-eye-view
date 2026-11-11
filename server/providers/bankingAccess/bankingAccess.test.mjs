@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -208,6 +208,43 @@ test('a half-written operator file keeps its last good events, labelled degraded
     undefined,
   );
   assert.deepEqual(emptied.degraded, []);
+});
+
+test('every way a file can fail to read keeps the last good copy', () => {
+  const entry = {
+    id: 'kept-2',
+    country_code: 'PSE',
+    event_type: 'technical_outage',
+    severity: 2,
+    confidence: 'social',
+    start_time: '2026-11-01T00:00:00Z',
+    sources: [{ url: 'https://example.org/kept-2' }],
+  };
+  const local = tempFile({ events: [entry] });
+  const { good } = loadEvents({ local, now: NOW });
+  const cases = [
+    ['{}', 'no "events" array'],
+    ['{"events": null}', 'no "events" array'],
+    ['', 'not valid JSON'],
+    [' '.repeat(2 * 1024 * 1024 + 1), 'events file too large'],
+  ];
+  for (const [content, reason] of cases) {
+    writeFileSync(local, content);
+    const r = loadEvents({ local, now: NOW + 30_000, lastGood: good });
+    assert.ok(
+      r.events.find((e) => e.id === 'kept-2'),
+      reason,
+    );
+    assert.deepEqual(r.degraded, [
+      { origin: 'local', reason, lastGoodAt: NOW },
+    ]);
+  }
+  const gone = path.join(path.dirname(local), 'moved-away.json');
+  const r = loadEvents({ local: gone, now: NOW + 30_000, lastGood: good });
+  assert.ok(r.events.find((e) => e.id === 'kept-2'));
+  assert.equal(r.degraded[0].reason, 'not found');
+  // The 2 MB file is not left behind.
+  rmSync(path.dirname(local), { recursive: true, force: true });
 });
 
 test('the route keeps the last good operator events across reloads', async () => {

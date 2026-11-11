@@ -102,6 +102,15 @@ operator can keep their own file outside the repo and point
 bundled ones, and an event with the same `id` replaces the bundled one. Both
 files are re-read every 30 seconds, so edits show without a restart.
 
+A file that cannot be read on a re-read (half-written, not valid JSON, no
+`events` list, too large, unreadable or missing) keeps the events of its
+last good read: the row says **Events file DEGRADED: showing the copy from**
+its time, the route lists the file under `degraded`, and the problem is
+listed. A reviewed incident never drops off the map because a write was
+caught half-way. Nothing is kept from before the server started, so after a
+restart a missing or unreadable file shows no events. To remove every operator event,
+write an empty list (`{"events": []}`) rather than deleting the file.
+
 ```json
 {
   "events": [
@@ -188,7 +197,9 @@ same `id` in one file are reported; the later one is kept.
 `GET /api/banking-access` (`?history=1` adds past events). Same-site browsers
 only, rate limited, GET only. The answer holds `countries` (with classes,
 scores, intensity per mode, population), the `events` behind them, `counts`,
-`problems`, and `news` (`enabled`, `fetchedAt`, `error`, `candidates`).
+`problems`, `degraded` (events files shown from their last good copy:
+`origin`, `reason`, `lastGoodAt`) and `news` (`enabled`, `fetchedAt`,
+`error`, `candidates`).
 
 ## Limits
 

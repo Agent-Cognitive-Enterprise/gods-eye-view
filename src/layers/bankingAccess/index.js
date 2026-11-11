@@ -507,6 +507,7 @@ export function createBankingAccessLayer({
         t('Events file DEGRADED: showing the copy from {time}', {
           time: formatDate(Math.min(...degraded.map((d) => d.lastGoodAt)), {
             day: 'numeric',
+            month: 'short',
             hour: '2-digit',
             minute: '2-digit',
           }),
