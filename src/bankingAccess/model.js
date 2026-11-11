@@ -321,7 +321,8 @@ export function aggregateCountries(
       mixedFigures: counted.some(
         (e) => (e.affectedPeople == null) !== (e.affectedPct == null),
       ),
-      // A live event whose reach no source gives: the shade may understate.
+      // A current event (active, or fading when nothing is active) whose
+      // reach no source gives: the shade may understate.
       reachUnknown: current.some(
         (e) => e.affectedPeople == null && e.affectedPct == null,
       ),

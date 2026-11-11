@@ -32,7 +32,7 @@ voice-controlled.
   capital controls. Where the graphics card cannot draw patterned ground
   fills, all fills are solid.
 - **Border:** solid in the class colour while active; grey while a resolved
-  event fades; dashed when a live event's reach is not given by any source
+  event fades; dashed when a current event's reach is not given by any source
   (with no known reach at all there is no fill, so the extent is shown as
   unknown rather than guessed; beside a known reach the shade may
   understate), or for past events in **HISTORY** mode. A **Minimal** country
@@ -86,10 +86,11 @@ events is unknown (two banks may share customers), so the reach is a range,
 from the largest single event (full overlap) to their sum (none), capped at
 100% and at the population; the list shows the lower bound, marked "+" when
 the range is wider. The colour uses the largest single event's score, so a
-country is never redder than its measured disruption. When every event of a country is history, its figures
-are still shown on the card, unscored. The most serious live event (severity
-first, then reach, then the latest) gives the country its type, pattern and
-card, whether or not its reach is known. An event whose `start_time` is still
+country is never redder than its measured disruption. When every event of a
+country is history, its figures are still shown on the card, unscored. The
+most serious current event (active before fading, then severity, then reach,
+then the latest) gives the country its type, pattern and card, whether or not
+its reach is known. An event whose `start_time` is still
 in the future is not drawn until it starts, and a `resolved_time` in the
 future (a planned end) does not count towards the duration.
 

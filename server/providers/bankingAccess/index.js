@@ -39,7 +39,11 @@ export function loadPopulation(file = POPULATION) {
 }
 
 /** Every event checked; bad entries listed by reason, the rest kept. */
-export function loadEvents({ bundled = BUNDLED, local = null } = {}) {
+export function loadEvents({
+  bundled = BUNDLED,
+  local = null,
+  now = Date.now(),
+} = {}) {
   const byId = new Map();
   const problems = [];
   const files = [['bundled', bundled], ...(local ? [['local', local]] : [])];
@@ -62,7 +66,7 @@ export function loadEvents({ bundled = BUNDLED, local = null } = {}) {
     }
     const seen = new Set();
     for (const entry of raw) {
-      const { event, error } = normalizeEvent(entry);
+      const { event, error } = normalizeEvent(entry, { now });
       if (error) {
         problems.push(`${origin}: ${error}`);
         continue;
@@ -147,7 +151,7 @@ export function bankingAccessProxy({
   let loadedAt = -Infinity;
   const current = () => {
     if (!loaded || now() - loadedAt > RELOAD_MS) {
-      loaded = loadEvents({ bundled, local });
+      loaded = loadEvents({ bundled, local, now: now() });
       if (localFile && !local)
         loaded.problems.push(
           'GEV_BANKING_ACCESS_EVENTS must be an absolute path',
