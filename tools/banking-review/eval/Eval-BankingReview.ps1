@@ -26,7 +26,7 @@ $promptFile = Join-Path $Run 'prompt.txt'
 [System.IO.File]::WriteAllText($promptFile, [System.IO.File]::ReadAllText((Join-Path $Host_ 'review-prompt.md'), $Utf8).Replace('{DATE}', $Date), $Utf8)
 $out = Join-Path $Run 'claude.txt'
 $claude = 'C:\Users\user\.local\bin\claude.exe'
-$cmd = "`"$claude`" -p --permission-mode acceptEdits --allowedTools WebSearch WebFetch Read Glob Grep --disallowedTools Bash PowerShell --output-format text < `"$promptFile`" > `"$out`" 2>&1"
+$cmd = "`"$claude`" -p --permission-mode acceptEdits --tools WebSearch WebFetch Read Glob Grep Edit Write --allowedTools WebSearch WebFetch Read Glob Grep --output-format text < `"$promptFile`" > `"$out`" 2>&1"
 $proc = Start-Process -FilePath 'cmd.exe' -ArgumentList '/d', '/s', '/c', "`"$cmd`"" -WorkingDirectory $Work -WindowStyle Hidden -PassThru
 if (-not $proc.WaitForExit(90 * 60 * 1000)) { & taskkill.exe /T /F /PID $proc.Id | Out-Null; "TIMEOUT" | Out-File (Join-Path $Run 'timeout.txt') }
 

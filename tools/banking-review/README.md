@@ -28,16 +28,19 @@ keeps that state out of the repository if they are run here by mistake.
    earlier run the same day are kept: the prompt and transcript are moved to
    `logs\runs\`, and the lead snapshot is copied there.
 3. **Review**: headless Claude Code runs `review-prompt.md` in `work\` with
-   `claude -p --permission-mode acceptEdits --allowedTools WebSearch WebFetch Read Glob Grep --disallowedTools Bash PowerShell`.
-   File edits, including the new report, are accepted without asking only
-   inside `work\`. An edit anywhere else would need an approval, which a
-   headless run cannot give, so it is refused. There is no shell: Bash and
-   PowerShell are disallowed. Without that, Claude Code would still run
-   read-only shell commands, and file commands such as `mkdir` or `mv` in
-   `work\`, without asking; a test with `ls` confirmed both. Reading files
-   and fetching web pages are not confined to `work\`. The prompt treats
-   web content as data, never as instructions. The run is stopped after 90
-   minutes.
+   `claude -p --permission-mode acceptEdits --tools WebSearch WebFetch Read Glob Grep Edit Write --allowedTools WebSearch WebFetch Read Glob Grep`.
+   `--tools` sets the exact built-in tools the session has: nothing that
+   runs a command or code. Asked in a test to list its tools, a run with
+   these flags named exactly those seven (no MCP server loads on this host);
+   asked to run `ls` by any means, it could not. An MCP tool added later
+   would not be pre-approved, so a headless run would refuse it.
+   (`--allowedTools` alone only pre-approves tools; it does not remove any:
+   with it alone, the same test ran `ls` without asking.) File edits,
+   including the new report, are accepted without asking only inside
+   `work\`. An edit anywhere else would need an approval, which a headless
+   run cannot give, so it is refused. Reading files and fetching web pages
+   are not confined to `work\`. The prompt treats web content as data,
+   never as instructions. The run is stopped after 90 minutes.
 4. **Validate, then promote** (`validate-events.mjs`): the working copies are
    checked with the app's own loader and the review's rules. Every entry
    must be valid, a fresh lead must be decided today, and no earlier
