@@ -11,9 +11,10 @@
 # 4. Validate the working copies with the app's own loader and the review's
 #    rules (earlier decisions change only through a documented correction).
 #    The copies are staged first and the staged copies validated, so what
-#    is promoted is what was validated. Both live files are then promoted
-#    together, journalled (logs\promotion.json) before either is replaced,
-#    so a promotion cut short is completed by the next run before anything
+#    is promoted is what was validated. Both live files are then replaced
+#    one after the other under one journal (logs\promotion.json), written
+#    before either is replaced: crash-recoverable, not atomically visible.
+#    A promotion cut short is completed by the next run before anything
 #    else, with its follow-up steps. On failure before the journal, nothing
 #    live changed and the day's leads come back; a run whose promotion did
 #    not complete is FAILED.
@@ -76,7 +77,7 @@ function Complete-Promotion {
   return $j
 }
 
-# Stage the working copies as one promotion: copied to logs\staged\<time>\
+# Stage the working copies for one journalled promotion: copied to logs\staged\<time>\
 # and checked by hash. Returns the staged files, in order. Nothing live
 # changes here.
 function Stage-Together([object[]]$pairs) {

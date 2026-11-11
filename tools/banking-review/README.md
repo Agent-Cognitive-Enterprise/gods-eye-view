@@ -81,7 +81,8 @@ keeps that state out of the repository if they are run here by mistake.
    operator to check. The validator's verdict is read from its standard
    output only; a verdict that cannot be read applies nothing.
 
-5. **Promote** both live files as one. The staged copies are checked again
+5. **Promote** both live files, one after the other under one journal:
+   crash-recoverable, not atomically visible. The staged copies are checked again
    against their hashes. Then a journal (`logs\promotion.json`, with the
    review's date and any corrections) is written: the single commit point.
    Before it, nothing live has changed; after it, the promotion is
