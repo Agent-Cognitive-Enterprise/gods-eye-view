@@ -9,11 +9,11 @@ Implementation reference: [FAST_FEEDS_IMPLEMENTATION.md](FAST_FEEDS_IMPLEMENTATI
 
 | Item              | Finding                                                                                                    |
 | ----------------- | ---------------------------------------------------------------------------------------------------------- |
-| Live installation | `C:\Users\user\gev-autopilot`, instance 4174, commit `4f74cec7`, no local changes                          |
+| Live installation | The operator's checkout, instance 4174, commit `4f74cec7`, no local changes                                |
 | Unpushed work     | None on any branch                                                                                         |
 | Upstream          | Level with `bilawalsidhu/gods-eye-view` at `a725178e`                                                      |
-| Development tree  | `C:\Users\user\gev-sync` (reused: C: had 16 GB free, too little for another `node_modules`)                |
-| Local model       | KoboldCpp with Qwen3.6-35B on `127.0.0.1:8790`, not the usual 5001; a GTX 1070 at 99 %, often `busy`       |
+| Development tree  | A second, existing checkout (reused: too little disk space for another `node_modules`)                     |
+| Local model       | KoboldCpp on a non-default local port; the GPU is shared and often at 99 %, so the model is often `busy`   |
 | Companion specs   | `GODS_EYE_VIEW_AUTOPILOT_SPEC.md` and the air/sea spec are not on this machine; read through the repo docs |
 | `gh` CLI          | Not installed; the GitHub REST API is used directly                                                        |
 | Baseline tests    | 9,328 of 9,340 pass, 11 skipped, 1 known Windows sky-image failure (recorded at the previous sync)         |

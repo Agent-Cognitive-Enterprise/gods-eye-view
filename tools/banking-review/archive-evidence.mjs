@@ -142,7 +142,7 @@ export async function snapshot(raw) {
     } finally {
       clearTimeout(deadline);
     }
-    return { status, finalUrl: url.href, body: Buffer.concat(chunks), truncated };
+    return { status, finalUrl: url.href, body: Buffer.concat(chunks), truncated, contentType: res.headers['content-type'] ?? null };
   }
 }
 

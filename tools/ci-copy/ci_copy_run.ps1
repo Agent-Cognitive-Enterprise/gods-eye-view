@@ -6,13 +6,15 @@
 param([Parameter(Mandatory = $true)][string]$Commit)
 $copy = 'https://github.com/Agent-Cognitive-Enterprise/gods-eye-view-ci.git'
 function Fail($why) { "FAILED: $why"; exit 1 }
-Set-Location C:\Users\user\gev-autopilot
+# The fork's checkout, relative to the running account.
+$repo = Join-Path $env:USERPROFILE 'gev-autopilot'
+Set-Location $repo
 $full = git rev-parse --verify --quiet "$Commit^{commit}"
 if ($LASTEXITCODE -ne 0 -or $full -notmatch '^[0-9a-f]{40}$') { Fail "not a commit: $Commit" }
 # CI copy only: ci.yml gains a manual start. Bytes are edited directly: no BOM, no newline change.
 $tmpFile = "$env:TEMP\gev-ci.yml"
 Remove-Item $tmpFile -ErrorAction SilentlyContinue
-python -c "import subprocess,sys; b=subprocess.run(['git','cat-file','blob',sys.argv[1]+':.github/workflows/ci.yml'],capture_output=True,check=True,cwd=r'C:\Users\user\gev-autopilot').stdout; old=b'on:\n  pull_request:\n'; assert b.count(old)==1, 'ci.yml on: block changed'; assert b'workflow_dispatch' not in b, 'ci.yml already has workflow_dispatch'; open(sys.argv[2],'wb').write(b.replace(old,b'on:\n  workflow_dispatch:\n  pull_request:\n'))" $full $tmpFile
+python -c "import subprocess,sys; b=subprocess.run(['git','cat-file','blob',sys.argv[1]+':.github/workflows/ci.yml'],capture_output=True,check=True,cwd=sys.argv[3]).stdout; old=b'on:\n  pull_request:\n'; assert b.count(old)==1, 'ci.yml on: block changed'; assert b'workflow_dispatch' not in b, 'ci.yml already has workflow_dispatch'; open(sys.argv[2],'wb').write(b.replace(old,b'on:\n  workflow_dispatch:\n  pull_request:\n'))" $full $tmpFile $repo
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path $tmpFile)) { Fail 'could not build the copy-only ci.yml' }
 $blob = git hash-object -w $tmpFile
 $hashExit = $LASTEXITCODE

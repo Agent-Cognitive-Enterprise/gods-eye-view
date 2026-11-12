@@ -11,7 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const appRoot = process.argv[2] ?? 'C:\\Users\\user\\gev-fast';
+const appRoot = process.argv[2] ?? path.join(process.env.USERPROFILE ?? os.homedir(), 'gev-fast');
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gev-validate-'));
 const DATE = '2026-11-11';
 const write = (name, value) => {

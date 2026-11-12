@@ -4,16 +4,17 @@
 // rationale, the lead or source URL and the archived evidence (file, SHA-256,
 // HTTP status, when it was saved). The operator marks each row agree or
 // disagree.
-// Usage: node build-spotcheck.mjs [minimum=20] [appRoot=C:\Users\user\gev-fast]
+// Usage: node build-spotcheck.mjs [minimum=20] [appRoot=%USERPROFILE%\gev-fast]
 // Writes spotcheck/<today>.md and .json; takes every rarer kind and fills the
 // rest evenly from rejected and duplicate, newest first.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const minimum = Number(process.argv[2] ?? 20);
-const appRoot = process.argv[3] ?? 'C:\\Users\\user\\gev-fast';
+const appRoot = process.argv[3] ?? path.join(process.env.USERPROFILE ?? os.homedir(), 'gev-fast');
 const read = (f) => JSON.parse(fs.readFileSync(f, 'utf8'));
 const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' });
 const DAY = 86_400_000;
@@ -110,7 +111,7 @@ const md = [
   '',
   `${picked.length} live decisions for independent review. By kind: ${kinds.map((k) => `${k} ${counts[k]}`).join(', ')}.`,
   missing.length ? `No live example exists yet of: ${missing.join(', ')}.` : '',
-  'Mark each row **agree** or **disagree**, with a note. The rationale is the reviewer\'s own, given in full below the table. The evidence is the page as archived on the host (`C:\\Users\\user\\gods-eye-view-runtime\\banking-review\\`), with its SHA-256 and the date it was saved.',
+  'Mark each row **agree** or **disagree**, with a note. The rationale is the reviewer\'s own, given in full below the table. The evidence is the page as archived on the host (the `evidence` folder of the review\'s state folder), with its SHA-256 and the date it was saved.',
   '',
   '| # | Kind | Decided | Lead or event | Evidence | Verdict |',
   '| --- | --- | --- | --- | --- | --- |',

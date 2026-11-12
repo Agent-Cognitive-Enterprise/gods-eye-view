@@ -17,7 +17,7 @@
 #   description  "<n>/<n> jobs passed in the CI copy (gods-eye-view-ci)"
 #   target_url   the run in the copy repo
 # Nothing is guessed: a missing or unfinished run is reported and skipped.
-import io, json, subprocess, sys, urllib.error, urllib.request
+import io, json, os, subprocess, sys, urllib.error, urllib.request
 
 FORK = 'Agent-Cognitive-Enterprise/gods-eye-view'
 COPY = 'Agent-Cognitive-Enterprise/gods-eye-view-ci'
@@ -28,7 +28,7 @@ args = [a for a in sys.argv[1:] if not a.startswith('--')]
 dry = '--dry-run' in sys.argv
 if len(args) != 1:
     sys.exit('usage: mirror_status.py <fork commit> [--dry-run]')
-sha = subprocess.run(['git', '-C', r'C:\Users\user\gev-autopilot', 'rev-parse', '--verify', args[0] + '^{commit}'],
+sha = subprocess.run(['git', '-C', os.path.join(os.environ['USERPROFILE'], 'gev-autopilot'), 'rev-parse', '--verify', args[0] + '^{commit}'],
                      capture_output=True, text=True).stdout.strip()
 if len(sha) != 40:
     sys.exit(f'not a commit: {args[0]}')

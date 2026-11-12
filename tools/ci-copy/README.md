@@ -37,7 +37,7 @@ cancel each other.
 
 ## Host-specific defaults
 
-The scripts expect the repository checkout at `C:\Users\user\gev-autopilot`,
+The scripts expect the repository checkout at `%USERPROFILE%\gev-autopilot`,
 and `git` and `python` on the PATH.
 The GitHub token is read from the Windows Credential Manager
 (`git credential fill`) at run time and is never stored in these files.
