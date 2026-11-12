@@ -12,14 +12,17 @@
 // reviewer, never instructions.
 //
 // Usage: node collect-pages.mjs --out <dir> --leads <leads.json>
-//        [--events <events.json>]... [--max 40] [--chars 40000]
+//        [--events <events.json>]... [--max 40] [--chars 40000] [--budget 600]
+// --budget: seconds for the whole collection, kept under the wrapper's
+// 15-minute limit. Pages not reached in time are listed as not fetched, and
+// the review goes on with the pages already staged.
 // Prints one JSON line: {"pages": n, "ok": n, "failed": n}.
 import fs from 'node:fs';
 import path from 'node:path';
 import { snapshot } from './archive-evidence.mjs';
 
 const args = process.argv.slice(2);
-const opt = { leads: [], events: [], out: null, max: 40, chars: 40000 };
+const opt = { leads: [], events: [], out: null, max: 40, chars: 40000, budget: 600 };
 for (let i = 0; i < args.length; i++) {
   const k = args[i];
   const v = args[i + 1];
@@ -29,6 +32,7 @@ for (let i = 0; i < args.length; i++) {
   else if (k === '--out') opt.out = v;
   else if (k === '--max') opt.max = Number(v);
   else if (k === '--chars') opt.chars = Number(v);
+  else if (k === '--budget') opt.budget = Number(v);
   else throw new Error(`unknown argument ${k}`);
   i++;
 }
@@ -59,7 +63,7 @@ for (const f of opt.events)
 // similar blocks, comments and tags are dropped; when a closing marker never
 // comes, the rest of the page is dropped (never searched again). Common
 // entities are decoded; whitespace is collapsed. Input is cut first.
-const MAX_INPUT = 1024 * 1024;
+const MAX_INPUT = 3 * 1024 * 1024; // the archiver's own body cap: the whole page is scanned, only the text is cut
 const SKIP_BLOCKS = ['script', 'style', 'noscript', 'svg', 'template', 'iframe'];
 const BREAKS = new Set(['p', 'div', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'tr', 'br', 'section', 'article', 'header', 'footer']);
 const NAMED = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
@@ -77,6 +81,11 @@ function toText(buf, contentType) {
       break;
     }
     out.push(src.slice(i, lt));
+    // An empty comment (<!--> or <!--->) closes itself.
+    if (src.startsWith('<!-->', lt) || src.startsWith('<!--->', lt)) {
+      i = lt + (src.startsWith('<!-->', lt) ? 5 : 6);
+      continue;
+    }
     if (src.startsWith('<!--', lt)) {
       const end = src.indexOf('-->', lt + 4);
       if (end < 0) break;
@@ -113,7 +122,16 @@ function toText(buf, contentType) {
 fs.mkdirSync(opt.out, { recursive: true });
 const index = [];
 let n = 0;
+const started = Date.now();
+let outOfTime = 0;
 for (const item of wanted.slice(0, opt.max)) {
+  // The whole collection has a budget: what is not reached in time is
+  // listed as not fetched, and the review goes on with what was staged.
+  const left = opt.budget * 1000 - (Date.now() - started);
+  if (left < 5000) {
+    outOfTime++;
+    continue;
+  }
   n++;
   const file = `${String(n).padStart(2, '0')}.txt`;
   const entry = { file, url: item.url, kind: item.kind, for: item.id, ok: false };
@@ -122,7 +140,7 @@ for (const item of wanted.slice(0, opt.max)) {
     // An overall deadline per page (the archiver's 20 s limits are idle and
     // body timeouts): a slow server cannot hold the run.
     let timer;
-    const snap = await Promise.race([snapshot(item.url), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('page deadline (45 s)')), 45_000); })]).finally(() => clearTimeout(timer));
+    const snap = await Promise.race([snapshot(item.url), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('page deadline')), Math.min(45_000, left)); })]).finally(() => clearTimeout(timer));
     entry.status = snap.status;
     entry.finalUrl = snap.finalUrl;
     if (snap.bodyError) entry.error = `body: ${snap.bodyError}`;
@@ -151,6 +169,7 @@ for (const item of wanted.slice(0, opt.max)) {
   index.push(entry);
   await new Promise((r) => setTimeout(r, 300));
 }
+if (outOfTime) index.push({ file: null, note: `${outOfTime} more pages were not fetched: the collection ran out of time (${opt.budget} s)` });
 if (wanted.length > opt.max) index.push({ file: null, note: `${wanted.length - opt.max} more pages were not fetched (limit ${opt.max})` });
 fs.writeFileSync(path.join(opt.out, 'index.json'), JSON.stringify(index, null, 2) + '\n');
 console.log(JSON.stringify({ pages: n, ok: index.filter((e) => e.ok).length, failed: index.filter((e) => e.file && !e.ok).length }));

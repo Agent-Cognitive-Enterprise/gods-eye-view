@@ -44,8 +44,11 @@ that state out of the repository if they are run here by mistake.
    each fresh lead's page and the sources of every ongoing event. It uses
    the evidence archiver's guard (below): public hosts only, redirects
    checked, size and time capped. The pages are written to `work\pages\` as
-   plain text (at most 40 pages, 40,000 characters each), with an index. The
-   reviewer cannot fetch anything itself.
+   plain text (at most 40 pages, 40,000 characters each), with an index.
+   Each page has a 45-second deadline. The whole collection has a
+   10-minute budget: pages not reached in time are listed as not fetched,
+   and the review goes on with the rest. The wrapper also stops the
+   collector after 15 minutes. The reviewer cannot fetch anything itself.
 4. **Review**: headless Claude Code runs `review-prompt.md` in `work\` with
    the flags in `$ReviewerArgs`:
    `claude -p --restricted --strict-mcp-config --model opus --permission-mode acceptEdits --tools WebSearch Read Glob Grep Edit Write --allowedTools WebSearch Read Glob Grep`.
