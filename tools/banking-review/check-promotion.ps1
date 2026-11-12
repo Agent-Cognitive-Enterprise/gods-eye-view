@@ -31,6 +31,11 @@
 # 12. A file in the reviewer's memory folder. Expect: kept, emptied, the
 #     operator told, the run COMPLETE.
 # 13. A CLAUDE.md in a folder above work\. Expect: nothing is reviewed.
+# A normal run then: COMPLETE, and work\ is left empty.
+# 15. An earlier day's report and leads in work\. Expect: kept in
+#     logs\quarantine, removed, the run COMPLETE.
+# 16. The attention note cannot be written. Expect: the run COMPLETE, the
+#     log and the posted status (in fixed words) say so.
 # Every posted status is checked for host paths.
 # Usage: powershell -File check-promotion.ps1 [-AppRoot <app checkout>]
 param([string]$AppRoot = (Join-Path $env:USERPROFILE 'gev-fast'), [int]$Port = 4199)
@@ -261,6 +266,38 @@ try {
   $r14 = Last-Run
   Expect ($r14.status -eq 'COMPLETE' -and $r14.report -eq 'private') "a normal run afterwards is COMPLETE (was $($r14.status), report $($r14.report))"
   Expect (No-HostPath (Posted)) 'the normal status holds no host path'
+  # A run that succeeded leaves work\ empty, so the next day starts clean.
+  $workLeft = @(Get-ChildItem (Join-Path $box 'work') -Recurse -Force)
+  Expect ($workLeft.Count -eq 0) "a COMPLETE run leaves work\ empty ($($workLeft.Count) entries left)"
+  Expect (@(Get-ChildItem (Join-Path $box 'logs\runs') -Filter 'pages-*.json' -File).Count -ge 1) 'a COMPLETE run keeps the list of pages the reviewer was given in logs\runs'
+  Expect (Test-Path (Join-Path $box "reports\$($r14.date).md")) 'a COMPLETE run keeps its report in reports\'
+
+  # 15. The day after: what an earlier day's run left in work\ (here a
+  #     report and leads under another date) is kept and removed, and the
+  #     run is COMPLETE.
+  New-Item -ItemType Directory -Force (Join-Path $box 'work\reports'), (Join-Path $box 'work\leads') | Out-Null
+  [System.IO.File]::WriteAllText((Join-Path $box 'work\reports\2000-01-01.md'), "synthetic earlier report`n")
+  [System.IO.File]::WriteAllText((Join-Path $box 'work\leads\2000-01-01.json'), "{}`n")
+  Run-Wrapper
+  $r15 = Last-Run
+  Expect ($r15.status -eq 'COMPLETE') "run 15 with an earlier day's files in work\: COMPLETE (was $($r15.status))"
+  Expect (@(Get-ChildItem (Join-Path $box 'logs\quarantine') -Recurse -Filter 'reports_2000-01-01.md.quarantined').Count -ge 1) 'run 15 keeps the earlier day''s files in logs\quarantine'
+
+  # 16. The attention note cannot be written (as when security software
+  #     refuses a script changing a file on the Desktop): the run is not
+  #     failed by it, the log says so, and the posted status says so in
+  #     fixed words.
+  $noteFile = Join-Path $box 'attention.txt'
+  if (-not (Test-Path $noteFile)) { [System.IO.File]::WriteAllText($noteFile, '') }
+  Set-ItemProperty $noteFile -Name IsReadOnly -Value $true
+  [System.IO.File]::WriteAllText((Join-Path $box 'work\stray.txt'), "synthetic stray file`n")
+  $before16 = (Log).Length
+  try { Run-Wrapper } finally { Set-ItemProperty $noteFile -Name IsReadOnly -Value $false }
+  $r16 = Last-Run
+  $tail16 = (Log).Substring($before16)
+  Expect ($r16.status -eq 'COMPLETE') "run 16 with an attention note that cannot be written: COMPLETE (was $($r16.status))"
+  Expect ($tail16 -match 'ATTENTION: work\\ held 1 unexpected' -and $tail16 -match 'the attention note could not be written') 'run 16 logs the attention and that the note could not be written'
+  Expect ((Posted) -match 'attention note on the host could not be written' -and (No-HostPath (Posted))) 'run 16 posts the fixed note, with no host path'
 } finally {
   if ($holder) { Stop-Process -Id $holder.Id -Force -ErrorAction SilentlyContinue }
   Stop-Process -Id $app.Id -Force -ErrorAction SilentlyContinue
