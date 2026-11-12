@@ -186,7 +186,17 @@ that state out of the repository if they are run here by mistake.
 
    No text from the reviewer, the leads or the web reaches it. Problems are
    also written to an attention note on the Desktop. Strings the reviewer
-   wrote are clipped and stripped of control characters there.
+   wrote are clipped and stripped of control characters there. The note is
+   best-effort: security software may refuse a script changing a file on
+   the Desktop (Avast's Ransomware Shield does). The run then carries on,
+   the log keeps the message, and the status says in fixed words that the
+   note could not be written.
+
+   **After a run that succeeded, `work\` is emptied**, once the report is
+   safely in `reports\` (checked by hash). The list of pages the reviewer
+   was given is kept as `logsuns\pages-<date>-<time>.json`. The next day
+   then starts from an empty folder. A failed run leaves `work\` as it is;
+   the next run keeps its contents in `logs\quarantine\` for the operator.
 
    **Publishing a report** is a human decision. Read `reports\<date>.md`
    first; anything in it came from a model reading untrusted web pages. If
@@ -326,6 +336,12 @@ nothing is posted:
   12. A file in the reviewer's memory folder is quarantined and emptied, and
       the operator is told.
   13. A `CLAUDE.md` in a folder above `work\`: nothing is reviewed.
+  14. A normal run: COMPLETE, `work\` left empty, the report in `reports\`
+      and the list of pages in `logsuns\`.
+  15. An earlier day's report and leads in `work\`: kept in quarantine and
+      removed; the run is COMPLETE.
+  16. An attention note that cannot be written: the run is COMPLETE, and
+      the log and the fixed status say so.
 
   Every posted status is also checked for host paths.
 ## Evaluation harness (`eval\`)

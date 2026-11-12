@@ -659,15 +659,27 @@ try {
   # 6. The reviewer's report stays private: kept on the host for the
   #    operator, never posted automatically. An operator may publish it by
   #    hand after reading it (README: publishing a report).
-  if ($hasReport) { Copy-Item -LiteralPath $workReport -Destination $hostReport -Force }
+  $reportKept = $false
+  if ($hasReport) {
+    try {
+      Copy-Item -LiteralPath $workReport -Destination $hostReport -Force -ErrorAction Stop
+      $reportKept = (Get-Sha $hostReport) -eq (Get-Sha $workReport)
+    } catch { Say "the report could not be copied to reports\: $($_.Exception.Message)" }
+    if (-not $reportKept) { Attention "the review's report could not be kept in reports\ ($Date); it is still in work\" }
+  }
 
-  # A run that succeeded empties work\ (its report is copied above, the
-  # leads stay in leads\ and the staged pages were for this review only),
-  # so the next day starts from an empty folder: an earlier day's files are
-  # never mistaken for something planted. A failed run leaves it for the next run
-  # to keep in logs\quarantine for the operator.
-  if ($succeeded) {
-    try { Clear-Folder $Work } catch { Say "work\ could not be emptied after the run: $($_.Exception.Message)" }
+  # A run that succeeded empties work\ once its report is safely in
+  # reports\ (the leads stay in leads\; the list of pages the reviewer was
+  # given is kept in logs\runs\), so the next day starts from an empty
+  # folder: an earlier day's files are never mistaken for something
+  # planted. A failed run leaves it for the next run to keep in
+  # logs\quarantine for the operator.
+  if ($succeeded -and $reportKept) {
+    try {
+      $pagesIndex = Join-Path $Work 'pages\index.json'
+      if (Test-Path -LiteralPath $pagesIndex) { Copy-Item -LiteralPath $pagesIndex -Destination (Join-Path $Dir ("logs\runs\pages-$Date-{0}.json" -f (Get-Date -Format HHmmss))) -Force -ErrorAction Stop }
+      Clear-Folder $Work
+    } catch { Say "work\ could not be emptied after the run: $($_.Exception.Message)" }
   }
   if ($script:NoteFailed) { $notes.Add('**The attention note on the host could not be written; the operator should read the log on the host.**') }
 

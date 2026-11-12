@@ -269,6 +269,8 @@ try {
   # A run that succeeded leaves work\ empty, so the next day starts clean.
   $workLeft = @(Get-ChildItem (Join-Path $box 'work') -Recurse -Force)
   Expect ($workLeft.Count -eq 0) "a COMPLETE run leaves work\ empty ($($workLeft.Count) entries left)"
+  Expect (@(Get-ChildItem (Join-Path $box 'logs\runs') -Filter 'pages-*.json' -File).Count -ge 1) 'a COMPLETE run keeps the list of pages the reviewer was given in logs\runs'
+  Expect (Test-Path (Join-Path $box "reports\$($r14.date).md")) 'a COMPLETE run keeps its report in reports\'
 
   # 15. The day after: what an earlier day's run left in work\ (here a
   #     report and leads under another date) is kept and removed, and the
