@@ -194,7 +194,7 @@ that state out of the repository if they are run here by mistake.
 
    **After a run that succeeded, `work\` is emptied**, once the report is
    safely in `reports\` (checked by hash). The list of pages the reviewer
-   was given is kept as `logsuns\pages-<date>-<time>.json`. The next day
+   was given is kept as `logs\runs\pages-<date>-<time>.json`. The next day
    then starts from an empty folder. A failed run leaves `work\` as it is;
    the next run keeps its contents in `logs\quarantine\` for the operator.
 
@@ -337,7 +337,7 @@ nothing is posted:
       the operator is told.
   13. A `CLAUDE.md` in a folder above `work\`: nothing is reviewed.
   14. A normal run: COMPLETE, `work\` left empty, the report in `reports\`
-      and the list of pages in `logsuns\`.
+      and the list of pages in `logs\runs\`.
   15. An earlier day's report and leads in `work\`: kept in quarantine and
       removed; the run is COMPLETE.
   16. An attention note that cannot be written: the run is COMPLETE, and
