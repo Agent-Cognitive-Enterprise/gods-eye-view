@@ -74,7 +74,19 @@ function Clip([string]$text, [int]$max = 600) {
   return $t
 }
 function Say([string]$text) { [System.IO.File]::AppendAllText($Log, ("{0} {1}`r`n" -f (Get-Date -Format s), (Clip $text 4000)), $Utf8) }
-function Attention([string]$text) { $t = Clip $text 1500; Say "ATTENTION: $t"; [System.IO.File]::AppendAllText($Note, ("{0} {1}`r`n" -f (Get-Date -Format s), $t), $Utf8) }
+# The note on the Desktop is best-effort: security software may refuse a
+# script changing a file there (Avast's Ransomware Shield does). The run
+# then carries on, the log keeps the message and the posted status says the
+# note could not be written, with no text of its own.
+$script:NoteFailed = $false
+function Attention([string]$text) {
+  $t = Clip $text 1500
+  Say "ATTENTION: $t"
+  try { [System.IO.File]::AppendAllText($Note, ("{0} {1}`r`n" -f (Get-Date -Format s), $t), $Utf8) } catch {
+    $script:NoteFailed = $true
+    Say "the attention note could not be written: $($_.Exception.Message)"
+  }
+}
 
 function Get-Sha([string]$file) { (Get-FileHash -Algorithm SHA256 -LiteralPath $file -ErrorAction Stop).Hash }
 $Journal = Join-Path $Dir 'logs\promotion.json'
@@ -648,6 +660,16 @@ try {
   #    operator, never posted automatically. An operator may publish it by
   #    hand after reading it (README: publishing a report).
   if ($hasReport) { Copy-Item -LiteralPath $workReport -Destination $hostReport -Force }
+
+  # A run that succeeded empties work\ (its report is copied above, the
+  # leads stay in leads\ and the staged pages were for this review only),
+  # so the next day starts from an empty folder: an earlier day's files are
+  # never mistaken for something planted. A failed run leaves it for the next run
+  # to keep in logs\quarantine for the operator.
+  if ($succeeded) {
+    try { Clear-Folder $Work } catch { Say "work\ could not be emptied after the run: $($_.Exception.Message)" }
+  }
+  if ($script:NoteFailed) { $notes.Add('**The attention note on the host could not be written; the operator should read the log on the host.**') }
 
   # 7. The status comment on PR #6: written only by this script, from fixed
   #    words, numbers and dates it computed; no text from the reviewer, the
