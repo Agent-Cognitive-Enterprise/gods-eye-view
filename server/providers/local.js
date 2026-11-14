@@ -42,6 +42,7 @@ import { acartiaProxy } from './acartia.js';
 import { cycloneProxy } from './cyclones.js';
 import { windProxy } from './wind.js';
 import { exitWithLauncher, isIsolatedInstance } from './isolation.js';
+import { libraryProxy } from './library.js';
 
 /**
  * Construct the local provider plugins in their established order.
@@ -98,6 +99,7 @@ function localProviderPlugins({
     mapillaryProxy(),
     firePerimetersProxy(),
     gnssIntegrityProxy(),
+    libraryProxy(),
     ghostMapsProxy({ watcher: ghostMapsWatcher }),
     shipwrecksProxy(),
     intelProxy({ ghostMapsWatcher, airSeaHub }),

@@ -263,7 +263,12 @@
     "ΔN",
     "Ⅱ PAUSE",
     "≥ {value} MW",
-    "▲ {frp} MW"
+    "▲ {frp} MW",
+    "COMMUNITY",
+    "Regional",
+    "OPT-IN",
+    "{minutes} min",
+    "1 min/s"
   ],
   "es": [
     "1 H",
@@ -434,7 +439,9 @@
     "ΔE",
     "ΔN",
     "≥ {value} MW",
-    "▲ {frp} MW"
+    "▲ {frp} MW",
+    "Regional",
+    "{datasets} · {tiles} · {packs}"
   ],
   "fr": [
     "% POPULATION",
@@ -674,7 +681,14 @@
     "ΔN",
     "Ⅱ PAUSE",
     "≥ {value} MW",
-    "▲ {frp} MW"
+    "▲ {frp} MW",
+    "Photo · {licence}",
+    "PACK",
+    "{count} packs",
+    "Orthophoto",
+    "Oblique",
+    "Type",
+    "{range} NM"
   ],
   "it": [
     "1 H",
@@ -898,7 +912,10 @@
     "ΔE",
     "ΔN",
     "≥ {value} MW",
-    "▲ {frp} MW"
+    "▲ {frp} MW",
+    "DATASET",
+    "{count} datasets",
+    "ZOOM"
   ],
   "ja": [
     "1090 MHz",
@@ -1146,7 +1163,8 @@
     "{value} s",
     "ΔN",
     "≥ {value} MW",
-    "▲ {frp} MW"
+    "▲ {frp} MW",
+    "Regional"
   ],
   "ru": [
     "1900–1945",
@@ -1182,7 +1200,8 @@
     "{direction} {angle}°",
     "{direction} · {elevation}",
     "{division}, {country}",
-    "{region}, {country}"
+    "{region}, {country}",
+    "{datasets} · {tiles} · {packs}"
   ],
   "sv": [
     "STATION",
