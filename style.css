@@ -56,6 +56,6 @@
 @import './src/ui/styles/cockpit-panels.css';
 @import './src/ui/styles/ai-chat.css';
 @import './src/ui/styles/scope-off-shadows.css';
-@import './src/ui/styles/cyber.css';
 /* Fork: the panel rails as a row above their columns; after rail-split.css. */
 @import './src/ui/styles/fork-panel-rail-row.css';
+@import './src/ui/styles/cyber.css';
