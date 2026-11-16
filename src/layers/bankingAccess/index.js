@@ -461,7 +461,11 @@ export function createBankingAccessLayer({
    */
   function hitOf(raw) {
     if (!raw) return null;
-    const id = raw.id && typeof raw.id === 'object' ? raw.id.id : raw.id;
+    // An entity's pick carries the entity; a primitive's may carry its id
+    // only on the primitive (as the dispatcher's native pick reads it).
+    const id =
+      (raw.id && typeof raw.id === 'object' ? raw.id.id : raw.id) ??
+      raw.primitive?.id;
     return { set: '', id: id ?? null, surface: false };
   }
 

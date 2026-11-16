@@ -4,6 +4,32 @@ import * as overlays from '../../overlays/worldOverlay.js';
 import { isPointerFree } from '../../data/inputOwnership.js';
 import { inputFor } from '../../input/dispatcher.js';
 
+/**
+ * The banking layer's click contract (setInputAction/destroy) over the
+ * scene's one input dispatcher: no handler of its own, and the dispatcher's
+ * one pick of the click, as its topHit, instead of another scene.pick.
+ */
+export function dispatcherClickHandler(viewer) {
+  let off = null;
+  return {
+    setInputAction(fn) {
+      off?.();
+      off = inputFor(viewer).onClick((event) =>
+        fn({
+          position: event.screenPosition,
+          get hit() {
+            return event.topHit;
+          },
+        }),
+      );
+    },
+    destroy() {
+      off?.();
+      off = null;
+    },
+  };
+}
+
 /** Wire the banking-access layer (fork feature) into the application catalog. */
 export function createApplicationBankingAccess(options) {
   return createBankingAccessLayer({
@@ -13,29 +39,7 @@ export function createApplicationBankingAccess(options) {
       clearSource: overlays.clearOverlaySource,
       hitTest: overlays.hitTestWorldOverlay,
     },
-    // The layer's click contract (setInputAction/destroy) over the scene's
-    // one input dispatcher: no handler of its own, and the dispatcher's one
-    // pick of the click instead of another scene.pick.
-    screenSpaceEventHandlerFactory: (viewer) => {
-      let off = null;
-      return {
-        setInputAction(fn) {
-          off?.();
-          off = inputFor(viewer).onClick((event) =>
-            fn({
-              position: event.screenPosition,
-              get hit() {
-                return event.topHit;
-              },
-            }),
-          );
-        },
-        destroy() {
-          off?.();
-          off = null;
-        },
-      };
-    },
+    screenSpaceEventHandlerFactory: dispatcherClickHandler,
     picking,
     pointer: { isPointerFree },
     ...options,
