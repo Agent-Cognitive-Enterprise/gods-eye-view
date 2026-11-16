@@ -450,6 +450,7 @@ export function createTrafficDensityLayer({
       if (_viewer) throw new Error(`${spec.id} layer is already initialized`);
       // The scene object the app hands layers; Cesium is its renderer's viewer.
       _viewer = viewerBehind(viewer);
+      viewer = _viewer;
       _primitives = new Cesium.PrimitiveCollection();
       _primitives.show = false;
       viewer.scene.primitives.add(_primitives);

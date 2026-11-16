@@ -111,7 +111,8 @@ export function resolveCatalogSources(supplied = {}) {
   return {
     sources,
     isConfigured: (name) => !missing.has(name),
-    createAvailabilityLookup(layers) {
+    // Fork: `absent` names layers left out on purpose (src/fork/engine.js).
+    createAvailabilityLookup(layers, { absent = null } = {}) {
       const byId = new Map(layers.map((layer) => [layer.id, layer]));
       const availability = new Map();
       for (const [name, { layers: ids }] of Object.entries(
@@ -119,6 +120,7 @@ export function resolveCatalogSources(supplied = {}) {
       )) {
         for (const id of ids) {
           const layer = byId.get(id);
+          if (!layer && absent?.has(id)) continue;
           if (!layer) throw new Error(`Missing source consumer: ${id}`);
           availability.set(
             id,

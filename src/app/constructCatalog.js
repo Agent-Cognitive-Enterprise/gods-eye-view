@@ -46,7 +46,7 @@ import { createInfrastructureLayers } from '../data/infrastructure.js';
 import { localGeoJsonServices } from './localGeojsonServices.js';
 import { createBhoteKoshiEventLayer } from '../data/bhoteKoshiEvent.js';
 import { createBhoteKoshiLocatorLayer } from '../data/bhoteKoshiLocator.js';
-import { forkEngineWanted } from '../fork/engine.js';
+import { FORK_ENGINE_LAYER_IDS, forkEngineWanted } from '../fork/engine.js';
 
 /**
  * Hardware-local layers are registered like any other but never enter share
@@ -138,6 +138,12 @@ export function createApplicationCatalog({
     const satellites = createApplicationSatellites({
       source: sources.satellites,
     });
+    // Fork: on another renderer the fork's Cesium-drawn layers are absent
+    // (src/fork/engine.js), so are their metadata and source consumers.
+    const forkAbsent = forkEngineWanted()
+      ? null
+      : new Set(FORK_ENGINE_LAYER_IDS);
+    if (forkAbsent) metadata = metadata.filter(({ id }) => !forkAbsent.has(id));
     const catalog = createLayerCatalog(
       [
         createBhoteKoshiEventLayer(),
@@ -261,6 +267,7 @@ export function createApplicationCatalog({
       ...catalog,
       getSourceAvailability: sourceComposition.createAvailabilityLookup(
         catalog.layers,
+        { absent: forkAbsent },
       ),
       militaryRegistry,
       surface,

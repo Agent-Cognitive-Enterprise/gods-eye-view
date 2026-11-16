@@ -644,6 +644,7 @@ export function createBankingAccessLayer({
       // Cesium is its renderer's viewer.
       _host = viewer;
       _viewer = viewerBehind(viewer);
+      viewer = _viewer;
       _dataSource = new Cesium.CustomDataSource(BANKING_ACCESS_LAYER_ID);
       _dataSource.show = false;
       viewer.dataSources.add(_dataSource);

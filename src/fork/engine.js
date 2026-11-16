@@ -17,6 +17,16 @@
 /** @type {typeof import('cesium') | null} */
 export let Cesium = null;
 
+/** The catalog layers drawn with Cesium directly (absent on another renderer). */
+export const FORK_ENGINE_LAYER_IDS = Object.freeze([
+  'air-traffic',
+  'sea-traffic',
+  'warning-areas',
+  'traffic-anomalies',
+  'gnss-ship-regions',
+  'banking-access',
+]);
+
 let behind = null;
 let loading = null;
 let rendererId = null;
@@ -29,11 +39,18 @@ export function loadForkEngine() {
   loading ??= Promise.all([
     import('cesium'),
     import('../render/cesium/viewers.js'),
-  ]).then(([module, viewers]) => {
-    Cesium = module;
-    behind = viewers.viewerBehind;
-    return module;
-  });
+  ]).then(
+    ([module, viewers]) => {
+      Cesium = module;
+      behind = viewers.viewerBehind;
+      return module;
+    },
+    (error) => {
+      // A failed chunk load is retried by the next mount.
+      loading = null;
+      throw error;
+    },
+  );
   return loading;
 }
 
