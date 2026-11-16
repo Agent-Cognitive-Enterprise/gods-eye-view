@@ -24,8 +24,8 @@ export function createApplicationBankingAccess(options) {
           off = inputFor(viewer).onClick((event) =>
             fn({
               position: event.screenPosition,
-              get pick() {
-                return event.pick;
+              get hit() {
+                return event.topHit;
               },
             }),
           );

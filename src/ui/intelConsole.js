@@ -2062,10 +2062,10 @@ export function createIntelConsole({
       (id) => typeof id === 'string' && id.startsWith(PICK_PREFIX),
     );
     // Through the scene's one input dispatcher, reading its one pick of the
-    // click (event.pick: the engine's pick object these points still use).
+    // click as a hit (the pick registry's contract).
     clickHandler = inputFor(viewer).onClick((event) => {
       if (pointer && !pointer.isPointerFree()) return;
-      const picked = event.pick;
+      const picked = event.topHit;
       const id = picking?.resolvePickId
         ? picking.resolvePickId(picked)
         : picked?.id;

@@ -455,6 +455,16 @@ export function createBankingAccessLayer({
     notifyRow();
   }
 
+  /**
+   * A raw engine pick as the dispatcher's hit: the pick registry reads a
+   * hit's string id, and an entity's pick carries the entity as its id.
+   */
+  function hitOf(raw) {
+    if (!raw) return null;
+    const id = raw.id && typeof raw.id === 'object' ? raw.id.id : raw.id;
+    return { set: '', id: id ?? null, surface: false };
+  }
+
   function pickedIso3(picked) {
     const id = picking.resolvePickId(picked);
     if (typeof id !== 'string' || !id.startsWith(PICK_PREFIX)) return null;
@@ -473,9 +483,10 @@ export function createBankingAccessLayer({
         sourceId: OVERLAY_SOURCE_ID,
       });
       if (card) return;
-      // The dispatcher's pick when the click comes through it (app wiring).
+      // The dispatcher's hit when the click comes through it (app wiring),
+      // else the scene's own pick in the same shape.
       const picked =
-        'pick' in click ? click.pick : _viewer.scene.pick(click.position);
+        'hit' in click ? click.hit : hitOf(_viewer.scene.pick(click.position));
       const iso3 = picked ? pickedIso3(picked) : null;
       if (iso3) return select(iso3);
       if (picked) {

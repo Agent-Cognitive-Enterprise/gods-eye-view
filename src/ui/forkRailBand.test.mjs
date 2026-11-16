@@ -70,7 +70,7 @@ function element(
 }
 
 /** Lay the right column out beside a left stack at 146 px, with or without its rail. */
-function layout({ leftRailTop }) {
+function layout({ leftRailTop, leftRailHidden = false }) {
   const first = element('first', { collapsed: true });
   const second = element('second', { collapsed: true });
   const stack = element('right', { height: 96, left: 1100, top: 146 });
@@ -81,6 +81,7 @@ function layout({ leftRailTop }) {
   if (leftRailTop !== null) {
     const rail = element('left-rail');
     rail.computed.top = leftRailTop;
+    if (leftRailHidden) rail.computed.display = 'none';
     leftStack.querySelector = () => rail;
   }
   stack.ownerDocument = { activeElement: null };
@@ -130,4 +131,9 @@ test('a left rail lifted beyond its band is still followed', () => {
   // A layout that raises the left rail 20 px more than the band moved the column.
   const lifted = layout({ leftRailTop: `-${BAND + 20}px` });
   assert.equal(lifted.panelsTop, 126);
+});
+
+test('a hidden left rail (Cyber cockpit) still lines the columns up', () => {
+  const hidden = layout({ leftRailTop: `-${BAND}px`, leftRailHidden: true });
+  assert.equal(hidden.panelsTop, 146);
 });

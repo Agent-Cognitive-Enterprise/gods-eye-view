@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createBankingAccessLayer } from './index.js';
 import { createBankingAccessSource } from './source.js';
+import { resolvePickId } from '../../data/pickRegistry.js';
 import {
   countryView,
   decodeRing,
@@ -125,8 +126,9 @@ function setup({ answer = ANSWER, error = null, click = false } = {}) {
           setInputAction: (fn) => (handler.action = fn),
           destroy() {},
         }),
+        // The real registry: it reads a hit's string id, not an entity's.
         picking: {
-          resolvePickId: (picked) => picked?.id?.id ?? null,
+          resolvePickId,
           isOwnedByOtherLayer: () => false,
         },
         pointer: { isPointerFree: () => true },
@@ -386,6 +388,24 @@ test('clicking inside an unfilled country selects it and shows its card', async 
   // A click on empty globe clears it.
   viewer.scene.pick = () => undefined;
   handler.action({ position: { x: 1, y: 1 } });
+  assert.equal(layer.getStats().selected, null);
+});
+
+test('a click through the input dispatcher selects by its hit', async () => {
+  const answer = structuredClone(ANSWER);
+  const { layer, viewer, handler } = setup({ answer, click: true });
+  layer.enable();
+  await layer.update(viewer);
+  viewer.scene.pick = () => {
+    throw new Error('a dispatched click is not picked again');
+  };
+  // As src/app/layers/bankingAccess.js passes it: the dispatcher's topHit.
+  handler.action({
+    position: { x: 10, y: 10 },
+    hit: { set: '', id: 'banking-access:LBN:0', surface: false },
+  });
+  assert.equal(layer.getStats().selected, 'LBN');
+  handler.action({ position: { x: 1, y: 1 }, hit: null });
   assert.equal(layer.getStats().selected, null);
 });
 

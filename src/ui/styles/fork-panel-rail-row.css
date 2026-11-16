@@ -26,12 +26,17 @@
   .ui-rail--collapsible:not(.ui-rail--expanded):has(.ui-rail__item--on) {
   background: rgba(16, 20, 28, 0.82) !important;
   border-color: rgba(255, 255, 255, 0.14) !important;
-  box-shadow:
+  /* Scope off has its own lift shadow (scope-off-shadows.css). */
+  box-shadow: var(
+    --scope-off-panel-shadow,
     0 6px 20px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.05)
+  ) !important;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
-:is(#left-panel-stack, #right-context-rail) .gev-panel-rail .ui-tooltip::before {
+:is(#left-panel-stack, #right-context-rail)
+  .gev-panel-rail
+  .ui-tooltip::before {
   content: none !important;
 }

@@ -66,6 +66,17 @@ fork edits are the merge surface; keep these edits additive and small:
 | `src/data/dataCredits.js`, `DATA_SOURCES.md`, `.env.example`                                         | One credit entry, source rows and notes, commented settings.                                                                                                                   |
 | `server/providers/vessels/ais-live.js`                                                               | The AIS lease (`isolation.js`); ingest is wrapped by `tapRegionalAisIngest`.                                                                                                   |
 | `README.md`                                                                                          | One line at the top linking `docs/AUTOPILOT.md`; on a conflict, keep upstream, re-add it.                                                                                      |
+| `src/app/layers/bankingAccess.js`, `src/layers/bankingAccess/index.js`, `src/ui/intelConsole.js`     | Clicks through the input dispatcher (`inputFor(viewer).onClick`), read as its `topHit`.                                                                                        |
+| `src/render/cesiumAllowList.json`, `src/render/viewerAccessAllowList.json`                           | Fork files still drawn with Cesium directly (air/sea, banking, Autopilot console) and `worldOverview.js`'s viewer reads.                                                       |
+| `src/ui/rightPanelRail.js`, `src/ui/styles/fork-panel-rail-row.css`, `style.css`                     | The right column follows the left rail's row (band added back); the row rail undoes `rail-split.css`'s vertical-rail styling.                                                  |
+| `src/ui/styles/intel.css`                                                                            | `#gev-credits` placed as `#cesium-credits`.                                                                                                                                    |
+
+Upstream's renderer ratchets (`src/render/noCesiumOutsideRender.test.mjs`,
+`viewerAccess.test.mjs`) compare the allow-lists with `origin/main`. The fork's
+`main` predates the lists, so their "only shrinks" checks skip. Once the fork's
+`main` is synced to upstream, where both lists are empty, they will report the
+fork entries as added: move those files onto the draw, camera and frame ports
+first, or point the check at the fork's integration branch.
 
 The merge check flags conflicts and both-sides changes in these areas
 (`autopilot-hooks`, `voice`, `director`, `camera`, `i18n`, `dependencies`,
