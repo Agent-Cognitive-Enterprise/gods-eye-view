@@ -231,12 +231,16 @@ export function createRendering({ state }) {
 
   function applyCableClassification(next) {
     if (next === undefined || next === state._clampTo) return;
-    const draped = cableLinesDrape(state._clampTo);
+    // Fork: lines that stop or start draping are drawn again, once. The old
+    // items are cleared first so the new clampTo does not rebuild them too.
+    const redraw =
+      cableLinesDrape(next) !== cableLinesDrape(state._clampTo) &&
+      state._loaded &&
+      state._drawn;
     state._clampTo = next;
+    if (redraw) state._sets?.lines.clear();
     state._sets?.lines.setOptions({ clampTo: next });
-    // Fork: lines that stop or start draping are drawn again, once.
-    if (cableLinesDrape(next) !== draped && state._loaded && state._drawn)
-      redrawFeatures();
+    if (redraw) redrawFeatures();
   }
 
   /** Fork: draw the last drawn features again (a surface switch). */

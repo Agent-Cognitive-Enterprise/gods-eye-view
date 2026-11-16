@@ -1,0 +1,37 @@
+/* Fork: the panel rails are a row of icons above their columns (intel.css,
+   --panel-rail-band). Upstream's rail-split.css styles them as vertical
+   rails: a name panel beside the rail while nothing is open, 12px spacing,
+   and glass islands around the open icon. None of that fits a row, so this
+   file, imported after it, puts the row back. Equal specificity wins by
+   order; the islands' own rules use !important and are matched as such. */
+
+/* No name panel or labels beside the row while nothing is open. */
+.gev-panel-rail .ui-rail--expanded::after {
+  content: none;
+}
+.gev-panel-rail .ui-rail--expanded .ui-rail__label {
+  display: none;
+}
+
+/* The kit's spacing, not the islands' 12px. */
+:is(.gev-panel-rail--left, .gev-panel-rail--right) .ui-rail {
+  gap: 2px;
+}
+
+/* One glass row with a panel open, as with none open: no islands. */
+:is(
+    body:not(.panels-edge-left) .gev-panel-rail--left,
+    body:not(.panels-edge-right) .gev-panel-rail--right
+  )
+  .ui-rail--collapsible:not(.ui-rail--expanded):has(.ui-rail__item--on) {
+  background: rgba(16, 20, 28, 0.82) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+:is(#left-panel-stack, #right-context-rail) .gev-panel-rail .ui-tooltip::before {
+  content: none !important;
+}

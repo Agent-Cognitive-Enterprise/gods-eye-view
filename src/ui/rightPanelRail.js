@@ -152,8 +152,14 @@ export function layoutRightPanelRail({
   // A rail that sits lower in its stack has only made room above itself for
   // the open panel's own icon, which stays at the stack's top: the column's
   // top has not moved, so that inset is not followed.
+  // Fork: a rail drawn as a row above its stack sits a band (--panel-rail-band)
+  // above the stack's offset; that band is not the column moving.
   const leftRailOffset = Number.isFinite(leftRailInset)
-    ? Math.min(0, leftRailInset)
+    ? Math.min(
+        0,
+        leftRailInset +
+          (leftStack ? panelRailBand(leftStack, getComputedStyle) : 0),
+      )
     : parseFloat(leftStack?.style.getPropertyValue('--panel-rail-offset')) || 0;
   const alignedTop = Number.isFinite(leftStackTop)
     ? leftStackTop + leftRailOffset

@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { toLonLatH } from '../../geo/ellipsoid.js';
 import { fromDegrees } from '../../geo/ellipsoid.js';
-import { ensureGeoidReady, geoidHeight } from '../../data/geoid.js';
+import { geoidHeight } from '../../data/geoid.js';
 import { bindFakeDraw } from '../../testSupport/fakeDrawPort.mjs';
 import { fakeCameraPort } from '../../testSupport/fakeCameraPort.mjs';
 import { fakeSceneFrame } from '../../testSupport/fakeCesiumScene.mjs';
@@ -118,7 +118,8 @@ test('only the terrain globe leaves cable lines undraped', () => {
 });
 
 test('on the terrain globe a cable line is a 3D line at sea level', async () => {
-  await ensureGeoidReady();
+  // The first load in this process: the layer itself must wait for the geoid
+  // grid (ingestion.js), or the line would be drawn at ellipsoid height 0.
   const env = await loaded({ globeVisible: true });
   assert.equal(env.set('lines').spec.clampTo, 'terrain');
   const line = cableLine(env);
