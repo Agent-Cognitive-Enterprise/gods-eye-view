@@ -1,4 +1,4 @@
-import * as Cesium from 'cesium';
+import { Cesium, viewerBehind } from '../../fork/engine.js';
 import { formatDate, formatNumber, msg, t } from '../../i18n/index.js';
 import { translateFeedError } from '../../ui/statusText.js';
 import { loadBundledJson } from '../../data/bundledJson.js';
@@ -133,6 +133,7 @@ export function createBankingAccessLayer({
   };
 
   let _viewer = null;
+  let _host = null;
   let _dataSource = null;
   let _enabled = false;
   let _answer = null;
@@ -480,7 +481,7 @@ export function createBankingAccessLayer({
     if (!canSelect() || _clickHandler || !_viewer) return;
     // Not in the pick-ownership registry, like the airspace zones: whole
     // countries must not make other layers' cards inert above them.
-    _clickHandler = screenSpaceEventHandlerFactory(_viewer);
+    _clickHandler = screenSpaceEventHandlerFactory(_host ?? _viewer);
     _clickHandler.setInputAction((click) => {
       if (!_enabled || (pointer && !pointer.isPointerFree())) return;
       const card = overlayHost.hitTest?.(click.position?.x, click.position?.y, {
@@ -639,7 +640,10 @@ export function createBankingAccessLayer({
       _rowListener = listener;
     },
     init(viewer) {
-      _viewer = viewer;
+      // The scene object the app hands layers takes input (the dispatcher);
+      // Cesium is its renderer's viewer.
+      _host = viewer;
+      _viewer = viewerBehind(viewer);
       _dataSource = new Cesium.CustomDataSource(BANKING_ACCESS_LAYER_ID);
       _dataSource.show = false;
       viewer.dataSources.add(_dataSource);
@@ -704,6 +708,7 @@ export function createBankingAccessLayer({
       }
     },
     destroy(viewer = _viewer) {
+      viewer = viewerBehind(viewer);
       layer.disable();
       clearTimeout(_restoreTimer);
       _visibility?.stop();

@@ -1,0 +1,63 @@
+/**
+ * @module fork/engine
+ * @description Fork: the engine for the fork's code still drawn with Cesium
+ * directly (the air/sea layers, banking access and the Autopilot console;
+ * see src/render/cesiumAllowList.json). Cesium, and the adapter's map from
+ * a scene object to its Cesium viewer, load only on the Cesium renderer, so
+ * the application on another renderer (the stub, scripts/qa-stub-boot.mjs)
+ * never requests a Cesium module.
+ *
+ * `Cesium` is a live binding: null until {@link loadForkEngine} resolves.
+ * The scene phase records the renderer and loads it before any layer or tool
+ * exists (src/app/scene.js); on any other renderer the catalog and the tools
+ * leave the fork's Cesium code out ({@link forkEngineWanted}). Tests that run
+ * that code await {@link loadForkEngine} first.
+ */
+
+/** @type {typeof import('cesium') | null} */
+export let Cesium = null;
+
+let behind = null;
+let loading = null;
+let rendererId = null;
+
+/**
+ * Load Cesium and the adapter's viewer map for the fork's code (once).
+ * @returns {Promise<typeof import('cesium')>}
+ */
+export function loadForkEngine() {
+  loading ??= Promise.all([
+    import('cesium'),
+    import('../render/cesium/viewers.js'),
+  ]).then(([module, viewers]) => {
+    Cesium = module;
+    behind = viewers.viewerBehind;
+    return module;
+  });
+  return loading;
+}
+
+/**
+ * The Cesium viewer behind the scene object the application hands layers
+ * and tools (its renderer's), or `host` itself: a viewer with no renderer
+ * bound (tests), or anything before the engine loaded.
+ * @param {object|null|undefined} host
+ * @returns {object|null|undefined}
+ */
+export const viewerBehind = (host) => (behind ? behind(host) : host);
+
+/**
+ * Record the id of the renderer the application runs on.
+ * @param {string|null|undefined} id
+ */
+export function setForkRenderer(id) {
+  rendererId = id ?? null;
+}
+
+/**
+ * Whether the fork's Cesium-drawn layers and console belong in the app: on
+ * the Cesium renderer, or where no renderer was recorded (tests).
+ * @returns {boolean}
+ */
+export const forkEngineWanted = () =>
+  rendererId === null || rendererId === 'cesium';

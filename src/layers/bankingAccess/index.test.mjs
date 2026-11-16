@@ -8,6 +8,10 @@ import {
   decodeRing,
   indexCountries,
 } from '../../bankingAccess/geometry.js';
+import { loadForkEngine } from '../../fork/engine.js';
+
+// The fork's Cesium-drawn code needs its engine (src/fork/engine.js).
+await loadForkEngine();
 
 // A tiny pack: a 2x2 degree square for LBN, two parts for JPN.
 const square = (lon, lat, size) => [

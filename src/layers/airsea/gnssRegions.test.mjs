@@ -2,6 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createShipGnssRegionsLayer } from './gnssRegions.js';
 import { createAirSeaSource } from './source.js';
+import { loadForkEngine } from '../../fork/engine.js';
+
+// The fork's Cesium-drawn code needs its engine (src/fork/engine.js).
+await loadForkEngine();
 
 const NOW = Date.UTC(2026, 10, 7, 12);
 const BALTIC = { south: 55.1, north: 55.6, west: 16.2, east: 17.1 };

@@ -11,7 +11,7 @@
  * camera. The panel stays hidden unless the server reports the feature on.
  * Nothing runs while the tab is hidden; on return one step catches up.
  */
-import * as Cesium from 'cesium';
+import { Cesium, viewerBehind } from '../fork/engine.js';
 import {
   formatNumber,
   formatRelativeTime,
@@ -282,7 +282,7 @@ export function whyText(event) {
  *   openExternal?: (url: string) => void}} options
  */
 export function createIntelConsole({
-  viewer,
+  viewer: sceneHost,
   navigation,
   overlayHost,
   picking,
@@ -295,6 +295,9 @@ export function createIntelConsole({
   // Told which event is shown (or null), e.g. to reveal explaining layers.
   onShownEvent = null,
 }) {
+  // The scene object takes input (the dispatcher); Cesium is its renderer's
+  // viewer.
+  const viewer = viewerBehind(sceneHost);
   const client = createIntelClient({ fetchImpl });
   const panel = documentRef.getElementById(PANEL_ID);
   const body = documentRef.getElementById(`${PANEL_ID}-body`);
@@ -2063,7 +2066,7 @@ export function createIntelConsole({
     );
     // Through the scene's one input dispatcher, reading its one pick of the
     // click as a hit (the pick registry's contract).
-    clickHandler = inputFor(viewer).onClick((event) => {
+    clickHandler = inputFor(sceneHost).onClick((event) => {
       if (pointer && !pointer.isPointerFree()) return;
       const picked = event.topHit;
       const id = picking?.resolvePickId

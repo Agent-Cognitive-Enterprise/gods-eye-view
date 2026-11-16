@@ -46,6 +46,7 @@ import { createInfrastructureLayers } from '../data/infrastructure.js';
 import { localGeoJsonServices } from './localGeojsonServices.js';
 import { createBhoteKoshiEventLayer } from '../data/bhoteKoshiEvent.js';
 import { createBhoteKoshiLocatorLayer } from '../data/bhoteKoshiLocator.js';
+import { forkEngineWanted } from '../fork/engine.js';
 
 /**
  * Hardware-local layers are registered like any other but never enter share
@@ -160,13 +161,23 @@ export function createApplicationCatalog({
           source: sources['gnss-integrity'],
           windowMs: sources['gnss-integrity'].windowMs,
         }),
-        ...createApplicationTrafficDensity({ source: sources['air-sea'] }),
+        // Fork layers still drawn with Cesium directly: not on another
+        // renderer (src/fork/engine.js).
+        ...(forkEngineWanted()
+          ? createApplicationTrafficDensity({ source: sources['air-sea'] })
+          : []),
         createApplicationGhostMaps({ source: sources['s2-ghostmaps'] }),
         createApplicationShipwrecks({ source: sources.shipwrecks }),
         createApplicationDroneAirspace({
           source: sources['drone-airspace'],
         }),
-        createApplicationBankingAccess({ source: sources['banking-access'] }),
+        ...(forkEngineWanted()
+          ? [
+              createApplicationBankingAccess({
+                source: sources['banking-access'],
+              }),
+            ]
+          : []),
         // Ages, the window and the counts read the world clock: a host that
         // follows it for the layer shows the news at the time on the timeline.
         createApplicationNews({

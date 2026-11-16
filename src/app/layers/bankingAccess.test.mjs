@@ -14,6 +14,10 @@ import {
 } from '../../input/testDoubles.mjs';
 import '../../render/cesium/nativeClick.js';
 import { dispatcherClickHandler } from './bankingAccess.js';
+import { loadForkEngine } from '../../fork/engine.js';
+
+// The fork's Cesium-drawn code needs its engine (src/fork/engine.js).
+await loadForkEngine();
 const square = (lon, lat, size) => [
   [lon * 1000, lat * 1000, size * 1000, 0, 0, size * 1000, -size * 1000, 0],
 ];

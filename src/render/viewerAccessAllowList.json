@@ -1,3 +1,9 @@
 {
+  "src/layers/airsea/anomalies.js": 6,
+  "src/layers/airsea/gnssRegions.js": 7,
+  "src/layers/airsea/index.js": 16,
+  "src/layers/airsea/warnings.js": 17,
+  "src/layers/bankingAccess/index.js": 9,
+  "src/ui/intelConsole.js": 34,
   "src/ui/worldOverview.js": 5
 }

@@ -40,6 +40,7 @@ import {
 } from '../renderGovernor.js';
 import { entityRecord, readEntityRecord } from '../data/entityRecords.js';
 import { overlayHost } from './layers/overlayHost.js';
+import { forkEngineWanted } from '../fork/engine.js';
 
 /**
  * Attach scene tools, rendering listeners and the application debug handle.
@@ -210,25 +211,29 @@ export function createApplicationTools({
   // Early-warning Autopilot (fork feature). Inert unless the server reports
   // /api/intel enabled; camera claims go through the shared navigation owner.
   // Air & Sea events switch on the layers that explain them while shown.
-  const airSeaReveal = createAirSeaReveal({ manager: dataManager });
-  defer(() => airSeaReveal.destroy());
-  const intelConsole = createIntelConsole({
-    onShownEvent: (event) => airSeaReveal.show(event),
-    viewer,
-    navigation: styleManager,
-    overlayHost: {
-      setEntries: worldOverlay.setOverlayEntries,
-      setVisible: worldOverlay.setOverlaySourceVisible,
-      clearSource: worldOverlay.clearOverlaySource,
-    },
-    picking: pickRegistry,
-    pointer: { isPointerFree },
-  });
-  window.__gevIntel = intelConsole;
-  defer(() => {
-    if (window.__gevIntel === intelConsole) delete window.__gevIntel;
-    intelConsole.destroy();
-  });
+  // Drawn with Cesium directly: not on another renderer (src/fork/engine.js).
+  if (forkEngineWanted()) {
+    const airSeaReveal = createAirSeaReveal({ manager: dataManager });
+    defer(() => airSeaReveal.destroy());
+    const intelConsole = createIntelConsole({
+      onShownEvent: (event) => airSeaReveal.show(event),
+      viewer,
+      navigation: styleManager,
+      overlayHost: {
+        setEntries: worldOverlay.setOverlayEntries,
+        setVisible: worldOverlay.setOverlaySourceVisible,
+        clearSource: worldOverlay.clearOverlaySource,
+      },
+      picking: pickRegistry,
+      pointer: { isPointerFree },
+    });
+    window.__gevIntel = intelConsole;
+    defer(() => {
+      if (window.__gevIntel === intelConsole) delete window.__gevIntel;
+      intelConsole.destroy();
+    });
+  }
+
   // Bottom controls fade when idle; a key press or the bottom edge recalls them.
   const dockAutoHide = createDockAutoHide();
   defer(() => dockAutoHide.destroy());

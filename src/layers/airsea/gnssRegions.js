@@ -1,4 +1,4 @@
-import * as Cesium from 'cesium';
+import { Cesium, viewerBehind } from '../../fork/engine.js';
 import { formatNumber, msg, t } from '../../i18n/index.js';
 import { translateFeedError } from '../../ui/statusText.js';
 import {
@@ -259,7 +259,8 @@ export function createShipGnssRegionsLayer({
       _rowListener = listener;
     },
     init(viewer) {
-      _viewer = viewer;
+      // The scene object the app hands layers; Cesium is its renderer's viewer.
+      _viewer = viewerBehind(viewer);
       _primitives = new Cesium.PrimitiveCollection();
       _primitives.show = false;
       viewer.scene.primitives.add(_primitives);
@@ -297,6 +298,7 @@ export function createShipGnssRegionsLayer({
       }
     },
     destroy(viewer = _viewer) {
+      viewer = viewerBehind(viewer);
       layer.disable();
       clearTimeout(_restoreTimer);
       _visibility?.stop();

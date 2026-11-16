@@ -5428,7 +5428,8 @@
       "src/intel/overviewModel.js",
       "src/ui/stores/worldOverview.js",
       "src/intel/mercator.js",
-      "src/ui/worldOverview.js"
+      "src/ui/worldOverview.js",
+      "src/fork/engine.js"
     ],
     "external": [
       "hls.js",
@@ -6271,7 +6272,8 @@
       "src/app/layers/bankingAccess.js",
       "src/layers/bankingAccess/index.js",
       "src/layers/bankingAccess/source.js",
-      "src/bankingAccess/geometry.js"
+      "src/bankingAccess/geometry.js",
+      "src/fork/engine.js"
     ],
     "external": [
       "hls.js",

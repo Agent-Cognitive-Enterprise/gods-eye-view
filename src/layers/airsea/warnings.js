@@ -1,4 +1,4 @@
-import * as Cesium from 'cesium';
+import { Cesium, viewerBehind } from '../../fork/engine.js';
 import { formatNumber, msg, t } from '../../i18n/index.js';
 import { translateFeedError } from '../../ui/statusText.js';
 import { continuousRing } from '../../airsea/warnings.js';
@@ -443,7 +443,8 @@ export function createWarningAreasLayer({
       return true;
     },
     init(viewer) {
-      _viewer = viewer;
+      // The scene object the app hands layers; Cesium is its renderer's viewer.
+      _viewer = viewerBehind(viewer);
       _primitives = new Cesium.PrimitiveCollection();
       _primitives.show = false;
       _points = new Cesium.PointPrimitiveCollection();
@@ -486,6 +487,7 @@ export function createWarningAreasLayer({
       }
     },
     destroy(viewer = _viewer) {
+      viewer = viewerBehind(viewer);
       layer.disable();
       clearTimeout(_restoreTimer);
       _visibility?.stop();

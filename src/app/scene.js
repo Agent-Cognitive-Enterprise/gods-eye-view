@@ -25,6 +25,7 @@ import { keepPanelRendering } from './panelRendering.js';
 import { useStatusStore } from '../ui/stores/status.js';
 import { applicationPinia } from '../ui/vueRuntime.js';
 import { createSceneHost } from '../render/rendererOf.js';
+import { loadForkEngine, setForkRenderer } from '../fork/engine.js';
 
 let defaultLoad = null;
 
@@ -138,6 +139,10 @@ export async function createApplicationScene({
   // Deferred after the renderer, so it is released before the renderer goes.
   const input = inputFor(viewer);
   defer(() => input.destroy());
+  // Fork: the fork's Cesium-drawn code (src/fork/engine.js) loads on the
+  // Cesium renderer only, before any layer or tool exists.
+  setForkRenderer(renderer.id);
+  if (renderer.id === 'cesium') await loadForkEngine();
   // Ctrl+wheel and trackpad pinches zoom the globe, not the page.
   const { controls } = renderer.camera;
   if (!controls.zoomInputs.includes('ctrlWheel'))

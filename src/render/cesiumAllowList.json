@@ -1,8 +1,1 @@
-[
-  "src/layers/airsea/anomalies.js",
-  "src/layers/airsea/gnssRegions.js",
-  "src/layers/airsea/index.js",
-  "src/layers/airsea/warnings.js",
-  "src/layers/bankingAccess/index.js",
-  "src/ui/intelConsole.js"
-]
+["src/fork/engine.js"]
