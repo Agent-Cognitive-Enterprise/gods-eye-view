@@ -383,7 +383,8 @@ body.gev-dock-hidden #corner-actions {
   visibility: hidden !important;
   pointer-events: none !important;
 }
-#cesium-credits {
+#cesium-credits,
+#gev-credits {
   transition: bottom 0.35s ease;
 }
 /* Specific enough to win over both upstream credit placements, without
@@ -392,7 +393,12 @@ body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode) #cesium-credits,
 body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode):has(
     #intel-hud[data-variant='minimal'].active
   )
-  #cesium-credits {
+  #cesium-credits,
+body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode) #gev-credits,
+body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode):has(
+    #intel-hud[data-variant='minimal'].active
+  )
+  #gev-credits {
   bottom: 6px;
 }
 

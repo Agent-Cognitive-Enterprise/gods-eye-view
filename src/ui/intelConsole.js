@@ -21,6 +21,7 @@ import {
   tn,
 } from '../i18n/index.js';
 import { greatCircleKm } from '../geoDistance.js';
+import { inputFor } from '../input/dispatcher.js';
 import { createIntelClient } from '../intel/client.js';
 import { applyFastView, isFastEvent } from '../intel/fastView.js';
 import {
@@ -2060,16 +2061,17 @@ export function createIntelConsole({
       'intel',
       (id) => typeof id === 'string' && id.startsWith(PICK_PREFIX),
     );
-    clickHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
-    clickHandler.setInputAction((click) => {
+    // Through the scene's one input dispatcher, reading its one pick of the
+    // click (event.pick: the engine's pick object these points still use).
+    clickHandler = inputFor(viewer).onClick((event) => {
       if (pointer && !pointer.isPointerFree()) return;
-      const picked = viewer.scene.pick(click.position);
+      const picked = event.pick;
       const id = picking?.resolvePickId
         ? picking.resolvePickId(picked)
         : picked?.id;
       if (typeof id === 'string' && id.startsWith(PICK_PREFIX))
         selectEvent(id.slice(PICK_PREFIX.length));
-    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+    });
     await refresh({ force: true });
     // Pick up where this browser left off before a reload.
     const restored = readStoredMode(storage);
@@ -2124,7 +2126,7 @@ export function createIntelConsole({
       for (const type of ['pointerdown', 'wheel'])
         canvas?.removeEventListener(type, onCanvasInput);
       documentRef.removeEventListener('visibilitychange', onVisibility);
-      clickHandler?.destroy();
+      clickHandler?.();
       topButton?.remove();
       if (feedsPanel) feedsPanel.hidden = true;
       picking?.unregisterPickOwner?.('intel');

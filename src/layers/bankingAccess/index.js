@@ -473,7 +473,9 @@ export function createBankingAccessLayer({
         sourceId: OVERLAY_SOURCE_ID,
       });
       if (card) return;
-      const picked = _viewer.scene.pick(click.position);
+      // The dispatcher's pick when the click comes through it (app wiring).
+      const picked =
+        'pick' in click ? click.pick : _viewer.scene.pick(click.position);
       const iso3 = picked ? pickedIso3(picked) : null;
       if (iso3) return select(iso3);
       if (picked) {
