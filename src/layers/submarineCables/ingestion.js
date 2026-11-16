@@ -1,6 +1,7 @@
 import { msg, t } from '../../i18n/index.js';
 import { findFrame } from '../../render/rendererOf.js';
 import { normalizeFeatures } from './geometry.js';
+import { ensureGeoidReady } from '../../data/geoid.js';
 
 export function createIngestion({ state, parts, source }) {
   async function load(viewer) {
@@ -21,6 +22,9 @@ export function createIngestion({ state, parts, source }) {
     const owns = () =>
       generation === state._loadGeneration && !abort.signal.aborted;
 
+    // Fork: the geoid grid puts undraped cable lines at sea level
+    // (rendering.js); a failed grid load leaves them at ellipsoid height 0.
+    const geoidReady = ensureGeoidReady().catch(() => null);
     try {
       let cableJson = state._cachedCableJson;
       let landingJson = state._cachedLandingJson;
@@ -40,6 +44,9 @@ export function createIngestion({ state, parts, source }) {
         state._cachedCableJson = cableJson;
         state._cachedLandingJson = landingJson;
       }
+
+      await geoidReady;
+      if (!owns()) return;
 
       const cableFeatures = normalizeFeatures(cableJson, 'cable');
       const landingFeatures = normalizeFeatures(landingJson, 'landing');

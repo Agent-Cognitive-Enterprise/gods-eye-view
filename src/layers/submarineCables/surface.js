@@ -36,3 +36,21 @@ export function cableClassificationTypeForScene(host) {
   if (typeof visible !== 'boolean') return 'both';
   return visible ? 'terrain' : 'tiles';
 }
+
+/**
+ * Fork: whether the cable lines that follow the set's surface drape on it.
+ * On the terrain globe (`terrain`) they do not: nothing in the app turns on
+ * the globe's depth test against terrain, so a line at sea level draws over
+ * the globe just as a draped one does, and draping only adds a ground
+ * polyline whose classification passes took about half of a GTX 1070 on
+ * every frame (docs/PERFORMANCE-WINDOWS.md). Photoreal tiles (`tiles`) hide
+ * what lies beneath them, so there, and on an unknown surface (`both`), the
+ * lines stay draped. The undraped lines are placed at sea level (the geoid)
+ * so they meet the coast.
+ * @param {'tiles'|'terrain'|'both'} clampTo The lines set's `clampTo`.
+ * @returns {boolean}
+ */
+
+export function cableLinesDrape(clampTo) {
+  return clampTo !== 'terrain';
+}

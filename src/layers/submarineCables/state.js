@@ -73,6 +73,10 @@ export function createState({ sweepClock, overlayHost }) {
 
   state._clampTo = 'both';
 
+  /** Fork: the features last drawn, to draw again when lines stop or start draping. */
+
+  state._drawn = null;
+
   state._referenceLabelCount = 0;
 
   state._referenceSweepGate = createCableReferenceSweepGate({

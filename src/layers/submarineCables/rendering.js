@@ -1,9 +1,15 @@
 import { fromDegrees, fromRadians } from '../../geo/ellipsoid.js';
 import { horizonFrom } from '../../geo/horizon.js';
 import { densifyRhumb } from '../../geo/rhumb.js';
-import { distance, toRadians } from '../../geo/vector.js';
+import { distance, toDegrees, toRadians } from '../../geo/vector.js';
+import { geoidHeight } from '../../data/geoid.js';
 import { cssColor } from '../../render/color.js';
-import { cameraOf, canvasOf, drawOf } from '../../render/rendererOf.js';
+import {
+  cameraOf,
+  canvasOf,
+  drawOf,
+  findFrame,
+} from '../../render/rendererOf.js';
 import {
   clampLabel,
   createCableOverlayEntry,
@@ -12,6 +18,7 @@ import {
   cableReferencePriority,
 } from './overlay.js';
 import { featureLabel, featureReference, geometryParts } from './geometry.js';
+import { cableLinesDrape } from './surface.js';
 import { cablePinImage } from './pin.js';
 import {
   CABLE_LINE_GRANULARITY_M,
@@ -111,6 +118,31 @@ function rhumbPath(coordinates, granularity = CABLE_LINE_GRANULARITY_M) {
   );
 }
 
+/**
+ * Fork: a path as `rhumbPath` places it, at sea level (the geoid) instead of
+ * on the ellipsoid, for a line that is not draped (`cableLinesDrape`).
+ * Without the geoid grid the path stays at ellipsoid height 0.
+ */
+function seaLevelPath(coordinates, granularity = CABLE_LINE_GRANULARITY_M) {
+  const points = [];
+  for (const coordinate of coordinates ?? []) {
+    const point = lonLat(coordinate);
+    if (point) points.push(point);
+  }
+  const path = densifyRhumb(points, granularity);
+  try {
+    return path.map((p) =>
+      fromRadians(
+        p.lon,
+        p.lat,
+        geoidHeight(toDegrees(p.lat), toDegrees(p.lon)),
+      ),
+    );
+  } catch {
+    return path.map((p) => fromRadians(p.lon, p.lat));
+  }
+}
+
 export function createRendering({ state }) {
   /** Make the layer's draw sets on the viewer's renderer (once). */
   function attach(viewer) {
@@ -176,6 +208,7 @@ export function createRendering({ state }) {
   function releaseDrawing({ clearSets = true } = {}) {
     state._referenceRecords = [];
     state._surfaceItems = [];
+    state._drawn = null;
     state._referenceLabelCount = 0;
     state._publishScratch.length = 0;
     state._loaded = false;
@@ -198,8 +231,22 @@ export function createRendering({ state }) {
 
   function applyCableClassification(next) {
     if (next === undefined || next === state._clampTo) return;
+    const draped = cableLinesDrape(state._clampTo);
     state._clampTo = next;
     state._sets?.lines.setOptions({ clampTo: next });
+    // Fork: lines that stop or start draping are drawn again, once.
+    if (cableLinesDrape(next) !== draped && state._loaded && state._drawn)
+      redrawFeatures();
+  }
+
+  /** Fork: draw the last drawn features again (a surface switch). */
+  function redrawFeatures() {
+    const [cableFeatures, landingFeatures] = state._drawn;
+    drawFeatures(cableFeatures, landingFeatures);
+    resetPublishSignature();
+    state._referenceSweepGate.markDirty();
+    if (state._viewer)
+      findFrame(state._viewer)?.requestRender('submarine-cables');
   }
 
   /**
@@ -210,6 +257,9 @@ export function createRendering({ state }) {
   function buildFeatures(features, kind, out) {
     const cable = kind === 'cable';
     const baseColor = cssColor(cable ? state.cableColor : state.landingColor);
+    // Fork: on the terrain globe the lines that follow the set's surface
+    // are not draped (cableLinesDrape).
+    const drape = cableLinesDrape(state._clampTo);
     features.forEach((feature, index) => {
       // A feature with no reference still draws, as the GeoJSON loader drew
       // it: unstyled, not picked and never culled.
@@ -231,13 +281,18 @@ export function createRendering({ state }) {
       const parts = geometryParts(feature.geometry);
       const key = `${kind}:${index}`;
       parts.lines.forEach((coordinates, part) => {
-        const positions = rhumbPath(coordinates);
+        const style = lineStyle(props, cable, Boolean(reference), baseColor);
+        // A line with its own clampTo drapes on every surface, as it did.
+        const undraped = !drape && style.clampTo === undefined;
+        const positions = undraped
+          ? seaLevelPath(coordinates)
+          : rhumbPath(coordinates);
         if (positions.length < 2) return;
         const item = {
           id: `${key}:line:${part}`,
           positions,
-          mode: 'draped',
-          ...lineStyle(props, cable, Boolean(reference), baseColor),
+          mode: undraped ? '3d' : 'draped',
+          ...style,
           show: true,
         };
         out.lines.push(item);
@@ -385,6 +440,7 @@ export function createRendering({ state }) {
     };
     buildFeatures(cableFeatures, 'cable', out);
     buildFeatures(landingFeatures, 'landing-point', out);
+    state._drawn = [cableFeatures, landingFeatures];
     state._referenceRecords = out.references;
     state._surfaceItems = out.surface;
     sweep({ draw: false });

@@ -77,6 +77,12 @@ already did the same.
 
 Not yet done: an overnight run of the fixed build.
 
+2026-11-17, upstream 76d203c8: upstream now draws local GeoJSON, cables and launches
+through its renderer's draw port instead of `GeoJsonDataSource` entities. Pins are SVG
+data URLs or canvases under a fixed key (`setImage(key, canvas)`), so a reuse no
+longer makes a new atlas entry, and `stableBillboardImages.js` was removed with the
+merge.
+
 ### 2. Autopilot rebuilt every marker on every render (confirmed, fixed)
 
 Each console render removed and re-added all event markers: 2,800 additions a minute
@@ -146,6 +152,14 @@ globe as the clamped one did. Each point is placed at sea level from the EGM96 g
 coast and their landing pins. On the photoreal stack, an unknown stack, without a
 globe, or on terrain that does hide primitives, the lines stay clamped. The choice
 is checked again on every frame, so depth testing turned on later re-clamps them.
+
+2026-11-17, upstream 76d203c8: cables now draw through the draw port, and upstream
+still drapes their lines (`mode: 'draped'`, a `GroundPolylinePrimitive`). The fork
+keeps them undraped on the terrain globe (`cableLinesDrape` in
+`src/layers/submarineCables/surface.js`): there they are `3d` lines at sea level, and
+a stack switch that changes this redraws them once. Nothing in the app turns on
+depth testing against terrain, so the per-frame re-check was dropped; lines with
+their own `clampTo` (unreferenced GeoJSON styling) stay draped as before.
 
 World and regional views looked the same as before. Close, tilted views can differ:
 an unclamped line is not hidden behind a headland or ridge, and it now draws above
