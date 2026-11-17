@@ -4165,7 +4165,7 @@
   "compared with earlier weeks": "與前幾週比較",
   "baseline insufficient": "基線不足",
   "coverage degraded: inconclusive": "覆蓋下降：無法判斷",
-  "Compares the last complete hour with the same hour of the week in up to four earlier weeks. A change is not a cause: it can follow weather, schedules or events. When the feed itself delivered too little, nothing is reported.": "將最近一個完整小時與前最多四周同一星期時段比較。變化不等於原因：可能來自天氣、時刻表或事件。當數據源本身交付不足時，不報告任何結果。",
+  "Compares the last complete hour with the same hour of the week in up to four earlier weeks. A change is not a cause: it can follow weather, schedules or events. When the feed itself delivered too little, nothing is reported.": "將最近一個完整小時與此前最多四個星期中每週的同一時段比較。變化不等於原因：可能來自天氣、時刻表或事件。當數據源本身交付不足時，不報告任何結果。",
   "history since {since}; comparisons from {from}": "歷史始於 {since}；比較始於 {from}",
   "{count} anomalous cells": "{count} 個異常單元",
   "Traffic anomalies unavailable": "交通異常不可用",
