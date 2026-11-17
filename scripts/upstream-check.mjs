@@ -22,6 +22,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+// Defined before anything runs: the command-line block below reads it.
+export const SCRIPT_PATH = fileURLToPath(import.meta.url);
+
 /** Fork-sensitive areas: overlap here needs a deliberate review. */
 export const SENSITIVE_AREAS = Object.freeze([
   ['director', /(^|\/)director|Director/i],
@@ -461,5 +464,3 @@ if (
     process.exitCode = 1;
   }
 }
-
-export const SCRIPT_PATH = fileURLToPath(import.meta.url);

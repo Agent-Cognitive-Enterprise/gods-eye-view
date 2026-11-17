@@ -272,3 +272,17 @@ test('other platforms: any failure fails, with no branch rerun', () => {
   assert.equal(clean.pass, true);
   assert.equal(clean.tests, 6);
 });
+
+test('SCRIPT_PATH exists before the command-line block runs (the runner fallback reads it)', () => {
+  // Importing evaluates the whole module first, so only the source order shows this.
+  const source = fs.readFileSync(
+    new URL('../../scripts/upstream-check.mjs', import.meta.url),
+    'utf8',
+  );
+  const declared = source.indexOf('export const SCRIPT_PATH');
+  const cli = source.indexOf('import.meta.url === pathToFileURL(');
+  assert.ok(
+    declared >= 0 && cli > declared,
+    'declare SCRIPT_PATH above the command-line block',
+  );
+});
