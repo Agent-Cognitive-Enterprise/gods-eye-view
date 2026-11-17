@@ -313,7 +313,8 @@ export function createIntelService({
     feeds: () => runners.map((runner) => runner.health()),
     /**
      * Fork: turn one feed's polling off or on (the RESOURCES panel). Off
-     * stops its timer; on polls again at once if the service is running.
+     * stops its timer; on, if the service is running, polls again at once,
+     * or after its backoff when its last polls failed.
      * @returns {boolean} Whether the feed exists.
      */
     setFeedEnabled(id, on) {

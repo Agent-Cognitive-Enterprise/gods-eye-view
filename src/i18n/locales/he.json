@@ -4662,7 +4662,7 @@
   "Confirm": "אישור",
   "Could not read the server figures: {error}": "לא ניתן לקרוא את נתוני השרת: {error}",
   "Could not switch it: {error}": "לא ניתן להחליף: {error}",
-  "Event-loop delay {p99} (p99)": "השהיית לולאת האירועים {p99} (p99)",
+  "Event loop busy {pct}": "עומס לולאת האירועים {pct}",
   "Free memory {free} of {total}": "זיכרון פנוי {free} מתוך {total}",
   "Heap {used} of {total}": "ערימה {used} מתוך {total}",
   "In this browser": "בדפדפן זה",

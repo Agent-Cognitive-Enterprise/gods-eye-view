@@ -4956,7 +4956,7 @@
   "Confirm": "تأكيد",
   "Could not read the server figures: {error}": "تعذّرت قراءة أرقام الخادم: {error}",
   "Could not switch it: {error}": "تعذّر التبديل: {error}",
-  "Event-loop delay {p99} (p99)": "تأخير حلقة الأحداث {p99} (p99)",
+  "Event loop busy {pct}": "انشغال حلقة الأحداث {pct}",
   "Free memory {free} of {total}": "الذاكرة الحرة {free} من {total}",
   "Heap {used} of {total}": "الكومة {used} من {total}",
   "In this browser": "في هذا المتصفح",

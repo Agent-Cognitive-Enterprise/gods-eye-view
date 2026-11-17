@@ -192,7 +192,7 @@ test('the sampler measures CPU of one core and of the machine, and averages', ()
             { user: 800, nice: 0, sys: 100, irq: 0, idle: 100 },
             { user: 300, nice: 0, sys: 0, irq: 0, idle: 700 },
           ],
-    loopDelay: null,
+    eventLoopUtilization: () => ({ utilization: 0, idle: 0, active: 0 }),
   });
   sampler.sample();
   t += 5000;
@@ -208,27 +208,30 @@ test('the sampler measures CPU of one core and of the machine, and averages', ()
     cpu_core_pct: 50,
     rss_mb: 512,
     heap_used_mb: 100,
-    loop_p99_ms: 0,
+    loop_busy_pct: 0,
   });
   assert.equal(sampler.average(t + 1), null);
 });
 
-test('event-loop delay leaves out the timer interval itself', () => {
-  const ms = 1e6;
-  const histogram = {
-    count: 250,
-    min: 31.2 * ms, // a 20 ms timer on a 15.6 ms OS step
-    percentile: (p) => (p === 99 ? 33.2 * ms : 31.9 * ms),
-    reset() {},
-    enable() {},
-    disable() {},
+test("the event loop's busy share comes from its utilisation since the last sample", () => {
+  // As performance.eventLoopUtilization: cumulative idle/active, and the
+  // share between two readings.
+  let reading = { idle: 0, active: 0 };
+  const elu = (current, previous) => {
+    if (!current) return { ...reading };
+    const idle = current.idle - previous.idle;
+    const active = current.active - previous.active;
+    return { utilization: active / (idle + active) };
   };
-  const sampler = createSampler({ loopDelay: histogram, cpuTimes: () => [] });
-  const entry = sampler.sample();
-  assert.equal(entry.loop_p99_ms, 2);
-  assert.equal(entry.loop_p50_ms, 0.7);
-  histogram.count = 0;
-  assert.equal(sampler.sample().loop_p99_ms, null, 'no turns, no figure');
+  const sampler = createSampler({
+    eventLoopUtilization: elu,
+    cpuTimes: () => [],
+  });
+  assert.equal(sampler.sample().loop_busy_pct, null, 'no interval yet');
+  reading = { idle: 1000, active: 4000 }; // saturated: 80% busy
+  assert.equal(sampler.sample().loop_busy_pct, 80);
+  reading = { idle: 5900, active: 4100 }; // then nearly idle
+  assert.equal(sampler.sample().loop_busy_pct, 2);
 });
 
 test('disk sizes: the largest entries of the cache folder', async () => {
@@ -292,7 +295,7 @@ async function call(
 
 function monitor() {
   const registry = createResourceRegistry({ log: quiet });
-  const sampler = createSampler({ loopDelay: null });
+  const sampler = createSampler();
   const disk = { current: () => null };
   return { registry, sampler, disk };
 }

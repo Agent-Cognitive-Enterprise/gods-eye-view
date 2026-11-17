@@ -1,9 +1,9 @@
 // Fork: the server's own figures for the RESOURCES panel, sampled every few
 // seconds into a short ring: memory, CPU (this server's share of one core, and
-// the whole machine's), event-loop delay, and the machine's memory.
+// the whole machine's), how busy the event loop is, and the machine's memory.
 
 import os from 'node:os';
-import { monitorEventLoopDelay } from 'node:perf_hooks';
+import { performance } from 'node:perf_hooks';
 
 const MB = 1024 * 1024;
 const round = (value, digits = 1) =>
@@ -15,7 +15,7 @@ const round = (value, digits = 1) =>
  * @param {{intervalMs?: number, keep?: number, now?: () => number,
  *   memoryUsage?: () => object, cpuUsage?: (prev?: object) => object,
  *   cores?: number, totalmem?: () => number, freemem?: () => number,
- *   loopDelay?: object|null}} options
+ *   eventLoopUtilization?: Function}} options
  */
 export function createSampler({
   intervalMs = 5000,
@@ -27,13 +27,8 @@ export function createSampler({
   totalmem = () => os.totalmem(),
   freemem = () => os.freemem(),
   cpuTimes = () => os.cpus().map((cpu) => cpu.times),
-  loopDelay = (() => {
-    try {
-      return monitorEventLoopDelay({ resolution: 20 });
-    } catch {
-      return null;
-    }
-  })(),
+  eventLoopUtilization = (current, previous) =>
+    performance.eventLoopUtilization(current, previous),
 } = {}) {
   const samples = [];
   let timer = null;
@@ -71,16 +66,21 @@ export function createSampler({
     return total > 0 ? (busy / total) * 100 : null;
   }
 
-  // How late the loop ran beyond its own timer: the 99th percentile less the
-  // quickest turn, which is the timer interval plus the OS's timer step
-  // (about 15.6 ms on Windows), not delay.
-  function loopFigure(percentile) {
-    if (!loopDelay || !Number.isFinite(loopDelay.min) || loopDelay.count === 0)
+  // Share of the time since the last sample the event loop spent running
+  // code rather than waiting: near 100% means requests queue behind work.
+  // (A delay histogram on Windows mixes in the OS's 15.6 ms timer step.)
+  let lastElu = null;
+  function loopBusyPct() {
+    try {
+      const current = eventLoopUtilization();
+      const delta = lastElu ? eventLoopUtilization(current, lastElu) : null;
+      lastElu = current;
+      return delta && Number.isFinite(delta.utilization)
+        ? delta.utilization * 100
+        : null;
+    } catch {
       return null;
-    return Math.max(
-      0,
-      (loopDelay.percentile(percentile) - loopDelay.min) / 1e6,
-    );
+    }
   }
 
   function sample() {
@@ -102,12 +102,10 @@ export function createSampler({
       external_mb: round((mem.external ?? 0) / MB),
       cpu_core_pct: round(corePct),
       cpu_machine_pct: round(machinePct()),
-      loop_p50_ms: round(loopFigure(50)),
-      loop_p99_ms: round(loopFigure(99)),
+      loop_busy_pct: round(loopBusyPct()),
       system_total_mb: round(totalmem() / MB, 0),
       system_free_mb: round(freemem() / MB, 0),
     };
-    loopDelay?.reset();
     samples.push(entry);
     if (samples.length > keep) samples.splice(0, samples.length - keep);
     return entry;
@@ -116,7 +114,6 @@ export function createSampler({
   return {
     start() {
       if (timer) return;
-      loopDelay?.enable();
       sample();
       timer = setInterval(sample, intervalMs);
       timer.unref?.();
@@ -124,7 +121,6 @@ export function createSampler({
     stop() {
       clearInterval(timer);
       timer = null;
-      loopDelay?.disable();
     },
     sample,
     latest: () => samples.at(-1) ?? null,
@@ -145,7 +141,7 @@ export function createSampler({
         cpu_core_pct: mean('cpu_core_pct'),
         rss_mb: mean('rss_mb'),
         heap_used_mb: mean('heap_used_mb'),
-        loop_p99_ms: mean('loop_p99_ms'),
+        loop_busy_pct: mean('loop_busy_pct'),
       };
     },
   };

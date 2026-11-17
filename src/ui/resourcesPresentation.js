@@ -159,17 +159,17 @@ export function changeSummary(change, jobs) {
   // The next change came too soon to measure this one: no figures.
   if (change.measured === false) return head;
   if (!change.after) return `${head} · ${t('measuring…')}`;
-  // Each value isolated, so in Arabic and Hebrew a unit stays with its number.
-  const iso = (value) => `⁨${value}⁩`;
+  // t() isolates each value in right-to-left languages, so a unit stays
+  // with its number.
   return [
     head,
     t('CPU {before} → {after}', {
-      before: iso(formatPercent(change.before.cpu_core_pct)),
-      after: iso(formatPercent(change.after.cpu_core_pct)),
+      before: formatPercent(change.before.cpu_core_pct),
+      after: formatPercent(change.after.cpu_core_pct),
     }),
     t('memory {before} → {after}', {
-      before: iso(formatMegabytes(change.before.rss_mb)),
-      after: iso(formatMegabytes(change.after.rss_mb)),
+      before: formatMegabytes(change.before.rss_mb),
+      after: formatMegabytes(change.after.rss_mb),
     }),
   ].join(' · ');
 }

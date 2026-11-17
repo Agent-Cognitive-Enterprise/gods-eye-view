@@ -93,7 +93,7 @@ const jobIsOn = (job) => !job.off_by_you;
         </div>
         <p class="resources-facts">
           {{ t('Heap {used} of {total}', { used: formatMegabytes(latest.heap_used_mb), total: formatMegabytes(latest.heap_total_mb) }) }}
-          · {{ t('Event-loop delay {p99} (p99)', { p99: formatDuration(latest.loop_p99_ms) }) }}
+          · {{ t('Event loop busy {pct}', { pct: formatPercent(latest.loop_busy_pct) }) }}
           · {{ t('Machine CPU {pct}', { pct: formatPercent(latest.cpu_machine_pct) }) }}
           · {{ t('Free memory {free} of {total}', { free: formatMegabytes(latest.system_free_mb), total: formatMegabytes(latest.system_total_mb) }) }}
           · {{ t('Up {uptime}', { uptime }) }}

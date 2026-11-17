@@ -2,6 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createPinia } from 'pinia';
+import { setLocale } from '../i18n/index.js';
 import { nextTick } from 'vue';
 import {
   changeSummary,
@@ -114,9 +115,26 @@ test('a change reads before and after, or that it is still measuring', () => {
       },
       jobs,
     ),
-    'gdelt turned off · CPU ⁨12%⁩ → ⁨9%⁩ · memory ⁨1.2 GB⁩ → ⁨1.1 GB⁩',
-    'each value isolated for right-to-left languages',
+    'gdelt turned off · CPU 12% → 9% · memory 1.2 GB → 1.1 GB',
   );
+  // In a right-to-left language t() isolates each value, so a unit stays
+  // with its number.
+  setLocale('ar');
+  try {
+    const arabic = changeSummary(
+      {
+        id: 'intel:gdelt',
+        on: false,
+        before: { cpu_core_pct: 12, rss_mb: 1200 },
+        after: { cpu_core_pct: 9, rss_mb: 1100 },
+      },
+      jobs,
+    );
+    assert.ok(arabic.includes('⁨1.2 GB⁩'), arabic);
+    assert.ok(arabic.includes('⁨1.1 GB⁩'), arabic);
+  } finally {
+    setLocale('en');
+  }
   assert.equal(
     changeSummary(
       {
@@ -144,15 +162,19 @@ function fakeManager(layers) {
   const calls = [];
   return {
     calls,
-    // As DataLayerManager.getAll(): rows with the layer list's flags.
+    // As DataLayerManager: getAll() rows with the layer list's flags and
+    // normalised stats (a missing count filled with 0), and the modules.
     getAll: () =>
       layers.map((l) => ({
         id: l.id,
         name: l.name,
         showInTogglePanel: l.hidden !== true,
         enabled: enabled.has(l.id),
-        stats: l.stats,
+        stats: { count: 0, ...l.stats },
       })),
+    layers: new Map(
+      layers.map((l) => [l.id, { module: { getStats: () => l.stats } }]),
+    ),
     async setEnabled(id, on, options) {
       calls.push([id, on, options]);
       if (on) enabled.add(id);

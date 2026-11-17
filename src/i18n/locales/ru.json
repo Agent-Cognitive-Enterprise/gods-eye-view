@@ -4760,7 +4760,7 @@
   "Confirm": "Подтвердить",
   "Could not read the server figures: {error}": "Не удалось получить показатели сервера: {error}",
   "Could not switch it: {error}": "Не удалось переключить: {error}",
-  "Event-loop delay {p99} (p99)": "Задержка цикла событий {p99} (p99)",
+  "Event loop busy {pct}": "Загрузка цикла событий {pct}",
   "Free memory {free} of {total}": "Свободная память {free} из {total}",
   "Heap {used} of {total}": "Куча {used} из {total}",
   "In this browser": "В этом браузере",

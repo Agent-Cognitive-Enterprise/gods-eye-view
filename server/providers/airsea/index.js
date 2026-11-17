@@ -600,7 +600,8 @@ export function registerAirSeaJobs({
           last_items: found.warnings ?? null,
           // A fault only; a trial feed's or a switched-off feed's reason is
           // not an error.
-          error: ['down', 'degraded', 'stale'].includes(found.status)
+          // (stale's reasons, no_poll_yet and no_recent_poll, are states.)
+          error: ['down', 'degraded'].includes(found.status)
             ? (found.reason ?? null)
             : null,
         };

@@ -4662,7 +4662,7 @@
   "Confirm": "Confirmer",
   "Could not read the server figures: {error}": "Impossible de lire les chiffres du serveur : {error}",
   "Could not switch it: {error}": "Impossible de basculer : {error}",
-  "Event-loop delay {p99} (p99)": "Latence de la boucle d’événements {p99} (p99)",
+  "Event loop busy {pct}": "Boucle d’événements occupée {pct}",
   "Free memory {free} of {total}": "Mémoire libre {free} sur {total}",
   "Heap {used} of {total}": "Tas {used} sur {total}",
   "In this browser": "Dans ce navigateur",

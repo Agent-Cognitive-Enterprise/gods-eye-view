@@ -4466,7 +4466,7 @@
   "Confirm": "確認",
   "Could not read the server figures: {error}": "サーバーの数値を読み取れませんでした: {error}",
   "Could not switch it: {error}": "切り替えられませんでした: {error}",
-  "Event-loop delay {p99} (p99)": "イベント ループ遅延 {p99}（p99）",
+  "Event loop busy {pct}": "イベントループ使用率 {pct}",
   "Free memory {free} of {total}": "空きメモリ {free} / {total}",
   "Heap {used} of {total}": "ヒープ {used} / {total}",
   "In this browser": "このブラウザー",

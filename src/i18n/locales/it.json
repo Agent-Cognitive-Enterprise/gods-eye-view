@@ -4662,7 +4662,7 @@
   "Confirm": "Conferma",
   "Could not read the server figures: {error}": "Impossibile leggere i dati del server: {error}",
   "Could not switch it: {error}": "Impossibile cambiare: {error}",
-  "Event-loop delay {p99} (p99)": "Ritardo del ciclo di eventi {p99} (p99)",
+  "Event loop busy {pct}": "Ciclo di eventi occupato {pct}",
   "Free memory {free} of {total}": "Memoria libera {free} su {total}",
   "Heap {used} of {total}": "Heap {used} su {total}",
   "In this browser": "In questo browser",

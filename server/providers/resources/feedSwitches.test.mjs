@@ -219,3 +219,39 @@ test('off and on again during a poll leaves one timer chain, not two', async (t)
   assert.equal(timers, 2, 'and sets one timer after it');
   runner.stop();
 });
+
+test('a feed turned back on after failures waits out its backoff', async (t) => {
+  const { createFeedRunner } = await import('../intel/feeds.js');
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let polls = 0;
+  const runner = createFeedRunner({
+    connector: {
+      id: 'failing',
+      provider: 'test',
+      url: 'https://example.invalid',
+      intervalMs: 60_000,
+      poll: async () => {
+        polls += 1;
+        throw new Error('HTTP 503');
+      },
+    },
+    ingest: () => [],
+    now: () => Date.now(),
+    log: () => {},
+  });
+  runner.start();
+  await settle();
+  assert.equal(polls, 1);
+  runner.setEnabled(false);
+  runner.setEnabled(true);
+  runner.start();
+  await settle();
+  assert.equal(polls, 1, 'not again at once: it failed last time');
+  t.mock.timers.tick(60_000);
+  await settle();
+  assert.equal(polls, 1, 'one failure doubles the wait');
+  t.mock.timers.tick(60_000);
+  await settle();
+  assert.equal(polls, 2);
+  runner.stop();
+});

@@ -4466,7 +4466,7 @@
   "Confirm": "確認",
   "Could not read the server figures: {error}": "無法讀取伺服器數據：{error}",
   "Could not switch it: {error}": "無法切換：{error}",
-  "Event-loop delay {p99} (p99)": "事件迴圈延遲 {p99}（p99）",
+  "Event loop busy {pct}": "事件迴圈佔用 {pct}",
   "Free memory {free} of {total}": "可用記憶體 {free} / {total}",
   "Heap {used} of {total}": "堆積 {used} / {total}",
   "In this browser": "在此瀏覽器中",

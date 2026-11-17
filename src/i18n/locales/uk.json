@@ -4760,7 +4760,7 @@
   "Confirm": "Підтвердити",
   "Could not read the server figures: {error}": "Не вдалося отримати показники сервера: {error}",
   "Could not switch it: {error}": "Не вдалося перемкнути: {error}",
-  "Event-loop delay {p99} (p99)": "Затримка циклу подій {p99} (p99)",
+  "Event loop busy {pct}": "Завантаження циклу подій {pct}",
   "Free memory {free} of {total}": "Вільна пам’ять {free} з {total}",
   "Heap {used} of {total}": "Купа {used} з {total}",
   "In this browser": "У цьому браузері",

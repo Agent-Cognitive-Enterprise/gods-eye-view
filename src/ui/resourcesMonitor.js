@@ -28,14 +28,27 @@ export function enabledLayers(dataManager) {
     rows = [];
   }
   const number = (value) => (Number.isFinite(value) ? value : null);
+  // The counts as the layer itself reports them: getAll's normalised stats
+  // fill a missing count with 0, and "0 items" would misstate a layer that
+  // keeps no count (or has not started).
+  const ownStats = (id) => {
+    try {
+      return dataManager.layers?.get?.(id)?.module?.getStats?.() ?? null;
+    } catch {
+      return null;
+    }
+  };
   return rows
     .filter((row) => row?.enabled && row.showInTogglePanel !== false)
-    .map((row) => ({
-      id: row.id,
-      name: shownLayerName(row.name, row.id),
-      count: number(row.stats?.count),
-      objects: number(row.stats?.objects),
-    }))
+    .map((row) => {
+      const stats = ownStats(row.id);
+      return {
+        id: row.id,
+        name: shownLayerName(row.name, row.id),
+        count: number(stats?.count),
+        objects: number(stats?.objects),
+      };
+    })
     .sort((a, b) => (b.count ?? -1) - (a.count ?? -1));
 }
 
