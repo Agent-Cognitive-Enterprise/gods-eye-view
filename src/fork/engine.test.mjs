@@ -134,3 +134,16 @@ test('on another renderer the catalog builds without the fork Cesium layers', (t
   });
   assert.equal(full.layers.length, 47);
 });
+
+test('engine.js binds no local named Cesium (the build reads the global)', async () => {
+  // vite-plugin-cesium rewrites import('cesium') into `Promise.resolve(Cesium)`,
+  // a read of the global; a local binding named Cesium would shadow it.
+  const { readFile } = await import('node:fs/promises');
+  const source = (
+    await readFile(new URL('./engine.js', import.meta.url), 'utf8')
+  )
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+  assert.doesNotMatch(source, /\b(?:let|const|var|function|class)\s+Cesium\b/);
+  assert.doesNotMatch(source, /(?:^|[^.\w$])Cesium\s*=(?!=)/m);
+});

@@ -14,8 +14,14 @@
  * that code await {@link loadForkEngine} first.
  */
 
-/** @type {typeof import('cesium') | null} */
-export let Cesium = null;
+/**
+ * Exported as `Cesium`, but not named so here: the production build's
+ * Cesium plugin rewrites `import('cesium')` into a read of the global
+ * `Cesium`, which a local binding of that name would shadow (it read null).
+ * @type {typeof import('cesium') | null}
+ */
+let engine = null;
+export { engine as Cesium };
 
 /** The catalog layers drawn with Cesium directly (absent on another renderer). */
 export const FORK_ENGINE_LAYER_IDS = Object.freeze([
@@ -41,7 +47,7 @@ export function loadForkEngine() {
     import('../render/cesium/viewers.js'),
   ]).then(
     ([module, viewers]) => {
-      Cesium = module;
+      engine = module;
       behind = viewers.viewerBehind;
       return module;
     },
