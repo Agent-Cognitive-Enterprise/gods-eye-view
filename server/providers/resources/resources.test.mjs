@@ -217,21 +217,35 @@ test("the event loop's busy share comes from its utilisation since the last samp
   // As performance.eventLoopUtilization: cumulative idle/active, and the
   // share between two readings.
   let reading = { idle: 0, active: 0 };
+  let broken = false;
   const elu = (current, previous) => {
+    if (broken) throw new Error('unavailable');
     if (!current) return { ...reading };
     const idle = current.idle - previous.idle;
     const active = current.active - previous.active;
     return { utilization: active / (idle + active) };
   };
+  let t = 0;
   const sampler = createSampler({
+    now: () => t,
+    cpuUsage: () => ({ user: t * 100, system: 0 }),
     eventLoopUtilization: elu,
     cpuTimes: () => [],
   });
   assert.equal(sampler.sample().loop_busy_pct, null, 'no interval yet');
+  t += 5000;
   reading = { idle: 1000, active: 4000 }; // saturated: 80% busy
   assert.equal(sampler.sample().loop_busy_pct, 80);
+  t += 5000;
   reading = { idle: 5900, active: 4100 }; // then nearly idle
   assert.equal(sampler.sample().loop_busy_pct, 2);
+  t += 5000;
+  broken = true;
+  const gap = sampler.sample();
+  assert.equal(gap.loop_busy_pct, null);
+  assert.ok(gap.cpu_core_pct !== null);
+  // The average leaves out the sample without the figure, not counts it as 0.
+  assert.equal(sampler.average(0, t).loop_busy_pct, 41);
 });
 
 test('disk sizes: the largest entries of the cache folder', async () => {

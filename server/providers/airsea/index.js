@@ -578,6 +578,18 @@ export function airSeaEnabled(env = process.env) {
  * only (AISStream is the one live connection and has no switch).
  * @returns {Function[]} Unregister functions.
  */
+// A warning feed's fault for the RESOURCES panel, or null. A trial or
+// switched-off feed's reason is not a fault, nor are stale's placeholders
+// (no poll yet, none recently); a stale feed's last error is.
+const STALE_STATES = new Set(['no_poll_yet', 'no_recent_poll']);
+export function warningJobError(found) {
+  const reason = found?.reason ?? null;
+  if (found?.status === 'down' || found?.status === 'degraded') return reason;
+  if (found?.status === 'stale' && reason && !STALE_STATES.has(reason))
+    return reason;
+  return null;
+}
+
 export function registerAirSeaJobs({
   resources,
   service,
@@ -598,12 +610,7 @@ export function registerAirSeaJobs({
           last_success_at: found.last_success_at ?? null,
           last_duration_ms: found.last_duration_ms ?? null,
           last_items: found.warnings ?? null,
-          // A fault only; a trial feed's or a switched-off feed's reason is
-          // not an error.
-          // (stale's reasons, no_poll_yet and no_recent_poll, are states.)
-          error: ['down', 'degraded'].includes(found.status)
-            ? (found.reason ?? null)
-            : null,
+          error: warningJobError(found),
         };
       };
       out.push(

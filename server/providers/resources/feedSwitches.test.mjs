@@ -8,7 +8,7 @@ import path from 'node:path';
 import { createIntelService } from '../intel/service.js';
 import { registerFeedJobs } from '../intel/index.js';
 import { createWarningService } from '../airsea/warnings.js';
-import { registerAirSeaJobs } from '../airsea/index.js';
+import { registerAirSeaJobs, warningJobError } from '../airsea/index.js';
 import { createResourceRegistry } from './registry.js';
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'gev-switch-'));
@@ -254,4 +254,26 @@ test('a feed turned back on after failures waits out its backoff', async (t) => 
   await settle();
   assert.equal(polls, 2);
   runner.stop();
+});
+
+test('a warning feed shows a fault, never a state, as its error', () => {
+  assert.equal(
+    warningJobError({ status: 'down', reason: 'HTTP 503' }),
+    'HTTP 503',
+  );
+  assert.equal(
+    warningJobError({ status: 'stale', reason: 'HTTP 503' }),
+    'HTTP 503',
+  );
+  assert.equal(
+    warningJobError({ status: 'stale', reason: 'no_poll_yet' }),
+    null,
+  );
+  assert.equal(
+    warningJobError({ status: 'stale', reason: 'no_recent_poll' }),
+    null,
+  );
+  assert.equal(warningJobError({ status: 'trial', reason: 'test_data' }), null);
+  assert.equal(warningJobError({ status: 'off', reason: 'turned_off' }), null);
+  assert.equal(warningJobError({ status: 'healthy' }), null);
 });

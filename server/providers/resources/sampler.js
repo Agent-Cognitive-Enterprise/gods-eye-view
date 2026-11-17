@@ -132,10 +132,13 @@ export function createSampler({
         (s) => s.at >= since && s.at <= until && s.cpu_core_pct !== null,
       );
       if (!inside.length) return null;
-      const mean = (key) =>
-        round(
-          inside.reduce((sum, s) => sum + (s[key] ?? 0), 0) / inside.length,
-        );
+      // Over the samples that have the figure; null when none do.
+      const mean = (key) => {
+        const values = inside.map((s) => s[key]).filter(Number.isFinite);
+        return values.length
+          ? round(values.reduce((sum, v) => sum + v, 0) / values.length)
+          : null;
+      };
       return {
         samples: inside.length,
         cpu_core_pct: mean('cpu_core_pct'),
