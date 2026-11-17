@@ -26,6 +26,7 @@
 .intel-panel-inner,
 .intel-feeds-panel-inner,
 .fast-intel-panel-inner,
+.resources-panel-inner,
 .live-tv-panel-inner {
   position: relative;
   display: flex;
@@ -508,7 +509,9 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
 /* Open, FAST INTELLIGENCE fills the lane; FEEDS beside it keeps its natural
    height (src/ui/leftPanelRail.js allocates both). Only the bodies scroll. */
 #left-panel-stack.layout-focus
-  > :is(#intel-feeds-panel, #fast-intel-panel):not(.collapsed) {
+  > :is(#intel-feeds-panel, #fast-intel-panel, #resources-panel):not(
+    .collapsed
+  ) {
   display: flex;
   flex: 0 0 var(--left-panel-allocated-height, auto);
   flex-direction: column;
@@ -516,11 +519,16 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
   max-height: var(--left-panel-allocated-height, 100%);
 }
 #left-panel-stack.layout-focus
-  > :is(#intel-feeds-panel, #fast-intel-panel):not(.collapsed)
-  > :is(.intel-feeds-panel-inner, .fast-intel-panel-inner) {
+  > :is(#intel-feeds-panel, #fast-intel-panel, #resources-panel):not(.collapsed)
+  > :is(
+    .intel-feeds-panel-inner,
+    .fast-intel-panel-inner,
+    .resources-panel-inner
+  ) {
   height: 100%;
 }
-#left-panel-stack.layout-focus :is(#intel-feeds-body, #fast-intel-body) {
+#left-panel-stack.layout-focus
+  :is(#intel-feeds-body, #fast-intel-body, #resources-body) {
   flex: 1 1 auto;
   min-height: 0;
   max-height: none;
@@ -994,12 +1002,29 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
   color: #ff8a8a;
 }
 
-/* RESOURCES panel (fork feature, src/ui/views/panels/ResourcesPanel.vue). */
+/* RESOURCES panel (fork feature, src/ui/views/panels/ResourcesPanel.vue), in
+   the left column under FAST INTELLIGENCE, as wide; open, it fills the lane
+   (data-panel-fill, src/ui/leftPanelRail.js) and only its body scrolls. */
+#left-panel-stack > #resources-panel {
+  --panel-expanded-width: 360px;
+  position: relative;
+  order: 6;
+  flex: 0 0 auto;
+  width: var(--panel-expanded-width);
+  min-height: 0;
+  pointer-events: auto;
+}
+#resources-panel.collapsed #resources-body {
+  display: none !important;
+}
+#resources-panel .panel-glow {
+  display: none;
+}
 .resources-body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: var(--right-stack-max-height, 70vh);
+  max-height: 70vh;
   overflow-y: auto;
   font-size: 12px;
 }

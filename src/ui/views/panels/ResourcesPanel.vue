@@ -73,8 +73,8 @@ const jobIsOn = (job) => !job.off_by_you;
 </script>
 
 <template>
-  <RailPanel :id="PANEL_ID" start-collapsed :title="t('RESOURCES')" sideways rail-scroller>
-    <div class="resources-body ui-scroll" data-rail-scroller>
+  <RailPanel :id="PANEL_ID" start-collapsed data-panel-fill :title="t('RESOURCES')">
+    <div id="resources-body" class="resources-body ui-scroll">
       <p v-if="state === 'loading' && !server" class="intel-muted">{{ t('Loading…') }}</p>
       <p v-if="state === 'error'" class="resources-error" role="alert">{{ t('Could not read the server figures: {error}', { error }) }}</p>
       <p v-if="switchError" class="resources-error" role="alert">{{ t('Could not switch it: {error}', { error: switchErrorText(switchError) }) }}</p>

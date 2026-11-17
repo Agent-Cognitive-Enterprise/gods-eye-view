@@ -19,7 +19,6 @@ import MissionRoster from './panels/MissionRoster.vue';
 import RadioPanel from './panels/RadioPanel.vue';
 import UiButton from '../kit/UiButton.vue';
 import WorldOverview from './panels/WorldOverview.vue';
-import ResourcesPanel from './panels/ResourcesPanel.vue';
 import { cockpitEntryFace } from '../cockpitPresentation.js';
 import { LAYER_TABS, TAB_AFFECTS, activeTab, availableTabs, contextReady, enabledLayerIds, setEnabledLayers, tabTarget } from '../contextLayerTabs.js';
 import { shownLayerName } from '../layerNames.js';
@@ -177,8 +176,6 @@ watch(
       <!-- Fork: the 2D world overview, below the queue and always in view. -->
       <WorldOverview />
     </RailPanel>
-    <!-- Fork: what the server and this browser are doing, and switches for it. -->
-    <ResourcesPanel />
     <RailPanel id="weather-panel" hidden :title="t('WEATHER')" sideways rail-scroller>
       <template #badge><span id="weather-panel-count" :aria-label="t('Active weather products')">0</span></template>
       <div id="weather-panel-body" class="ui-scroll" data-rail-scroller></div>
