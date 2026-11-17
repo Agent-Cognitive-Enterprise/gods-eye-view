@@ -88,6 +88,8 @@ export function createFeedRunner({
     latest_observation_at: null,
     next_poll_at: null,
     last_batch: null,
+    // Fork: how long the last poll took (the RESOURCES panel).
+    last_duration_ms: null,
   };
   const validators = new Map(); // url -> {etag, lastModified}
   let timer = null;
@@ -158,6 +160,7 @@ export function createFeedRunner({
       return null;
     if (inFlight) return inFlight;
     state.last_attempt_at = now();
+    const startedAt = performance.now();
     inFlight = (async () => {
       staged.clear();
       try {
@@ -209,6 +212,7 @@ export function createFeedRunner({
         log(`[intel] ${connector.id} poll failed: ${state.last_error}`);
         return null;
       } finally {
+        state.last_duration_ms = Math.round(performance.now() - startedAt);
         inFlight = null;
       }
     })();

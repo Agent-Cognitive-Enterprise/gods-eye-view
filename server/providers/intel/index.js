@@ -153,11 +153,48 @@ const parseBbox = (value) => {
  * @param {{ghostMapsWatcher?: object, airSeaHub?: object, service?: object,
  *   env?: object}} [options]
  */
+/**
+ * Fork: each Autopilot feed as a switchable job of the RESOURCES panel.
+ * @param {object} service The intel service (its runners and setFeedEnabled).
+ * @param {object|null} resources The resource registry, or null.
+ */
+export function registerFeedJobs(service, resources) {
+  if (!resources) return;
+  for (const runner of service.runners ?? []) {
+    const id = runner.id;
+    resources.register({
+      id: `intel:${id}`,
+      group: 'autopilot-feeds',
+      label: id,
+      dependents: ['autopilot-events'],
+      setEnabled: (on) => {
+        if (!service.setFeedEnabled(id, on)) throw new Error(`no feed ${id}`);
+      },
+      status: () => {
+        const h = runner.health();
+        return {
+          status: h.status,
+          provider: h.provider ?? null,
+          interval_ms: h.interval_ms ?? null,
+          last_run_at: h.last_attempt_at ?? null,
+          last_success_at: h.last_success_at ?? null,
+          last_duration_ms: h.last_duration_ms ?? null,
+          last_items: h.last_batch?.records ?? null,
+          next_run_at: h.next_poll_at ?? null,
+          error: h.last_error ?? null,
+        };
+      },
+    });
+  }
+}
+
 export function intelProxy({
   ghostMapsWatcher,
   airSeaHub,
   service: supplied,
   env = process.env,
+  // Fork: the RESOURCES panel's registry; each feed registers as a job.
+  resources = null,
 } = {}) {
   const enabled = intelEnabled(env) || Boolean(supplied);
   let service = supplied ?? null;
@@ -185,6 +222,7 @@ export function intelProxy({
       llm,
       onFeedBatch: createPolledObserver(latency),
     });
+    registerFeedJobs(service, resources);
     // Push sources in front of the same engine (fork feature, GEV_FAST_FEEDS=1).
     if (fastFeedsEnabled(env))
       fast = createFastFeeds({

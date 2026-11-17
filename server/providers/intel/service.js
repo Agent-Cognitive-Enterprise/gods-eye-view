@@ -311,6 +311,18 @@ export function createIntelService({
         .listEvents(filter, { limit })
         .map((e) => publicEvent(engine.evaluate(e))),
     feeds: () => runners.map((runner) => runner.health()),
+    /**
+     * Fork: turn one feed's polling off or on (the RESOURCES panel). Off
+     * stops its timer; on polls again at once if the service is running.
+     * @returns {boolean} Whether the feed exists.
+     */
+    setFeedEnabled(id, on) {
+      const runner = runners.find((r) => r.id === id);
+      if (!runner) return false;
+      runner.setEnabled(on);
+      if (on && started) runner.start();
+      return true;
+    },
     aiStatus: () =>
       assessor?.status() ?? { state: 'not_configured', enabled: false },
     assessNow: () => assessor?.cycle() ?? null,

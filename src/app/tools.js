@@ -49,6 +49,7 @@ import {
 import { entityRecord, readEntityRecord } from '../data/entityRecords.js';
 import { overlayHost } from './layers/overlayHost.js';
 import { forkEngineWanted } from '../fork/engine.js';
+import { createResourcesMonitor } from '../ui/resourcesMonitor.js';
 
 /**
  * Attach scene tools, rendering listeners and the application debug handle.
@@ -262,6 +263,9 @@ export function createApplicationTools({
     });
   }
 
+  // RESOURCES panel (fork feature): reads /api/resources only while open.
+  const resourcesMonitor = createResourcesMonitor({ dataManager });
+  defer(() => resourcesMonitor.destroy());
   // Bottom controls fade when idle; a key press or the bottom edge recalls them.
   const dockAutoHide = createDockAutoHide();
   defer(() => dockAutoHide.destroy());

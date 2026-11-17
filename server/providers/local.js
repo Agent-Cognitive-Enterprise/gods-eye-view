@@ -43,6 +43,7 @@ import { cycloneProxy } from './cyclones.js';
 import { windProxy } from './wind.js';
 import { exitWithLauncher, isIsolatedInstance } from './isolation.js';
 import { libraryProxy } from './library.js';
+import { createResourceMonitor, resourcesProxy } from './resources/index.js';
 
 /**
  * Construct the local provider plugins in their established order.
@@ -65,6 +66,8 @@ function localProviderPlugins({
   const ghostMapsWatcher = createGhostMapsWatcher();
   // Air & Sea results reach the early-warning Autopilot through one hub.
   const airSeaHub = createAirSeaHub();
+  // Fork: the RESOURCES panel's registry of background jobs, and its figures.
+  const resources = createResourceMonitor();
   // A staging server has no business near a single-use or quota-bound connection.
   const isolated = isIsolatedInstance();
   if (isolated) exitWithLauncher();
@@ -102,8 +105,9 @@ function localProviderPlugins({
     libraryProxy(),
     ghostMapsProxy({ watcher: ghostMapsWatcher }),
     shipwrecksProxy(),
-    intelProxy({ ghostMapsWatcher, airSeaHub }),
-    airSeaProxy({ hub: airSeaHub }),
+    intelProxy({ ghostMapsWatcher, airSeaHub, resources: resources.registry }),
+    airSeaProxy({ hub: airSeaHub, resources: resources.registry }),
+    resourcesProxy({ monitor: resources }),
     bankingAccessProxy(),
     localVoiceProxy(),
     droneAirspaceProxy(),

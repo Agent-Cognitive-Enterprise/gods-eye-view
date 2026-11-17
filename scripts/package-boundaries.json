@@ -299,7 +299,11 @@
       "src/ui/views/panels/LiveTvPanel.vue",
       "src/ui/stores/liveTv.js",
       "src/ui/liveTvChannels.js",
-      "src/ui/liveTvPlayer.js"
+      "src/ui/liveTvPlayer.js",
+      "src/ui/views/panels/ResourcesPanel.vue",
+      "src/ui/resourcesPresentation.js",
+      "src/ui/stores/resources.js",
+      "src/ui/resourcesMonitor.js"
     ],
     "external": ["vue", "pinia", "vue-i18n", "hls.js"]
   },
@@ -5496,7 +5500,11 @@
       "src/ui/stores/worldOverview.js",
       "src/intel/mercator.js",
       "src/ui/worldOverview.js",
-      "src/fork/engine.js"
+      "src/fork/engine.js",
+      "src/ui/views/panels/ResourcesPanel.vue",
+      "src/ui/resourcesPresentation.js",
+      "src/ui/stores/resources.js",
+      "src/ui/resourcesMonitor.js"
     ],
     "external": [
       "hls.js",

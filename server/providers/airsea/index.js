@@ -33,7 +33,7 @@ import { AISSTREAM_CACHE_MAX, aisStreamRows } from '../vessels/ais-store.js';
 import path from 'node:path';
 import { subscribeTrafficSnapshots, trafficSnapshotsSince } from './bus.js';
 import { HOUR_MS, createTrafficHistory } from './history.js';
-import { createWarningService } from './warnings.js';
+import { createWarningService, WARNING_SOURCES } from './warnings.js';
 import { simplifyGeometry } from '../../../src/airsea/warnings.js';
 import {
   createRegionalGnssHttpHandler,
@@ -572,11 +572,93 @@ export function airSeaEnabled(env = process.env) {
  * @param {{service?: object, warnings?: object, hub?: object, env?: object}}
  *   [options] `hub`: shares the services with the Autopilot (signals.js).
  */
+/**
+ * Fork: the air/sea background jobs for the RESOURCES panel. Warning feeds
+ * can be switched off; traffic collection and the GNSS screen are shown
+ * only (AISStream is the one live connection and has no switch).
+ * @returns {Function[]} Unregister functions.
+ */
+export function registerAirSeaJobs({
+  resources,
+  service,
+  warnings,
+  gnssRegional,
+  aisHealth,
+}) {
+  if (!resources) return [];
+  const out = [];
+  if (warnings?.setFeedEnabled) {
+    const polled = new Set(warnings.polledIds?.() ?? []);
+    for (const source of WARNING_SOURCES.filter((s) => polled.has(s.id))) {
+      const status = () => {
+        const found = warnings.sources().find((s) => s.id === source.id) ?? {};
+        return {
+          status: found.status ?? 'unknown',
+          last_run_at: found.last_run_at ?? null,
+          last_success_at: found.last_success_at ?? null,
+          last_duration_ms: found.last_duration_ms ?? null,
+          last_items: found.warnings ?? null,
+          error: found.status === 'healthy' ? null : (found.reason ?? null),
+        };
+      };
+      out.push(
+        resources.register({
+          id: `airsea-warnings:${source.id}`,
+          group: 'air-sea',
+          label: source.short ?? source.id,
+          dependents: ['warning-areas-layer', 'autopilot-events'],
+          setEnabled: (on) => {
+            if (!warnings.setFeedEnabled(source.id, on))
+              throw new Error(`no warning feed ${source.id}`);
+          },
+          status,
+        }),
+      );
+    }
+  }
+  for (const source of service?.sources?.() ?? []) {
+    out.push(
+      resources.register({
+        id: `airsea-traffic:${source.id}`,
+        group: 'air-sea',
+        label: source.id,
+        fixedReason:
+          source.id === 'aisstream'
+            ? 'single-connection'
+            : 'not-switchable-yet',
+        status: () => {
+          const found = service.sources().find((s) => s.id === source.id) ?? {};
+          return {
+            status: found.status ?? 'unknown',
+            last_success_at: found.received_at ?? null,
+            last_items: found.objects ?? null,
+          };
+        },
+      }),
+    );
+  }
+  out.push(
+    resources.register({
+      id: 'airsea-gnss-regional',
+      group: 'air-sea',
+      label: 'GNSS regional screen',
+      fixedReason: 'not-switchable-yet',
+      status: () =>
+        gnssRegional()
+          ? { status: aisHealth() === 'healthy' ? 'healthy' : aisHealth() }
+          : { status: 'off', error: 'GEV_GNSS_REGIONAL is not 1' },
+    }),
+  );
+  return out;
+}
+
 export function airSeaProxy({
   service: supplied,
   hub = null,
   warnings: suppliedWarnings,
   env = process.env,
+  // Fork: the RESOURCES panel's registry of background jobs.
+  resources = null,
 } = {}) {
   const enabled = airSeaEnabled(env) || Boolean(supplied);
   let service = supplied ?? null;
@@ -794,6 +876,13 @@ export function airSeaProxy({
     prune.unref?.();
     const stop = startCollector(server, collectionPlan(env));
     ensureWarnings()?.start();
+    const unregister = registerAirSeaJobs({
+      resources,
+      service,
+      warnings: ensureWarnings(),
+      gnssRegional: () => gnssRegional,
+      aisHealth,
+    });
     const detach = hub?.attach({
       service,
       warnings: ensureWarnings(),
@@ -805,6 +894,7 @@ export function airSeaProxy({
       }),
     });
     server.httpServer?.once('close', () => {
+      for (const off of unregister) off();
       detach?.();
       stop();
       clearInterval(flush);

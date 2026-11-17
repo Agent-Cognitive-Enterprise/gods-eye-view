@@ -315,7 +315,12 @@
     "live",
     "offline",
     "{value} MIN",
-    "{value} s"
+    "{value} s",
+    "CPU {before} → {after}",
+    "Server",
+    "{value} h",
+    "{value} min",
+    "{value} ms"
   ],
   "es": [
     "1 min/s",
@@ -520,7 +525,11 @@
     "REGIONAL",
     "voice provider|Local",
     "{value} MIN",
-    "{value} s"
+    "{value} s",
+    "CPU {before} → {after}",
+    "{value} h",
+    "{value} min",
+    "{value} ms"
   ],
   "fr": [
     "1 min/s",
@@ -803,7 +812,11 @@
     "sources",
     "voice provider|Local",
     "{value} MIN",
-    "{value} s"
+    "{value} s",
+    "CPU {before} → {after}",
+    "{value} h",
+    "{value} min",
+    "{value} ms"
   ],
   "it": [
     "1 min/s",
@@ -1058,7 +1071,12 @@
     "offline",
     "pipeline",
     "{value} MIN",
-    "{value} s"
+    "{value} s",
+    "CPU {before} → {after}",
+    "Server",
+    "{value} h",
+    "{value} min",
+    "{value} ms"
   ],
   "ja": [
     "1090 MHz",
@@ -1143,7 +1161,8 @@
     "{n} mm",
     "3D",
     "KT",
-    "AI"
+    "AI",
+    "CPU {before} → {after}"
   ],
   "pt": [
     "1 min/s",
@@ -1357,7 +1376,11 @@
     "pipeline",
     "voice provider|Local",
     "{value} MIN",
-    "{value} s"
+    "{value} s",
+    "CPU {before} → {after}",
+    "{value} h",
+    "{value} min",
+    "{value} ms"
   ],
   "ru": [
     "1900–1945",
@@ -1612,7 +1635,12 @@
     "AI",
     "AUTOPILOT",
     "REGIONAL",
-    "DEMO"
+    "DEMO",
+    "CPU {before} → {after}",
+    "Server",
+    "{value} h",
+    "{value} min",
+    "{value} ms"
   ],
   "uk": [
     "1900–1945",
@@ -1736,7 +1764,8 @@
     "{n} MW",
     "{n}%",
     "{n} hPa",
-    "3D"
+    "3D",
+    "CPU {before} → {after}"
   ],
   "zh-Hant": [
     "1090 MHz",
@@ -1821,7 +1850,8 @@
     "{n} MW",
     "{n}%",
     "{n} hPa",
-    "3D"
+    "3D",
+    "CPU {before} → {after}"
   ],
   "he": [
     "{speed} kn",

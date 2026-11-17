@@ -231,6 +231,8 @@ export function createWarningService({
   let dirty = false;
   let version = 0; // bumped by every apply: list answers are cached by it
   const timers = new Map(); // source id -> its two timers
+  // Fork: feeds the operator turned off (the RESOURCES panel): not polled.
+  const switchedOff = new Set();
   let firstDelay = null; // set by start()
   // A saved file that exists but could not be read is never written over:
   // the service waits, empty, until it reads (see load()); the wait is
@@ -766,6 +768,8 @@ export function createWarningService({
   /** (Re)schedule one source from its last success, as at start. */
   function schedule(id, firstDelayMs) {
     for (const timer of timers.get(id) ?? []) clearTimeout(timer);
+    timers.delete(id);
+    if (switchedOff.has(id)) return;
     const connector = connectors[id];
     const due =
       (state[id]?.last_success_at ?? 0) + connector.intervalMs - now();
@@ -798,9 +802,11 @@ export function createWarningService({
       logHourly(`[airsea] warnings not polled or saved: ${blockedReason}`);
       return;
     }
+    if (switchedOff.has(id)) return;
     const connector = connectors[id];
     const s = (state[id] ??= { failures: 0 });
     s.last_attempt_at = now();
+    const startedAt = performance.now();
     try {
       const count = await connector.poll();
       s.last_success_at = now();
@@ -812,11 +818,14 @@ export function createWarningService({
       s.last_error = String(error?.message ?? error).slice(0, 200);
       log(`[airsea] ${id} poll failed: ${s.last_error}`);
     }
+    s.last_duration_ms = Math.round(performance.now() - startedAt);
     dirty = true;
     save();
   }
 
   function sourceStatus(source) {
+    if (switchedOff.has(source.id))
+      return { status: 'off', reason: 'turned_off' };
     if (
       source.id === 'faa-notam' &&
       env.FAA_NOTAM_CLIENT_ID &&
@@ -886,11 +895,34 @@ export function createWarningService({
       save();
     },
     pollSource,
+    /** Fork: the feeds that are polled (have a connector). */
+    polledIds: () => Object.keys(connectors),
+    /**
+     * Fork: turn one feed's polling off or on (the RESOURCES panel). What it
+     * delivered stays until it ends; on, it is scheduled again (soon, or at
+     * its interval from its last success) if the service is running.
+     * @returns {boolean} Whether the feed is polled at all.
+     */
+    setFeedEnabled(id, on) {
+      if (!connectors[id]) return false;
+      if (on) {
+        switchedOff.delete(id);
+        if (firstDelay !== null) schedule(id, 1000);
+      } else {
+        switchedOff.add(id);
+        for (const timer of timers.get(id) ?? []) clearTimeout(timer);
+        timers.delete(id);
+      }
+      return true;
+    },
     sources() {
       return WARNING_SOURCES.map((source) => ({
         ...source,
         ...sourceStatus(source),
         last_success_at: state[source.id]?.last_success_at ?? null,
+        // Fork: the RESOURCES panel's figures.
+        last_run_at: state[source.id]?.last_attempt_at ?? null,
+        last_duration_ms: state[source.id]?.last_duration_ms ?? null,
         // Why warnings are not being polled or saved, or null.
         saving_paused: blockedReason,
         warnings: [...records.values()].filter((r) => r.sourceId === source.id)
