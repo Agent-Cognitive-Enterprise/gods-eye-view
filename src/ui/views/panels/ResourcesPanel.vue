@@ -33,11 +33,13 @@ const open = computed(() => panels.value[PANEL_ID]?.collapsed === false);
 watch(open, (value) => store.setVisible(value), { immediate: true });
 onBeforeUnmount(() => store.setVisible(false));
 
-const now = ref(Date.now());
-const tick = setInterval(() => {
-  now.value = Date.now();
-}, 5000);
-onBeforeUnmount(() => clearInterval(tick));
+// The time "ran 2 minutes ago" counts from: taken again with each answer
+// (every few seconds while the panel is open). No timer of its own, which
+// would keep running wherever the view is mounted, panel closed or not.
+const now = computed(() => {
+  void server.value;
+  return Date.now();
+});
 
 const latest = computed(() => server.value?.server?.latest ?? null);
 const history = computed(() => server.value?.server?.history ?? []);

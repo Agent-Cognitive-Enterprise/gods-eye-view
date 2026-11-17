@@ -331,8 +331,8 @@ test('routes: reads are open, changes are this machine only', async (t) => {
         url,
         socket: { remoteAddress: address },
         headers: body
-          ? { 'content-type': 'application/json', host: 'x' }
-          : { host: 'x' },
+          ? { 'content-type': 'application/json', host: 'localhost:4173' }
+          : { host: 'localhost:4173' },
         on(name, fn) {
           if (name === 'data' && payload)
             queueMicrotask(() => fn(Buffer.from(payload)));
