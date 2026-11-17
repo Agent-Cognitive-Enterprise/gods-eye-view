@@ -1020,6 +1020,14 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
 #resources-panel .panel-glow {
   display: none;
 }
+/* Clean view and recording hide the left panels one by one (controls.css,
+   recording.css): the server's figures and switches never reach a video. */
+body.ui-clean-view #resources-panel,
+body.recording-mode #resources-panel {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
 .resources-body {
   display: flex;
   flex-direction: column;

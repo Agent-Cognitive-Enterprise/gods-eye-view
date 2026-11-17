@@ -340,3 +340,22 @@ test("the monitor uses the page's store when none is given", async () => {
   );
   monitor.destroy();
 });
+
+test('the panel sits in the left column and stays out of clean view and recordings', async () => {
+  const fs = await import('node:fs');
+  const read = (p) => fs.readFileSync(new URL(p, import.meta.url), 'utf8');
+  const left = read('./views/LayerPanelsView.vue');
+  const right = read('./views/ContextView.vue');
+  assert.ok(left.includes('<ResourcesPanel />'), 'mounted in the left column');
+  assert.ok(!right.includes('ResourcesPanel'), 'off the right rail');
+  assert.ok(
+    left.indexOf('<FastIntelPanel />') < left.indexOf('<ResourcesPanel />') &&
+      left.indexOf('<ResourcesPanel />') < left.indexOf('<LiveTvPanel />'),
+    'between FAST INTELLIGENCE and LIVE TV',
+  );
+  const css = read('./styles/intel.css').replace(/\s+/g, ' ');
+  assert.match(
+    css,
+    /body\.ui-clean-view #resources-panel, body\.recording-mode #resources-panel \{ opacity: 0 !important; visibility: hidden !important;/,
+  );
+});
