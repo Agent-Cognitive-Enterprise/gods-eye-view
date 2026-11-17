@@ -598,7 +598,11 @@ export function registerAirSeaJobs({
           last_success_at: found.last_success_at ?? null,
           last_duration_ms: found.last_duration_ms ?? null,
           last_items: found.warnings ?? null,
-          error: found.status === 'healthy' ? null : (found.reason ?? null),
+          // A fault only; a trial feed's or a switched-off feed's reason is
+          // not an error.
+          error: ['down', 'degraded', 'stale'].includes(found.status)
+            ? (found.reason ?? null)
+            : null,
         };
       };
       out.push(

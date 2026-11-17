@@ -18,6 +18,7 @@ import {
   jobFacts,
   sparkline,
   statusTone,
+  switchErrorText,
 } from '../../resourcesPresentation.js';
 
 // RESOURCES (fork feature): what the server and this browser are doing. The
@@ -74,7 +75,7 @@ const jobIsOn = (job) => !job.off_by_you;
     <div class="resources-body ui-scroll" data-rail-scroller>
       <p v-if="state === 'loading' && !server" class="intel-muted">{{ t('Loading…') }}</p>
       <p v-if="state === 'error'" class="resources-error" role="alert">{{ t('Could not read the server figures: {error}', { error }) }}</p>
-      <p v-if="switchError" class="resources-error" role="alert">{{ t('Could not switch it: {error}', { error: switchError }) }}</p>
+      <p v-if="switchError" class="resources-error" role="alert">{{ t('Could not switch it: {error}', { error: switchErrorText(switchError) }) }}</p>
 
       <section v-if="latest" class="resources-section" :aria-label="t('Server')">
         <h3 class="resources-heading">{{ t('Server') }}</h3>

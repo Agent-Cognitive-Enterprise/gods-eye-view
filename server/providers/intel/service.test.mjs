@@ -314,6 +314,28 @@ test('feature flag and mutation guard', async () => {
     isLocalMutation(req('127.0.0.1', { 'x-forwarded-for': '1.2.3.4' })),
     false,
   );
+  // DNS rebinding: a foreign name re-pointed at 127.0.0.1 sends a matching
+  // Origin and Host; the Host must name this computer.
+  assert.equal(
+    isLocalMutation(
+      req('127.0.0.1', {
+        host: 'rebound.example:4174',
+        origin: 'http://rebound.example:4174',
+      }),
+    ),
+    false,
+  );
+  assert.equal(
+    isLocalMutation(req('127.0.0.1', { host: '127.0.0.1:4174' })),
+    true,
+  );
+  assert.equal(
+    isLocalMutation(
+      req('::1', { host: '[::1]:4174', origin: 'http://[::1]:4174' }),
+    ),
+    true,
+  );
+  assert.equal(isLocalMutation(req('127.0.0.1', { host: '' })), false);
 
   const plugin = intelProxy({ env: {} });
   let handler;

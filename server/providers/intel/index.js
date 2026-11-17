@@ -91,7 +91,20 @@ export function intelEnabled(env = process.env) {
   return env.GEV_INTEL_ENABLED === '1';
 }
 
-/** Loopback, unproxied, same-origin: the only callers allowed to change state. */
+/** Whether a Host header names this computer: localhost, 127.x or [::1]. */
+export function loopbackHost(host) {
+  let name;
+  try {
+    name = new URL(`http://${String(host ?? '')}`).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  return (
+    name === 'localhost' || name === '[::1]' || /^127(\.\d{1,3}){3}$/.test(name)
+  );
+}
+
+/** Loopback, unproxied, same-origin, addressed to this computer by name: the only callers allowed to change state. */
 export function isLocalMutation(req) {
   const address = String(req.socket?.remoteAddress ?? '');
   const loopback =
@@ -102,6 +115,11 @@ export function isLocalMutation(req) {
   const headers = req.headers ?? {};
   if (headers['x-forwarded-for'] || headers.forwarded || headers['x-real-ip'])
     return false;
+  // The Host must name this computer too: a page whose own name was
+  // re-pointed at 127.0.0.1 (DNS rebinding) sends a matching Origin and Host
+  // under that foreign name, and the server's middleware runs before Vite's
+  // host check.
+  if (!loopbackHost(headers.host)) return false;
   if (headers.origin) {
     try {
       if (new URL(headers.origin).host !== headers.host) return false;

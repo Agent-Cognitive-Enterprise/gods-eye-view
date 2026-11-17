@@ -11,6 +11,29 @@ import path from 'node:path';
 const MAX_CHANGES = 20;
 const ID = /^[a-z0-9][a-z0-9:._-]{0,79}$/;
 
+// On Windows a rename over a file that a scanner holds open can fail for a
+// moment (EPERM, EBUSY, EACCES); try again briefly before giving up.
+function renameWithRetry(from, to, tries = 4) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      fs.renameSync(from, to);
+      return;
+    } catch (error) {
+      if (
+        attempt >= tries ||
+        !['EPERM', 'EBUSY', 'EACCES'].includes(error?.code)
+      )
+        throw error;
+      Atomics.wait(
+        new Int32Array(new SharedArrayBuffer(4)),
+        0,
+        0,
+        50 * attempt,
+      );
+    }
+  }
+}
+
 function readOff(file, log) {
   if (!file) return new Set();
   try {
@@ -51,7 +74,7 @@ export function createResourceRegistry({
         tmp,
         `${JSON.stringify({ version: 1, off: [...off].sort() }, null, 2)}\n`,
       );
-      fs.renameSync(tmp, file);
+      renameWithRetry(tmp, file);
     } catch (error) {
       log(
         `[resources] could not remember the switched-off jobs: ${error.message}`,
@@ -71,8 +94,22 @@ export function createResourceRegistry({
     }
   }
 
+  // The figures after a change, from a minute in until `until`; null when
+  // that leaves less than a minute to measure.
+  function afterOf(change, until) {
+    const from = change.at + 60_000;
+    return until - from >= 60_000 ? (measure?.(from, until) ?? null) : null;
+  }
+
   function record(id, on) {
     const at = now();
+    // The newest change's window closes now: keep what it measured, or
+    // that it was too short to measure, before the samples age out.
+    const previous = changes[0];
+    if (previous && !previous.settled) {
+      previous.after = afterOf(previous, at);
+      previous.settled = true;
+    }
     changes.unshift({
       id,
       on,
@@ -160,13 +197,12 @@ export function createResourceRegistry({
     /** Recent changes, newest first, each with the figures after it once known. */
     changes() {
       const t = now();
-      return changes.map((change, index) => {
-        // After: from a minute in until the next change (or now), at least a minute of it.
-        const from = change.at + 60_000;
-        const until = index > 0 ? changes[index - 1].at : t;
-        const after =
-          until - from >= 60_000 ? (measure?.(from, until) ?? null) : null;
-        return { ...change, after };
+      return changes.map((change) => {
+        const { settled, ...rest } = change;
+        // `measured: false`: the next change came too soon to measure this one.
+        if (settled)
+          return { ...rest, measured: Boolean(change.after || !change.before) };
+        return { ...rest, after: afterOf(change, t), measured: true };
       });
     },
 

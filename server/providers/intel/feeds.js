@@ -219,13 +219,18 @@ export function createFeedRunner({
     return inFlight;
   }
 
-  function schedule() {
-    if (!running) return;
+  // Each start() begins a new chain of timers; a chain from before a stop
+  // (its poll still running when the feed was turned off and on again) ends
+  // instead of running beside the new one.
+  let generation = 0;
+  function schedule(chain = generation) {
+    if (!running || chain !== generation) return;
+    clearTimeout(timer);
     const delay = nextDelayMs(state, connector);
     state.next_poll_at = now() + delay;
     timer = setTimeout(async () => {
       await pollOnce();
-      schedule();
+      schedule(chain);
     }, delay);
     timer.unref?.();
   }
@@ -235,10 +240,14 @@ export function createFeedRunner({
     start() {
       if (running || state.disabled) return;
       running = true;
-      pollOnce().then(schedule);
+      const chain = ++generation;
+      // After failures (a feed turned back on), wait out its backoff first.
+      if (state.consecutive_failures > 0) schedule(chain);
+      else pollOnce().then(() => schedule(chain));
     },
     stop() {
       running = false;
+      generation += 1;
       clearTimeout(timer);
       timer = null;
     },

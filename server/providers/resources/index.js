@@ -88,7 +88,17 @@ export function resourcesProxy({ monitor }) {
         const restored = registry.restoreDefaults();
         return sendJson(res, 200, { restored, jobs: registry.list() });
       }
-      const job = /^\/jobs\/([a-z0-9][a-z0-9:._-]{0,79})$/.exec(route);
+      // The panel sends the id encoded (intel%3Ausgs); decode it before
+      // matching. A malformed escape is simply an unknown route.
+      let decoded = null;
+      try {
+        decoded = decodeURIComponent(route);
+      } catch {
+        decoded = null;
+      }
+      const job = decoded
+        ? /^\/jobs\/([a-z0-9][a-z0-9:._-]{0,79})$/.exec(decoded)
+        : null;
       if (job) {
         if (typeof input?.enabled !== 'boolean')
           return sendJson(res, 400, { error: 'enabled_must_be_boolean' });

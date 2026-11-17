@@ -13,6 +13,7 @@ import {
   jobFacts,
   sparkline,
   statusTone,
+  switchErrorText,
 } from './resourcesPresentation.js';
 import { createResourcesMonitor, enabledLayers } from './resourcesMonitor.js';
 import { useResourcesStore } from './stores/resources.js';
@@ -113,7 +114,22 @@ test('a change reads before and after, or that it is still measuring', () => {
       },
       jobs,
     ),
-    'gdelt turned off · CPU 12% → 9% · memory 1.2 GB → 1.1 GB',
+    'gdelt turned off · CPU ⁨12%⁩ → ⁨9%⁩ · memory ⁨1.2 GB⁩ → ⁨1.1 GB⁩',
+    'each value isolated for right-to-left languages',
+  );
+  assert.equal(
+    changeSummary(
+      {
+        id: 'intel:gdelt',
+        on: false,
+        before: { cpu_core_pct: 12, rss_mb: 1200 },
+        after: null,
+        measured: false,
+      },
+      jobs,
+    ),
+    'gdelt turned off',
+    'too short to measure: no figures, not "measuring"',
   );
 });
 
@@ -125,15 +141,20 @@ test('the sparkline spans its box; too few points draw nothing', () => {
 
 function fakeManager(layers) {
   const enabled = new Set(layers.filter((l) => l.on).map((l) => l.id));
+  const calls = [];
   return {
-    layers: new Map(
-      layers.map((l) => [
-        l.id,
-        { name: l.name, module: { getStats: () => l.stats } },
-      ]),
-    ),
-    isEnabled: (id) => enabled.has(id),
-    async setEnabled(id, on) {
+    calls,
+    // As DataLayerManager.getAll(): rows with the layer list's flags.
+    getAll: () =>
+      layers.map((l) => ({
+        id: l.id,
+        name: l.name,
+        showInTogglePanel: l.hidden !== true,
+        enabled: enabled.has(l.id),
+        stats: l.stats,
+      })),
+    async setEnabled(id, on, options) {
+      calls.push([id, on, options]);
       if (on) enabled.add(id);
       else enabled.delete(id);
     },
@@ -151,6 +172,13 @@ test('the layers on, largest first; layers without counts last', () => {
     },
     { id: 'rail', name: 'Rail', on: true, stats: null },
     { id: 'news', name: 'News', on: false, stats: { count: 48 } },
+    {
+      id: 'controls',
+      name: 'Controls',
+      on: true,
+      hidden: true,
+      stats: { count: 99999 },
+    },
   ]);
   const list = enabledLayers(dm);
   assert.deepEqual(
@@ -178,10 +206,11 @@ test('the monitor polls only while the panel is open and the page visible', asyn
       this.listeners.delete(n);
     },
   };
+  const dataManager = fakeManager([
+    { id: 'flights', name: 'Live Flights', on: true, stats: { count: 3 } },
+  ]);
   const monitor = createResourcesMonitor({
-    dataManager: fakeManager([
-      { id: 'flights', name: 'Live Flights', on: true, stats: { count: 3 } },
-    ]),
+    dataManager,
     store,
     documentRef: doc,
     fetchImpl: async (url, options = {}) => {
@@ -232,8 +261,14 @@ test('the monitor polls only while the panel is open and the page visible', asyn
   ]);
   assert.equal(store.pending, null);
 
+  const manager = dataManager;
   await store.act('layerOff', 'flights');
   assert.deepEqual(store.layers, [], 'the layer is off and the list follows');
+  assert.deepEqual(
+    manager.calls.at(-1),
+    ['flights', false, { origin: 'user' }],
+    "as the layer list's toggle: a person's choice",
+  );
 
   store.setVisible(false);
   await nextTick();
@@ -257,7 +292,29 @@ test('a refused switch is reported, not thrown', async () => {
   });
   await store.act('setJob', 'intel:gdelt', false);
   assert.equal(store.switchError, 'local_only', 'why it failed stays shown');
+  assert.equal(
+    switchErrorText('local_only'),
+    'Switches work only on the computer that runs the server.',
+  );
+  assert.equal(switchErrorText('internal_error'), 'internal_error');
   assert.equal(store.state, 'ok', 'the read after it succeeded');
   assert.equal(store.pending, null);
+  monitor.destroy();
+});
+
+test("the monitor uses the page's store when none is given", async () => {
+  const { applicationPinia } = await import('./vueRuntime.js');
+  const monitor = createResourcesMonitor({
+    dataManager: fakeManager([]),
+    documentRef: null,
+    fetchImpl: async () => new Response('{}', { status: 200 }),
+    setTimer: () => ({}),
+    clearTimer: () => {},
+  });
+  assert.equal(
+    typeof useResourcesStore(applicationPinia()).act,
+    'function',
+    'built without throwing, on the shared store',
+  );
   monitor.destroy();
 });

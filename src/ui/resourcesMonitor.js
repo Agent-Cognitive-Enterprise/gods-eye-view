@@ -19,24 +19,24 @@ export const RESOURCES_POLL_MS = 5000;
  * @returns {Array<{id: string, name: string, count: number|null, objects: number|null}>}
  */
 export function enabledLayers(dataManager) {
-  const out = [];
-  for (const [id, layer] of dataManager?.layers ?? []) {
-    if (!dataManager.isEnabled?.(id)) continue;
-    let stats = null;
-    try {
-      stats = (layer?.module ?? layer)?.getStats?.() ?? null;
-    } catch {
-      stats = null;
-    }
-    const number = (value) => (Number.isFinite(value) ? value : null);
-    out.push({
-      id,
-      name: shownLayerName(layer?.name ?? (layer?.module ?? layer)?.name, id),
-      count: number(stats?.count),
-      objects: number(stats?.objects),
-    });
+  // The rows the layer list shows (getAll: normalised stats, hidden layers
+  // flagged), so nothing appears here that the layer list does not offer.
+  let rows = [];
+  try {
+    rows = dataManager?.getAll?.() ?? [];
+  } catch {
+    rows = [];
   }
-  return out.sort((a, b) => (b.count ?? -1) - (a.count ?? -1));
+  const number = (value) => (Number.isFinite(value) ? value : null);
+  return rows
+    .filter((row) => row?.enabled && row.showInTogglePanel !== false)
+    .map((row) => ({
+      id: row.id,
+      name: shownLayerName(row.name, row.id),
+      count: number(row.stats?.count),
+      objects: number(row.stats?.objects),
+    }))
+    .sort((a, b) => (b.count ?? -1) - (a.count ?? -1));
 }
 
 /**
@@ -48,7 +48,7 @@ export function createResourcesMonitor({
   dataManager,
   fetchImpl = (...args) => globalThis.fetch(...args),
   documentRef = globalThis.document ?? null,
-  store = useResourcesStore(applicationPinia),
+  store = useResourcesStore(applicationPinia()),
   pollMs = RESOURCES_POLL_MS,
   setTimer = (fn, ms) => setInterval(fn, ms),
   clearTimer = (timer) => clearInterval(timer),
@@ -132,7 +132,11 @@ export function createResourcesMonitor({
     restoreDefaults: () =>
       switching('restore', () => post('/api/resources/restore')),
     layerOff: (id) =>
-      switching(`layer:${id}`, () => dataManager.setEnabled(id, false)),
+      switching(`layer:${id}`, () =>
+        // As the layer list's own toggle: a person's choice, saved with the
+        // layer state and share links.
+        dataManager.setEnabled(id, false, { origin: 'user' }),
+      ),
     refresh: () => refresh(),
   });
   const stopWatch = watch(() => store.visible, follow);

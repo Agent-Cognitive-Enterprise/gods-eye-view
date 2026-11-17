@@ -156,18 +156,33 @@ export function changeSummary(change, jobs) {
     ? t('{label} turned on', { label })
     : t('{label} turned off', { label });
   if (!change.before) return head;
+  // The next change came too soon to measure this one: no figures.
+  if (change.measured === false) return head;
   if (!change.after) return `${head} · ${t('measuring…')}`;
+  // Each value isolated, so in Arabic and Hebrew a unit stays with its number.
+  const iso = (value) => `⁨${value}⁩`;
   return [
     head,
     t('CPU {before} → {after}', {
-      before: formatPercent(change.before.cpu_core_pct),
-      after: formatPercent(change.after.cpu_core_pct),
+      before: iso(formatPercent(change.before.cpu_core_pct)),
+      after: iso(formatPercent(change.after.cpu_core_pct)),
     }),
     t('memory {before} → {after}', {
-      before: formatMegabytes(change.before.rss_mb),
-      after: formatMegabytes(change.after.rss_mb),
+      before: iso(formatMegabytes(change.before.rss_mb)),
+      after: iso(formatMegabytes(change.after.rss_mb)),
     }),
   ].join(' · ');
+}
+
+const SWITCH_ERRORS = Object.freeze({
+  local_only: msg('Switches work only on the computer that runs the server.'),
+  fixed: msg('No switch yet'),
+});
+
+/** Why a switch failed, in words where the server's code has them. */
+export function switchErrorText(code) {
+  const known = SWITCH_ERRORS[code];
+  return known ? t(known) : String(code ?? '');
 }
 
 /** Points for a small line chart of `key` over the samples, in a w×h box. */

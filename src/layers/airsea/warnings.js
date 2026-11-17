@@ -42,6 +42,7 @@ const STATUS_TEXT = Object.freeze({
   unconfigured: msg('not connected'),
   permission_required: msg('permission required'),
   trial: msg('TRIAL'),
+  off: msg('Off'),
 });
 const PRECISION_TEXT = Object.freeze({
   official: msg('official geometry'),

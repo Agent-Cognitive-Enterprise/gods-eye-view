@@ -135,6 +135,36 @@ test('a change carries the figures before it, and after it once a minute is in',
   assert.deepEqual(measured.at(-1), [1_000_000 + 60_000, t]);
 });
 
+test("a change's after is kept once the next change closes it, or marked unmeasured", () => {
+  let t = 1_000_000;
+  // Only figures still in the sampler's window can be measured.
+  let oldest = 0;
+  const registry = createResourceRegistry({
+    log: quiet,
+    now: () => t,
+    measure: (since, until) =>
+      until < oldest
+        ? null
+        : { cpu_core_pct: (until - since) / 60_000, rss_mb: 1 },
+  });
+  registry.register(job('intel:a').job);
+  registry.register(job('intel:b').job);
+  registry.setEnabled('intel:a', false);
+  t += 5 * 60_000;
+  registry.setEnabled('intel:b', false); // closes a's window: 4 min measured
+  t += 30_000;
+  registry.setEnabled('intel:b', true); // b's window was too short
+  t += 20 * 60_000;
+  oldest = t - 10 * 60_000; // a's and b's samples have aged out
+  const [bOn, bOff, aOff] = registry.changes();
+  assert.equal(aOff.after.cpu_core_pct, 4, 'kept from when it closed');
+  assert.equal(aOff.measured, true);
+  assert.equal(bOff.after, null);
+  assert.equal(bOff.measured, false, 'too short to measure, not "measuring"');
+  assert.equal(bOn.measured, true);
+  assert.ok(bOn.after, 'the newest is measured live');
+});
+
 test('the sampler measures CPU of one core and of the machine, and averages', () => {
   let t = 0;
   let used = 0;
@@ -150,6 +180,18 @@ test('the sampler measures CPU of one core and of the machine, and averages', ()
     }),
     totalmem: () => 16 * 1024 ** 3,
     freemem: () => 8 * 1024 ** 3,
+    // Two cores; between the samples one is 90% busy and one 30%, whatever
+    // this server's own share.
+    cpuTimes: () =>
+      t === 0
+        ? [
+            { user: 0, nice: 0, sys: 0, irq: 0, idle: 0 },
+            { user: 0, nice: 0, sys: 0, irq: 0, idle: 0 },
+          ]
+        : [
+            { user: 800, nice: 0, sys: 100, irq: 0, idle: 100 },
+            { user: 300, nice: 0, sys: 0, irq: 0, idle: 700 },
+          ],
     loopDelay: null,
   });
   sampler.sample();
@@ -157,7 +199,7 @@ test('the sampler measures CPU of one core and of the machine, and averages', ()
   used += 2_500_000; // 2.5 s of CPU in 5 s: half a core
   const entry = sampler.sample();
   assert.equal(entry.cpu_core_pct, 50);
-  assert.equal(entry.cpu_machine_pct, 12.5);
+  assert.equal(entry.cpu_machine_pct, 60, 'the whole machine, from the OS');
   assert.equal(entry.rss_mb, 512);
   assert.equal(entry.system_total_mb, 16384);
   assert.equal(sampler.history().length, 2);
@@ -169,6 +211,24 @@ test('the sampler measures CPU of one core and of the machine, and averages', ()
     loop_p99_ms: 0,
   });
   assert.equal(sampler.average(t + 1), null);
+});
+
+test('event-loop delay leaves out the timer interval itself', () => {
+  const ms = 1e6;
+  const histogram = {
+    count: 250,
+    min: 31.2 * ms, // a 20 ms timer on a 15.6 ms OS step
+    percentile: (p) => (p === 99 ? 33.2 * ms : 31.9 * ms),
+    reset() {},
+    enable() {},
+    disable() {},
+  };
+  const sampler = createSampler({ loopDelay: histogram, cpuTimes: () => [] });
+  const entry = sampler.sample();
+  assert.equal(entry.loop_p99_ms, 2);
+  assert.equal(entry.loop_p50_ms, 0.7);
+  histogram.count = 0;
+  assert.equal(sampler.sample().loop_p99_ms, null, 'no turns, no figure');
 });
 
 test('disk sizes: the largest entries of the cache folder', async () => {
@@ -282,6 +342,30 @@ test('GET reports figures to anyone; switching is for this computer only', async
   });
   assert.equal(local.status, 200);
   assert.deepEqual(a.calls, [false]);
+  // As the panel sends it: the id encoded.
+  const encoded = await call(handler, {
+    method: 'POST',
+    url: `/jobs/${encodeURIComponent('intel:gdelt')}`,
+    body: { enabled: false },
+  });
+  assert.equal(encoded.status, 200, 'the encoded id is the same job');
+  assert.deepEqual(a.calls, [false], 'already off: no second call');
+  const malformed = await call(handler, {
+    method: 'POST',
+    url: '/jobs/intel%E0%A4%A',
+    body: { enabled: false },
+  });
+  assert.equal(malformed.status, 404);
+  const rebound = await call(handler, {
+    method: 'POST',
+    url: '/jobs/intel:gdelt',
+    body: { enabled: true },
+    headers: {
+      host: 'rebound.example:4173',
+      origin: 'http://rebound.example:4173',
+    },
+  });
+  assert.equal(rebound.status, 403, 'a foreign name pointed at 127.0.0.1');
   assert.equal(local.body.jobs[0].off_by_you, true);
   assert.equal((await call(handler, {})).body.can_control, true);
 

@@ -170,3 +170,52 @@ test('a warning feed turned off is not polled and says so; on, it is scheduled a
     'an unpolled source has no switch',
   );
 });
+
+test('off and on again during a poll leaves one timer chain, not two', async (t) => {
+  const { createFeedRunner } = await import('../intel/feeds.js');
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let release;
+  let polls = 0;
+  const runner = createFeedRunner({
+    connector: {
+      id: 'slow',
+      provider: 'test',
+      url: 'https://example.invalid',
+      intervalMs: 60_000,
+      poll: () => {
+        polls += 1;
+        return polls === 1
+          ? new Promise((r) => {
+              release = () => r({ records: [], notModified: true });
+            })
+          : { records: [], notModified: true };
+      },
+    },
+    ingest: () => [],
+    now: () => Date.now(),
+    log: () => {},
+  });
+  runner.start();
+  assert.equal(polls, 1, 'the first poll is running');
+  runner.setEnabled(false);
+  runner.setEnabled(true);
+  runner.start();
+  // Count the timers the runner sets from here on.
+  const mocked = globalThis.setTimeout;
+  let timers = 0;
+  globalThis.setTimeout = (...args) => {
+    timers += 1;
+    return mocked(...args);
+  };
+  t.after(() => {
+    globalThis.setTimeout = mocked;
+  });
+  release();
+  await settle();
+  assert.equal(timers, 1, 'one chain waits for the next poll');
+  t.mock.timers.tick(60_000);
+  await settle();
+  assert.equal(polls, 2);
+  assert.equal(timers, 2, 'and sets one timer after it');
+  runner.stop();
+});
