@@ -122,7 +122,137 @@ function runGate(cwd, name, args) {
   };
 }
 
-function runGates(dir, root, level, upstreamChanged) {
+/** Remove a temporary worktree: its node_modules link first, so no delete follows it. */
+function removeWorktree(root, dir, added) {
+  const link = path.join(dir, 'node_modules');
+  try {
+    if (fs.lstatSync(link).isSymbolicLink()) fs.unlinkSync(link);
+  } catch {
+    // no link
+  }
+  if (added)
+    git(root, ['worktree', 'remove', '--force', dir], { allowFail: true });
+  fs.rmSync(dir, { recursive: true, force: true });
+  git(root, ['worktree', 'prune'], { allowFail: true });
+}
+
+/**
+ * The batched unit run (scripts/run-unit-tests-batched.mjs) in `cwd`: the
+ * tree's own runner, or this checker's copy when the tree predates it.
+ */
+function batchedUnitRun(cwd, files = null) {
+  const own = path.join(cwd, 'scripts/run-unit-tests-batched.mjs');
+  const result = spawnSync(
+    process.execPath,
+    [
+      fs.existsSync(own)
+        ? own
+        : path.join(path.dirname(SCRIPT_PATH), 'run-unit-tests-batched.mjs'),
+      '--json',
+      ...(files ? ['--files', files.join(',')] : []),
+    ],
+    {
+      cwd,
+      encoding: 'utf8',
+      env: { ...process.env, PUPPETEER_SKIP_DOWNLOAD: '1' },
+      maxBuffer: 64 * 1024 * 1024,
+    },
+  );
+  const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
+  const last = (result.stdout ?? '').trim().split('\n').at(-1) ?? '';
+  try {
+    return { summary: JSON.parse(last), output };
+  } catch {
+    return { summary: null, output };
+  }
+}
+
+/**
+ * Failing tests in `merged` that do not also fail in `base`, by file. A file
+ * that fails without naming tests, or that `base` does not have, counts whole.
+ */
+export function newFailures(merged, base) {
+  const fresh = {};
+  for (const [file, names] of Object.entries(merged)) {
+    const known = new Set(base[file] ?? []);
+    const added = names.filter((name) => !known.has(name));
+    if (added.length) fresh[file] = added;
+  }
+  return fresh;
+}
+
+/**
+ * The full unit gate. `npm test` passes every test file on one command line,
+ * which Windows refuses (ENAMETOOLONG) at the suite's size, so the files run in
+ * batches. On Windows a few upstream test files also always fail (path
+ * separators; Linux CI runs them), so there a failure counts only when the same
+ * test passes on the branch as it is: those files are rerun in a second
+ * worktree at `head`. Everywhere else, any failure fails the gate.
+ */
+export function unitGate(dir, root, head, platform = process.platform) {
+  const name = 'unit tests (batched)';
+  const started = Date.now();
+  const seconds = () => Math.round((Date.now() - started) / 1000);
+  const merged = batchedUnitRun(dir);
+  if (!merged.summary)
+    return {
+      name,
+      pass: false,
+      seconds: seconds(),
+      tail: merged.output.split('\n').slice(-25).join('\n'),
+    };
+  const { tests, failures } = merged.summary;
+  const failing = Object.keys(failures);
+  const gate = { name, tests, seconds: 0 };
+  if (tests === 0 || !failing.length || platform !== 'win32') {
+    const pass = tests > 0 && !failing.length;
+    return {
+      ...gate,
+      pass,
+      seconds: seconds(),
+      tail: pass ? '' : JSON.stringify(failures, null, 1).slice(0, 4000),
+    };
+  }
+  const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gev-upstream-base-'));
+  let added = false;
+  let base;
+  try {
+    git(root, ['worktree', 'add', '--quiet', '--detach', baseDir, head]);
+    added = true;
+    fs.symlinkSync(
+      path.join(root, 'node_modules'),
+      path.join(baseDir, 'node_modules'),
+      'junction',
+    );
+    const present = failing.filter((file) =>
+      fs.existsSync(path.join(baseDir, file)),
+    );
+    base = present.length ? batchedUnitRun(baseDir, present) : null;
+  } finally {
+    removeWorktree(root, baseDir, added);
+  }
+  if (base && !base.summary)
+    return {
+      ...gate,
+      pass: false,
+      seconds: seconds(),
+      tail: `the branch rerun of ${failing.join(', ')} gave no summary:\n${base.output.split('\n').slice(-20).join('\n')}`,
+    };
+  const fresh = newFailures(failures, base?.summary.failures ?? {});
+  const pass = !Object.keys(fresh).length;
+  return {
+    ...gate,
+    pass,
+    seconds: seconds(),
+    // Named in the report either way, so a person sees what was tolerated.
+    also_failing_on_branch: failing.filter((file) => !fresh[file]),
+    tail: pass
+      ? ''
+      : `new failures (they pass on the branch):\n${JSON.stringify(fresh, null, 1).slice(0, 4000)}`,
+  };
+}
+
+function runGates(dir, root, level, upstreamChanged, head) {
   const cli = npmCli();
   const npm = (name, ...args) => runGate(dir, name, [cli, ...args]);
   const gates = [];
@@ -138,7 +268,7 @@ function runGates(dir, root, level, upstreamChanged) {
   if (gates.some((g) => !g.pass)) return gates;
   gates.push(npm('format:check', 'run', 'format:check'));
   gates.push(npm('check:boundaries', 'run', 'check:boundaries'));
-  if (level === 'full') gates.push(npm('test', 'test'));
+  if (level === 'full') gates.push(unitGate(dir, root, head));
   else
     gates.push(
       runGate(dir, 'autopilot and voice tests', [
@@ -203,18 +333,7 @@ export function upstreamCheck(options, cwd = process.cwd()) {
   let added = false;
   // The worktree's node_modules may be a junction to the real one: remove
   // the link itself first, so no recursive delete can ever follow it.
-  const cleanup = () => {
-    const link = path.join(dir, 'node_modules');
-    try {
-      if (fs.lstatSync(link).isSymbolicLink()) fs.unlinkSync(link);
-    } catch {
-      // no link
-    }
-    if (added)
-      git(root, ['worktree', 'remove', '--force', dir], { allowFail: true });
-    fs.rmSync(dir, { recursive: true, force: true });
-    git(root, ['worktree', 'prune'], { allowFail: true });
-  };
+  const cleanup = () => removeWorktree(root, dir, added);
   // Ctrl+C or a stop request still cleans up before exiting.
   const interrupted = (signal) => {
     cleanup();
@@ -262,6 +381,7 @@ export function upstreamCheck(options, cwd = process.cwd()) {
         root,
         options.gates,
         report.upstream_changed,
+        head,
       );
       if (report.gates.some((g) => !g.pass)) report.status = 'gates_failed';
     }
@@ -297,7 +417,7 @@ export function formatReport(report) {
     out.push('', '### Gates', '');
     for (const g of report.gates)
       out.push(
-        `- ${g.pass ? 'PASS' : 'FAIL'} ${g.name}${g.tests === undefined ? '' : ` (${g.tests} tests)`} (${g.seconds}s)`,
+        `- ${g.pass ? 'PASS' : 'FAIL'} ${g.name}${g.tests === undefined ? '' : ` (${g.tests} tests)`} (${g.seconds}s)${g.also_failing_on_branch?.length ? `; failing on the branch too, so not counted: ${g.also_failing_on_branch.map((f) => `\`${f}\``).join(', ')}` : ''}`,
       );
     for (const g of report.gates.filter((x) => !x.pass))
       out.push(
