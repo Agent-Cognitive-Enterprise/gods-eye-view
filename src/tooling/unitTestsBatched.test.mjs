@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {
   ALWAYS_NEW,
+  errorKind,
   failingTests,
   runBatched,
   summaryCounts,
@@ -178,9 +179,9 @@ test('batches the files, then names each failure by its file', () => {
   assert.equal(calls.filter((a) => fileCount(a) > 1).length, 2);
   assert.equal(calls.length, 3 + 3);
   assert.ok(calls.every((a) => fileCount(a) <= 3));
-  assert.deepEqual(summary.failures, { 'src/t4.test.mjs': ['four'] });
+  assert.deepEqual(summary.failures, { 'src/t4.test.mjs': ['four [Error]'] });
   assert.deepEqual(summary.errors, {
-    'src/t4.test.mjs': ['four — Error: no'],
+    'src/t4.test.mjs': ['four [Error] — Error: no'],
   });
   assert.equal(summary.files, 7);
 });
@@ -204,8 +205,8 @@ test('a test a helper module defines is filed under the test file that ran it', 
   });
   // Both files keep their own failure; the batch's two are matched, none is batch-only.
   assert.deepEqual(summary.failures, {
-    'src/flights.test.mjs': ['latency stays low'],
-    'src/military.test.mjs': ['latency stays low'],
+    'src/flights.test.mjs': ['latency stays low [Error]'],
+    'src/military.test.mjs': ['latency stays low [Error]'],
   });
 });
 
@@ -236,10 +237,10 @@ test('a failure seen only in the batch is kept, even when another file fails alo
     }),
   });
   assert.deepEqual(summary.failures, {
-    'src/known.test.mjs': ['always'],
-    'src/racy.test.mjs': [`${ALWAYS_NEW[2]}racy`],
+    'src/known.test.mjs': ['always [Error]'],
+    'src/racy.test.mjs': [`${ALWAYS_NEW[2]}racy [Error]`],
     'batch 1 (src/known.test.mjs … src/racy.test.mjs)': [
-      `${ALWAYS_NEW[2]}shared`,
+      `${ALWAYS_NEW[2]}shared [Error]`,
     ],
   });
 });
@@ -268,7 +269,9 @@ test('a batch failure is matched by name, so a varying error line does not make 
     root: ROOT,
     run,
   });
-  assert.deepEqual(summary.failures, { 'src/known.test.mjs': ['always'] });
+  assert.deepEqual(summary.failures, {
+    'src/known.test.mjs': ['always [Error]'],
+  });
 });
 
 test('a batch that failed without naming anything, while every file passed alone, is still a failure', () => {
@@ -306,7 +309,7 @@ test('allocation probes run once each, alone, and only where calibrated', () => 
     '--test-concurrency=1',
     probe,
   ]);
-  assert.deepEqual(summary.failures, { [probe]: ['budget'] });
+  assert.deepEqual(summary.failures, { [probe]: ['budget [Error]'] });
   const skipped = [];
   runBatched({
     files: [probe],
@@ -488,5 +491,68 @@ test('SCRIPT_PATH exists before the command-line block runs (the runner fallback
   assert.ok(
     declared >= 0 && cli > declared,
     'declare SCRIPT_PATH above the command-line block',
+  );
+});
+
+test('a batch killed or crashed without a recap is a failure even when a file of it failed alone', () => {
+  const run = (args) => {
+    const files = args.filter((a) => a.endsWith('.test.mjs'));
+    if (files.length > 1)
+      return { status: null, error: 'ETIMEDOUT', output: '' };
+    return files[0] === 'src/known.test.mjs'
+      ? {
+          status: 1,
+          output: recap([
+            {
+              at: 'src/known.test.mjs:1:5',
+              name: 'always',
+              error: 'Error: windows',
+            },
+          ]),
+        }
+      : { status: 0, output: 'ℹ tests 1' };
+  };
+  const summary = runBatched({
+    files: ['src/known.test.mjs', 'src/hangs.test.mjs'],
+    calibrated: false,
+    root: ROOT,
+    run,
+  });
+  const label = 'batch 1 (src/known.test.mjs … src/hangs.test.mjs)';
+  assert.deepEqual(summary.failures['src/known.test.mjs'], ['always [Error]']);
+  assert.match(
+    summary.failures[label][0],
+    /^\(unattributed\) the batch exited ETIMEDOUT without a recap/,
+  );
+  // And the branch cannot excuse it.
+  assert.deepEqual(
+    Object.keys(
+      newFailures(summary.failures, {
+        'src/known.test.mjs': ['always [Error]'],
+      }),
+    ),
+    [label],
+  );
+});
+
+test('the error kind is stable across runs and tells an assertion from a crash or a timeout', () => {
+  assert.equal(
+    errorKind('AssertionError [ERR_ASSERTION]: Expected values'),
+    'AssertionError',
+  );
+  assert.equal(errorKind('Error: listen EADDRINUSE 127.0.0.1:53817'), 'Error');
+  assert.equal(errorKind('TypeError: x is not a function'), 'TypeError');
+  assert.equal(
+    errorKind("'test timed out after 30000ms'"),
+    "'test timed out after #ms'",
+  );
+  assert.equal(errorKind(''), '');
+  // A known assertion failure that became a crash is a new failure.
+  assert.deepEqual(
+    newFailures(
+      { 'src/k.test.mjs': ['works [TypeError]'] },
+      { 'src/k.test.mjs': ['works [AssertionError]'] },
+    ),
+    { 'src/k.test.mjs': ['works [TypeError]'] },
   );
 });

@@ -107,11 +107,25 @@ export function failingTests(output, root = process.cwd()) {
 }
 
 /**
- * What the comparison with the branch matches on: the test's name alone,
- * marked when it must always count. The error line varies too much from run
- * to run (temp folders, ports, timings) to decide anything; it is reported.
+ * The kind of an error, from its first line: what comes before the first `:`
+ * or ` [` (AssertionError, TypeError, 'test timed out after …'), digits
+ * dropped. Unlike the whole line it does not change with temp folders, ports
+ * or timings, yet it tells an assertion from a crash or a timeout.
  */
-const keyOf = (test) => `${test.wholeFile ? ALWAYS_NEW[0] : ''}${test.name}`;
+export function errorKind(error) {
+  return String(error ?? '')
+    .split(/:| \[/)[0]
+    .replace(/\d+/g, '#')
+    .trim();
+}
+
+/**
+ * What the comparison with the branch matches on: the test's name and the kind
+ * of its error, marked when it must always count. The full error line varies
+ * too much from run to run to decide anything; it is only reported.
+ */
+const keyOf = (test) =>
+  `${test.wholeFile ? ALWAYS_NEW[0] : ''}${test.name} [${errorKind(test.error)}]`;
 
 /**
  * Run the plan in batches. `run(args)` spawns one Node process with the unit
@@ -186,7 +200,16 @@ export function runBatched({
         record(owner ?? label, `${ALWAYS_NEW[2]}${key}`, test.error);
       }
     }
-    if (!unmatched && !batch.some((file) => failures[file]?.length))
+    // A batch that was killed, crashed, or listed nothing it failed has not
+    // explained its exit, whatever its files did alone: always a failure.
+    const unexplained =
+      result.status === null || result.error || !together.length;
+    if (unexplained)
+      record(
+        label,
+        `${ALWAYS_NEW[1]}the batch ${exitText(result)} without a recap of what failed`,
+      );
+    else if (!unmatched && !batch.some((file) => failures[file]?.length))
       record(
         label,
         `${ALWAYS_NEW[1]}the batch ${exitText(result)}; every file passed alone`,
