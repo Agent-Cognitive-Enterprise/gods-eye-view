@@ -5,6 +5,14 @@
 // reports: how far behind the branch is, which files both sides changed,
 // conflicts (flagging Director, voice, camera and other fork-sensitive areas)
 // and, with --gates, whether the merged tree passes the repository's gates.
+// Conflicts in the files both sides keep adding to (locale catalogs, the icon
+// list in index.html, scripts/package-boundaries.json) are merged by the rules
+// in merge-resolvers.mjs, which refuse whatever they cannot settle; what they
+// merge is listed under `resolved`, with anything a person should check.
+// With --gates the merge is committed in the temporary worktree and reported
+// as `merge_commit`, so a branch can move to exactly the tree that was tested
+// (with --message-file, the commit carries that message and the repository's
+// own identity).
 // On Windows the full unit gate also reruns the merged tree's failing test
 // files on the branch itself, in a second temporary worktree, to tell new
 // failures from ones the branch already has.
@@ -14,6 +22,7 @@
 //
 //   node scripts/upstream-check.mjs [--upstream upstream/main] [--branch HEAD]
 //     [--fetch] [--gates quick|full] [--json] [--keep] [--summary file.md]
+//     [--message-file merge-message.txt]
 //
 // Exit codes: 0 clean (and gates passed), 2 merge conflicts, 3 gate failure,
 // 1 usage or git error. Uses only Node built-ins and git, so it can run under
@@ -25,6 +34,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { resolveConflict } from './merge-resolvers.mjs';
 
 // Defined before anything runs: the command-line block below reads it.
 export const SCRIPT_PATH = fileURLToPath(import.meta.url);
@@ -66,6 +76,7 @@ function parseArgs(argv) {
     json: false,
     keep: false,
     summary: null,
+    messageFile: null,
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -76,12 +87,17 @@ function parseArgs(argv) {
     else if (arg === '--json') options.json = true;
     else if (arg === '--keep') options.keep = true;
     else if (arg === '--summary') options.summary = argv[++i];
+    else if (arg === '--message-file') options.messageFile = argv[++i];
     else throw new Error(`unknown argument ${arg}`);
   }
   if (options.gates && !['quick', 'full'].includes(options.gates))
     throw new Error('--gates must be quick or full');
   if (!options.upstream || !options.branch)
     throw new Error('--upstream and --branch need a value');
+  if (options.messageFile !== null && !options.messageFile)
+    throw new Error('--message-file needs a value');
+  if (options.messageFile && !options.gates)
+    throw new Error('--message-file needs --gates: only a gated run commits');
   return options;
 }
 
@@ -316,6 +332,8 @@ function runGates(dir, root, level, upstreamChanged, head) {
   if (gates.some((g) => !g.pass)) return gates;
   gates.push(npm('format:check', 'run', 'format:check'));
   gates.push(npm('check:boundaries', 'run', 'check:boundaries'));
+  // Catalog completeness, and zh-Hant still the one generated from zh-CN.
+  gates.push(npm('i18n', 'run', 'i18n'));
   if (level === 'full') gates.push(unitGate(dir, root, head));
   else
     gates.push(
@@ -363,6 +381,7 @@ export function upstreamCheck(options, cwd = process.cwd()) {
     upstream_changed: [],
     overlap: [],
     conflicts: [],
+    resolved: [],
     gates: [],
     status: 'up_to_date',
   };
@@ -405,25 +424,61 @@ export function upstreamCheck(options, cwd = process.cwd()) {
         allowFail: true,
       },
     );
-    report.conflicts = lines(
+    const conflicted = lines(
       git(dir, ['diff', '--name-only', '--diff-filter=U']).out,
-    ).map((file) => ({ file, areas: areasOf(file) }));
-    if (report.conflicts.length || !merge.ok) {
+    );
+    for (const file of conflicted) {
+      const outcome = resolveConflict(dir, file);
+      if (outcome.refused)
+        report.conflicts.push({
+          file,
+          areas: areasOf(file),
+          ...(outcome.rule
+            ? { rule: outcome.rule, refused: outcome.refused }
+            : {}),
+        });
+      else
+        report.resolved.push({
+          file,
+          rule: outcome.rule,
+          notes: outcome.notes,
+        });
+    }
+    // A merge that failed for anything but the conflicts just settled, or
+    // left any path unmerged, still needs a person.
+    const unmerged = lines(git(dir, ['ls-files', '--unmerged']).out);
+    if (!merge.ok && !conflicted.length)
+      report.conflicts.push({ file: '(merge failed)', areas: [] });
+    else if (unmerged.length && !report.conflicts.length)
+      report.conflicts.push({ file: '(paths still unmerged)', areas: [] });
+    if (report.conflicts.length) {
       report.status = 'conflicts';
-      if (!report.conflicts.length)
-        report.conflicts = [{ file: '(merge failed)', areas: [] }];
       return report;
     }
     report.status = 'clean';
     if (options.gates) {
-      git(dir, [
-        ...identity,
-        'commit',
-        '--quiet',
-        '--no-verify',
-        '-m',
-        'upstream-check merge',
-      ]);
+      if (options.messageFile) {
+        const message = withResolved(
+          fs.readFileSync(options.messageFile, 'utf8'),
+          report.resolved,
+        );
+        const file = `${dir}-message.txt`;
+        fs.writeFileSync(file, message);
+        try {
+          git(dir, ['commit', '--quiet', '--no-verify', '-F', file]);
+        } finally {
+          fs.rmSync(file, { force: true });
+        }
+      } else
+        git(dir, [
+          ...identity,
+          'commit',
+          '--quiet',
+          '--no-verify',
+          '-m',
+          'upstream-check merge',
+        ]);
+      report.merge_commit = git(dir, ['rev-parse', 'HEAD']).out;
       report.gates = runGates(
         dir,
         root,
@@ -442,6 +497,27 @@ export function upstreamCheck(options, cwd = process.cwd()) {
   }
 }
 
+/**
+ * The commit message with the rule-merged files named, before any trailer
+ * block (Co-Authored-By: …) so the trailers stay last.
+ */
+export function withResolved(message, resolved) {
+  const text = message.replace(/\s+$/, '');
+  if (!resolved.length) return `${text}\n`;
+  const list = [
+    'Conflicts merged by rule (scripts/merge-resolvers.mjs):',
+    ...resolved.map(({ file, rule }) => `- ${file} (${rule})`),
+  ].join('\n');
+  const paragraphs = text.split(/\n{2,}/);
+  const last = paragraphs.at(-1);
+  const trailers =
+    paragraphs.length > 1 &&
+    last.split('\n').every((line) => /^[A-Za-z][\w-]*: \S/.test(line));
+  if (trailers) paragraphs.splice(-1, 0, list);
+  else paragraphs.push(list);
+  return `${paragraphs.join('\n\n')}\n`;
+}
+
 /** Markdown summary for a terminal, an issue or a job summary. */
 export function formatReport(report) {
   const out = [
@@ -456,10 +532,19 @@ export function formatReport(report) {
   const list = (title, items) => {
     if (!items.length) return;
     out.push('', `### ${title}`, '');
-    for (const { file, areas } of items)
+    for (const { file, areas, rule, refused } of items) {
       out.push(`- \`${file}\`${areas.length ? ` (${areas.join(', ')})` : ''}`);
+      if (refused) out.push(`  - not merged by the ${rule} rule: ${refused}`);
+    }
   };
   list('Merge conflicts', report.conflicts);
+  if (report.resolved?.length) {
+    out.push('', '### Merged by rule', '');
+    for (const { file, rule, notes } of report.resolved) {
+      out.push(`- \`${file}\` (${rule})`);
+      for (const note of notes) out.push(`  - check: ${note}`);
+    }
+  }
   list('Changed on both sides', report.overlap);
   if (report.gates.length) {
     out.push('', '### Gates', '');
