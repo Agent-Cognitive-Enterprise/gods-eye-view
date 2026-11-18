@@ -293,6 +293,7 @@
     "./sources/reference": "./src/sources/reference.js",
     "./layers/submarine-cables/source": "./src/layers/submarineCables/bundledSource.js",
     "./sources/http-body": "./src/sources/httpBody.js",
+    "./sources/library": "./src/library/proxy.js",
     "./sources/overpass": "./src/sources/overpass.js",
     "./search/nominatim": "./src/search/nominatim.js",
     "./sources/nominatim": "./src/sources/nominatim.js",
@@ -349,6 +350,7 @@
     "./render/weather": "./src/render/weather.js",
     "./weather/effects": "./src/weatherEffectsMath.js",
     "./geo/screenCluster": "./src/geo/screenCluster.js",
+    "./fleet": "./src/fleet/index.js",
     "./layers/wildlife-sightings": "./src/layers/wildlifeSightings/index.js",
     "./layers/wildlife-sightings/source": "./src/layers/wildlifeSightings/source.js"
   }

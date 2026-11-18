@@ -92,11 +92,11 @@ export class FlightRecords {
       originCountry: origin_country,
       longitude: lon,
       latitude: lat,
-      baroAltitudeM: baro_alt,
+      baroAltitudeM: reportedBaroAlt,
       onGround: on_ground,
       speedMps: velocity,
       courseDeg: true_track,
-      ellipsoidAltitudeM: geo_alt,
+      ellipsoidAltitudeM: reportedGeoAlt,
       category,
       verticalRateMps: vertical_rate,
     } = observation;
@@ -110,11 +110,12 @@ export class FlightRecords {
     // The airframe's facts: this record's, or those kept across a reset.
     const airframe = prevMeta ?? this.airframes.get(icao24);
     this.airframes.delete(icao24);
-    // A ground vehicle or ground station (a feed's ZVEH or GRND: a model
-    // built standing, catalog category `other`) takes the feed's own type,
-    // which no airframe lookup knows; every other aircraft keeps waiting for
-    // its looked-up type. With no altitude at all it stands on the ground,
-    // where it is, instead of at the airborne default.
+    // The feed's own ICAO type classes the contact and picks its model from
+    // the first fix; a looked-up type outranks it once one has answered.
+    // A ground vehicle or ground station (a feed's ZVEH or GRND) is known
+    // from its feed type alone, which no airframe lookup knows. With no
+    // altitude at all, a contact drawn with a model built standing is on the
+    // ground, where it is, instead of at the airborne default.
     const groundModel = (typeCode) =>
       drawnAsGroundModel(
         this.fleetModels(),
@@ -122,17 +123,33 @@ export class FlightRecords {
         category,
         stickyText(callsign, prevMeta?.callsign),
       );
-    const feedType = observation.typeCode || null;
-    // The feed's type is kept for what it names itself, not for a surface
-    // category: a C1 contact whose feed names an airliner type stays a vehicle.
+    const feedType = cleanType(observation.typeCode);
+    // A surface category keeps only a feed's ground type: a C1 contact whose
+    // feed names an airliner type stays a vehicle.
+    // A feed's ground type holds only for a contact that behaves as one: an
+    // airport vehicle reported airborne, or faster than a vehicle drives (a
+    // test transponder, a drone), is classed as any other aircraft.
+    const driving =
+      !(Number.isFinite(velocity) && velocity > VEHICLE_MAX_SPEED_MPS) &&
+      (on_ground === true ||
+        (!Number.isFinite(reportedBaroAlt) &&
+          !Number.isFinite(reportedGeoAlt)));
     const keepFeedType =
       Boolean(feedType) &&
-      (groundCategory(category)
-        ? GROUND_FEED_TYPES.has(feedType.trim().toUpperCase())
-        : groundModel(feedType));
-    const typeCode = airframe?.typeCode ?? (keepFeedType ? feedType : null);
+      (feedType !== 'ZVEH' || driving) &&
+      (!groundCategory(category) || GROUND_FEED_TYPES.has(feedType));
+    // A ground station is fixed: it stands on the ground whatever height its
+    // reports carry, as if they carried none.
+    const station = keepFeedType && feedType === 'GRND';
+    const baro_alt = station ? null : reportedBaroAlt;
+    const geo_alt = station ? null : reportedGeoAlt;
+    const typeLookedUp = airframe?.typeLookedUp === true;
+    const typeCode = typeLookedUp
+      ? airframe.typeCode
+      : ((keepFeedType ? feedType : null) ?? airframe?.typeCode ?? null);
     const onGround =
       on_ground === true ||
+      station ||
       (!Number.isFinite(baro_alt) &&
         !Number.isFinite(geo_alt) &&
         groundModel(typeCode));
@@ -266,6 +283,10 @@ export class FlightRecords {
     // within GROUND_FLOOR_CLAMP_RADIUS_KM of the viewer — the only ones
     // whose burial is visible. Cells warm in one batch after the loop.
     // Airborne only (grounded planes keep the surface-cache path above).
+    // The ground under the contact in its render height's reference, where
+    // the warm cache knows it: the surface it stands on, or the floor under a
+    // low contact near the view. A landing is judged above it.
+    let groundM = onGround ? surfaceM : null;
     if (
       !onGround &&
       renderAltitudeM < GROUND_FLOOR_WARM_MAX_ALT_M &&
@@ -274,10 +295,8 @@ export class FlightRecords {
           approxDistanceKm(viewerLatDeg, viewerLonDeg, lat, lon) <=
             GROUND_FLOOR_CLAMP_RADIUS_KM))
     ) {
-      renderAltitudeM = floorAltitudeM(
-        renderAltitudeM,
-        cachedGroundFloor(lat, lon),
-      );
+      groundM = cachedGroundFloor(lat, lon);
+      renderAltitudeM = floorAltitudeM(renderAltitudeM, groundM);
       floorWarmPoints.push({ lat, lon });
     }
 
@@ -317,6 +336,10 @@ export class FlightRecords {
       geoAltitudeM,
       renderAltitudeM,
       renderAltitudeInvented,
+      // The feed estimated this position: it places the aircraft, and stands
+      // in on the tracked trail only until the next received report.
+      estimated: observation.estimated === true,
+      groundM: Number.isFinite(groundM) ? groundM : null,
       onGround,
       // Round 7: sticky airborne history — the landed fast-cull only
       // applies to contacts that actually flew this session.
@@ -331,8 +354,8 @@ export class FlightRecords {
       ),
       courseAnchor: course.anchor,
       category: cat,
-      // An adsbdb-enriched type code outranks the coarse OpenSky category;
-      // a feed's own ground type (ZVEH, GRND) classes it from the first fix.
+      // A type code (the feed's, or a looked-up one) outranks the coarse
+      // emitter category, from the first fix.
       klass: classifyAircraft({ typeCode, category: cat }),
       turnRateDps: prevMeta?.turnRateDps || 0,
       verticalRate: stickyNumber(vertical_rate, prevMeta?.verticalRate, null),
@@ -366,8 +389,9 @@ export class FlightRecords {
         null,
       ),
       // adsbdb enrichment — written by the enrichment callbacks, carried
-      // across polls; a ground vehicle's or station's from the feed:
+      // across polls; the type is the feed's own until a lookup answers:
       typeCode,
+      typeLookedUp,
       typeName: airframe?.typeName ?? null,
       registration: airframe?.registration ?? null,
       airline: routeHeld ? (airframe.airline ?? null) : null,
@@ -432,6 +456,7 @@ export class FlightRecords {
     for (const [id, meta] of this.data) {
       this.airframes.set(id, {
         typeCode: meta.typeCode,
+        typeLookedUp: meta.typeLookedUp,
         typeName: meta.typeName,
         registration: meta.registration,
         airline: meta.airline,
@@ -473,8 +498,16 @@ function stickyCategory(next, prev) {
   return prev ?? null;
 }
 
+/** A feed's ICAO type designator, upper case, or null. */
+function cleanType(value) {
+  const text = typeof value === 'string' ? value.trim().toUpperCase() : '';
+  return text || null;
+}
+
 /** The types a feed gives airport vehicles (ZVEH) and ground stations (GRND). */
 const GROUND_FEED_TYPES = new Set(['ZVEH', 'GRND']);
+/** The fastest an airport vehicle drives, m/s (144 km/h); faster, it is no vehicle. */
+const VEHICLE_MAX_SPEED_MPS = 40;
 
 /** Per loaded fleet model set: whether a type, category and callsign rule draw a ground model. */
 const groundModelCaches = new WeakMap();
