@@ -188,22 +188,40 @@ export const ALWAYS_NEW_PREFIXES = Object.freeze([
 
 /**
  * Failing tests in `merged` that do not also fail in `base`, by file. A test
- * matches by its key (name and first error line). A whole-file failure, a run
- * that named nothing, a batch-only failure, or a file `base` does not have
- * always counts.
+ * matches by its name, repeats counted: two failures named alike against one
+ * on the branch leave one new. A whole-file failure, a run that named nothing,
+ * a batch-only failure, or a file `base` does not have always counts.
  */
 export function newFailures(merged, base) {
   const fresh = {};
   for (const [file, names] of Object.entries(merged)) {
-    const known = new Set(base[file] ?? []);
-    const added = names.filter(
-      (name) =>
-        ALWAYS_NEW_PREFIXES.some((prefix) => name.startsWith(prefix)) ||
-        !known.has(name),
-    );
+    const known = [...(base[file] ?? [])];
+    const added = names.filter((name) => {
+      if (ALWAYS_NEW_PREFIXES.some((prefix) => name.startsWith(prefix)))
+        return true;
+      const at = known.indexOf(name);
+      if (at < 0) return true;
+      known.splice(at, 1);
+      return false;
+    });
     if (added.length) fresh[file] = added;
   }
   return fresh;
+}
+
+/** The new failures with their first error lines, for the report. */
+function describeFailures(fresh, errors = {}) {
+  const out = {};
+  for (const [file, names] of Object.entries(fresh)) {
+    const lines = [...(errors[file] ?? [])];
+    out[file] = names.map((name) => {
+      const at = lines.findIndex(
+        (line) => line === name || line.startsWith(`${name} — `),
+      );
+      return at >= 0 ? lines.splice(at, 1)[0] : name;
+    });
+  }
+  return out;
 }
 
 /**
@@ -226,7 +244,7 @@ export function unitGate(dir, root, head, platform = process.platform) {
       seconds: seconds(),
       tail: merged.output.split('\n').slice(-25).join('\n'),
     };
-  const { tests, failures } = merged.summary;
+  const { tests, failures, errors } = merged.summary;
   const failing = Object.keys(failures);
   const gate = { name, tests, seconds: 0 };
   if (tests === 0 || !failing.length || platform !== 'win32') {
@@ -235,7 +253,12 @@ export function unitGate(dir, root, head, platform = process.platform) {
       ...gate,
       pass,
       seconds: seconds(),
-      tail: pass ? '' : JSON.stringify(failures, null, 1).slice(0, 4000),
+      tail: pass
+        ? ''
+        : JSON.stringify(describeFailures(failures, errors), null, 1).slice(
+            0,
+            4000,
+          ),
     };
   }
   const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gev-upstream-base-'));
@@ -273,7 +296,7 @@ export function unitGate(dir, root, head, platform = process.platform) {
     also_failing_on_branch: failing.filter((file) => !fresh[file]),
     tail: pass
       ? ''
-      : `new failures (they pass on the branch):\n${JSON.stringify(fresh, null, 1).slice(0, 4000)}`,
+      : `new failures (they pass on the branch):\n${JSON.stringify(describeFailures(fresh, errors), null, 1).slice(0, 4000)}`,
   };
 }
 

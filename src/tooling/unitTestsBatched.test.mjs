@@ -47,7 +47,7 @@ test('summary counts come from the closing summary', () => {
   );
 });
 
-test('failing tests are read from the recap, keyed by name and first error line', () => {
+test('failing tests are read from the recap: file, name, first error line', () => {
   const out = recap([
     {
       at: 'src/a.test.mjs:3:29',
@@ -67,21 +67,32 @@ test('failing tests are read from the recap, keyed by name and first error line'
     },
   ]);
   assert.deepEqual(failingTests(out, ROOT), [
-    // Two tests named alike in different suites stay two failures.
     {
-      file: 'src/a.test.mjs',
-      key: 'works — AssertionError [ERR_ASSERTION]: A broke',
+      at: 'src/a.test.mjs',
+      name: 'works',
+      error: 'AssertionError [ERR_ASSERTION]: A broke',
+      wholeFile: false,
     },
-    // The tree's own path is removed, so another worktree reads the same.
-    { file: 'src/a.test.mjs', key: 'works — Error: path \\src\\x is bad' },
-    { file: 'src/b.test.mjs', key: 'slow (2.1s) — Error: timed out' },
+    // The tree's own path is removed from what is reported.
+    {
+      at: 'src/a.test.mjs',
+      name: 'works',
+      error: 'Error: path \\src\\x is bad',
+      wholeFile: false,
+    },
+    {
+      at: 'src/b.test.mjs',
+      name: 'slow (2.1s)',
+      error: 'Error: timed out',
+      wholeFile: false,
+    },
   ]);
   // Lines inside error text and the body above the recap name nothing.
-  assert.ok(!failingTests(out, ROOT).some((t) => t.key.startsWith('fake')));
+  assert.ok(!failingTests(out, ROOT).some((t) => t.name === 'fake'));
   assert.deepEqual(failingTests('✖ works (3ms)\nℹ fail 1'), []);
 });
 
-test('a whole-file failure is marked so the branch comparison never excuses it', () => {
+test('a whole-file failure is recognised, by an absolute or a relative path', () => {
   const abs = recap([
     {
       at: `${ROOT}\\src\\b.test.mjs:1:1`,
@@ -90,8 +101,8 @@ test('a whole-file failure is marked so the branch comparison never excuses it',
     },
   ]);
   const [found] = failingTests(abs, ROOT);
-  assert.equal(found.file, 'src/b.test.mjs');
-  assert.ok(found.key.startsWith(ALWAYS_NEW[0]), found.key);
+  assert.equal(found.at, 'src/b.test.mjs');
+  assert.equal(found.wholeFile, true);
   const rel = recap([
     {
       at: 'src/b.test.mjs:1:1',
@@ -99,7 +110,7 @@ test('a whole-file failure is marked so the branch comparison never excuses it',
       error: "'test failed'",
     },
   ]);
-  assert.ok(failingTests(rel, ROOT)[0].key.startsWith(ALWAYS_NEW[0]));
+  assert.equal(failingTests(rel, ROOT)[0].wholeFile, true);
 });
 
 test('the checker and the runner agree on what always counts as new', () => {
@@ -108,8 +119,8 @@ test('the checker and the runner agree on what always counts as new', () => {
 
 /**
  * A fake node. `alone[file]` is the recap entries that file fails with when
- * run by itself; `together` adds entries only a multi-file run shows; `probe`
- * gives an allocation probe's statuses, run after run.
+ * run by itself (in a batch too); `together` adds entries only a multi-file
+ * run shows; `probe` gives an allocation probe's statuses, run after run.
  */
 function fakeRun({ alone = {}, together = [], probe = [] } = {}, calls = []) {
   let probeRun = 0;
@@ -167,10 +178,35 @@ test('batches the files, then names each failure by its file', () => {
   assert.equal(calls.filter((a) => fileCount(a) > 1).length, 2);
   assert.equal(calls.length, 3 + 3);
   assert.ok(calls.every((a) => fileCount(a) <= 3));
-  assert.deepEqual(summary.failures, {
+  assert.deepEqual(summary.failures, { 'src/t4.test.mjs': ['four'] });
+  assert.deepEqual(summary.errors, {
     'src/t4.test.mjs': ['four — Error: no'],
   });
   assert.equal(summary.files, 7);
+});
+
+test('a test a helper module defines is filed under the test file that ran it', () => {
+  const helper = {
+    at: 'src/testSupport/latency.mjs:3:28',
+    name: 'latency stays low',
+    error: 'Error: 900 ms',
+  };
+  const summary = runBatched({
+    files: ['src/flights.test.mjs', 'src/military.test.mjs'],
+    calibrated: false,
+    root: ROOT,
+    run: fakeRun({
+      alone: {
+        'src/flights.test.mjs': [helper],
+        'src/military.test.mjs': [helper],
+      },
+    }),
+  });
+  // Both files keep their own failure; the batch's two are matched, none is batch-only.
+  assert.deepEqual(summary.failures, {
+    'src/flights.test.mjs': ['latency stays low'],
+    'src/military.test.mjs': ['latency stays low'],
+  });
 });
 
 test('a failure seen only in the batch is kept, even when another file fails alone', () => {
@@ -194,13 +230,45 @@ test('a failure seen only in the batch is kept, even when another file fails alo
           name: 'racy',
           error: 'Error: port in use',
         },
+        // A helper's test that failed only together has no file of its own.
+        { at: 'src/testSupport/h.mjs:1:1', name: 'shared', error: 'Error: x' },
       ],
     }),
   });
   assert.deepEqual(summary.failures, {
-    'src/known.test.mjs': ['always — Error: windows'],
-    'src/racy.test.mjs': [`${ALWAYS_NEW[2]}racy — Error: port in use`],
+    'src/known.test.mjs': ['always'],
+    'src/racy.test.mjs': [`${ALWAYS_NEW[2]}racy`],
+    'batch 1 (src/known.test.mjs … src/racy.test.mjs)': [
+      `${ALWAYS_NEW[2]}shared`,
+    ],
   });
+});
+
+test('a batch failure is matched by name, so a varying error line does not make it batch-only', () => {
+  let call = 0;
+  const run = (args) => {
+    call++;
+    const files = args.filter((a) => a.endsWith('.test.mjs'));
+    if (!files.includes('src/known.test.mjs'))
+      return { status: 0, output: 'ℹ tests 1' };
+    return {
+      status: 1,
+      output: recap([
+        {
+          at: 'src/known.test.mjs:1:5',
+          name: 'always',
+          error: `Error: port ${50000 + call}`,
+        },
+      ]),
+    };
+  };
+  const summary = runBatched({
+    files: ['src/known.test.mjs', 'src/b.test.mjs'],
+    calibrated: false,
+    root: ROOT,
+    run,
+  });
+  assert.deepEqual(summary.failures, { 'src/known.test.mjs': ['always'] });
 });
 
 test('a batch that failed without naming anything, while every file passed alone, is still a failure', () => {
@@ -238,9 +306,7 @@ test('allocation probes run once each, alone, and only where calibrated', () => 
     '--test-concurrency=1',
     probe,
   ]);
-  assert.deepEqual(summary.failures, {
-    [probe]: ['budget — Error: 12 KB over'],
-  });
+  assert.deepEqual(summary.failures, { [probe]: ['budget'] });
   const skipped = [];
   runBatched({
     files: [probe],
@@ -251,28 +317,31 @@ test('allocation probes run once each, alone, and only where calibrated', () => 
   assert.equal(skipped.length, 0);
 });
 
-test('only failures the branch does not share count as new; the marked kinds always count', () => {
-  const whole = `${ALWAYS_NEW[0]}src/w.test.mjs — 'test failed'`;
+test('only failures the branch does not share count as new, repeats counted; the marked kinds always count', () => {
+  const whole = `${ALWAYS_NEW[0]}src/w.test.mjs`;
   const none = `${ALWAYS_NEW[1]}exited 1 without naming a failing test`;
   assert.deepEqual(
     newFailures(
       {
-        'src/known.test.mjs': ['always — Error: windows'],
-        'src/mixed.test.mjs': ['old — Error: a', 'new — Error: b'],
-        'src/new.test.mjs': ['upstream — Error: c'],
+        'src/known.test.mjs': ['always'],
+        'src/mixed.test.mjs': ['old', 'new'],
+        'src/twice.test.mjs': ['works', 'works'],
+        'src/new.test.mjs': ['upstream'],
         'src/w.test.mjs': [whole],
         'src/n.test.mjs': [none],
       },
       {
-        'src/known.test.mjs': ['always — Error: windows'],
-        'src/mixed.test.mjs': ['old — Error: a'],
+        'src/known.test.mjs': ['always'],
+        'src/mixed.test.mjs': ['old'],
+        'src/twice.test.mjs': ['works'],
         'src/w.test.mjs': [whole],
         'src/n.test.mjs': [none],
       },
     ),
     {
-      'src/mixed.test.mjs': ['new — Error: b'],
-      'src/new.test.mjs': ['upstream — Error: c'],
+      'src/mixed.test.mjs': ['new'],
+      'src/twice.test.mjs': ['works'],
+      'src/new.test.mjs': ['upstream'],
       'src/w.test.mjs': [whole],
       'src/n.test.mjs': [none],
     },
