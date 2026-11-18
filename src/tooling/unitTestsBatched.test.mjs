@@ -5,141 +5,276 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  failingTestNames,
+  ALWAYS_NEW,
+  failingTests,
   runBatched,
   summaryCounts,
 } from '../../scripts/run-unit-tests-batched.mjs';
 import {
+  ALWAYS_NEW_PREFIXES,
   formatReport,
   newFailures,
   unitGate,
 } from '../../scripts/upstream-check.mjs';
 
-const recap = (names) =>
-  [
+/** Node 24's spec-reporter recap, as it prints it. */
+function recap(entries) {
+  return [
     '✔ fine (1.2ms)',
-    '✖ broken one (3.4ms)',
-    '  AssertionError: details',
-    'ℹ tests 3',
+    '✖ works (3.4ms)',
+    '  ✖ fake (1ms)',
+    `ℹ tests ${entries.length + 1}`,
     'ℹ pass 1',
-    `ℹ fail ${names.length}`,
+    `ℹ fail ${entries.length}`,
     '',
     '✖ failing tests:',
-    '',
-    ...names.flatMap((n) => [
-      `✖ ${n} (12.5ms)`,
-      '  AssertionError [ERR_ASSERTION]: no',
+    ...entries.flatMap(({ at, name, error, more = [] }) => [
+      '',
+      `test at ${at}`,
+      `✖ ${name} (12.5ms)`,
+      `  ${error}`,
+      ...more.map((line) => `    ${line}`),
     ]),
   ].join('\n');
+}
 
-test('summary counts and failing names come from the recap only, without durations', () => {
-  const out = recap(['broken one', 'broken two']);
-  assert.deepEqual(summaryCounts(out), { tests: 3, pass: 1, fail: 2 });
-  assert.deepEqual(failingTestNames(out), ['broken one', 'broken two']);
-  // A run with no recap names nothing, even with ✖ lines in its body.
-  assert.deepEqual(failingTestNames('✖ broken one (3ms)\nℹ fail 1'), []);
-  assert.deepEqual(failingTestNames(recap(['slow (2.1s)'])), ['slow (2.1s)']);
+const ROOT = 'C:\\tmp\\gev-upstream-check-abc';
+
+test('summary counts come from the closing summary', () => {
+  assert.deepEqual(
+    summaryCounts(recap([{ at: 'src/a.test.mjs:1:1', name: 'x', error: 'E' }])),
+    { tests: 2, pass: 1, fail: 1 },
+  );
 });
 
-/** A fake node: `results` maps a file to its exit status and failing names. */
-function fakeRun(results, calls = []) {
+test('failing tests are read from the recap, keyed by name and first error line', () => {
+  const out = recap([
+    {
+      at: 'src/a.test.mjs:3:29',
+      name: 'works',
+      error: 'AssertionError [ERR_ASSERTION]: A broke',
+      more: ['  ✖ fake (1ms)'],
+    },
+    {
+      at: 'src/a.test.mjs:4:29',
+      name: 'works',
+      error: `Error: path ${ROOT}\\src\\x is bad`,
+    },
+    {
+      at: 'src\\b.test.mjs:9:1',
+      name: 'slow (2.1s)',
+      error: 'Error: timed out',
+    },
+  ]);
+  assert.deepEqual(failingTests(out, ROOT), [
+    // Two tests named alike in different suites stay two failures.
+    {
+      file: 'src/a.test.mjs',
+      key: 'works — AssertionError [ERR_ASSERTION]: A broke',
+    },
+    // The tree's own path is removed, so another worktree reads the same.
+    { file: 'src/a.test.mjs', key: 'works — Error: path \\src\\x is bad' },
+    { file: 'src/b.test.mjs', key: 'slow (2.1s) — Error: timed out' },
+  ]);
+  // Lines inside error text and the body above the recap name nothing.
+  assert.ok(!failingTests(out, ROOT).some((t) => t.key.startsWith('fake')));
+  assert.deepEqual(failingTests('✖ works (3ms)\nℹ fail 1'), []);
+});
+
+test('a whole-file failure is marked so the branch comparison never excuses it', () => {
+  const abs = recap([
+    {
+      at: `${ROOT}\\src\\b.test.mjs:1:1`,
+      name: `${ROOT}\\src\\b.test.mjs`,
+      error: "'test failed'",
+    },
+  ]);
+  const [found] = failingTests(abs, ROOT);
+  assert.equal(found.file, 'src/b.test.mjs');
+  assert.ok(found.key.startsWith(ALWAYS_NEW[0]), found.key);
+  const rel = recap([
+    {
+      at: 'src/b.test.mjs:1:1',
+      name: 'src/b.test.mjs',
+      error: "'test failed'",
+    },
+  ]);
+  assert.ok(failingTests(rel, ROOT)[0].key.startsWith(ALWAYS_NEW[0]));
+});
+
+test('the checker and the runner agree on what always counts as new', () => {
+  assert.deepEqual([...ALWAYS_NEW_PREFIXES], [...ALWAYS_NEW]);
+});
+
+/**
+ * A fake node. `alone[file]` is the recap entries that file fails with when
+ * run by itself; `together` adds entries only a multi-file run shows; `probe`
+ * gives an allocation probe's statuses, run after run.
+ */
+function fakeRun({ alone = {}, together = [], probe = [] } = {}, calls = []) {
+  let probeRun = 0;
   return (args) => {
     calls.push(args);
     const files = args.filter((a) => a.endsWith('.test.mjs'));
-    const bad = files.filter((f) => results[f]?.status);
-    const together = files.length > 1 && results.together?.status;
-    const names = bad.flatMap((f) => results[f].names ?? []);
+    if (args.includes('--expose-gc')) {
+      const status = probe[probeRun++] ?? 0;
+      return {
+        status,
+        output: status
+          ? recap([
+              {
+                at: `${files[0]}:5:1`,
+                name: 'budget',
+                error: 'Error: 12 KB over',
+              },
+            ])
+          : 'ℹ tests 1\nℹ pass 1\nℹ fail 0',
+      };
+    }
+    const entries = files.flatMap((f) => alone[f] ?? []);
+    if (files.length > 1) entries.push(...together);
     return {
-      status: bad.length || together ? 1 : 0,
-      output: `ℹ tests ${files.length * 2}\nℹ pass ${files.length * 2 - names.length}\nℹ fail ${names.length}\n${names.length ? `✖ failing tests:\n${names.map((n) => `✖ ${n} (1ms)`).join('\n')}` : ''}`,
+      status: entries.length ? 1 : 0,
+      output: entries.length
+        ? recap(entries)
+        : `ℹ tests ${files.length}\nℹ pass ${files.length}\nℹ fail 0`,
     };
   };
 }
 
-test('batches the files and names each failing test by its file', () => {
+const fileCount = (args) => args.filter((x) => x.endsWith('.test.mjs')).length;
+
+test('batches the files, then names each failure by its file', () => {
   const files = Array.from({ length: 7 }, (_, i) => `src/t${i}.test.mjs`);
   const calls = [];
   const summary = runBatched({
     files,
     batchSize: 3,
     calibrated: false,
+    root: ROOT,
     run: fakeRun(
       {
-        'src/t4.test.mjs': { status: 1, names: ['four breaks'] },
-        'src/t6.test.mjs': { status: 1 },
+        alone: {
+          'src/t4.test.mjs': [
+            { at: 'src/t4.test.mjs:2:1', name: 'four', error: 'Error: no' },
+          ],
+        },
       },
       calls,
     ),
   });
-  // Three batches (3 + 3 + 1), then each file of the two failing batches alone.
-  assert.equal(
-    calls.filter((a) => a.filter((x) => x.endsWith('.test.mjs')).length > 1)
-      .length,
-    2,
-  );
-  assert.ok(
-    calls.every((a) => a.filter((x) => x.endsWith('.test.mjs')).length <= 3),
-  );
+  // Batches of 3, 3 and 1; only the failing middle batch is rerun file by file.
+  assert.equal(calls.filter((a) => fileCount(a) > 1).length, 2);
+  assert.equal(calls.length, 3 + 3);
+  assert.ok(calls.every((a) => fileCount(a) <= 3));
   assert.deepEqual(summary.failures, {
-    'src/t4.test.mjs': ['four breaks'],
-    'src/t6.test.mjs': ['exited 1 without naming a failing test'],
+    'src/t4.test.mjs': ['four — Error: no'],
   });
   assert.equal(summary.files, 7);
-  assert.ok(summary.tests > 0);
 });
 
-test('a batch that fails only together is still reported, never dropped', () => {
-  const files = ['src/a.test.mjs', 'src/b.test.mjs'];
+test('a failure seen only in the batch is kept, even when another file fails alone', () => {
   const summary = runBatched({
-    files,
+    files: ['src/known.test.mjs', 'src/racy.test.mjs'],
     calibrated: false,
-    run: fakeRun({ together: { status: 1 } }),
+    root: ROOT,
+    run: fakeRun({
+      alone: {
+        'src/known.test.mjs': [
+          {
+            at: 'src/known.test.mjs:1:5',
+            name: 'always',
+            error: 'Error: windows',
+          },
+        ],
+      },
+      together: [
+        {
+          at: 'src/racy.test.mjs:7:3',
+          name: 'racy',
+          error: 'Error: port in use',
+        },
+      ],
+    }),
   });
-  const keys = Object.keys(summary.failures);
-  assert.equal(keys.length, 1);
-  assert.match(keys[0], /^batch 1 \(src\/a\.test\.mjs … src\/b\.test\.mjs\)$/);
+  assert.deepEqual(summary.failures, {
+    'src/known.test.mjs': ['always — Error: windows'],
+    'src/racy.test.mjs': [`${ALWAYS_NEW[2]}racy — Error: port in use`],
+  });
 });
 
-test('allocation probes run alone with --expose-gc, and only where calibrated', () => {
+test('a batch that failed without naming anything, while every file passed alone, is still a failure', () => {
+  const run = (args) =>
+    fileCount(args) > 1
+      ? { status: null, error: 'ETIMEDOUT', output: '' }
+      : { status: 0, output: 'ℹ tests 1' };
+  const summary = runBatched({
+    files: ['src/a.test.mjs', 'src/b.test.mjs'],
+    calibrated: false,
+    root: ROOT,
+    run,
+  });
+  const [[file, keys]] = Object.entries(summary.failures);
+  assert.match(file, /^batch 1 \(src\/a\.test\.mjs … src\/b\.test\.mjs\)$/);
+  assert.match(keys[0], /^\(unattributed\) the batch exited ETIMEDOUT/);
+});
+
+test('allocation probes run once each, alone, and only where calibrated', () => {
   const probe = 'src/data/focusAllocations.test.mjs';
   const calls = [];
-  runBatched({
+  // Fails on the first run and would pass on a second: the miss is kept.
+  const summary = runBatched({
     files: ['src/a.test.mjs', probe],
     calibrated: true,
-    run: fakeRun({}, calls),
+    root: ROOT,
+    run: fakeRun({ probe: [1, 0] }, calls),
   });
-  const probeCall = calls.find((a) => a.includes(probe));
-  assert.deepEqual(probeCall, [
+  const probeCalls = calls.filter((a) => a.includes(probe));
+  assert.equal(probeCalls.length, 1);
+  assert.deepEqual(probeCalls[0], [
     '--expose-gc',
     '--test',
     '--test-reporter=spec',
     '--test-concurrency=1',
     probe,
   ]);
-  assert.ok(
-    !calls.some((a) => a.includes(probe) && a.includes('src/a.test.mjs')),
-  );
+  assert.deepEqual(summary.failures, {
+    [probe]: ['budget — Error: 12 KB over'],
+  });
   const skipped = [];
-  runBatched({ files: [probe], calibrated: false, run: fakeRun({}, skipped) });
+  runBatched({
+    files: [probe],
+    calibrated: false,
+    root: ROOT,
+    run: fakeRun({}, skipped),
+  });
   assert.equal(skipped.length, 0);
 });
 
-test('only failures the branch does not share count as new', () => {
+test('only failures the branch does not share count as new; the marked kinds always count', () => {
+  const whole = `${ALWAYS_NEW[0]}src/w.test.mjs — 'test failed'`;
+  const none = `${ALWAYS_NEW[1]}exited 1 without naming a failing test`;
   assert.deepEqual(
     newFailures(
       {
-        'src/known.test.mjs': ['always fails on Windows'],
-        'src/mixed.test.mjs': ['old failure', 'new failure'],
-        'src/new.test.mjs': ['upstream test'],
+        'src/known.test.mjs': ['always — Error: windows'],
+        'src/mixed.test.mjs': ['old — Error: a', 'new — Error: b'],
+        'src/new.test.mjs': ['upstream — Error: c'],
+        'src/w.test.mjs': [whole],
+        'src/n.test.mjs': [none],
       },
       {
-        'src/known.test.mjs': ['always fails on Windows'],
-        'src/mixed.test.mjs': ['old failure'],
+        'src/known.test.mjs': ['always — Error: windows'],
+        'src/mixed.test.mjs': ['old — Error: a'],
+        'src/w.test.mjs': [whole],
+        'src/n.test.mjs': [none],
       },
     ),
     {
-      'src/mixed.test.mjs': ['new failure'],
-      'src/new.test.mjs': ['upstream test'],
+      'src/mixed.test.mjs': ['new — Error: b'],
+      'src/new.test.mjs': ['upstream — Error: c'],
+      'src/w.test.mjs': [whole],
+      'src/n.test.mjs': [none],
     },
   );
 });

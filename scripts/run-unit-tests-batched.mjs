@@ -7,7 +7,13 @@
 // the spawn fails with ENAMETOOLONG before any test runs. This runs the same
 // files, with the same Node flags and the same allocation probes, BATCH_SIZE at
 // a time. When a batch fails, each of its files is run alone so the report
-// names the failing tests by file.
+// names the failing tests by file, and anything the batch failed that no file
+// failed alone is kept too.
+//
+// It reuses run-unit-tests.mjs's file list, flags and probe arguments, but
+// repeats its order of phases (ordinary files, then each probe alone, probes
+// only on a calibrated Node unless GEV_REQUIRE_ALLOCATION_GATE=1): when
+// upstream changes that order, change it here as well.
 //
 //   node scripts/run-unit-tests-batched.mjs [--json] [--files a.test.mjs,b.test.mjs]
 //
@@ -37,32 +43,88 @@ export function summaryCounts(output) {
 }
 
 /**
- * Names of the failing tests in one file's spec-reporter output, without their
- * durations. Reads only the "failing tests:" recap, which lists each failure
- * once, so a passing test is never named.
+ * Failures the branch comparison must never excuse: a whole file that failed
+ * (import error, uncaught error, exit code), a run that named nothing, or a
+ * failure seen only when files ran together. Their text alone says too little
+ * to know it is the same failure as on the branch.
  */
-export function failingTestNames(output) {
+export const ALWAYS_NEW = Object.freeze([
+  '(whole file) ',
+  '(unattributed) ',
+  '(only in a batch) ',
+]);
+
+/** Forward slashes, so Windows and POSIX report the same file key. */
+const slashes = (text) => String(text).replaceAll('\\', '/');
+
+/**
+ * The failing tests in spec-reporter output, from its "failing tests:" recap
+ * only (each failure once, a passing test never). Each is
+ * `{ file, key }`: `file` from the recap's `test at` line, `key` the test's
+ * name and the first line of its error, with durations and the tree's own path
+ * removed, so the same failure reads the same in another worktree. `root` is
+ * that tree's path.
+ */
+export function failingTests(output, root = process.cwd()) {
   const lines = String(output).split(/\r?\n/);
   const recap = lines.findIndex((line) => /^✖ failing tests:/.test(line));
-  const names = new Set();
-  for (const line of lines.slice(recap >= 0 ? recap + 1 : lines.length)) {
-    const match = /^\s*✖ (.+?)(?: \([\d.]+m?s\))?$/.exec(line);
-    if (match) names.add(match[1]);
+  if (recap < 0) return [];
+  const rootForms = [...new Set([root, slashes(root)])]
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length);
+  const local = (text) => {
+    let out = String(text);
+    for (const form of rootForms) {
+      out = out.split(`file:///${slashes(form)}`).join('');
+      out = out.split(form).join('');
+    }
+    return out;
+  };
+  const found = [];
+  for (let i = recap + 1; i < lines.length; i++) {
+    const at = /^test at (.+):\d+:\d+$/.exec(lines[i]);
+    if (!at) continue;
+    const name = /^✖ (.+?)(?: \([\d.]+m?s\))?$/.exec(lines[i + 1] ?? '');
+    if (!name) continue;
+    const file = slashes(local(at[1])).replace(/^\/+/, '');
+    let error = '';
+    for (let j = i + 2; j < lines.length && /^\s/.test(lines[j]); j++)
+      if (lines[j].trim()) {
+        error = local(lines[j].trim());
+        break;
+      }
+    const wholeFile =
+      slashes(local(name[1])).replace(/^\/+/, '') === file &&
+      /\.test\.mjs$/.test(file);
+    found.push({
+      file,
+      key: `${wholeFile ? ALWAYS_NEW[0] : ''}${name[1]} — ${error}`,
+    });
+    i += 1;
   }
-  return [...names];
+  return found;
 }
+
+/** The keys of the failing tests, by file. */
+const byFile = (tests) => {
+  const out = {};
+  for (const { file, key } of tests)
+    (out[file] ??= []).includes(key) || out[file].push(key);
+  return out;
+};
 
 /**
  * Run the plan in batches. `run(args)` spawns one Node process with the unit
- * flags and returns { status, output }. Returns the totals and, per failing
- * file, the names of its failing tests (or a description when the file failed
- * without naming any).
+ * flags and returns { status, error, output }. Returns the totals and, per
+ * failing file, the keys of its failing tests (see failingTests and
+ * ALWAYS_NEW).
  */
 export function runBatched({
   files,
   run,
   batchSize = BATCH_SIZE,
   calibrated = isCalibratedAllocationRuntime(),
+  root = process.cwd(),
 }) {
   const allocation = new Set(ALLOCATION_TEST_FILES);
   const ordinary = files.filter((file) => !allocation.has(file));
@@ -72,41 +134,72 @@ export function runBatched({
   const add = (counts) => {
     for (const key of Object.keys(totals)) totals[key] += counts[key];
   };
-  const alone = (file, args) => {
-    const one = run(args);
-    if (one.status === 0) return;
-    const names = failingTestNames(one.output);
-    failures[file] = names.length
-      ? names
-      : [
-          `exited ${one.status ?? one.error ?? 'without a status'} without naming a failing test`,
-        ];
+  const record = (file, keys) => {
+    const list = (failures[file] ??= []);
+    for (const key of keys) if (!list.includes(key)) list.push(key);
+  };
+  const exitText = (result) =>
+    `exited ${result.status ?? result.error ?? 'without a status'}`;
+  /** One finished run of `file` (or a batch): what it failed, never rerun. */
+  const settle = (file, result) => {
+    if (result.status === 0) return;
+    const named = failingTests(result.output, root);
+    if (named.length)
+      for (const [f, keys] of Object.entries(byFile(named))) record(f, keys);
+    else
+      record(file, [
+        `${ALWAYS_NEW[1]}${exitText(result)} without naming a failing test`,
+      ]);
   };
   for (let i = 0; i < ordinary.length; i += batchSize) {
     const batch = ordinary.slice(i, i + batchSize);
     const result = run(['--test', '--test-reporter=spec', ...batch]);
     add(summaryCounts(result.output));
     if (result.status === 0) continue;
-    const before = Object.keys(failures).length;
+    const inBatch = byFile(failingTests(result.output, root));
+    const before = JSON.stringify(failures);
     for (const file of batch)
-      alone(file, ['--test', '--test-reporter=spec', file]);
-    // Failed together, passed alone: still a failure, never dropped.
-    if (Object.keys(failures).length === before)
-      failures[`batch ${i / batchSize + 1} (${batch[0]} … ${batch.at(-1)})`] = [
-        `the batch exited ${result.status ?? result.error ?? 'without a status'}; every file passed alone`,
-      ];
+      settle(file, run(['--test', '--test-reporter=spec', file]));
+    // What failed together but not alone is still a failure, never dropped.
+    for (const [file, keys] of Object.entries(inBatch)) {
+      const alone = failures[file] ?? [];
+      const missing = keys.filter((key) => !alone.includes(key));
+      if (missing.length)
+        record(
+          file,
+          missing.map((key) => `${ALWAYS_NEW[2]}${key}`),
+        );
+    }
+    if (JSON.stringify(failures) === before)
+      record(`batch ${i / batchSize + 1} (${batch[0]} … ${batch.at(-1)})`, [
+        `${ALWAYS_NEW[1]}the batch ${exitText(result)}; every file passed alone`,
+      ]);
   }
-  // As in run-unit-tests.mjs: the probes run only where their budgets are calibrated.
+  // As in run-unit-tests.mjs: the probes run only where their budgets are
+  // calibrated. Each runs once: a budget miss is not retried away.
+  if (!calibrated && probes.length) {
+    const why = `allocation microbenchmarks need Node 24 or 26; running ${process.versions.node}`;
+    if (process.env.GEV_REQUIRE_ALLOCATION_GATE === '1')
+      for (const file of probes) record(file, [`${ALWAYS_NEW[1]}${why}`]);
+    else console.warn(`[unit] SKIPPED ${probes.length} ${why}`);
+  }
   if (calibrated)
     for (const file of probes) {
       const args = [...allocationTestArgs(file)];
       args.splice(args.indexOf('--test') + 1, 0, '--test-reporter=spec');
       const result = run(args);
       add(summaryCounts(result.output));
-      if (result.status !== 0) alone(file, args);
+      settle(file, result);
     }
   return { files: files.length, ...totals, failures };
 }
+
+/**
+ * A run that hangs is stopped here, as a failure, rather than by whatever
+ * stops the whole check (the daily task's one-hour limit), which would leave
+ * its worktrees behind.
+ */
+export const RUN_TIMEOUT_MS = 15 * 60_000;
 
 /** One Node process with the unit flags, in `cwd`. */
 export function nodeRunner(cwd) {
@@ -119,6 +212,8 @@ export function nodeRunner(cwd) {
         encoding: 'utf8',
         env: process.env,
         maxBuffer: 256 * 1024 * 1024,
+        timeout: RUN_TIMEOUT_MS,
+        killSignal: 'SIGKILL',
       },
     );
     return {

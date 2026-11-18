@@ -5,8 +5,12 @@
 // reports: how far behind the branch is, which files both sides changed,
 // conflicts (flagging Director, voice, camera and other fork-sensitive areas)
 // and, with --gates, whether the merged tree passes the repository's gates.
+// On Windows the full unit gate also reruns the merged tree's failing test
+// files on the branch itself, in a second temporary worktree, to tell new
+// failures from ones the branch already has.
 // The current checkout, its working tree and any running server are never
-// touched; the worktree is removed afterwards unless --keep is given.
+// touched; the merge worktree is removed afterwards unless --keep is given,
+// and the branch one always is.
 //
 //   node scripts/upstream-check.mjs [--upstream upstream/main] [--branch HEAD]
 //     [--fetch] [--gates quick|full] [--json] [--keep] [--summary file.md]
@@ -171,14 +175,32 @@ function batchedUnitRun(cwd, files = null) {
 }
 
 /**
- * Failing tests in `merged` that do not also fail in `base`, by file. A file
- * that fails without naming tests, or that `base` does not have, counts whole.
+ * The batched runner's prefixes for failures that never match the branch's
+ * (ALWAYS_NEW in scripts/run-unit-tests-batched.mjs, kept equal by a test).
+ * Copied, not imported: importing the runner would load the tree's
+ * run-unit-tests.mjs into this process even without --gates.
+ */
+export const ALWAYS_NEW_PREFIXES = Object.freeze([
+  '(whole file) ',
+  '(unattributed) ',
+  '(only in a batch) ',
+]);
+
+/**
+ * Failing tests in `merged` that do not also fail in `base`, by file. A test
+ * matches by its key (name and first error line). A whole-file failure, a run
+ * that named nothing, a batch-only failure, or a file `base` does not have
+ * always counts.
  */
 export function newFailures(merged, base) {
   const fresh = {};
   for (const [file, names] of Object.entries(merged)) {
     const known = new Set(base[file] ?? []);
-    const added = names.filter((name) => !known.has(name));
+    const added = names.filter(
+      (name) =>
+        ALWAYS_NEW_PREFIXES.some((prefix) => name.startsWith(prefix)) ||
+        !known.has(name),
+    );
     if (added.length) fresh[file] = added;
   }
   return fresh;
