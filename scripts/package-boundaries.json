@@ -324,6 +324,7 @@
       "src/ui/liveTvPlayer.js",
       "src/ui/views/panels/ResourcesPanel.vue",
       "src/ui/resourcesPresentation.js",
+      "src/ui/feedLabels.js",
       "src/ui/stores/resources.js",
       "src/ui/resourcesMonitor.js"
     ],
@@ -5571,6 +5572,7 @@
       "src/fork/engine.js",
       "src/ui/views/panels/ResourcesPanel.vue",
       "src/ui/resourcesPresentation.js",
+      "src/ui/feedLabels.js",
       "src/ui/stores/resources.js",
       "src/ui/resourcesMonitor.js"
     ],

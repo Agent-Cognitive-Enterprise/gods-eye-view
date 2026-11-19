@@ -12,6 +12,7 @@ import {
   formatDuration,
   groupJobs,
   jobFacts,
+  jobName,
   sparkline,
   statusTone,
   switchErrorText,
@@ -87,6 +88,76 @@ test('jobs group in order, off-by-you first; reasons and effects in words', () =
   ]);
 });
 
+test('rows read by their readable names, as FEEDS names the feeds', () => {
+  // Autopilot feeds take FEEDS' names, not their codes.
+  assert.equal(
+    jobName({
+      id: 'intel:ghostmaps-incidents',
+      label: 'ghostmaps-incidents',
+      provider: 'ghostmaps',
+    }),
+    'S2 GhostMaps incidents',
+  );
+  assert.equal(
+    jobName({
+      id: 'intel:usgs-earthquakes',
+      label: 'usgs-earthquakes',
+      provider: 'usgs',
+    }),
+    'USGS earthquakes',
+  );
+  // Air & Sea codes too.
+  assert.equal(
+    jobName({ id: 'airsea-traffic:aisstream', label: 'aisstream' }),
+    'Ships (AISStream)',
+  );
+  assert.equal(
+    jobName({ id: 'airsea-warnings:nws-marine', label: 'NWS marine' }),
+    'US marine warnings (NWS)',
+  );
+  // Unknown: the server's label with its provider, as before.
+  assert.equal(
+    jobName({ id: 'intel:new-feed', label: 'new-feed', provider: 'acme' }),
+    'new-feed · acme',
+  );
+  assert.equal(
+    jobName({ id: 'airsea-gnss-regional', label: 'GNSS regional screen' }),
+    'GNSS regional screen',
+  );
+  // Sorted and summarised by the name shown.
+  const groups = groupJobs([
+    {
+      id: 'intel:usgs-earthquakes',
+      group: 'autopilot-feeds',
+      label: 'usgs-earthquakes',
+    },
+    {
+      id: 'intel:ghostmaps-incidents',
+      group: 'autopilot-feeds',
+      label: 'ghostmaps-incidents',
+    },
+  ]);
+  assert.deepEqual(groups[0].jobs.map(jobName), [
+    'S2 GhostMaps incidents',
+    'USGS earthquakes',
+  ]);
+  assert.equal(
+    changeSummary({ id: 'intel:ghostmaps-incidents', on: true }, [
+      { id: 'intel:ghostmaps-incidents', label: 'ghostmaps-incidents' },
+    ]),
+    'S2 GhostMaps incidents turned on',
+  );
+  // And in the active language.
+  setLocale('de');
+  try {
+    assert.equal(
+      jobName({ id: 'airsea-traffic:adsblol-mil', label: 'adsblol-mil' }),
+      'Militärflüge (adsb.lol)',
+    );
+  } finally {
+    setLocale('en');
+  }
+});
 test('a change reads before and after, or that it is still measuring', () => {
   const jobs = [{ id: 'intel:gdelt', label: 'gdelt' }];
   assert.equal(

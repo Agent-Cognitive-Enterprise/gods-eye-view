@@ -16,6 +16,7 @@ import {
   formatPercent,
   groupJobs,
   jobFacts,
+  jobName,
   sparkline,
   statusTone,
   switchErrorText,
@@ -108,12 +109,12 @@ const jobIsOn = (job) => !job.off_by_you;
           <li v-for="job in group.jobs" :key="job.id" class="resources-row" :class="{ 'is-off': job.off_by_you }">
             <span class="resources-dot" :class="`tone-${statusTone(job.off_by_you ? 'off' : job.status)}`" aria-hidden="true"></span>
             <div class="resources-row-main">
-              <span class="resources-row-title">{{ job.label }}<template v-if="job.provider && job.provider !== job.label"> · {{ job.provider }}</template></span>
+              <span class="resources-row-title">{{ jobName(job) }}</span>
               <span class="resources-row-facts">{{ job.off_by_you ? t('Off (you turned it off)') : jobFacts(job, now) }}</span>
               <span v-if="job.error && !job.off_by_you" class="resources-row-error">{{ job.error }}</span>
               <span v-if="!job.switchable && fixedReasonLabel(job)" class="resources-row-facts">{{ fixedReasonLabel(job) }}</span>
               <div v-if="confirming === job.id" class="resources-confirm" role="group" :aria-label="t('Confirm')">
-                <span>{{ t('Turn off {label}? This also stops:', { label: job.label }) }}</span>
+                <span>{{ t('Turn off {label}? This also stops:', { label: jobName(job) }) }}</span>
                 <ul><li v-for="dep in dependentLabels(job)" :key="dep">{{ dep }}</li></ul>
                 <UiButton class="data-toggle-chip" @click="switchJob(job, false)">{{ t('Turn off') }}</UiButton>
                 <UiButton class="data-toggle-chip" @click="cancel">{{ t('Cancel') }}</UiButton>

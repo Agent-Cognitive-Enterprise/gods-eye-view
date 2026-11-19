@@ -5,6 +5,7 @@
  * and the reasons, effects and changes in words. Pure: unit-tested.
  */
 import { formatNumber, formatRelativeTime, msg, t } from '../i18n/index.js';
+import { FEED_LABELS } from './feedLabels.js';
 
 /** Group order and titles; unknown groups follow, titled by their code. */
 export const RESOURCE_GROUPS = Object.freeze([
@@ -16,6 +17,37 @@ const DEPENDENTS = Object.freeze({
   'autopilot-events': msg('Autopilot events from this feed'),
   'warning-areas-layer': msg('Warning Areas layer updates'),
 });
+
+/**
+ * Readable names of the jobs whose server label is a bare code; Autopilot
+ * feeds (intel:<feed>) take FEEDS' names (./feedLabels.js).
+ */
+const JOB_NAMES = Object.freeze({
+  'airsea-traffic:adsblol-mil': msg('Military flights (adsb.lol)'),
+  'airsea-traffic:adsblol-regional': msg('Regional flights (adsb.lol)'),
+  'airsea-traffic:aisstream': msg('Ships (AISStream)'),
+  'airsea-traffic:opensky': msg('Air traffic (OpenSky)'),
+  'airsea-warnings:nws-marine': msg('US marine warnings (NWS)'),
+  'airsea-warnings:s124-ccg-trial': msg(
+    'Canadian navigation warnings (CCG S-124)',
+  ),
+});
+
+/**
+ * A job's name in words: the readable name where there is one, else the
+ * server's label with its provider ("label · provider").
+ */
+export function jobName(job) {
+  const id = String(job?.id ?? '');
+  const readable = id.startsWith('intel:')
+    ? FEED_LABELS[id.slice('intel:'.length)]
+    : JOB_NAMES[id];
+  if (readable) return t(readable);
+  const label = String(job?.label ?? id);
+  return job?.provider && job.provider !== label
+    ? `${label} · ${job.provider}`
+    : label;
+}
 
 const FIXED_REASONS = Object.freeze({
   'single-connection': msg('The one live AIS connection: no switch'),
@@ -140,7 +172,7 @@ export function groupJobs(jobs) {
       jobs: g.jobs.sort(
         (a, b) =>
           Number(b.off_by_you) - Number(a.off_by_you) ||
-          String(a.label).localeCompare(String(b.label)),
+          jobName(a).localeCompare(jobName(b)),
       ),
     }));
 }
@@ -151,7 +183,7 @@ export function groupJobs(jobs) {
  */
 export function changeSummary(change, jobs) {
   const job = (jobs ?? []).find((j) => j.id === change.id);
-  const label = job?.label ?? change.id;
+  const label = job ? jobName(job) : change.id;
   const head = change.on
     ? t('{label} turned on', { label })
     : t('{label} turned off', { label });
