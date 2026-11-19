@@ -17,6 +17,13 @@
   /* Use the rail's whole height so the queue shows as many events as fit. */
   height: var(--right-stack-max-height, 60svh);
 }
+/* Space Missions open beside AUTOPILOT (companions, src/ui/panelAccordion.js)
+   is exactly its allocated share; AUTOPILOT shrinks into the rest
+   (shareWithCompanion in src/ui/rightPanelRail.js). Without this both shrank
+   and Space Missions' content ran past the foot of the lane. */
+#right-context-rail > #space-missions-panel:not(.collapsed) {
+  flex-shrink: 0;
+}
 #right-context-rail > #intel-panel:not(.collapsed) > .intel-panel-inner {
   height: 100%;
 }

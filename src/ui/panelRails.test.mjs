@@ -1052,7 +1052,7 @@ test('AUTOPILOT keeps room for its map and a few rows beside Space Missions', as
     shareWithCompanion([intel, missions], natural, [190, 250]),
     [360, 80],
   );
-  // Too little for both: Space Missions keeps its header.
+  // Too little for both: Space Missions keeps its title and a row.
   assert.deepEqual(shareWithCompanion([intel, missions], natural, [100, 100]), [
     200 - COMPANION_FLOOR,
     COMPANION_FLOOR,
@@ -1075,18 +1075,35 @@ test('AUTOPILOT keeps room for its map and a few rows beside Space Missions', as
 });
 
 test('right rail: on a short lane AUTOPILOT gets its keep height beside Space Missions', () => {
-  const f = fixture('right');
-  f.options.windowRef.innerHeight = 700;
-  f.first.id = 'intel-panel';
-  f.second.id = 'space-missions-panel';
-  f.expand(f.first, 500);
-  f.expand(f.second, 900);
-  f.options.preferredPanelId = 'space-missions-panel';
-  f.run();
   const share = (node) =>
     parseFloat(node.style.getPropertyValue('--right-panel-allocated-height'));
-  assert.equal(f.first.classList.contains('collapsed'), false);
-  assert.equal(f.second.classList.contains('collapsed'), false);
-  assert.ok(share(f.first) >= 360, `AUTOPILOT ${share(f.first)}`);
-  assert.ok(share(f.second) >= 48, `Space Missions ${share(f.second)}`);
+  for (const height of [700, 800]) {
+    const f = fixture('right');
+    f.options.windowRef.innerHeight = height;
+    f.first.id = 'intel-panel';
+    f.second.id = 'space-missions-panel';
+    f.expand(f.first, 500);
+    f.expand(f.second, 900);
+    f.options.preferredPanelId = 'space-missions-panel';
+    f.run();
+    assert.equal(f.first.classList.contains('collapsed'), false, height);
+    assert.equal(f.second.classList.contains('collapsed'), false, height);
+    const intel = share(f.first);
+    const missions = share(f.second);
+    // AUTOPILOT gets its keep height, or all but Space Missions' floor.
+    assert.ok(
+      intel >= 360 || missions === 80,
+      `${height}: AUTOPILOT ${intel}, Space Missions ${missions}`,
+    );
+    assert.ok(missions >= 80, `${height}: Space Missions ${missions}`);
+    if (height === 800) assert.ok(intel >= 360, `800: AUTOPILOT ${intel}`);
+  }
+});
+
+test('Space Missions beside AUTOPILOT is exactly its share: it never flex-shrinks', () => {
+  const css = readStylesheet(new URL('./styles/intel.css', import.meta.url));
+  assert.match(
+    css,
+    /#right-context-rail > #space-missions-panel:not\(\.collapsed\) \{\s*flex-shrink: 0;\s*\}/,
+  );
 });
