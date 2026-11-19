@@ -7,7 +7,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const source = readFileSync(new URL('./intelConsole.js', import.meta.url), 'utf8');
+const source = readFileSync(
+  new URL('./intelConsole.js', import.meta.url),
+  'utf8',
+);
 
 test('the Autopilot click asks for the card on top before the marker under it', () => {
   const start = source.indexOf('inputFor(sceneHost).onClick(');
@@ -17,9 +20,11 @@ test('the Autopilot click asks for the card on top before the marker under it', 
   const marker = handler.indexOf('event.topHit');
   assert.ok(card > 0, 'reads the card on top');
   assert.ok(marker > card, 'before the marker under it');
-  // Any card on top returns; only our own card acts (opens its source).
+  // Any card on top returns; only our own card acts (opens its source), and
+  // only on a short, still press: a pan that ends on the card opens nothing.
+  const onCard = handler.slice(card, marker);
   assert.match(
-    handler.slice(card, marker),
-    /if \(card\) \{\s*if \(card\.sourceId === CARD_SOURCE\) card\.entry\?\.activate\?\.\(\);\s*return;\s*\}/,
+    onCard,
+    /card\.sourceId === CARD_SOURCE &&\s*isTrackingClickGesture\(event\.gesture\)\s*\)\s*card\.entry\?\.activate\?\.\(\);\s*return;/,
   );
 });

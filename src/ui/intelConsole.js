@@ -42,6 +42,7 @@ import { createFastIntelPanel } from './fastIntelPanel.js';
 import { createTickLoop } from '../intel/tickLoop.js';
 import { formatQuantity } from './unitLabels.js';
 import { createSpeechPlayer } from '../voice/localAudio.js';
+import { isTrackingClickGesture } from '../data/trackingClickGesture.js';
 
 const PANEL_ID = 'intel-panel';
 const LABEL_SOURCE = 'intel-labels';
@@ -2074,7 +2075,13 @@ export function createIntelConsole({
       // act.
       const card = picking?.clickCard?.(event) ?? null;
       if (card) {
-        if (card.sourceId === CARD_SOURCE) card.entry?.activate?.();
+        // Only a short, still press opens the source, as the quake card's
+        // link does: a pan that ends on the card opens nothing.
+        if (
+          card.sourceId === CARD_SOURCE &&
+          isTrackingClickGesture(event.gesture)
+        )
+          card.entry?.activate?.();
         return;
       }
       const picked = event.topHit;
