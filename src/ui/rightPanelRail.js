@@ -4,7 +4,6 @@ import {
 } from '../panelStackLayout.js';
 import { resolveHudRailLayout } from './panelRailGeometry.js';
 
-import { displayPanelScroller } from './displayPanelScroll.js';
 import { settleSideAccordion } from './panelAccordion.js';
 import { panelRailBand } from './leftPanelRail.js';
 
@@ -379,7 +378,7 @@ export function layoutRightPanelRail({
   stack.dataset.expandedCount = String(expandedPanels.length);
 
   if (displayPanel && expandedPanels.includes(displayPanel)) {
-    const scroller = displayPanelScroller(displayPanel);
+    const scroller = displayPanel;
     const maxScrollTop = Math.max(
       0,
       scroller.scrollHeight - scroller.clientHeight,

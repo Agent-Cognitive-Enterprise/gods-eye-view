@@ -64,4 +64,6 @@
 @import './src/ui/styles/stories-entry.css';
 /* Fork: the panel rails as a row above their columns; after rail-split.css. */
 @import './src/ui/styles/fork-panel-rail-row.css';
-@import './src/ui/styles/cyber.css';
+@import './src/ui/styles/omnibar-dock.css';
+@import './src/ui/styles/guide.css';
+@import './src/ui/styles/sonar.css';

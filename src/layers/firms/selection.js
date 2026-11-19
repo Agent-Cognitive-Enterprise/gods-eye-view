@@ -35,17 +35,23 @@ export function createSelection({
     const input = inputFor(layerState._viewer);
     layerState._clickSubscription = input.onClick((event) => {
       const picked = event.topHit;
-      const fire = pickedFire(event.drawHit);
+      const pickedId = picked ? resolvePickId(picked) : null;
+      // A pick that belongs to a sibling layer (e.g. an aircraft) is not
+      // "empty space" — leave the selection alone and let that layer handle it.
+      const otherLayer = Boolean(pickedId && isOwnedByOtherLayer(id, pickedId));
+      // The stand-in is asked where markers are picked: the click corrected
+      // for the sensor style (`event.position`), and only when no sibling
+      // layer's item is on top, as a marker under that item would not be hit.
+      const fire = layerState._standIn
+        ? otherLayer
+          ? null
+          : standInFire(event.position ?? event.screenPosition)
+        : pickedFire(event.drawHit);
       if (fire) {
         selectAndFocusFire(fire);
         return;
       }
-      // A pick that belongs to a sibling layer (e.g. an aircraft) is not
-      // "empty space" — leave the selection alone and let that layer handle it.
-      if (picked) {
-        const pickedId = resolvePickId(picked);
-        if (pickedId && isOwnedByOtherLayer(id, pickedId)) return;
-      }
+      if (otherLayer) return;
       const cardHit = overlayHost.hitTest?.(
         event.screenPosition?.x,
         event.screenPosition?.y,
@@ -71,11 +77,15 @@ export function createSelection({
 
   function selectAndFocusFire(fire) {
     selectFire(fire);
+    // A stand-in that draws the fire larger than a marker says how far the
+    // camera stands from it (`setMarkerStandIn`).
+    const rangeM = layerState._standIn?.focusRangeM?.(fire);
     requestWorldFocus({
       kind: 'fire',
       id: fireDetectionKey(fire),
       label: t('FIRE'),
       position: components.model.firePosition(fire),
+      ...(Number.isFinite(rangeM) && rangeM > 0 ? { rangeM } : {}),
     });
   }
 
@@ -91,6 +101,32 @@ export function createSelection({
     if (!hit || !layerState._icons || hit.set !== layerState._icons.id)
       return null;
     return layerState._pickIndexById.get(hit.id) ?? null;
+  }
+
+  /** The shown detections by their key, for the shown set they were made from. */
+  let keyed = { fires: null, byKey: null };
+
+  /**
+   * Resolve a click to one of this layer's fire records through the
+   * application's stand-in for its markers (`setMarkerStandIn`), or null:
+   * the record its hit test answers, matched by its detection key to a fire
+   * the layer shows now (so one the filter hides is not selected).
+   * @param {?{x: number, y: number}} screenPosition - Where the user clicked.
+   * @returns {?Object} Fire record.
+   */
+
+  function standInFire(screenPosition) {
+    if (!screenPosition) return null;
+    const record = layerState._standIn?.hitTest(screenPosition);
+    if (!record) return null;
+    if (keyed.fires !== layerState._fires)
+      keyed = {
+        fires: layerState._fires,
+        byKey: new Map(
+          layerState._fires.map((fire) => [fireDetectionKey(fire), fire]),
+        ),
+      };
+    return keyed.byKey.get(fireDetectionKey(record)) ?? null;
   }
 
   /**
@@ -229,6 +265,7 @@ export function createSelection({
     removeClickHandler,
     selectAndFocusFire,
     pickedFire,
+    standInFire,
     selectFire,
     clearFireSelection,
     refreshContextRegistrations,
