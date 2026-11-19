@@ -348,15 +348,29 @@
   color: #ff5a5a;
 }
 
-/* Autopilot icon among the top-centre globe actions. */
-#intel-autopilot-btn[data-mode='auto'] {
-  border-color: var(--accent);
-  color: var(--accent);
-  box-shadow: 0 0 14px rgba(0, 212, 255, 0.18);
+/* The right rail's AUTOPILOT tab carries the Autopilot state (it replaced the
+   top-centre start/stop icon): a dot while it flies the camera, amber while
+   paused, none when off. Cyan stays the open-tab colour. */
+.ui-rail__item[data-rail-item='intel-panel'] {
+  position: relative;
 }
-#intel-autopilot-btn[data-mode='paused'] {
-  border-color: #ffcf6e;
-  color: #ffcf6e;
+body:has(#intel-panel:is([data-autopilot='auto'], [data-autopilot='paused']))
+  .ui-rail__item[data-rail-item='intel-panel']::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #7bd88f;
+  box-shadow: 0 0 6px rgba(123, 216, 143, 0.8);
+  pointer-events: none;
+}
+body:has(#intel-panel[data-autopilot='paused'])
+  .ui-rail__item[data-rail-item='intel-panel']::after {
+  background: #ffcf6e;
+  box-shadow: 0 0 6px rgba(255, 207, 110, 0.8);
 }
 
 /* PLACES: one action and the selected place's value under the chips. */
