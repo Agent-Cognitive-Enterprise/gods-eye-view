@@ -368,10 +368,13 @@ test('a job that is off never wears the switched-on chip look', async () => {
   );
   // `.data-toggle-chip.active` is how the app draws a toggle that is on; the
   // "Turn on" button of a job that is off once wore it, so the job read as on.
-  const turnOn = vue
-    .split('\n')
-    .filter((line) => line.includes("t('Turn on')"));
+  // Whole tags, so a button split over several lines is still checked.
+  const turnOn = (
+    vue.match(/<UiButton\b[^>]*>[\s\S]*?<\/UiButton>/g) ?? []
+  ).filter((tag) => tag.includes("t('Turn on')"));
   assert.ok(turnOn.length > 0, 'the panel has Turn on buttons');
-  for (const line of turnOn)
-    assert.doesNotMatch(line, /class="[^"]*\bactive\b/, line.trim());
+  for (const tag of turnOn) {
+    const open = tag.slice(0, tag.indexOf('>') + 1);
+    assert.doesNotMatch(open, /\bactive\b/, open.replace(/\s+/g, ' '));
+  }
 });
