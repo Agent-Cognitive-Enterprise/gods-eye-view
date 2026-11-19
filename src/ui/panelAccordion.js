@@ -2,10 +2,6 @@
 const PANEL_COMPANIONS = Object.freeze({
   'intel-feeds-panel': 'fast-intel-panel',
   'fast-intel-panel': 'intel-feeds-panel',
-  // Opening Space Missions (Rocket Launches on, a mission picked) leaves
-  // AUTOPILOT open, and the other way round.
-  'space-missions-panel': 'intel-panel',
-  'intel-panel': 'space-missions-panel',
 });
 
 /**

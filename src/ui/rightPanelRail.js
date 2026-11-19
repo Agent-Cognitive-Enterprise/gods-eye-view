@@ -4,7 +4,7 @@ import {
 } from '../panelStackLayout.js';
 import { resolveHudRailLayout } from './panelRailGeometry.js';
 
-import { arePanelCompanions, settleSideAccordion } from './panelAccordion.js';
+import { settleSideAccordion } from './panelAccordion.js';
 import { panelRailBand } from './leftPanelRail.js';
 
 const pendingCollapseRetries = new WeakSet();
@@ -326,9 +326,7 @@ export function layoutRightPanelRail({
   });
   // Other HUD variants restore automatic collapse at the start of each pass.
   // Do not immediately collapse those panels again and schedule a loop.
-  // Fork: a companion of the owner (AUTOPILOT beside Space Missions) shares
-  // the lane and scrolls in its share instead of folding.
-  const autoCollapseIndices = (
+  const autoCollapseIndices =
     hud.visible && hud.variant === 'tactical'
       ? panelStackAutoCollapseIndices({
           naturalHeights: expandedPanels.map((panel) =>
@@ -337,11 +335,7 @@ export function layoutRightPanelRail({
           allocatedHeights: expandedHeights,
           collapseLaterPanels: shouldFocus && hud.variant === 'tactical',
         })
-      : []
-  ).filter(
-    (index) =>
-      !arePanelCompanions(expandedPanels[index].id, expandedPanels[0].id),
-  );
+      : [];
   if (!isCollapseRetry && autoCollapseIndices.length) {
     for (const index of autoCollapseIndices) {
       const panel = expandedPanels[index];
