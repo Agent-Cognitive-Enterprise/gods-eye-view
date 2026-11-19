@@ -373,7 +373,8 @@
 
 /* Auto-hiding bottom controls (src/ui/dockAutoHide.js). The dock keeps its
    own transform (centring) and opacity transition. */
-#corner-actions {
+#corner-actions,
+#gev-omnibar {
   transition:
     opacity 0.35s ease,
     visibility 0.35s ease;

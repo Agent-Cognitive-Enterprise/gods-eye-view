@@ -14,6 +14,14 @@ export const DOCK_HIDDEN_CLASS = 'gev-dock-hidden';
 // hides and shows with it.
 const SURFACES = ['#command-dock', '#corner-actions', '#gev-omnibar'];
 const IDLE_MS = 4_000;
+// Not a surface, but while any of these is up the controls stay: the guide
+// may be pointing at one of them, and a voice session's stop button and
+// waveform live in the dock.
+const HOLDS =
+  ".gev-guide.visible, #gev-voice-control[data-assistant-mode='voice']";
+// While hidden, how often to check whether something now needs the controls
+// (an Omnibar error arriving after its action, the guide opening).
+const WATCH_MS = 1_000;
 // Height of the bottom band that recalls the controls on pointer movement.
 const REVEAL_ZONE_PX = 120;
 
@@ -62,6 +70,7 @@ export function createDockAutoHide({
 
   function inUse() {
     const active = documentRef.activeElement;
+    if (documentRef.querySelector(HOLDS)) return true;
     return surfaces().some(
       (surface) =>
         surface.matches?.(':hover') ||
@@ -91,6 +100,16 @@ export function createDockAutoHide({
       return;
     }
     body.classList.add(DOCK_HIDDEN_CLASS);
+    timer = setTimer(watch, WATCH_MS);
+  }
+
+  // Hidden controls can't be hovered or focused, so whatever holds them now
+  // (Omnibar results, the guide, a voice session) came from elsewhere.
+  function watch() {
+    timer = null;
+    if (destroyed || !body.classList.contains(DOCK_HIDDEN_CLASS)) return;
+    if (inUse()) reveal();
+    else timer = setTimer(watch, WATCH_MS);
   }
 
   function reveal() {

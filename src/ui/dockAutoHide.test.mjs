@@ -18,6 +18,7 @@ function fakeDom({ hovered = false, touch = false } = {}) {
   };
   const dom = {
     hovered,
+    held: null,
     expanded: [],
     listeners,
     documentRef: {
@@ -29,7 +30,8 @@ function fakeDom({ hovered = false, touch = false } = {}) {
         },
       },
       activeElement: null,
-      querySelector: () => surface,
+      querySelector: (selector) =>
+        selector.includes('.gev-guide') ? dom.held : surface,
       addEventListener: (type, fn) => (listeners[type] = fn),
       removeEventListener: (type) => delete listeners[type],
     },
@@ -135,6 +137,62 @@ test('dock auto-hide: the Omnibar hides with the dock and holds it while its res
   const rule = css.match(/([^{}]*)\{\s*opacity: 0 !important;\s*visibility: hidden !important;/);
   assert.ok(rule, 'the hide rule is there');
   assert.match(rule[1], /body\.gev-dock-hidden #gev-omnibar\b/, 'the Omnibar fades out too');
+});
+
+test('dock auto-hide: Omnibar results that arrive while hidden bring the controls back', () => {
+  const dom = fakeDom();
+  const omnibar = {
+    resultsOpen: false,
+    classList: {
+      contains: (name) => name === 'has-results' && omnibar.resultsOpen,
+    },
+  };
+  const surfaceFor = dom.documentRef.querySelector;
+  dom.documentRef.querySelector = (selector) =>
+    selector === '#gev-omnibar' ? omnibar : surfaceFor(selector);
+  const dock = mount(dom);
+  dom.runTimers();
+  assert.equal(dock.isHidden(), true);
+  dom.runTimers();
+  assert.equal(dock.isHidden(), true, 'nothing new: stays hidden');
+  // A chip's action fails after the dock has gone: its error shows.
+  omnibar.resultsOpen = true;
+  dom.runTimers();
+  assert.equal(dock.isHidden(), false, 'the error is on show again');
+  dock.destroy();
+  assert.equal(dom.timers.length > 0, true);
+  dom.runTimers();
+  assert.equal(dock.isHidden(), false, 'a destroyed dock never hides');
+});
+
+test('dock auto-hide: the guide and a voice session hold the controls', () => {
+  const dom = fakeDom();
+  const dock = mount(dom);
+  dom.held = {};
+  dom.runTimers();
+  assert.equal(dock.isHidden(), false, 'guide or voice session up');
+  dom.held = null;
+  dom.runTimers();
+  assert.equal(dock.isHidden(), true);
+  dom.held = {};
+  dom.runTimers();
+  assert.equal(dock.isHidden(), false, 'the guide opening while hidden recalls them');
+  const holds = [];
+  const probe = fakeDom();
+  probe.documentRef.querySelector = (selector) => (holds.push(selector), null);
+  mount(probe);
+  probe.runTimers();
+  const held = holds.find((selector) => selector.includes('.gev-guide'));
+  assert.match(held, /\.gev-guide\.visible/);
+  assert.match(held, /#gev-voice-control\[data-assistant-mode='voice'\]/);
+});
+
+test('dock auto-hide: the Omnibar fades as the bar does', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const css = await readFile(new URL('./styles/intel.css', import.meta.url), 'utf8');
+  const rule = css.match(/([^{}]*)\{\s*transition:\s*opacity 0\.35s ease,/);
+  assert.ok(rule);
+  assert.match(rule[1], /#gev-omnibar\b/);
 });
 
 test('dock auto-hide: recall band is the bottom 120 px', () => {
