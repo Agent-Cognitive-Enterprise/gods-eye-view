@@ -29,9 +29,12 @@ disruption. No physical cause or actor is inferred.
 Supply `{ "evidence": [...] }`. Each claim needs a unique `id`, a `sourceKind`,
 the original public HTTPS `sourceUrl`, a `claim`, the UTC `effectiveAt` time and
 the UTC `knownAt` time when that version of the claim was available. Use
-`YYYY-MM-DDTHH:mm:ssZ` or milliseconds. Immutable records with the same ID and
-different contents are rejected. `knownAt` prevents late reports from leaking
-into earlier snapshots. A cable operator or relevant authority can support a
+`YYYY-MM-DDTHH:mm:ssZ` or milliseconds. `effectiveAt` is when the asserted
+condition began, not when the notice was published: a later notice confirming
+that an earlier fault was a physical break keeps the fault's time, and a
+restoration uses the time service returned. Records with the same ID and
+different contents reject the whole file, at every checkpoint. `knownAt`
+prevents late reports from leaking into earlier snapshots. A cable operator or relevant authority can support a
 qualified claim only in its own remit. For copied news, use the originating
 primary notice if it can be independently verified.
 

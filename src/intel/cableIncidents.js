@@ -157,10 +157,11 @@ export function replayCableIncidents({ catalogue, evidence, asOf }) {
   const cutoff = new Date(utcTime(asOf, 'asOf')).toISOString();
   const index = indexSubmarineCables(catalogue);
   if (!Array.isArray(evidence)) throw new Error('Expected an evidence array');
+  // Validate the whole file before the cutoff, so whether it is rejected
+  // never depends on asOf. Only rows known by asOf reach the snapshot.
   const unique = new Map();
   for (const input of evidence) {
     const row = normalize(input);
-    if (row.knownAt > cutoff) continue;
     if (
       unique.has(row.id) &&
       JSON.stringify(unique.get(row.id)) !== JSON.stringify(row)
@@ -169,9 +170,11 @@ export function replayCableIncidents({ catalogue, evidence, asOf }) {
     }
     unique.set(row.id, row);
   }
-  const ordered = [...unique.values()].sort(
-    (a, b) => compare(a.effectiveAt, b.effectiveAt) || compare(a.id, b.id),
-  );
+  const ordered = [...unique.values()]
+    .filter((row) => row.knownAt <= cutoff)
+    .sort(
+      (a, b) => compare(a.effectiveAt, b.effectiveAt) || compare(a.id, b.id),
+    );
   const groups = new Map();
   const outages = [];
   const leads = [];

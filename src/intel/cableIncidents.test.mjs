@@ -138,6 +138,31 @@ test('duplicate input is stable and out-of-order or contradictory lifecycle need
     () => replay([fault, { ...fault, claim: 'fault' }]),
     /Conflicting evidence ID/,
   );
+  // A conflicting copy known only later rejects the file at every checkpoint.
+  const lateCopy = { ...fault, claim: 'fault', knownAt: time(29) };
+  for (const asOf of [time(20), time(30)]) {
+    assert.throws(() => replay([fault, lateCopy], asOf), /Conflicting/);
+  }
+});
+
+test('a later notice about an earlier break keeps the time the break began', () => {
+  const fault = row('fault');
+  const repaired = row('repaired', {
+    claim: 'restored',
+    effectiveAt: time(28),
+    knownAt: time(29),
+  });
+  const breakNotice = row('break', { claim: 'break', knownAt: time(29) });
+  const result = replay([fault, breakNotice, repaired]);
+  assert.equal(result.incidents[0].status, 'reported-restored');
+  assert.equal(result.incidents[0].breakConfirmed, true);
+  // Dated by publication instead, the break lands after the repair.
+  const misdated = replay([
+    fault,
+    { ...breakNotice, effectiveAt: time(29) },
+    repaired,
+  ]);
+  assert.equal(misdated.incidents[0].reason, 'conflicting-lifecycle');
 });
 
 test('rejects invalid calendar times, future-effective assertions and unsafe source URL schemes', () => {
