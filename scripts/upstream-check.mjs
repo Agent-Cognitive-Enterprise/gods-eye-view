@@ -5,10 +5,12 @@
 // reports: how far behind the branch is, which files both sides changed,
 // conflicts (flagging Director, voice, camera and other fork-sensitive areas)
 // and, with --gates, whether the merged tree passes the repository's gates.
-// Conflicts in the files both sides keep adding to (locale catalogs, the icon
-// list in index.html, scripts/package-boundaries.json) are merged by the rules
-// in merge-resolvers.mjs, which refuse whatever they cannot settle; what they
-// merge is listed under `resolved`, with anything a person should check.
+// With --merge-rules, conflicts in the files both sides keep adding to (locale
+// catalogs, the icon list in index.html, scripts/package-boundaries.json) are
+// merged by the rules in merge-resolvers.mjs, which refuse whatever they cannot
+// settle; what they merge is listed under `resolved`, with anything a person
+// should check. Without it, as before, any conflict is reported as one (so
+// `clean` still means git merges it alone, as upstream-sync.yml expects).
 // With --gates the merge is committed in the temporary worktree and reported
 // as `merge_commit`, so a branch can move to exactly the tree that was tested
 // (with --message-file, the commit carries that message and the repository's
@@ -22,7 +24,7 @@
 //
 //   node scripts/upstream-check.mjs [--upstream upstream/main] [--branch HEAD]
 //     [--fetch] [--gates quick|full] [--json] [--keep] [--summary file.md]
-//     [--message-file merge-message.txt]
+//     [--merge-rules] [--message-file merge-message.txt]
 //
 // Exit codes: 0 clean (and gates passed), 2 merge conflicts, 3 gate failure,
 // 1 usage or git error. Uses only Node built-ins and git, so it can run under
@@ -77,6 +79,7 @@ function parseArgs(argv) {
     keep: false,
     summary: null,
     messageFile: null,
+    mergeRules: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -88,6 +91,7 @@ function parseArgs(argv) {
     else if (arg === '--keep') options.keep = true;
     else if (arg === '--summary') options.summary = argv[++i];
     else if (arg === '--message-file') options.messageFile = argv[++i];
+    else if (arg === '--merge-rules') options.mergeRules = true;
     else throw new Error(`unknown argument ${arg}`);
   }
   if (options.gates && !['quick', 'full'].includes(options.gates))
@@ -428,7 +432,9 @@ export function upstreamCheck(options, cwd = process.cwd()) {
       git(dir, ['diff', '--name-only', '--diff-filter=U']).out,
     );
     for (const file of conflicted) {
-      const outcome = resolveConflict(dir, file);
+      const outcome = options.mergeRules
+        ? resolveConflict(dir, file)
+        : { rule: null, refused: 'merge rules not asked for' };
       if (outcome.refused)
         report.conflicts.push({
           file,
@@ -479,6 +485,13 @@ export function upstreamCheck(options, cwd = process.cwd()) {
           'upstream-check merge',
         ]);
       report.merge_commit = git(dir, ['rev-parse', 'HEAD']).out;
+      // Reachable until the next gated run, so nothing can prune it before the
+      // branch is moved to it once the worktree is gone.
+      git(root, [
+        'update-ref',
+        'refs/upstream-check/last',
+        report.merge_commit,
+      ]);
       report.gates = runGates(
         dir,
         root,
@@ -498,15 +511,19 @@ export function upstreamCheck(options, cwd = process.cwd()) {
 }
 
 /**
- * The commit message with the rule-merged files named, before any trailer
- * block (Co-Authored-By: …) so the trailers stay last.
+ * The commit message with the rule-merged files named, and under each what a
+ * person should check, before any trailer block (Co-Authored-By: …) so the
+ * trailers stay last. The commit keeps that list where a note could be lost.
  */
 export function withResolved(message, resolved) {
   const text = message.replace(/\s+$/, '');
   if (!resolved.length) return `${text}\n`;
   const list = [
     'Conflicts merged by rule (scripts/merge-resolvers.mjs):',
-    ...resolved.map(({ file, rule }) => `- ${file} (${rule})`),
+    ...resolved.flatMap(({ file, rule, notes = [] }) => [
+      `- ${file} (${rule})`,
+      ...notes.map((note) => `  - check: ${note}`),
+    ]),
   ].join('\n');
   const paragraphs = text.split(/\n{2,}/);
   const last = paragraphs.at(-1);

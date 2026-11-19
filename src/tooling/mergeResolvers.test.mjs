@@ -76,6 +76,23 @@ test('a key upstream removed and ours changed is removed, and listed', () => {
   assert.match(out.notes[0], /kept upstream's \(removed\) over ours "b2"/);
 });
 
+test('a "__proto__" key is refused, not silently dropped', () => {
+  const text = '{\n  "__proto__": "p",\n  "A": "a"\n}\n';
+  assert.match(
+    mergeLocale({ base: text, ours: text, upstream: text }).refused,
+    /base side has a "__proto__" key/,
+  );
+  const boundariesText = '{\n  "ui": {\n    "__proto__": []\n  }\n}\n';
+  assert.match(
+    mergeBoundaries({
+      base: boundariesText,
+      ours: boundariesText,
+      upstream: boundariesText,
+    }).refused,
+    /"__proto__" key/,
+  );
+});
+
 test('plural entries (objects) compare by value', () => {
   const plural = { one: '# Schiff', other: '# Schiffe' };
   const base = { '# ships': plural };

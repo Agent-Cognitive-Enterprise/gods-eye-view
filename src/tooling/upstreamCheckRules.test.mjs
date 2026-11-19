@@ -20,10 +20,14 @@ function git(cwd, ...args) {
 }
 
 const run = (cwd, ...args) => {
-  const result = spawnSync(process.execPath, [SCRIPT_PATH, '--json', ...args], {
-    cwd,
-    encoding: 'utf8',
-  });
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT_PATH, '--json', '--merge-rules', ...args],
+    {
+      cwd,
+      encoding: 'utf8',
+    },
+  );
   return {
     code: result.status,
     report: result.stdout ? JSON.parse(result.stdout) : null,
@@ -156,6 +160,26 @@ test(
 );
 
 test(
+  'without --merge-rules every conflict is one, as before',
+  inRepo((dir) => {
+    const result = spawnSync(
+      process.execPath,
+      [SCRIPT_PATH, '--json', '--upstream', 'upstream-lists'],
+      { cwd: dir, encoding: 'utf8' },
+    );
+    assert.equal(result.status, 2);
+    const report = JSON.parse(result.stdout);
+    assert.equal(report.status, 'conflicts');
+    assert.deepEqual(report.resolved, []);
+    assert.deepEqual(report.conflicts.map((c) => c.file).sort(), [
+      'index.html',
+      'scripts/package-boundaries.json',
+      'src/i18n/locales/de.json',
+    ]);
+  }),
+);
+
+test(
   'a conflict no rule covers still stops the merge; the rest are reported as merged',
   inRepo((dir) => {
     const { code, report } = run(dir, '--upstream', 'upstream-mixed');
@@ -228,7 +252,10 @@ test(
           'Merge upstream/main: daily sync',
           '',
           'Conflicts merged by rule (scripts/merge-resolvers.mjs):',
-          ...report.resolved.map(({ file, rule }) => `- ${file} (${rule})`),
+          ...report.resolved.flatMap(({ file, rule, notes }) => [
+            `- ${file} (${rule})`,
+            ...notes.map((note) => `  - check: ${note}`),
+          ]),
           '',
           'Co-Authored-By: Someone <s@localhost>',
         ].join('\n'),
@@ -238,6 +265,11 @@ test(
         git(dir, 'show', `${c}:index.html`),
         /icon_names=add,arrow_upward,flight,live_tv"/,
       );
+      assert.match(
+        git(dir, 'log', '-1', '--format=%B', c),
+        /\n {2}- check: "Move up": both sides added it/,
+      );
+      assert.equal(git(dir, 'rev-parse', 'refs/upstream-check/last'), c);
       assert.ok(report.gates.some((g) => g.name === 'i18n'));
       assert.equal(git(dir, 'rev-parse', 'HEAD'), head, 'branch not moved');
       assert.equal(git(dir, 'worktree', 'list').split('\n').length, 1);
@@ -281,4 +313,10 @@ test('withResolved names the rule-merged files before the trailers', () => {
   );
   // A one-paragraph message has no trailer block.
   assert.equal(withResolved('Fix: thing', files), `Fix: thing\n\n${list}\n`);
+  assert.equal(
+    withResolved('Subject', [
+      { file: 'de.json', rule: 'locale catalog', notes: ['"A": x', '"B": y'] },
+    ]),
+    'Subject\n\nConflicts merged by rule (scripts/merge-resolvers.mjs):\n- de.json (locale catalog)\n  - check: "A": x\n  - check: "B": y\n',
+  );
 });

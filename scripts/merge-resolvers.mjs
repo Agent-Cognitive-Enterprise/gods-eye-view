@@ -38,6 +38,9 @@ function parseExact(text, format, label) {
   }
   if (!value || typeof value !== 'object' || Array.isArray(value))
     return { why: `the ${label} side is not a JSON object` };
+  // Assigning a "__proto__" key sets the prototype instead: it would vanish.
+  if (/"__proto__"\s*:/.test(text))
+    return { why: `the ${label} side has a "__proto__" key` };
   if (format(value) !== text)
     return { why: `the ${label} side is not laid out as this rule writes it` };
   return { value };
@@ -113,7 +116,10 @@ function iconList(text, label) {
   return { names };
 }
 
-/** Three-way merge of whole texts with git merge-file; null when it conflicts. */
+/**
+ * Three-way merge of whole texts with git merge-file, using the histogram diff
+ * that git's own merge uses; null when it conflicts.
+ */
 export function mergeText(base, ours, upstream) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gev-merge-text-'));
   try {
@@ -127,6 +133,7 @@ export function mergeText(base, ours, upstream) {
       [
         'merge-file',
         '-p',
+        '--diff-algorithm=histogram',
         file('ours', ours),
         file('base', base),
         file('upstream', upstream),
