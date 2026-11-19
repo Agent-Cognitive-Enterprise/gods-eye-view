@@ -24,12 +24,16 @@ const DEPENDENTS = Object.freeze({
  */
 const JOB_NAMES = Object.freeze({
   'airsea-traffic:adsblol-mil': msg('Military flights (adsb.lol)'),
-  'airsea-traffic:adsblol-regional': msg('Regional flights (adsb.lol)'),
-  'airsea-traffic:aisstream': msg('Ships (AISStream)'),
+  // The flights layer's fallback when OpenSky is down: its own title.
+  'airsea-traffic:adsblol-regional': msg(
+    'adsb.lol regional fallback (250 nm around the view)',
+  ),
+  'airsea-traffic:aisstream': msg('Vessels (AISStream)'),
   'airsea-traffic:opensky': msg('Air traffic (OpenSky)'),
   'airsea-warnings:nws-marine': msg('US marine warnings (NWS)'),
+  // A trial exchange set: test data, never used for alerts.
   'airsea-warnings:s124-ccg-trial': msg(
-    'Canadian navigation warnings (CCG S-124)',
+    'Canadian navigation warnings, trial data (CCG S-124)',
   ),
 });
 

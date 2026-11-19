@@ -109,11 +109,23 @@ test('rows read by their readable names, as FEEDS names the feeds', () => {
   // Air & Sea codes too.
   assert.equal(
     jobName({ id: 'airsea-traffic:aisstream', label: 'aisstream' }),
-    'Ships (AISStream)',
+    'Vessels (AISStream)',
   );
   assert.equal(
     jobName({ id: 'airsea-warnings:nws-marine', label: 'NWS marine' }),
     'US marine warnings (NWS)',
+  );
+  // The fallback flight feed by its own title, the trial set as trial data.
+  assert.equal(
+    jobName({
+      id: 'airsea-traffic:adsblol-regional',
+      label: 'adsblol-regional',
+    }),
+    'adsb.lol regional fallback (250 nm around the view)',
+  );
+  assert.equal(
+    jobName({ id: 'airsea-warnings:s124-ccg-trial', label: 'CCG S-124' }),
+    'Canadian navigation warnings, trial data (CCG S-124)',
   );
   // Unknown: the server's label with its provider, as before.
   assert.equal(
