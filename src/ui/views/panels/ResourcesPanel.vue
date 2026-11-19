@@ -121,7 +121,7 @@ const jobIsOn = (job) => !job.off_by_you;
             </div>
             <template v-if="job.switchable && canControl && confirming !== job.id">
               <UiButton v-if="jobIsOn(job)" class="data-toggle-chip" :disabled="pending === job.id" @click="ask(job.id)">{{ t('Turn off') }}</UiButton>
-              <UiButton v-else class="data-toggle-chip active" :disabled="pending === job.id" @click="switchJob(job, true)">{{ t('Turn on') }}</UiButton>
+              <UiButton v-else class="data-toggle-chip" :disabled="pending === job.id" @click="switchJob(job, true)">{{ t('Turn on') }}</UiButton>
             </template>
           </li>
         </ul>

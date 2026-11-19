@@ -359,3 +359,19 @@ test('the panel sits in the left column and stays out of clean view and recordin
     /body\.ui-clean-view #resources-panel, body\.recording-mode #resources-panel \{ opacity: 0 !important; visibility: hidden !important;/,
   );
 });
+
+test('a job that is off never wears the switched-on chip look', async () => {
+  const fs = await import('node:fs');
+  const vue = fs.readFileSync(
+    new URL('./views/panels/ResourcesPanel.vue', import.meta.url),
+    'utf8',
+  );
+  // `.data-toggle-chip.active` is how the app draws a toggle that is on; the
+  // "Turn on" button of a job that is off once wore it, so the job read as on.
+  const turnOn = vue
+    .split('\n')
+    .filter((line) => line.includes("t('Turn on')"));
+  assert.ok(turnOn.length > 0, 'the panel has Turn on buttons');
+  for (const line of turnOn)
+    assert.doesNotMatch(line, /class="[^"]*\bactive\b/, line.trim());
+});
