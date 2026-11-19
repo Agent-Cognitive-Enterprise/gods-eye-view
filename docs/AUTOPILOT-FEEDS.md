@@ -35,6 +35,9 @@ in [EARLY-WARNING.md](EARLY-WARNING.md#sources-registry). Status as of
   integrated: no licence and terms review has been done for any of them.
 - **Infrastructure disruption** comes only from NWS civil messages (United
   States). There is no power-grid, internet-outage, transport or cyber feed.
+  The [offline cable incident reviewer](../tools/cable-incidents/README.md)
+  can replay analyst-reviewed reports against the submarine cable catalogue,
+  but does not ingest live notices or publish to Autopilot.
 - **Economic stress** is annual inflation only: no exchange-rate, market,
   food-price or sovereign-debt series, so a fast currency crisis appears
   months late, if at all.
