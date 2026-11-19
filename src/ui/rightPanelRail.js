@@ -12,15 +12,11 @@ const pendingCollapseRetries = new WeakSet();
 /**
  * Fork: beside its companion a panel keeps at least this much height, up to
  * its natural height. AUTOPILOT's header and world map don't shrink (about
- * 265 px); this leaves room under them for its mode row and the current
- * event (queue rows show from about 800 px screens).
+ * 265 px); this leaves a few queue rows under them.
  */
 export const COMPANION_KEEP_HEIGHT = Object.freeze({ 'intel-panel': 360 });
-/**
- * The least the other panel of the pair is squeezed to: its title and about
- * one row (padding 26 px, title row with its margin about 40 px).
- */
-export const COMPANION_FLOOR = 80;
+/** The least a companion is squeezed to: its header and a row. */
+export const COMPANION_FLOOR = 48;
 
 /**
  * Fork: move height inside the open pair (owner at index 0 and its
