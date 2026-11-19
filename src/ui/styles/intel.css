@@ -488,6 +488,21 @@ body:not(.cockpit-mode) #intel-hud .hud-bottom-right {
 body.gev-dock-hidden:not(.cockpit-mode) #intel-hud .hud-bottom-right {
   bottom: 10px !important;
 }
+/* Right to left the attribution line sits under the readout (upstream's
+   Omnibar layout), so the readout clears it however many lines it wraps
+   onto, dock shown or hidden. */
+html[dir='rtl'] body:not(.cockpit-mode) #intel-hud .hud-bottom-right {
+  bottom: max(
+    calc(0.9rem + 44px),
+    var(--omnibar-credits-clear, 0px)
+  ) !important;
+}
+html[dir='rtl']
+  body.gev-dock-hidden:not(.cockpit-mode)
+  #intel-hud
+  .hud-bottom-right {
+  bottom: max(10px, var(--omnibar-credits-clear, 0px)) !important;
+}
 body:not(.cockpit-mode) #intel-hud .hud-bottom-right .hud-bracket {
   display: none;
 }

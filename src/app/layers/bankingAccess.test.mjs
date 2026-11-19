@@ -188,6 +188,46 @@ test('a click on a country selects it; the globe, tiles and unowned items clear 
   h.input.destroy();
 });
 
+test('through the dispatcher, a card painted on top takes the click from the country', async () => {
+  let picked;
+  const h = harness(() => picked);
+  const layer = createBankingAccessLayer({
+    source: { getSnapshot: async () => ANSWER },
+    storage: memoryStorage(),
+    overlayHost: {
+      setEntries() {},
+      setVisible() {},
+      clearSource() {},
+      hitTest: () => null,
+    },
+    loadCountries: async () => PACK,
+    screenSpaceEventHandlerFactory: dispatcherClickHandler,
+    picking,
+    pointer: { isPointerFree: () => true },
+  });
+  layer.init(h.viewer);
+  layer.enable();
+  await layer.update(h.viewer);
+  const [entity] = h.dataSources[0].entities.values;
+  let cardOnTop = null;
+  picking.setClickCardHitTest(() => cardOnTop);
+  try {
+    picked = { primitive: {}, id: entity };
+    cardOnTop = { sourceId: 'earthquakes', entryId: 'mag-label' };
+    h.click();
+    assert.equal(layer.getStats().selected, null, 'the label takes it');
+    cardOnTop = null;
+    h.click();
+    assert.equal(layer.getStats().selected, 'LBN');
+    picked = undefined;
+    cardOnTop = { sourceId: 'ais-vessels', entryId: 'card' };
+    h.click();
+    assert.equal(layer.getStats().selected, 'LBN', 'not empty space: kept');
+  } finally {
+    picking.setClickCardHitTest(null);
+    h.input.destroy();
+  }
+});
 test('an Autopilot point resolves to its string id through the hit', () => {
   const h = harness(() => ({
     primitive: {},

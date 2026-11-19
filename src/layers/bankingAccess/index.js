@@ -484,9 +484,14 @@ export function createBankingAccessLayer({
     _clickHandler = screenSpaceEventHandlerFactory(_host ?? _viewer);
     _clickHandler.setInputAction((click) => {
       if (!_enabled || (pointer && !pointer.isPointerFree())) return;
-      const card = overlayHost.hitTest?.(click.position?.x, click.position?.y, {
-        sourceId: OVERLAY_SOURCE_ID,
-      });
+      // The card or label painted on top takes the click (upstream's rule):
+      // a country under another layer's card does not act, and its
+      // selection stays. Our own card is not interactive, so any card on top
+      // is another layer's.
+      const card =
+        click.event && picking.clickCard
+          ? picking.clickCard(click.event)
+          : overlayHost.hitTest?.(click.position?.x, click.position?.y, {});
       if (card) return;
       // The dispatcher's hit when the click comes through it (app wiring),
       // else the scene's own pick in the same shape.

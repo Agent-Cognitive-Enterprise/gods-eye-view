@@ -134,6 +134,9 @@ function setup({ answer = ANSWER, error = null, click = false } = {}) {
         picking: {
           resolvePickId,
           isOwnedByOtherLayer: () => false,
+          // The card painted on top of a shared click (the real one reads
+          // the world overlay's hit test once per click).
+          clickCard: (event) => event?.cardOnTop ?? null,
         },
         pointer: { isPointerFree: () => true },
       }
@@ -413,6 +416,31 @@ test('a click through the input dispatcher selects by its hit', async () => {
   assert.equal(layer.getStats().selected, null);
 });
 
+test('a card painted on top takes the click: the country under it does not act', async () => {
+  const answer = structuredClone(ANSWER);
+  const { layer, viewer, handler } = setup({ answer, click: true });
+  layer.enable();
+  await layer.update(viewer);
+  const hit = { set: '', id: 'banking-access:LBN:0', surface: false };
+  // A quake's magnitude label over the country: the quake's click.
+  handler.action({
+    position: { x: 10, y: 10 },
+    event: { cardOnTop: { sourceId: 'earthquakes', entryId: 'q1' } },
+    hit,
+  });
+  assert.equal(layer.getStats().selected, null, 'not selected under a card');
+  handler.action({ position: { x: 10, y: 10 }, event: {}, hit });
+  assert.equal(layer.getStats().selected, 'LBN');
+  // A vessel card over open sea: not empty space, so the selection stays.
+  handler.action({
+    position: { x: 1, y: 1 },
+    event: { cardOnTop: { sourceId: 'ais-vessels', entryId: 'v1' } },
+    hit: null,
+  });
+  assert.equal(layer.getStats().selected, 'LBN');
+  handler.action({ position: { x: 1, y: 1 }, event: {}, hit: null });
+  assert.equal(layer.getStats().selected, null);
+});
 test('overlapping events show a range; a stale lead says so; systemic is a border', async () => {
   const answer = structuredClone(ANSWER);
   Object.assign(answer.countries[0], {

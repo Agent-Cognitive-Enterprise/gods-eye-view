@@ -17,6 +17,9 @@ export function dispatcherClickHandler(viewer) {
       off = inputFor(viewer).onClick((event) =>
         fn({
           position: event.screenPosition,
+          // The shared click itself: the pick registry reads the card on top
+          // once per click object, so every layer agrees on it.
+          event,
           get hit() {
             return event.topHit;
           },

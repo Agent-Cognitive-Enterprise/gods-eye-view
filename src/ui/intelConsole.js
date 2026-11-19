@@ -2068,6 +2068,15 @@ export function createIntelConsole({
     // click as a hit (the pick registry's contract).
     clickHandler = inputFor(sceneHost).onClick((event) => {
       if (pointer && !pointer.isPointerFree()) return;
+      // The card or label painted on top takes the click (upstream's rule,
+      // read once per click): our own card opens its source; another
+      // layer's card is that layer's click, so the marker under it does not
+      // act.
+      const card = picking?.clickCard?.(event) ?? null;
+      if (card) {
+        if (card.sourceId === CARD_SOURCE) card.entry?.activate?.();
+        return;
+      }
       const picked = event.topHit;
       const id = picking?.resolvePickId
         ? picking.resolvePickId(picked)
