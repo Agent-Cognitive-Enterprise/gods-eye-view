@@ -10,6 +10,48 @@ import { panelRailBand } from './leftPanelRail.js';
 const pendingCollapseRetries = new WeakSet();
 
 /**
+ * Fork: beside its companion a panel keeps at least this much height, up to
+ * its natural height. AUTOPILOT's header and world map don't shrink (about
+ * 265 px); this leaves a few queue rows under them.
+ */
+export const COMPANION_KEEP_HEIGHT = Object.freeze({ 'intel-panel': 360 });
+/** The least a companion is squeezed to: its header and a row. */
+export const COMPANION_FLOOR = 48;
+
+/**
+ * Fork: move height inside the open pair (owner at index 0 and its
+ * companion) so a panel with a keep height gets it, taken from the other
+ * panel down to COMPANION_FLOOR. Nothing changes for any other stack.
+ * @param {HTMLElement[]} panels Expanded panels, owner first.
+ * @param {Map<HTMLElement, number>} naturalHeights
+ * @param {number[]} heights Allocated heights, in `panels` order.
+ */
+export function shareWithCompanion(panels, naturalHeights, heights) {
+  const companion = panels.findIndex(
+    (panel, index) => index > 0 && arePanelCompanions(panel.id, panels[0].id),
+  );
+  if (companion < 0) return heights;
+  const out = heights.slice();
+  for (const [index, other] of [
+    [0, companion],
+    [companion, 0],
+  ]) {
+    const keep = Math.min(
+      COMPANION_KEEP_HEIGHT[panels[index].id] ?? 0,
+      naturalHeights.get(panels[index]) ?? 0,
+    );
+    const move = Math.min(
+      keep - out[index],
+      Math.max(0, out[other] - COMPANION_FLOOR),
+    );
+    if (move <= 0) continue;
+    out[index] += move;
+    out[other] -= move;
+  }
+  return out;
+}
+
+/**
  * Where the left rail's top will settle, not where it is mid-transition:
  * nothing re-runs this pass when the `top` animation ends (ResizeObserver
  * ignores moves). Returns NaN when there is no left rail.
@@ -320,10 +362,14 @@ export function layoutRightPanelRail({
       collapsedHeight -
       gap * Math.max(0, visiblePanels.length - 1),
   );
-  const expandedHeights = allocatePanelStackHeights({
-    naturalHeights: expandedPanels.map((panel) => naturalHeights.get(panel)),
-    availableHeight: expandedAvailableHeight,
-  });
+  const expandedHeights = shareWithCompanion(
+    expandedPanels,
+    naturalHeights,
+    allocatePanelStackHeights({
+      naturalHeights: expandedPanels.map((panel) => naturalHeights.get(panel)),
+      availableHeight: expandedAvailableHeight,
+    }),
+  );
   // Other HUD variants restore automatic collapse at the start of each pass.
   // Do not immediately collapse those panels again and schedule a loop.
   // Fork: a companion of the owner (AUTOPILOT beside Space Missions) shares
