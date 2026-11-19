@@ -28,3 +28,22 @@ test('the Autopilot click asks for the card on top before the marker under it', 
     /card\.sourceId === CARD_SOURCE &&\s*isTrackingClickGesture\(event\.gesture\)\s*\)\s*card\.entry\?\.activate\?\.\(\);\s*return;/,
   );
 });
+
+test('the AUTOPILOT tab is the one Autopilot icon, and shows when it runs', () => {
+  assert.doesNotMatch(source, /top-center-actions|intel-autopilot-btn/);
+  assert.match(source, /panel\.dataset\.autopilot = mode;/);
+  const css = readFileSync(
+    new URL('./styles/intel.css', import.meta.url),
+    'utf8',
+  );
+  assert.doesNotMatch(css, /#intel-autopilot-btn/);
+  // A dot on the tab while it flies the camera, amber while paused.
+  assert.match(
+    css,
+    /body:has\(#intel-panel:is\(\[data-autopilot='auto'\], \[data-autopilot='paused'\]\)\)\s*\.ui-rail__item\[data-rail-item='intel-panel'\]::after \{[^}]*content: '';/,
+  );
+  assert.match(
+    css,
+    /body:has\(#intel-panel\[data-autopilot='paused'\]\)\s*\.ui-rail__item\[data-rail-item='intel-panel'\]::after \{[^}]*background: #ffcf6e;/,
+  );
+});
