@@ -342,11 +342,9 @@
 }
 
 /* The right rail's AUTOPILOT tab carries the Autopilot state (it replaced the
-   top-centre start/stop icon): a dot while it flies the camera, amber while
-   paused, none when off. Cyan stays the open-tab colour. */
-.ui-rail__item[data-rail-item='intel-panel'] {
-  position: relative;
-}
+   top-centre start/stop icon): a green dot while it flies the camera, an amber
+   ring while paused, none when off. Cyan stays the open-tab colour. The item
+   is already position: relative (kit.css). */
 body:has(#intel-panel:is([data-autopilot='auto'], [data-autopilot='paused']))
   .ui-rail__item[data-rail-item='intel-panel']::after {
   content: '';
@@ -360,9 +358,12 @@ body:has(#intel-panel:is([data-autopilot='auto'], [data-autopilot='paused']))
   box-shadow: 0 0 6px rgba(123, 216, 143, 0.8);
   pointer-events: none;
 }
+/* Paused is a ring, not a dot: the shape tells it apart, not only colour. */
 body:has(#intel-panel[data-autopilot='paused'])
   .ui-rail__item[data-rail-item='intel-panel']::after {
-  background: #ffcf6e;
+  box-sizing: border-box;
+  background: transparent;
+  border: 2px solid #ffcf6e;
   box-shadow: 0 0 6px rgba(255, 207, 110, 0.8);
 }
 

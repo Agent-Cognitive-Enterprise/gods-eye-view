@@ -54,8 +54,9 @@ The autopilot instance's environment is set in `gev-common.ps1`
   **SKIP**, **DEMO DRILL** (a synthetic replay world; live data is untouched),
   **NARRATION** (spoken briefings via Piper), the feed list with health, and
   the queue. Cards show sources, verification, confidence and age.
-- The aeroplane icon first in the top-centre row also switches Autopilot on
-  and off (blue when on, amber when paused; a click then resumes).
+- The **AUTOPILOT** tab in the right column opens and closes the panel like
+  the other tabs. While Autopilot flies the camera the tab shows a green dot
+  (an amber ring while paused), so it shows with the panel closed too.
 - **FEEDS** (left column) shows each feed's health with failing feeds first
   and "N/M up" in its header; the local model's state is its last line.
   **CAMERA RULES** in the Autopilot panel opens and closes from its heading.

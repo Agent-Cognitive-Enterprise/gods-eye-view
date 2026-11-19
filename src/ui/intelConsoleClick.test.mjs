@@ -32,18 +32,21 @@ test('the Autopilot click asks for the card on top before the marker under it', 
 test('the AUTOPILOT tab is the one Autopilot icon, and shows when it runs', () => {
   assert.doesNotMatch(source, /top-center-actions|intel-autopilot-btn/);
   assert.match(source, /panel\.dataset\.autopilot = mode;/);
+  // It goes when the console does, and is spoken on the tab.
+  assert.match(source, /delete panel\?\.dataset\?\.autopilot;/);
+  assert.match(source, /setAttribute\('aria-description', text\)/);
   const css = readFileSync(
     new URL('./styles/intel.css', import.meta.url),
     'utf8',
   );
   assert.doesNotMatch(css, /#intel-autopilot-btn/);
-  // A dot on the tab while it flies the camera, amber while paused.
+  // A dot on the tab while it flies the camera, an amber ring while paused.
   assert.match(
     css,
     /body:has\(#intel-panel:is\(\[data-autopilot='auto'\], \[data-autopilot='paused'\]\)\)\s*\.ui-rail__item\[data-rail-item='intel-panel'\]::after \{[^}]*content: '';/,
   );
   assert.match(
     css,
-    /body:has\(#intel-panel\[data-autopilot='paused'\]\)\s*\.ui-rail__item\[data-rail-item='intel-panel'\]::after \{[^}]*background: #ffcf6e;/,
+    /body:has\(#intel-panel\[data-autopilot='paused'\]\)\s*\.ui-rail__item\[data-rail-item='intel-panel'\]::after \{[^}]*border: 2px solid #ffcf6e;/,
   );
 });

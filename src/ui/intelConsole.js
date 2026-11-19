@@ -511,8 +511,22 @@ export function createIntelConsole({
     };
     const modeLabel = t(modeLabels[mode]);
     ui.modeText.textContent = modeLabel;
-    // The right rail's AUTOPILOT tab shows the mode from this (intel.css).
+    // The right rail's AUTOPILOT tab shows the mode from this (intel.css),
+    // and says it to screen readers (its label and aria-pressed are the
+    // tab's own: Vue renders them).
     panel.dataset.autopilot = mode;
+    describeTab(mode === 'off' ? '' : `${t('AUTOPILOT ON')}: ${modeLabel}`);
+  }
+
+  /** The AUTOPILOT tab's spoken state, or none (`''`). */
+  function describeTab(text) {
+    const tab = documentRef.querySelector?.(
+      ".ui-rail__item[data-rail-item='intel-panel']",
+    );
+    if (!tab) return;
+    if (!text) tab.removeAttribute('aria-description');
+    else if (tab.getAttribute('aria-description') !== text)
+      tab.setAttribute('aria-description', text);
   }
 
   function renderWorld() {
@@ -2126,6 +2140,10 @@ export function createIntelConsole({
       points = null;
       markerState.clear();
       labelLook = '';
+      // The panel is Vue's markup and outlives this console: no dot or
+      // spoken state may claim an Autopilot that is gone.
+      delete panel?.dataset?.autopilot;
+      describeTab('');
     },
     /** Read-only state for QA scripts. */
     snapshot: () => ({
