@@ -133,7 +133,7 @@ test('a left rail lifted beyond its band is still followed', () => {
   assert.equal(lifted.panelsTop, 126);
 });
 
-test('a hidden left rail (Cyber cockpit) still lines the columns up', () => {
+test('a hidden left rail still lines the columns up', () => {
   const hidden = layout({ leftRailTop: `-${BAND}px`, leftRailHidden: true });
   assert.equal(hidden.panelsTop, 146);
 });

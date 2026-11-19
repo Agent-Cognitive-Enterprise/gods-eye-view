@@ -10,7 +10,9 @@
  * them). Only a body class changes; the controls themselves are untouched.
  */
 export const DOCK_HIDDEN_CLASS = 'gev-dock-hidden';
-const SURFACES = ['#command-dock', '#corner-actions'];
+// Upstream's Omnibar sits over the dock bar but outside #command-dock, so it
+// hides and shows with it.
+const SURFACES = ['#command-dock', '#corner-actions', '#gev-omnibar'];
 const IDLE_MS = 4_000;
 // Height of the bottom band that recalls the controls on pointer movement.
 const REVEAL_ZONE_PX = 120;
@@ -64,6 +66,8 @@ export function createDockAutoHide({
       (surface) =>
         surface.matches?.(':hover') ||
         hasOpenMenu(surface) ||
+        // The Omnibar's results or feedback are on show.
+        surface.classList?.contains?.('has-results') ||
         surface.querySelector?.(
           '.panel-collapsible:not(.collapsed), #location-bar:not(.collapsed)',
         ) ||

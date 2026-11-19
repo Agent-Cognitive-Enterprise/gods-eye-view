@@ -379,7 +379,8 @@
     visibility 0.35s ease;
 }
 body.gev-dock-hidden #command-dock,
-body.gev-dock-hidden #corner-actions {
+body.gev-dock-hidden #corner-actions,
+body.gev-dock-hidden #gev-omnibar {
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;

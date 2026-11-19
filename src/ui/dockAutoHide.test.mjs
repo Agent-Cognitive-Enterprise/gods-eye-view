@@ -107,6 +107,36 @@ test('dock auto-hide: an open menu holds it, a closed popup does not', () => {
   assert.equal(dock.isHidden(), true, 'closed language popup');
 });
 
+test('dock auto-hide: the Omnibar hides with the dock and holds it while its results show', async () => {
+  const dom = fakeDom();
+  const omnibar = {
+    resultsOpen: false,
+    classList: {
+      contains: (name) => name === 'has-results' && omnibar.resultsOpen,
+    },
+  };
+  const asked = [];
+  const surfaceFor = dom.documentRef.querySelector;
+  dom.documentRef.querySelector = (selector) => {
+    asked.push(selector);
+    return selector === '#gev-omnibar' ? omnibar : surfaceFor(selector);
+  };
+  const dock = mount(dom);
+  omnibar.resultsOpen = true;
+  dom.runTimers();
+  assert.ok(asked.includes('#gev-omnibar'), 'the Omnibar is a surface');
+  assert.equal(dock.isHidden(), false, 'results on show');
+  omnibar.resultsOpen = false;
+  dom.runTimers();
+  assert.equal(dock.isHidden(), true);
+
+  const { readFile } = await import('node:fs/promises');
+  const css = await readFile(new URL('./styles/intel.css', import.meta.url), 'utf8');
+  const rule = css.match(/([^{}]*)\{\s*opacity: 0 !important;\s*visibility: hidden !important;/);
+  assert.ok(rule, 'the hide rule is there');
+  assert.match(rule[1], /body\.gev-dock-hidden #gev-omnibar\b/, 'the Omnibar fades out too');
+});
+
 test('dock auto-hide: recall band is the bottom 120 px', () => {
   assert.equal(inRevealZone(779, 900), false);
   assert.equal(inRevealZone(780, 900), true);
