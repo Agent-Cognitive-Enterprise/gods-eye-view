@@ -1,5 +1,6 @@
 // FEEDS and FAST INTELLIGENCE stay open together, and FAST INTELLIGENCE takes the
-// height FEEDS leaves. Every other panel keeps the one-panel rule.
+// height FEEDS leaves. Space Missions and AUTOPILOT stay open together too.
+// Every other panel keeps the one-panel rule.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { allocatePanelFillHeights } from '../panelStackLayout.js';
@@ -26,8 +27,12 @@ function settle(panels, preferredPanelId) {
   return collapsed;
 }
 
-test('only the two fork panels are companions, in either order', () => {
+test('only the two fork pairs are companions, in either order', () => {
   assert.ok(arePanelCompanions('intel-feeds-panel', 'fast-intel-panel'));
+  assert.ok(arePanelCompanions('space-missions-panel', 'intel-panel'));
+  assert.ok(arePanelCompanions('intel-panel', 'space-missions-panel'));
+  assert.ok(!arePanelCompanions('space-missions-panel', 'fast-intel-panel'));
+  assert.ok(!arePanelCompanions('intel-panel', 'cctv-panel'));
   assert.ok(arePanelCompanions('fast-intel-panel', 'intel-feeds-panel'));
   assert.ok(!arePanelCompanions('fast-intel-panel', 'data-panel'));
   assert.ok(!arePanelCompanions('data-panel', 'scene-panel'));
@@ -38,6 +43,16 @@ test('companions both stay open, whichever opened last', () => {
   const pair = () => [panel('intel-feeds-panel'), panel('fast-intel-panel')];
   assert.deepEqual(settle(pair(), 'fast-intel-panel'), []);
   assert.deepEqual(settle(pair(), 'intel-feeds-panel'), []);
+});
+
+test('Space Missions and AUTOPILOT both stay open, whichever opened last', () => {
+  const pair = () => [panel('intel-panel'), panel('space-missions-panel')];
+  assert.deepEqual(settle(pair(), 'space-missions-panel'), []);
+  assert.deepEqual(settle(pair(), 'intel-panel'), []);
+  assert.deepEqual(
+    settle([panel('cctv-panel'), ...pair()], 'space-missions-panel'),
+    ['cctv-panel'],
+  );
 });
 
 test('any other panel still closes them', () => {

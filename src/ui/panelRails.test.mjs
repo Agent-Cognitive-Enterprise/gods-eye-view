@@ -1000,3 +1000,34 @@ test('the right rail is laid out again when the Stories card can appear or go', 
   );
   assert.equal(movesStoriesCard(bodyClass('a', ['b'])), false);
 });
+
+test('right rail: Space Missions and AUTOPILOT share a short lane instead of one folding', () => {
+  for (const preferred of ['space-missions-panel', 'intel-panel']) {
+    const f = fixture('right');
+    f.first.id = 'intel-panel';
+    f.second.id = 'space-missions-panel';
+    f.expand(f.first, 900);
+    f.expand(f.second, 900);
+    f.options.preferredPanelId = preferred;
+    f.run();
+    assert.equal(f.first.classList.contains('collapsed'), false, preferred);
+    assert.equal(f.second.classList.contains('collapsed'), false, preferred);
+    assert.deepEqual(f.collapsed, [], preferred);
+    assert.equal(f.retries(), 0, preferred);
+    const share = (node) =>
+      parseFloat(node.style.getPropertyValue('--right-panel-allocated-height'));
+    assert.ok(share(f.first) >= 96 && share(f.second) >= 96, preferred);
+    assert.ok(share(f.first) + share(f.second) < 900, 'both fit the lane');
+  }
+});
+
+test('right rail: any other pair still folds the later panel', () => {
+  const f = fixture('right');
+  f.first.id = 'intel-panel';
+  f.second.id = 'cctv-panel';
+  f.expand(f.first, 900);
+  f.expand(f.second, 900);
+  f.options.preferredPanelId = 'cctv-panel';
+  f.run();
+  assert.equal(f.first.classList.contains('collapsed'), true);
+});
