@@ -1,0 +1,31 @@
+{
+  "sources": [
+    {
+      "id": "cinia-news",
+      "format": "rss",
+      "url": "https://www.cinia.fi/en/news/rss.xml",
+      "sourceKind": "operator",
+      "publisher": "Cinia",
+      "remit": "Cinia's own cables, such as C-Lion1"
+    },
+    {
+      "id": "cinia-news-page",
+      "enabled": false,
+      "format": "page",
+      "url": "https://www.cinia.fi/en/news",
+      "pathPrefix": "/en/news/",
+      "sourceKind": "operator",
+      "publisher": "Cinia",
+      "remit": "The same notices as cinia-news; an example of a page source"
+    },
+    {
+      "id": "subtel-forum",
+      "format": "rss",
+      "url": "https://subtelforum.com/feed/",
+      "sourceKind": "news",
+      "publisher": "SubTel Forum",
+      "remit": "Industry news: leads only, look for the operator's own notice"
+    }
+  ],
+  "ioda": { "enabled": false }
+}

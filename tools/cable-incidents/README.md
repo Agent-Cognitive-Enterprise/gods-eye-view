@@ -54,13 +54,97 @@ primary notice if it can be independently verified.
    separate subsequent fault needs a new incident ID. An open status is last
    known, not live telemetry or proof the cable is still down.
 
+## Watch for new notices (observe-only inbox)
+
+`inbox.mjs` checks a short list of sources you choose and turns each new
+notice into a **proposal** for you to review. A proposal is never evidence.
+Only `accept` writes a row to the reviewed evidence file, and only with
+the claim, incident and time that you supply. The inbox serves no route,
+changes nothing on the globe and sends nothing to Autopilot. It runs only
+when you run it, and nothing schedules it.
+
+```sh
+mkdir tools/cable-incidents/state
+cp tools/cable-incidents/sources.example.json tools/cable-incidents/state/sources.json
+node tools/cable-incidents/inbox.mjs poll
+node tools/cable-incidents/inbox.mjs list
+node tools/cable-incidents/inbox.mjs accept p-85c1adf5a8cf0658 --claim fault \
+  --incident 2024-11-18 --effective 2024-11-18T02:04:00Z
+node tools/cable-incidents/inbox.mjs reject p-f6fbcb747737a90d --reason "not a cable notice"
+node tools/cable-incidents/inbox.mjs report
+```
+
+The state lives in `state/` next to the tool, which git ignores, or in the
+folder you pass with `--state`. It holds your `sources.json`, `inbox.json`
+(proposals and what has been seen), `evidence.json` (your reviewed rows, in
+the replay format above) and `ioda.json`. Only one run at a time is
+allowed: a run holds `inbox.lock`, and it removes the lock when it finishes.
+
+**Sources.** Each source is `rss` (RSS or Atom) or `page`, a news listing
+page whose article links start with `pathPrefix`. Each also has a
+`sourceKind`: `operator` or `authority` for primary notices, `news` for
+leads. Only HTTPS is accepted, and a redirect away from HTTPS fails the
+source. The example lists:
+
+- Cinia's own feed.
+- The same notices as a page source, switched off.
+- SubTel Forum's industry news, as `news`.
+
+Most operators publish no feed (WIOCC and SEACOM post web pages), so add
+their news page as a `page` source, after checking that it is their own
+notice page. The first poll of a source only records what is already
+listed, so old news does not flood the inbox. `--include-existing`
+proposes those notices too.
+
+**Proposals.** A proposal lists the catalogue cables its title and summary
+name: exact name, whole words, no fuzzy match. A one-word name such as
+"Echo" or "SAFE" is matched only with its catalogue capitals, in text that
+says "cable", and is shown as weak. The proposal also suggests a claim from
+the wording: `restored` for repaired or back in service, otherwise `fault`.
+It never suggests a physical `break`. Words like "cut" or "damaged" are
+listed for you to check against the notice itself.
+
+**Accepting.** `accept` needs:
+
+- `--claim`.
+- A local `--incident` ID.
+- `--effective`: when the condition began, from the notice.
+- The cable, if the notice does not name exactly one catalogue cable
+  (`--cable` or `--cable-name`).
+
+`knownAt` is when the inbox first saw the notice. `--source-kind` and
+`--url` let you record the operator's own notice behind a news story.
+Every accept replays the whole file, so an invalid or conflicting row is
+refused. A row from a non-primary source is kept, but it stays a lead. One
+notice can be accepted for more than one claim. Cinia's repair notice, for
+example, supports both `break` (effective at the fault time) and
+`restored`.
+
+**Report.** `report` replays your evidence a day before `--at` (default:
+now) and at `--at`, then lists:
+
+- Every incident that is new or has changed: "no operator report yesterday,
+  operator reports a fault today".
+- The incidents still open.
+- The proposals waiting for review.
+- The sources that failed.
+
+An open status is the last thing reported, not proof that the cable is
+still down.
+
+**IODA.** `poll --ioda`, or `"ioda": {"enabled": true}`, fetches IODA's
+country-level outage events for the last 24 hours. No key is needed. The
+report lists them in a separate section, as impact only: a drop in a
+country never names a cable, and a cable fault is never required to show
+one. IODA marks its data "Copyright Georgia Tech Research Corporation. All
+Rights Reserved". Its API software is licensed for academic research and
+education. No data-use terms were found, so ask the IODA team before
+polling it regularly or for other uses. It is off by default.
+
 ## Next integration
 
-Add an opt-in source inbox for operator and regulator notices. Automatic
-extraction can suggest row fields and exact catalogue matches for review. Use
-regional outage feeds such as [IODA](https://ioda.inetintel.cc.gatech.edu/) to
-measure impact independently, not as a prerequisite for cable confirmation.
-Replay a labelled set of faults, repairs, false positives and silent/rerouted
-faults before publishing cable status to the existing overlay. Keep raw leads
-out of Autopilot, and treat publisher corrections/retractions as operator review
-until a versioned correction model is in place.
+Replay a labelled set of faults, repairs, false positives and
+silent/rerouted faults before publishing cable status to the existing
+overlay. Keep raw leads out of Autopilot, and treat publisher
+corrections/retractions as operator review until a versioned correction
+model is in place.

@@ -20,11 +20,11 @@ in [EARLY-WARNING.md](EARLY-WARNING.md#sources-registry). Status as of
 
 ## Available but not active
 
-| Feed      | Why not active                                                                                                                       |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Feed      | Why not active                                                                                                                                                                                                                                                                                                               |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ReliefWeb | Its API requires an approved application name, set in `GEV_RELIEFWEB_APPNAME`. Polled live on 3 November 2026: of 99 open disasters, 83 were created over 90 days ago and are dropped even when recently updated, and the other 16 were stored but too long since their last update to be listed. Only new disasters appear. |
-| GDELT     | Opt-in (`GEV_INTEL_GDELT=1`). Machine-coded news is frequently wrong; it is kept as unverified evidence and never confirms anything. Needs 10 articles, and at most 150 such events are listed at once, so it cannot push real events off the list. Alone it stays below camera confidence. |
-| ACLED     | Requires an account and its terms restrict redistribution; listed, never fetched.                                                    |
+| GDELT     | Opt-in (`GEV_INTEL_GDELT=1`). Machine-coded news is frequently wrong; it is kept as unverified evidence and never confirms anything. Needs 10 articles, and at most 150 such events are listed at once, so it cannot push real events off the list. Alone it stays below camera confidence.                                  |
+| ACLED     | Requires an account and its terms restrict redistribution; listed, never fetched.                                                                                                                                                                                                                                            |
 
 ## Known gaps
 
@@ -36,8 +36,10 @@ in [EARLY-WARNING.md](EARLY-WARNING.md#sources-registry). Status as of
 - **Infrastructure disruption** comes only from NWS civil messages (United
   States). There is no power-grid, internet-outage, transport or cyber feed.
   The [offline cable incident reviewer](../tools/cable-incidents/README.md)
-  can replay analyst-reviewed reports against the submarine cable catalogue,
-  but does not ingest live notices or publish to Autopilot.
+  can replay analyst-reviewed reports against the submarine cable catalogue.
+  Its observe-only inbox polls chosen operator and news sources, and IODA
+  outages if asked, when you run it, and proposes notices for review. Neither
+  publishes to Autopilot or the globe.
 - **Economic stress** is annual inflation only: no exchange-rate, market,
   food-price or sovereign-debt series, so a fast currency crisis appears
   months late, if at all.
