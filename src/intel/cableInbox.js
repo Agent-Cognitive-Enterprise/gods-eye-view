@@ -153,7 +153,7 @@ const CUES = [
   ],
   [
     'fault',
-    /\b(faults?|outages?|disruptions?|disturbances?|interrupted|interruptions?|failures?|failed|down)\b/g,
+    /\b(faults?|outages?|disruptions?|disturbances?|interrupted|interruptions?|failures?|failed|down|out of service)\b/g,
   ],
   // Wording that makes "restored" doubtful: a negation, a repair still to
   // come, or traffic moved to other routes.

@@ -261,7 +261,10 @@ const TITLE_CLASS =
   /^(?:(?:card|post|entry|article|news|item|teaser|list)[-_])?(?:title|heading)$|^heading-style-h[1-6]$/;
 // Link text that names no notice.
 const GENERIC_LINK =
-  /^(?:read (?:more|full (?:post|story|article))|more|continue reading|lue lisää|les mer|läs mer|weiterlesen|mehr)$/i;
+  /^(?:read (?:more|full (?:post|story|article))|more|continue reading|lue lisää|les mer|läs mer|weiterlesen|mehr)\s*[»›→>]?$/i;
+// Classes that mark a label above a card, not its title.
+const LABEL_CLASS =
+  /^(?:eyebrow|kicker|overline|label|category|categories|tag|tags|topic|section|series|badge|pill)(?:[-_].*)?$/;
 const MAX_HEADING_CANDIDATES = 50;
 
 /**
@@ -287,15 +290,16 @@ function cardHeading(markup) {
     );
     if (!tag) continue;
     const name = tag[1];
-    if (name[0] !== 'h') {
-      const classes = HEADING_CLASS.exec(
-        source.slice(lt + 1 + name.length, gt).slice(0, 2048),
-      );
-      const tokens = (classes?.[1] ?? classes?.[2] ?? '')
-        .toLowerCase()
-        .split(/\s+/);
-      if (!tokens.some((token) => TITLE_CLASS.test(token))) continue;
-    }
+    const classes = HEADING_CLASS.exec(
+      source.slice(lt + 1 + name.length, gt).slice(0, 2048),
+    );
+    const tokens = (classes?.[1] ?? classes?.[2] ?? '')
+      .toLowerCase()
+      .split(/\s+/);
+    // A label above the card (eyebrow, category, tag) is never its title.
+    if (tokens.some((token) => LABEL_CLASS.test(token))) continue;
+    if (name[0] !== 'h' && !tokens.some((token) => TITLE_CLASS.test(token)))
+      continue;
     if (++candidates > MAX_HEADING_CANDIDATES) return null;
     const [element] = elements(source.slice(lt), name, 1);
     const text = element ? plain(element.inner) : '';

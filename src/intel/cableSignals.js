@@ -127,7 +127,11 @@ export function datedNotice(item) {
 // Where it happened, only as a proper name in the original capitals:
 // "between Finland and Germany", "near Gotland", "off Fujairah". No "in" or
 // "at": "damaged in the film", "cut in prices", "outage in December".
-const NAME = "\\p{Lu}[\\p{L}'-]*";
+// A capitalised word of two or more letters that is not a pronoun or an
+// idiom word: "off The Agenda", "near Me", "near Miss", "off Broadway" and
+// "near Record Low" are not places.
+const NAME =
+  "(?!(?:The|Me|You|It|Us|Them|Miss|Record|Low|High|Broadway|Agenda|Table|Charts|Target|Track|Schedule|Course|Limits|Radar|Base|Topic|Script|Guard)\\b)\\p{Lu}[\\p{L}'-]+";
 // "Between A and B" must name the source's own places (Cinia: Finland and
 // Germany), so "between Russia and Ukraine" is no shape.
 const PLACE_TAIL = new RegExp(
@@ -198,7 +202,7 @@ function shapesFor(name, speakers) {
     [
       'restored',
       new RegExp(
-        `^(?:the )?${INCIDENT} (?:in|on) ${cable} (?:has been|was) (?:fully )?${REPAIRED}$`,
+        `^(?:the )?${INCIDENT} (?:in|on|to) ${cable} (?:has been|was) (?:fully )?${REPAIRED}$`,
         u,
       ),
     ],
@@ -237,7 +241,7 @@ export function templateClaim(
     .replace(APOSTROPHES, "'")
     .replace(/\s+/g, ' ')
     // Decoration: emoji and full stops at either end.
-    .replace(/^[\s\p{S}]+|[\s\p{S}.!,;:]+$/gu, '');
+    .replace(/^[\s\p{S}️‍]+|[\s\p{S}️‍.!,;:]+$/gu, '');
   raw = raw
     .replace(
       new RegExp(`^(?:${[...labels, 'update'].join('|')}) ?[:|–—-] `, 'iu'),
