@@ -340,37 +340,59 @@ hour. It runs only while the model is online and idle and no voice
 conversation holds it. `GEV_INTEL_CABLES_LLM=0` or `GEV_LLM_DISABLED=1`
 leaves the feed on rules alone (`src/intel/cableAssessment.js`):
 
-1. The article is fetched from the publisher's own site, and its readable
-   text kept: `<article>`, `<main>` or `<body>`, without scripts,
-   navigation, headers or footers.
-2. The model answers in a fixed format:
+1. Operators' and regulators' notices are checked first: a news source can
+   only ever give an unverified report.
+2. The article is fetched from the publisher's own site; if a redirect
+   leads elsewhere, only title and summary are used. Its readable text is
+   kept: the longest `<article>`, or `<main>` or `<body>`. Scripts,
+   navigation, headers, footers, forms are dropped, and so are blocks
+   marked as related news, teasers, comments, sidebars or share bars, so
+   their old headlines cannot be quoted.
+3. The model answers in a fixed format:
    - is it about an incident, and is it current;
    - which cable, chosen only from the cables the notice names;
    - fault, break, restored or none;
    - the start date;
-   - a word-for-word quote that names the cable.
+   - one whole sentence, word for word, that names the cable.
 
    The notice is given to the model as data, never as instructions.
 
-3. The answer counts only if all of these hold:
-   - the quote is found in the notice and names the chosen cable and no
-     other cable the notice names;
-   - the quote states the claim: fault wording, break wording for a break,
-     repair wording for a repair;
-   - the quote has no negation, hedging, plan or condition words
-     ("suspected", "possible", "normal", "will", "until"), and a repair is
-     not partial or rerouted;
-   - the start date, if given, is in the last 30 days.
-4. A valid answer from an operator or regulator about its own cable is
-   `llm-clear` and updates the shadow incidents like a clear signal. Any
-   other valid answer is `llm-unverified`, a report that is logged only.
-   Anything else is `llm-rejected` with its reason. A busy, offline or
-   failing model leaves the queue for the next poll; after three failures
-   a notice is dropped.
+4. The answer counts only if all of these hold:
+   - The notice has a date of its own. The model's word that it is
+     current is not enough.
+   - The quote lies inside one sentence of the notice: the title, or a
+     summary or article sentence. That **whole sentence**, and the title,
+     are judged, never the quote alone. So "fault in the C-Lion1 cable",
+     quoted from "Possible fault in the C-Lion1 cable", is hedged.
+   - Neither the sentence nor the title has negation, hedging, plan or
+     condition words, or drill, maintenance, history, money or law words
+     (the phase-1 lists).
+   - The sentence states the claim: fault wording, break wording for a
+     break, repair wording for a repair. A repair must not be partial or
+     rerouted. A fault must not be one the sentence says is repaired or
+     resolved.
+   - The sentence names the chosen cable, and no other cable the notice
+     names, by any of their catalogue names ("EESF-2" is
+     "Finland-Estonia 2").
+   - The start date, if given, is in the last 30 days.
+5. A valid answer from an operator or regulator about its own cable is
+   `llm-clear`, and it updates the shadow incidents like a clear signal.
+   - A fault dates from its start date.
+   - A repair dates from its notice.
+   - A repair seen while no incident is open is remembered, so a report of
+     an earlier fault checked later cannot reopen the cable.
+
+   Any other valid answer is `llm-unverified`, a report that is logged
+   only. Anything else is `llm-rejected` with its reason. A busy model
+   (another user of it) leaves the queue for the next poll and counts for
+   nothing. After three real failures a notice is dropped.
 
 `node tools/cable-incidents/evaluate-llm.mjs` runs the model on the
 labelled notices the rules leave in doubt, using title and summary only.
-On 60 of them, against Qwen3.6-35B through KoboldCpp on 2026-11-20:
+It checks the claim, not which cable was chosen: the labels carry no
+expected cable, and articles are not fetched, so article text (the main
+attack surface) is covered by the unit tests, not by this score. On 60
+of them, against Qwen3.6-35B through KoboldCpp on 2026-11-20:
 
 - no wrong `llm-clear`;
 - two correct ones: Cinia's real February 2025 notice titled "C-Lion",

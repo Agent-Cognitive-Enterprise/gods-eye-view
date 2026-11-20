@@ -15,6 +15,7 @@ import {
   fetchText,
   itemsFromFeed,
   itemsFromPage,
+  sameSite,
 } from '../cableInbox.js';
 import {
   cableMentions,
@@ -332,6 +333,7 @@ export async function pollCableSources({
   return { state: next, lines, errors, latest };
 }
 
+const PRIMARY_KINDS = new Set(['operator', 'authority']);
 const MAX_PENDING = 200;
 const MAX_ATTEMPTS = 3;
 const MAX_MODEL_CHECKS_PER_POLL = 3;
@@ -379,7 +381,14 @@ export async function checkWithModel({
     if (llm.status().status !== 'online') await llm.probe();
     if (llm.status().status !== 'online') break;
     if (await llm.busy()) break;
-    const entry = next.pending[0];
+    // Operators and regulators first: a news source can only ever give an
+    // unverified report, so it must not use up their checks.
+    const primaryAt = next.pending.findIndex((p) =>
+      PRIMARY_KINDS.has(byId.get(p.sourceId)?.sourceKind),
+    );
+    const index = primaryAt >= 0 ? primaryAt : 0;
+    const entry = next.pending[index];
+    const take = () => next.pending.splice(index, 1);
     const source = byId.get(entry.sourceId);
     const base = {
       seenAt: new Date(now()).toISOString(),
@@ -389,11 +398,12 @@ export async function checkWithModel({
     };
     // Old news is not a new signal, model or not.
     if (!source || now() - entry.at > STALE_NOTICE_MS) {
-      next.pending.shift();
+      take();
       lines.push({ ...base, signal: 'llm-skipped', reason: 'stale-notice' });
       continue;
     }
-    // The article itself, from the publisher's own site only.
+    // The article itself, from the publisher's own site only: a redirect
+    // elsewhere leaves title and summary.
     let article = '';
     if (!entry.item.offHost)
       try {
@@ -402,7 +412,8 @@ export async function checkWithModel({
           maxBytes: MAX_SOURCE_BYTES,
           accept: 'text/html',
         });
-        article = articleText(page.text, MAX_ARTICLE_CHARS);
+        if (sameSite(page.url, source.url))
+          article = articleText(page.text, MAX_ARTICLE_CHARS);
       } catch {
         // Title and summary only.
       }
@@ -410,18 +421,21 @@ export async function checkWithModel({
       title: entry.item.title,
       summary: entry.item.summary,
       offHost: entry.item.offHost,
+      publishedAt: entry.item.publishedAt ?? null,
     };
     const named = cableMentions(
       [notice.title, notice.summary, article].join('\n'),
       names,
     );
-    const cables = [
-      ...new Map(
-        named.map((c) => [c.cableId, { cableId: c.cableId, name: c.name }]),
-      ).values(),
-    ];
+    // Each named cable with all of its catalogue names, so a cable
+    // mentioned by another of its names still counts as another cable.
+    const cables = [...new Set(named.map((c) => c.cableId))].map((cableId) => ({
+      cableId,
+      name: named.find((c) => c.cableId === cableId).name,
+      aliases: names.filter((n) => n.cableId === cableId).map((n) => n.name),
+    }));
     if (!cables.length) {
-      next.pending.shift();
+      take();
       lines.push({ ...base, signal: 'llm-skipped', reason: 'no-cable-named' });
       continue;
     }
@@ -435,9 +449,14 @@ export async function checkWithModel({
         cableAssessmentSchema(cables.map((c) => c.cableId)),
       );
     } catch (error) {
+      // Losing the race to another user of the model is not a failure.
+      if (/busy/.test(String(error?.message ?? ''))) {
+        next.modelChecks.pop();
+        break;
+      }
       entry.attempts += 1;
       if (entry.attempts >= MAX_ATTEMPTS) {
-        next.pending.shift();
+        take();
         lines.push({
           ...base,
           signal: 'llm-skipped',
@@ -446,7 +465,7 @@ export async function checkWithModel({
       }
       break;
     }
-    next.pending.shift();
+    take();
     const verdict = validateCableAssessment(reply.text, {
       notice,
       article,
@@ -470,9 +489,12 @@ export async function checkWithModel({
       change: null,
     };
     if (verdict.signal === 'llm-clear') {
-      const started = verdict.startedOn
-        ? Date.parse(`${verdict.startedOn}T00:00:00Z`)
-        : entry.at;
+      // A fault dates from when it began; a repair from its notice (the
+      // model's start date for a repair is the fault's).
+      const started =
+        verdict.claim !== 'restored' && verdict.startedOn
+          ? Date.parse(`${verdict.startedOn}T00:00:00Z`)
+          : entry.at;
       const applied = applySignal(next.incidents, {
         cableId: verdict.cableId,
         claim: verdict.claim,

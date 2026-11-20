@@ -311,7 +311,12 @@ test('a shadow incident opens, updates, confirms a break and closes, in time ord
     step(signal('restored', '2024-11-10T00:00:00Z')),
     'restore-without-open-incident',
   );
-  assert.deepEqual(incidents, {});
+  // The repair is remembered: an earlier fault reported later stays closed.
+  assert.equal(incidents['c-lion1'].status, 'closed');
+  assert.equal(
+    step(signal('fault', '2024-11-09T00:00:00Z')),
+    'late-report-of-ended-incident',
+  );
   assert.equal(step(signal('fault', '2024-11-18T02:04:00Z')), 'would-show');
   assert.equal(
     step(signal('restored', '2024-11-17T00:00:00Z')),

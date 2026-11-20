@@ -125,6 +125,15 @@ export const proposalId = (url) =>
 // The same site with or without "www.".
 const siteOf = (url) => new URL(url).hostname.replace(/^www\./, '');
 
+/** Whether two URLs are on one site, "www." aside. */
+export const sameSite = (a, b) => {
+  try {
+    return siteOf(a) === siteOf(b);
+  } catch {
+    return false;
+  }
+};
+
 // Linear text helpers. A hostile feed cannot make them rescan: every loop
 // moves forward with indexOf, and no regex can backtrack across the input.
 
@@ -147,7 +156,11 @@ function stripTags(value) {
   let out = '';
   let at = 0;
   for (;;) {
-    const start = value.indexOf('<', at);
+    let start = value.indexOf('<', at);
+    // Only "<" before a letter, "/", "!" or "?" opens a tag: "Latency < 5
+    // ms" is text.
+    while (start >= 0 && !/[A-Za-z/!?]/.test(value[start + 1] ?? ''))
+      start = value.indexOf('<', start + 1);
     if (start < 0) return out + value.slice(at);
     out += `${value.slice(at, start)} `;
     const end = value.indexOf('>', start + 1);
@@ -181,7 +194,11 @@ const inner = (block, name) => elements(block, name, 1)[0]?.inner ?? null;
 
 const asciiLower = (text) => text.replace(/[A-Z]/g, (c) => c.toLowerCase());
 
-/** `<name …>…</name>` removed, case-insensitive, in one forward pass. */
+/**
+ * `<name …>…</name>` removed, case-insensitive, in one forward pass. An
+ * element that is never closed loses only its opening tag, not the rest of
+ * the page.
+ */
 function dropElement(value, name) {
   const lower = asciiLower(value);
   const open = `<${name}`;
@@ -196,23 +213,87 @@ function dropElement(value, name) {
     if (start < 0) return out + value.slice(at);
     out += value.slice(at, start);
     const end = lower.indexOf(close, start + open.length);
-    if (end < 0) return out;
-    at = end + close.length;
+    if (end >= 0) {
+      at = end + close.length;
+      continue;
+    }
+    const tagEnd = lower.indexOf('>', start);
+    if (tagEnd < 0) return out;
+    at = tagEnd + 1;
   }
 }
 
+// Blocks that hold other notices or other people's words: related news,
+// teasers, comments, sidebars, share bars. Their old incident headlines
+// must not become a quote.
+const NOT_ARTICLE_BLOCK =
+  /\b(?:related|teaser|recommend\w*|more-news|latest|read-more|comments?|comment-list|respond|sidebar|widget|share\w*|social|newsletter|subscribe|breadcrumbs?|tags?|pagination|cookie\w*|banner)\b/;
+const BLOCK_TAGS = new Set(['div', 'section', 'ul', 'ol', 'aside', 'article']);
+
 /**
- * The readable text of an article page: its <article>, <main> or <body>,
- * without scripts, styles, navigation, headers, footers or forms, as
+ * Elements whose class or id marks a not-article block removed, nested
+ * same-name elements counted, in one forward pass.
+ */
+function dropBlocks(value) {
+  const lower = asciiLower(value);
+  let out = '';
+  let at = 0;
+  let gt = -1;
+  for (let lt = lower.indexOf('<', 0); lt >= 0;) {
+    if (gt < lt) gt = lower.indexOf('>', lt);
+    if (gt < 0) break;
+    const tag = /^<([a-z]+)\b/.exec(lower.slice(lt, lt + 12));
+    if (tag && BLOCK_TAGS.has(tag[1])) {
+      const head = lower.slice(lt, gt).slice(0, 2048);
+      const marks = /\b(?:class|id)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
+      let found = false;
+      for (const m of head.matchAll(marks))
+        if (NOT_ARTICLE_BLOCK.test(m[1] ?? m[2] ?? '')) found = true;
+      if (found) {
+        // Skip to the matching close tag of this element.
+        const name = tag[1];
+        let depth = 0;
+        let cursor = lt;
+        let end = -1;
+        const pattern = new RegExp(`<(/?)${name}\\b`, 'g');
+        pattern.lastIndex = lt;
+        for (let m = pattern.exec(lower); m; m = pattern.exec(lower)) {
+          depth += m[1] ? -1 : 1;
+          cursor = m.index;
+          if (depth === 0) {
+            end = lower.indexOf('>', cursor);
+            break;
+          }
+        }
+        out += value.slice(at, lt);
+        if (end < 0) return out;
+        at = end + 1;
+        lt = lower.indexOf('<', at);
+        continue;
+      }
+    }
+    lt = lower.indexOf('<', lt + 1);
+  }
+  return out + value.slice(at);
+}
+
+/**
+ * The readable text of an article page: its longest <article>, or its
+ * <main> or <body>, without scripts, styles, navigation, headers, footers,
+ * forms or blocks of other notices (related news, comments, sidebars), as
  * printable plain text of at most `max` characters.
  */
 export function articleText(html, max = 8000) {
   const source = String(html ?? '').slice(0, MAX_SOURCE_BYTES);
+  // A page's related teasers can be <article> too: take the longest one.
+  const articles = elements(source, 'article', 50);
+  const longest = articles.reduce(
+    (best, a) => (a.inner.length > (best?.inner.length ?? -1) ? a : best),
+    null,
+  );
   let part =
-    inner(source, 'article') ??
-    inner(source, 'main') ??
-    inner(source, 'body') ??
-    source;
+    longest?.inner ?? inner(source, 'main') ?? inner(source, 'body') ?? source;
+  part = dropBlocks(part);
   for (const name of [
     'script',
     'style',

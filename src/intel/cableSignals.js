@@ -53,6 +53,8 @@ const BLOCKERS = [
 // always disqualify it; partial or moved service disqualifies a repair.
 export const QUOTE_BLOCKERS = Object.freeze([BLOCKERS[0], BLOCKERS[1]]);
 export const PARTIAL_SERVICE = BLOCKERS[2];
+// Drills, maintenance, history, money and law: not an incident notice.
+export const NOT_AN_INCIDENT = BLOCKERS[3];
 const PHYSICAL = /\b(?:cut|cuts|severed|broken|break|breaks|breakage)\b/;
 const APOSTROPHES = /[‘’ʼ´`′]/g;
 
@@ -391,8 +393,18 @@ export function applySignal(
   const when = new Date(at).toISOString();
   const ended = current?.closedAt ?? current?.fadedAt ?? null;
   if (claim === 'restored') {
-    if (!open)
+    if (!open) {
+      // Remember the repair, so a report of an earlier fault that arrives
+      // later (a slow check, a delayed feed) cannot reopen the cable.
+      if (!ended || Date.parse(when) > Date.parse(ended))
+        next[cableId] = {
+          ...(current ?? { cableId, openedAt: null, sources: [] }),
+          status: 'closed',
+          closedAt: when,
+          sources: [...new Set([...(current?.sources ?? []), url])],
+        };
       return { incidents: next, change: 'restore-without-open-incident' };
+    }
     if (Date.parse(when) < Date.parse(open.openedAt))
       return { incidents: next, change: 'restore-before-incident' };
     next[cableId] = {

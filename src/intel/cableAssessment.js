@@ -15,7 +15,11 @@
 // nothing it says is followed, only checked.
 
 import { printable } from './cableInbox.js';
-import { PARTIAL_SERVICE, QUOTE_BLOCKERS } from './cableSignals.js';
+import {
+  NOT_AN_INCIDENT,
+  PARTIAL_SERVICE,
+  QUOTE_BLOCKERS,
+} from './cableSignals.js';
 
 export const CABLE_PROMPT_VERSION = 'cable-1';
 export const MAX_ARTICLE_CHARS = 6000;
@@ -29,6 +33,9 @@ const FAULT_WORDS =
 const BREAK_WORDS = /\b(?:cut|severed|broken|break|breaks|breakage|ruptured)\b/;
 const RESTORE_WORDS =
   /\b(?:repaired|restored|back in service|back online|back in operation|fully operational|repair (?:work )?(?:has been |was )?completed)\b/;
+
+// Wording that says the fault is over.
+const RESOLVED_WORDS = /\b(?:resolved|fixed|ended|over|cleared)\b/;
 
 const fold = (text) =>
   String(text ?? '')
@@ -78,11 +85,11 @@ export function buildCablePrompt({ notice, source, cables, today, article }) {
     `cable_id: the affected cable, chosen only from this list, or "none": ${cables.map((c) => `${c.cableId} (${c.name})`).join('; ')}.`,
     'claim: "fault" for a fault, outage or damage; "break" only if the notice says the cable is cut, severed or broken; "restored" only if it says the cable is repaired or back in service; otherwise "none".',
     'started_on: the date the event began as YYYY-MM-DD, or "" if the notice does not say.',
-    'quote: the shortest exact sentence from the notice that states the claim, copied word for word; it must name the cable; the title may be quoted. "" if there is none.',
+    'quote: one whole sentence from the notice that states the claim and names the cable, copied word for word; the title may be quoted. "" if there is none.',
   ].join('\n');
   const user = [
     `Today: ${today}`,
-    `Publisher: ${printable(source.publisher ?? source.id)}`,
+    `Publisher: ${printable(source.publisher ?? source.speakers?.[0] ?? source.id)}`,
     '<notice>',
     `Title: ${printable(notice.title)}`,
     `Summary: ${printable(notice.summary)}`,
@@ -95,10 +102,26 @@ export function buildCablePrompt({ notice, source, cables, today, article }) {
   ];
 }
 
+/** The sentences of a notice: the title, then the summary and article split
+ * at sentence ends, each folded. */
+function sentencesOf(notice, article) {
+  const out = [fold(notice.title)];
+  for (const part of [notice.summary, article])
+    for (const sentence of String(part ?? '').split(/(?<=[.!?;])\s+|\n+/))
+      if (sentence.trim()) out.push(fold(sentence));
+  return out.filter(Boolean);
+}
+
+/** Every catalogue name of a cable: the one found, plus its aliases. */
+const namesOf = (cable) => [
+  ...new Set([cable.name, ...(cable.aliases ?? [])].map(fold)),
+];
+
 /**
  * Check one model answer. Returns {signal: 'llm-clear' | 'llm-unverified',
  * cableId, claim, breakConfirmed, startedOn, quote} or {signal:
- * 'llm-rejected', reason}.
+ * 'llm-rejected', reason}. `cables` are [{cableId, name, aliases}]: every
+ * cable the notice names, with all of its catalogue names.
  */
 export function validateCableAssessment(
   text,
@@ -123,38 +146,50 @@ export function validateCableAssessment(
   if (!cable) return reject('cable-not-named');
   if (!['fault', 'break', 'restored'].includes(claim))
     return reject('bad-claim');
+  // A notice with no date of its own cannot show that it is current; the
+  // model's word for it is not enough.
+  if (!Number.isFinite(Date.parse(notice.publishedAt ?? '')))
+    return reject('undated');
   if (typeof quote !== 'string' || !quote.trim() || quote.length > MAX_QUOTE)
     return reject('no-quote');
   const said = fold(quote);
-  const body = fold(
-    [notice.title, notice.summary, article].filter(Boolean).join(' \n '),
-  );
-  if (!body.includes(said)) return reject('quote-not-in-notice');
-  if (claim === 'restored' && !RESTORE_WORDS.test(said))
-    return reject('quote-does-not-state-repair');
-  if (claim === 'break' && !BREAK_WORDS.test(said))
-    return reject('quote-does-not-state-break');
-  if (claim === 'fault' && !FAULT_WORDS.test(said))
-    return reject('quote-does-not-state-fault');
-  // The quote itself must be plain: no "suspected", "possible", "normal",
-  // "will" or "until", and a repair must not be partial or rerouted.
-  if (
-    QUOTE_BLOCKERS.some((pattern) => pattern.test(said)) ||
-    (claim === 'restored' && PARTIAL_SERVICE.test(said))
-  )
-    return reject('quote-hedged');
-  // It names the chosen cable and no other: "Fault on the EE-S 1 cable;
-  // C-Lion1 traffic normal" is not about C-Lion1.
-  if (!said.includes(fold(cable.name)))
+  // Judge the whole sentence the quote comes from, never the quote alone:
+  // "fault in the C-Lion1 cable" quoted from "Possible fault in the C-Lion1
+  // cable" is the hedged sentence.
+  const sentence = sentencesOf(notice, article).find((s) => s.includes(said));
+  if (!sentence) return reject('quote-not-in-notice');
+  const title = fold(notice.title);
+  for (const text of new Set([sentence, title]))
+    if (QUOTE_BLOCKERS.some((pattern) => pattern.test(text)))
+      return reject('quote-hedged');
+  if (NOT_AN_INCIDENT.test(sentence) || NOT_AN_INCIDENT.test(title))
+    return reject('not-an-incident-notice');
+  if (claim === 'restored') {
+    if (!RESTORE_WORDS.test(sentence))
+      return reject('quote-does-not-state-repair');
+    if (PARTIAL_SERVICE.test(sentence)) return reject('quote-hedged');
+  } else {
+    if (claim === 'break' && !BREAK_WORDS.test(sentence))
+      return reject('quote-does-not-state-break');
+    if (!FAULT_WORDS.test(sentence))
+      return reject('quote-does-not-state-fault');
+    // "The C-Lion1 cable fault has been repaired" is not a fault now.
+    if (RESTORE_WORDS.test(sentence) || RESOLVED_WORDS.test(sentence))
+      return reject('fault-already-resolved');
+  }
+  // The sentence names the chosen cable and no other, by any of their
+  // catalogue names: "C-Lion1 carries the traffic after the EESF-2 cable
+  // fault" is not about C-Lion1.
+  if (!namesOf(cable).some((name) => sentence.includes(name)))
     return reject('quote-does-not-name-cable');
   if (
     cables.some(
-      (c) => c.cableId !== cable.cableId && said.includes(fold(c.name)),
+      (c) =>
+        c.cableId !== cable.cableId &&
+        namesOf(c).some((name) => sentence.includes(name)),
     )
   )
     return reject('quote-names-another-cable');
-  // The cable must be named in the notice itself, not only in the list.
-  if (!body.includes(fold(cable.name))) return reject('cable-not-named');
   let startedOn = null;
   if (typeof started_on === 'string' && started_on) {
     const time = Date.parse(`${started_on}T00:00:00Z`);
@@ -172,7 +207,7 @@ export function validateCableAssessment(
     signal: primary ? 'llm-clear' : 'llm-unverified',
     cableId: cable.cableId,
     claim: claim === 'restored' ? 'restored' : 'fault',
-    breakConfirmed: claim === 'break' || BREAK_WORDS.test(said),
+    breakConfirmed: claim === 'break' || BREAK_WORDS.test(sentence),
     startedOn,
     quote: printable(quote).slice(0, MAX_QUOTE),
   };

@@ -479,3 +479,80 @@ test('stale notices are skipped and the hourly cap holds', async () => {
   assert.deepEqual(capped.lines, []);
   assert.equal(capped.state.pending.length, 1);
 });
+
+test('an article redirected off the publisher site is not read', async () => {
+  const llm = stubModel({ replies: [FAULT_ANSWER] });
+  const offsite = async (url) =>
+    url === ARTICLE_URL
+      ? new Response(null, {
+          status: 302,
+          headers: { location: 'https://attacker.example/x' },
+        })
+      : new Response(
+          '<article><p>A fault has been detected in the C-Lion1 submarine cable.</p></article>',
+        );
+  const { lines } = await checkWithModel({
+    state: pendingState(),
+    sources: [source],
+    names,
+    llm,
+    fetchImpl: offsite,
+    now: () => Date.parse('2024-11-18T12:00:00Z'),
+  });
+  assert.doesNotMatch(
+    llm.calls[0].messages[1].content,
+    /fault has been detected/,
+  );
+  assert.equal(lines[0].signal, 'llm-rejected');
+});
+
+test('related news inside the article cannot be quoted', async () => {
+  const llm = stubModel({
+    replies: [
+      {
+        ...FAULT_ANSWER,
+        quote: 'Fault Detected in Cinia C-Lion1 Submarine Cable',
+      },
+    ],
+  });
+  const page = async () =>
+    new Response(
+      '<article><p>Cinia holds a preparedness exercise today.</p><div class="related-news"><h3>Fault Detected in Cinia C-Lion1 Submarine Cable</h3></div></article>',
+    );
+  const { lines, state } = await checkWithModel({
+    state: pendingState(),
+    sources: [source],
+    names,
+    llm,
+    fetchImpl: page,
+    now: () => Date.parse('2024-11-18T12:00:00Z'),
+  });
+  assert.equal(lines[0].reason, 'quote-not-in-notice');
+  assert.deepEqual(state.incidents, {});
+});
+
+test('operator notices are checked before news, and a busy model is not a failure', async () => {
+  const state = pendingState();
+  state.pending.unshift({
+    ...state.pending[0],
+    sourceId: 'news',
+    item: { ...state.pending[0].item, url: 'https://news.example/x' },
+  });
+  const llm = stubModel({ replies: [new Error('local model busy')] });
+  const result = await checkWithModel({
+    state,
+    sources: [
+      source,
+      { ...source, id: 'news', sourceKind: 'news', cables: [] },
+    ],
+    names,
+    llm,
+    fetchImpl: articleFetch,
+    now: () => Date.parse('2024-11-18T12:00:00Z'),
+  });
+  assert.equal(llm.calls.length, 1);
+  assert.match(llm.calls[0].messages[1].content, /Update on the C-Lion1/);
+  assert.equal(result.state.pending.length, 2);
+  assert.equal(result.state.pending[1].attempts, 0);
+  assert.deepEqual(result.state.modelChecks, []);
+});

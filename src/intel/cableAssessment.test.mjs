@@ -22,6 +22,7 @@ const news = {
 const notice = {
   title: 'Update on the C-Lion1 situation',
   summary: 'Repair vessel on its way.',
+  publishedAt: '2026-11-19T08:00:00.000Z',
 };
 const article =
   'A fault has been detected in the Cinia Oy C-Lion1 submarine cable between Finland and Germany at 4:04 a.m. on Monday. Due to the fault, the services provided over the C-Lion1 are down.';
@@ -107,7 +108,11 @@ test('an answer is rejected unless the notice itself supports it', () => {
       {
         cables: [{ cableId: 'c-lion1', name: 'C-Lion1' }],
         article: article.replaceAll('C-Lion1', 'cable'),
-        notice: { title: 'Update', summary: '' },
+        notice: {
+          title: 'Update',
+          summary: '',
+          publishedAt: notice.publishedAt,
+        },
       },
     ).reason,
     'quote-not-in-notice',
@@ -161,7 +166,12 @@ test('a hedged quote, or one naming another cable, is rejected', () => {
     ],
     ['Possible fault on the C-Lion1 submarine cable', 'quote-hedged'],
     ['C-Lion1 cable outage expected to last until Monday', 'quote-hedged'],
-    ['Fault on the EE-S 1 cable; C-Lion1 traffic normal', 'quote-hedged', two],
+    // Two clauses: no single sentence holds the quote.
+    [
+      'Fault on the EE-S 1 cable; C-Lion1 traffic normal',
+      'quote-not-in-notice',
+      two,
+    ],
     [
       'Fault on the EE-S 1 cable and the C-Lion1 cable',
       'quote-names-another-cable',
@@ -181,5 +191,88 @@ test('a hedged quote, or one naming another cable, is rejected', () => {
   assert.equal(
     check({ claim: 'restored', quote: partial }, { article: partial }).reason,
     'quote-hedged',
+  );
+});
+
+test('the whole sentence is judged, not the part the model quotes', () => {
+  for (const [sentence, quote, claim, reason] of [
+    [
+      'Possible fault in the C-Lion1 submarine cable.',
+      'fault in the C-Lion1 submarine cable',
+      'fault',
+      'quote-hedged',
+    ],
+    [
+      'No fault has been found in the C-Lion1 cable.',
+      'fault has been found in the C-Lion1 cable',
+      'fault',
+      'quote-hedged',
+    ],
+    [
+      'Cinia denies reports that the C-Lion1 cable was cut.',
+      'the C-Lion1 cable was cut',
+      'break',
+      'quote-hedged',
+    ],
+    [
+      'The C-Lion1 cable fault has been repaired.',
+      'The C-Lion1 cable fault has been repaired',
+      'fault',
+      'fault-already-resolved',
+    ],
+    [
+      'C-Lion1 cable fault resolved.',
+      'C-Lion1 cable fault resolved',
+      'fault',
+      'fault-already-resolved',
+    ],
+    [
+      'C-Lion1 cable fault drill on Monday.',
+      'C-Lion1 cable fault drill on Monday',
+      'fault',
+      'not-an-incident-notice',
+    ],
+    [
+      'Planned maintenance: C-Lion1 cable out of service on Sunday.',
+      'C-Lion1 cable out of service on Sunday',
+      'fault',
+      'quote-hedged',
+    ],
+  ])
+    assert.equal(
+      check({ claim, quote }, { article: sentence }).reason,
+      reason,
+      sentence,
+    );
+  // A hedge in the title spoils an article quote too.
+  assert.equal(
+    check({}, { notice: { ...notice, title: 'Suspected C-Lion1 fault' } })
+      .reason,
+    'quote-hedged',
+  );
+  // An undated notice cannot be judged current.
+  assert.equal(
+    check({}, { notice: { ...notice, publishedAt: null } }).reason,
+    'undated',
+  );
+});
+
+test('a cable named by another of its catalogue names counts as another cable', () => {
+  const two = [
+    { cableId: 'c-lion1', name: 'C-Lion1', aliases: ['C-Lion1'] },
+    {
+      cableId: 'finland-estonia-2-eesf-2',
+      name: 'Finland-Estonia 2',
+      aliases: ['Finland-Estonia 2 (EESF-2)', 'Finland-Estonia 2', 'EESF-2'],
+    },
+  ];
+  const text =
+    'A fault was found in the Finland-Estonia 2 submarine cable. C-Lion1 carries the traffic after the EESF-2 cable fault.';
+  assert.equal(
+    check(
+      { quote: 'C-Lion1 carries the traffic after the EESF-2 cable fault' },
+      { article: text, cables: two },
+    ).reason,
+    'quote-names-another-cable',
   );
 });

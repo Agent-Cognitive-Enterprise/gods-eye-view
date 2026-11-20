@@ -1,6 +1,7 @@
 // Score phase 2 (the local model) on the labelled notices the rules leave in
 // doubt. Uses title and summary only (no article fetch), one notice at a
-// time, only while the model is idle.
+// time, only while the model is idle. It checks the claim, not which cable
+// was chosen: the labels carry no expected cable.
 //   node tools/cable-incidents/evaluate-llm.mjs [--limit N] [--base-url URL]
 // A wrong llm-clear would put a cable fault on the map with nobody to stop
 // it, so it is reported first.
@@ -18,7 +19,7 @@ import {
 
 const { values } = parseArgs({
   options: {
-    limit: { type: 'string', default: '40' },
+    limit: { type: 'string', default: '60' },
     match: { type: 'string' },
     'base-url': { type: 'string', default: process.env.GEV_LLM_BASE_URL },
   },
@@ -119,5 +120,7 @@ console.log(
   `\nchecked ${doubt.length}; right llm-clear ${tally.right}; WRONG llm-clear ${tally.wrongClear.length}; missed ${tally.missed}`,
 );
 for (const t of tally.wrongClear) console.log(`WRONG CLEAR  ${t}`);
+for (const t of tally.wrongUnverified)
+  console.log(`unverified, but no incident wording: ${t}`);
 console.log('rejected:', JSON.stringify(tally.rejected));
 process.exitCode = tally.wrongClear.length ? 1 : 0;
