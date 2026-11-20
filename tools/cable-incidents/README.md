@@ -117,8 +117,10 @@ matched only with its catalogue capitals, and is shown as weak. Stored and
 printed text has control and bidirectional characters removed.
 
 The proposal suggests a claim from the wording: `restored` for repaired
-or back in service, `fault` when the notice says it is not yet restored,
-nothing when repair wording comes with rerouting, otherwise `fault`. It never suggests a physical
+or back in service, otherwise `fault`. Repair wording next to a negation,
+a repair still to come or rerouting ("not yet restored", "until
+repairs", "traffic rerouted") suggests nothing, because a wrong `restored`
+would close an incident. It never suggests a physical
 `break`. Words like "cut" or "damaged" are listed for you to check against
 the notice itself. A suggestion is only a hint, so read the notice.
 

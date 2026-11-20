@@ -293,23 +293,28 @@ test('indices stay aligned when lower-casing would lengthen the text', () => {
   );
 });
 
-test('a repair not yet done is a fault; repair next to rerouting suggests nothing', () => {
-  for (const [text, expected] of [
-    [
-      'Traffic restored via alternative routes while the cable awaits repair',
-      'fault',
-    ],
-    ['The C-Lion1 cable has not yet been restored', 'fault'],
-    ['C-Lion1 fault: service has not yet been restored', 'fault'],
-    [
-      'C-Lion1 submarine cable has fully restored. During the repair, traffic was rerouted via alternative routes.',
-      null,
-    ],
+test('repair wording next to doubtful wording never suggests restored', () => {
+  for (const text of [
+    'Traffic restored via alternative routes while the cable awaits repair',
+    'The C-Lion1 cable has not yet been restored',
+    'C-Lion1 fault: service has not yet been restored',
+    'Service hasn’t been restored yet',
+    "Services haven't been restored",
+    'Service will not be restored until next week',
+    'C-Lion1 submarine cable has fully restored. During the repair, traffic was rerouted via alternative routes.',
   ]) {
     const { suggestedClaim, cues } = claimCues(text);
-    assert.equal(suggestedClaim, expected, text);
+    assert.equal(suggestedClaim, null, text);
     assert.ok(cues.doubt.length, text);
   }
+  assert.equal(
+    claimCues('The C-Lion1 cable has now been restored').suggestedClaim,
+    'restored',
+  );
+  assert.equal(
+    claimCues('C-Lion1 fault: repairs will start on Monday').suggestedClaim,
+    'fault',
+  );
 });
 
 test('a name with a space and a number is not taken from a score or a timetable', () => {

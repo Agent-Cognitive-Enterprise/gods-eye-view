@@ -14,9 +14,6 @@ const ABOUT_CABLES = /\b(?:cables?|subsea|submarine|undersea)\b/;
 // Names with a space are not: "Germany-Denmark 3" is also a football score.
 const DISTINCT = (name) =>
   /\d/.test(name) && name.length >= 5 && !/\s/.test(name);
-// Repair wording that says the repair has not happened.
-const PENDING =
-  /\b(?:not (?:yet )?(?:been )?(?:restored|repaired)|(?:not been|hasn't been|has not been) (?:restored|repaired)|yet to be (?:restored|repaired)|awaits?(?:ing)? repairs?|until (?:the )?repairs?)\b/;
 // C0 and C1 controls (terminal escapes, BEL) and bidirectional overrides.
 const UNPRINTABLE =
   /[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g;
@@ -132,35 +129,35 @@ const CUES = [
     'fault',
     /\b(faults?|outages?|disruptions?|disturbances?|interrupted|interruptions?|failures?|failed|down)\b/g,
   ],
-  // Wording that makes "restored" doubtful: not yet, awaiting, traffic moved.
+  // Wording that makes "restored" doubtful: a negation, a repair still to
+  // come, or traffic moved to other routes.
   [
     'doubt',
-    /\b(not (?:yet )?(?:been )?(?:restored|repaired)|yet to be (?:restored|repaired)|awaits?(?:ing)? repairs?|until (?:the )?repairs?|(?:alternative|alternate|backup) routes?|rerouted|rerouting)\b/g,
+    /\b(not|never|no longer|(?:has|have|had|is|are|was|were|will|can|could)n't|yet to be|awaits?|awaiting|until|pending|(?:alternative|alternate|backup) routes?|rerouted|rerouting)\b/g,
   ],
 ];
 
 /**
  * Wording cues for the reviewer. The suggestion is only `fault` or
- * `restored`: `fault` when the repair has not happened ("not yet
- * restored"), and nothing when repair wording comes with rerouting. A physical `break` is never suggested,
- * because the notice has to confirm it expressly, so break wording is listed
- * for the reviewer to check instead.
+ * `restored`, and `restored` only when no doubtful wording comes with it:
+ * repair wording next to a negation ("not yet restored", "will not be
+ * restored until"), a repair still to come or rerouting suggests nothing,
+ * because a wrong `restored` would close an incident. A physical `break` is
+ * never suggested: the notice has to confirm it expressly, so break wording
+ * is listed for the reviewer to check instead.
  */
 export function claimCues(text) {
-  const folded = fold(String(text ?? '').slice(0, 4000));
+  // Curly apostrophes, as in "hasn’t", read as straight ones.
+  const folded = fold(String(text ?? '').slice(0, 4000)).replace(/[‘’]/g, "'");
   const cues = {};
   for (const [claim, pattern] of CUES) {
     const words = [...new Set([...folded.matchAll(pattern)].map((m) => m[1]))];
     if (words.length) cues[claim] = words.sort();
   }
-  // "Not yet restored" is still a fault. Repair wording next to rerouting
-  // could go either way: no suggestion, and the reviewer reads the notice.
   const suggestedClaim = cues.restored
-    ? PENDING.test(folded)
-      ? 'fault'
-      : cues.doubt
-        ? null
-        : 'restored'
+    ? cues.doubt
+      ? null
+      : 'restored'
     : cues.fault || cues.break
       ? 'fault'
       : null;
