@@ -52,21 +52,32 @@ function fold(text) {
 export function catalogueNames(collection) {
   if (!Array.isArray(collection?.features))
     throw new Error('Expected cable GeoJSON features');
-  const byId = new Map();
+  const seen = new Set();
+  const entries = [];
+  const add = (cableId, name) =>
+    entries.push({
+      cableId,
+      name,
+      key: fold(name),
+      weak: SINGLE_WORD.test(name),
+      distinct: DISTINCT(name),
+    });
   for (const feature of collection.features) {
     const { id, name } = feature?.properties ?? {};
     if (typeof id !== 'string' || !id || typeof name !== 'string') continue;
     const trimmed = name.trim().normalize('NFC');
-    if (!trimmed || byId.has(id)) continue;
-    byId.set(id, {
-      cableId: id,
-      name: trimmed,
-      key: fold(trimmed),
-      weak: SINGLE_WORD.test(trimmed),
-      distinct: DISTINCT(trimmed),
-    });
+    if (!trimmed || seen.has(id)) continue;
+    seen.add(id);
+    add(id, trimmed);
+    // "Eastern Africa Submarine System (EASSy)": notices use either part
+    // on its own, so both are names of the cable too.
+    const parts = /^(.*\S)\s*\(([^()]+)\)$/.exec(trimmed);
+    if (parts) {
+      add(id, parts[1].trim());
+      add(id, parts[2].trim());
+    }
   }
-  return [...byId.values()].sort(
+  return entries.sort(
     (a, b) => b.name.length - a.name.length || (a.cableId < b.cableId ? -1 : 1),
   );
 }
@@ -114,7 +125,12 @@ export function cableMentions(text, names) {
     );
     if (!free.length) continue;
     for (const start of free) taken.push([start, start + entry.name.length]);
-    out.push({ cableId: entry.cableId, name: entry.name, weak: entry.weak });
+    // One result per cable; a strong name beats a weak one ("EASSy").
+    const known = out.find((m) => m.cableId === entry.cableId);
+    if (!known)
+      out.push({ cableId: entry.cableId, name: entry.name, weak: entry.weak });
+    else if (known.weak && !entry.weak)
+      Object.assign(known, { name: entry.name, weak: false });
   }
   return out.sort((a, b) => (a.cableId < b.cableId ? -1 : 1));
 }

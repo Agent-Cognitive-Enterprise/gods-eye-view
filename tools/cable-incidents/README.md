@@ -195,6 +195,50 @@ Rights Reserved". Its API software is licensed for academic research and
 education. No data-use terms were found, so ask the IODA team before
 polling it regularly or for other uses. It is off by default.
 
+## Automatic signals (phase 1: shadow mode)
+
+`GEV_INTEL_CABLES=1` (with `GEV_INTEL_ENABLED=1`) adds a feed named
+`submarine-cables` to Autopilot. Every hour it polls the checked sources in
+`server/providers/intel/connectors/cables.js` and judges each new notice
+without a person (`src/intel/cableSignals.js`):
+
+1. **Red flag:** the notice names a catalogue cable, or says submarine,
+   subsea, undersea or sea cable, cable route, system, landing, ship, repair,
+   cut, fault or damage, or a Nordic or German word for a sea cable. Its
+   priority is `incident` (fault, outage, cut, damage, repair wording),
+   `threat` (anchor, vessel, trawler, sabotage, investigation, police, navy,
+   coast guard) or `mention`.
+2. **Clear signal:** all of these hold.
+   - The source is an operator or regulator.
+   - Every cable the notice names is in the source's own `cables` list: an
+     operator's own cables, a regulator's cables in its country. WIOCC and
+     the news source speak for none.
+   - The notice uses incident wording, with nothing doubtful.
+
+   Its claim is `fault` or `restored`. A break is recorded only when the
+   notice says cut, severed, broken or break.
+
+3. **Doubt:** any other incident or threat red flag. In phase 2 a local model
+   will judge these. Without one they are dropped.
+4. **Shadow incidents:** a clear fault opens an incident on its cable, or
+   updates the open one. A clear repair notice closes it. An open incident
+   with no report for 30 days fades: it was last reported then, not proven
+   repaired.
+
+Nothing reaches the engine, the map or the camera. Each red flag and each
+would-be change goes to `cables-shadow.jsonl` in the intel folder
+(`.gev-cache/intel`, or the folder of `GEV_INTEL_DB`), next to
+`cables-shadow-state.json`. The first poll of each source records only a
+baseline.
+
+`node tools/cable-incidents/evaluate.mjs` scores the rules on
+`labelled-notices.json`. It holds 121 real notices fetched on 2026-11-20,
+including Cinia's six C-Lion1 fault and repair notices from 2024–25, plus 12
+synthetic notices marked as such: paraphrased patterns of documented
+events, not quotations. The tests require no wrong clear signal and no
+missed one on that set. The synthetic notices were written knowing the
+rules, so the set flatters the rules. Add real notices as they arrive.
+
 ## Next integration
 
 Replay a labelled set of faults, repairs, false positives and

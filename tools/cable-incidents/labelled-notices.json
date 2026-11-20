@@ -1,0 +1,1095 @@
+{
+  "about": "Labelled notices for the automatic cable signal rules. Real items were fetched from the listed sources on 2026-11-20 (titles and listing summaries only). Items with synthetic: true are paraphrased patterns of documented events, not quotations; their URLs are placeholders.",
+  "notices": [
+    {
+      "sourceId": "cinia-news",
+      "title": "Finland, Sweden and Estonia strengthen submarine cable repair preparedness in the Baltic Sea",
+      "summary": "An international project involving public authorities and companies will strengthen the ability to repair damaged submarine cables in the Baltic Sea during major disruptions and emergency conditions. With support from the European Union, deployable repair equipment will be procured to help restore c",
+      "url": "https://www.cinia.fi/en/news/finland-sweden-and-estonia-strenghten-submarine-cable-repair-preparedness-in-baltic-sea",
+      "publishedAt": "2026-11-17T14:55:41.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Nokia and Cinia partner to secure Finland's critical infrastucture with advanced DDoS protection",
+      "summary": "Cinia deploying Nokia advanced Distributed Denial of Service (DDoS) protection solution to safeguard critical networks against evolving cyber threats. Solution's real-time threat identification aligns with Cinia's responsibility to maintain resilient infrastructure that underpins Finland's digital e",
+      "url": "https://www.cinia.fi/en/news/nokia-and-cinia-partner-to-secure-finlands-critical-infastucture",
+      "publishedAt": "2026-04-16T06:00:00.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "SSH Communications Security and Cinia Announce Partnership and Customer Win",
+      "summary": "SSH Communications Security (SSH) and Cinia have signed a reseller agreement that will enable both parties to deliver high-security systems and services to a wider range of customers.",
+      "url": "https://www.cinia.fi/en/news/ssh-communications-security-and-cinia-announce-partnership-and-customer-win",
+      "publishedAt": "2025-04-29T09:59:52.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "November 3, 2026 How Infrastructure is Powering Africa’s Technology Transformation Cloud, AI and analytics only deliver value when the infrastructure beneath them is ready. In this interview, Godwin Michaels, Chief Technology Officer at Layer3, explains why African organisations should treat digital",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/layer3-case-study-2026",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "September 16, 2026 Building the Digital Foundation for Nigeria’s Next Era of Payments In this interview, Dr Emmanuel Ejembi, Chief Technology Advisor at UP, explains how the next generation of payments is being shaped by real time processing, AI, and rising customer expectations around speed and ava",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/building-the-digital-foundation-for-nigerias-next-era-of-payments",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "September 3, 2026 WIOCC Group Secures US$300 Million Investment to Drive its Next Phase of Pan-African Digital Infrastructure Growth The new capital will be directed toward three priorities: accelerating the deployment and consolidation of data centre capacity, extending the open-access terrestrial",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/wiocc-group-secures-us-300-million-investment",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "September 1, 2026 WIOCC Group Secures Strategic Investment from AFC and Vision Invest to Accelerate ts Digital Infrastructure Expansion Across Africa WIOCC Group, Africa's leading carrier-neutral digital infrastructure platform, today announced the signing of a Shareholder Subscription Agreement (SS",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/wiocc-group-secures-strategic-investment-from-afc-and-vision-invest",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "July 28, 2026 WIOCC Delivers the Capacity ISPs Need to Scale Faster and Reach Further Every month an ISP cannot scale is a month its competitors gain ground. The providers that grow quickly without placing undue strain on their balance sheets are the ones that capture market share, strengthen custom",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/wiocc-internet-capacity-isps-kenya",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "July 1, 2026 Always-On Banking: Why Africa’s Digital Future Depends on Intelligent Connectivity, Not More Infrastructure In Africa’s fast-evolving financial services sector, customers do not see infrastructure; they experience outcomes. And when those outcomes fail, trust is compromised alongside th",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/always-on-banking-why-africas-digital-future-depends-on-intelligent-connectivity-not-more-infrastructure",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "June 2, 2026 Simplifying ISP Growth in Kenya: The Power of an Integrated Wholesale Model To deliver connectivity from your customer’s door to the global internet requires international submarine cable capacity, access to a national long-distance fibre backbone and metro network infrastructure in the",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/simplifying-isp-growth-in-kenya-the-power-of-an-integrated-wholesale-model",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "June 1, 2026 Advancements Series with Ted Danson - Digital Infrastructure Bridging the Digital Divide This feature highlights the digital infrastructure and ecosystem underpinning the digital economy.",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/advancements-series-with-ted-danson-digital-infrastructure-bridging-the-digital-divide",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "May 26, 2026 Always-On Banking Is Not Optional Digital-first banking has accelerated across Africa, where explosive growth and pan-African expansion leave zero tolerance for disruption.",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/always-on-banking-is-not-optional",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "April 21, 2026 African Interconnection Report The report draws on insights from a broad cross-section of data centre operators, carriers and cloud service providers across the continent.",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/african-interconnection-report",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "April 13, 2026 How WIOCC Is Supporting Smaller ISPs in Scaling Infrastructure Cost-efficiently Running an Internet Service Provider (ISP) is hard enough without also having to juggle four or five different infrastructure vendors, each responsible for a separate slice of your network. However, that’s",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/how-wiocc-is-supporting-smaller-isps-in-scaling-infrastructure-cost-efficiently",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "April 11, 2026 WIOCC Engages Future Talent at the Jesus Christ of Latter-Day Saints Career Fair WIOCC was happy to participate in the Jesus Christ of Latter-Day Saints Career Fair, where we interacted with students and job seekers, shared insights on career opportunities in the digital infrastructur",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/wiocc-engages-future-talent-at-the-jesus-christ-of-latter-day-saints-career-fair",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "April 1, 2026 Unlocking digital opportunities across Africa Africa is entering a defining phase of its digital transformation. Across the continent, demand for secure, scalable and high-performance digital infrastructure is accelerating as businesses, governments and communities rely increasingly on",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/unlocking-digital-opportunities-across-africa",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "April 1, 2026 Innovation built on a legacy of trust since 2008 Africa stands at a defining moment in its digital transformation journey. As demand for secure, scalable, and high-performance infrastructure accelerates throughout Africa, the need for resilient, open and future-ready platforms has neve",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/innovation-built-on-a-legacy-of-trust-since-2008",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "December 10, 2025 WIOCC Group secures additional USD $65 million debt raise to expand digital infrastructure across Africa WIOCC Group, Africa’s leading open-access digital infrastructure provider, announces the successful acquisition of an additional USD $65 million in debt financing.",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/wiocc-group-secures-additional-usd-65-million-debt-raise-to-expand-digital-infrastructure-across-africa",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "August 19, 2025 The Company Building Nigeria’s Fibre Future As a Fibre Network Operator (FNO), Open Access Metro designs, builds and manages high-performance, open-access metro fibre networks engineered specifically to support the market.",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/the-company-building-nigerias-fibre-future",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "August 6, 2025 Inside WIOCC’s Vision to Transform Kenya’s Internet Infrastructure As Kenya surges forward in its journey toward a fully digital economy, one player is quietly but powerfully laying the groundwork for that transformation.",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/inside-wioccs-vision-to-transform-kenyas-internet-infrastructure",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "July 23, 2025 WIOCC and TMCEL Sign Strategic Capacity Deal to Strengthen Connectivity in Mozambique and Southern Afric WIOCC, Africa’s leading digital infrastructure provider, has signed a landmark Framework Agreement (FWA) with TMCEL",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/wiocc-and-tmcel-sign-strategic-capacity-deal-to-strengthen-connectivity-in-mozambique-and-southern-afric",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "May 5, 2025 Unlocking Growth for ISPs in Kenya: How WIOCC’s Connectivity Solutions Drive Success Renowned as Africa’s Carriers’ Carrier, WIOCC, supports ISPs and telcos with tailored solutions designed to enhance service quality and expand market reach.",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/unlocking-growth-for-isps-in-kenya-how-wioccs-connectivity-solutions-drive-success",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "March 18, 2025 WIOCC and iColo Collaborate to Drive ISP Growth and Digital Transformation in Kenya WIOCC, Africa’s leading wholesale connectivity provider, has joined forces with iColo: A Digital Realty Company, a World Class carrier-neutral data centre provider, in a strategic colocation agreement",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/wiocc-and-icolo-collaborate-to-drive-isp-growth-and-digital-transformation-in-kenya",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "February 3, 2025 Driving Africa’s Digital Future For over 15 years, WIOCC has been at the forefront of Africa’s digital transformation, building a reputation as a key enabler of connectivity across the continent.",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/driving-africas-digital-future",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "January 23, 2025 WIOCC Group and Ministry of Communications Innovation & Digital Economy Forge Partnership to Accelerate Nigeria’s Digital Economy WIOCC Group, a leading provider of digital infrastructure and connectivity solutions, is pleased to announce a strategic partnership with the Federal Min",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/wiocc-group-and-ministry-of-communications-innovation-digital-economy-forge-partnership-to-accelerate-nigerias-digital-economy",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "December 3, 2024 WIOCC and Galaxy Backbone Partner to Drive High-Speed Internet Connectivity Across Nigeria WIOCC, Africa’s Carriers’ Carrier, has partnered with Galaxy Backbone Limited (GBB), a leading digital infrastructure and shared services provider, in a strategic infrastructure collaboration",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/wiocc-and-galaxy-backbone-partner-to-drive-high-speed-internet-connectivity-across-nigeria",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "November 28, 2024 A Lifeline in the Dust: WIOCC Group’s Role in Saving Botswana’s Wildlife The ongoing drought in Botswana has taken a devastating toll on wildlife. Once-thriving waterholes in the Makgadikgadi National Park region have dried up, leaving animals desperate and struggling to survive.",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/a-lifeline-in-the-dust-wiocc-groups-role-in-saving-botswanas-wildlife",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "November 12, 2024 e& Partners with WIOCC to Drive Telco and Hyperscaler Growth in Africa Global technology group, e& has entered into a strategic partnership with WIOCC, known as Africa’s Carriers’ Carrier, to boost the growth of hyperscaler ecosystem across Africa.",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/e-partners-with-wiocc-to-drive-telco-and-hyperscaler-growth-in-africa",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "November 4, 2024 WIOCC Partners with Adopt NetTech to Revolutionise Wholesale FTTx Network Rollout in Nigeria with Next-Generation BSS/OSS Platform WIOCC, through its Open Access Metro (OAM) division, is driving forward Nigeria’s digital transformation by activating its wholesale Fibre-to-the-X (FTT",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/wiocc-partners-with-adopt-nettech-to-revolutionise-wholesale-fttx-network-rollout-in-nigeria-with-next-generation-bss-oss-platform",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "October 30, 2024 WIOCC, Africa’s Digital Backbone, Enables Kenya’s ISPs, Carriers and MSPs to Seamlessly Scale with Reliable, Tailored Connectivity Solutions As Kenya’s telecom market grows rapidly, fuelled by improved international connectivity and infrastructure development, WIOCC is equipping Int",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/wiocc-africas-digital-backbone-enables-kenyas-isps-carriers-and-msps-to-seamlessly-scale-with-reliable-tailored-connectivity-solutions",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "October 30, 2024 WIOCC, Africa’s Digital Backbone, Enables Kenya’s ISPs, Carriers and MSPs to Seamlessly Scale with Reliable, Tailored Connectivity Solutions As Kenya’s telecom market grows rapidly, fuelled by improved international connectivity and infrastructure development",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/kenya-wholesale-internet-provider",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "August 14, 2024 WIOCC restores major ISPs and IP Transit providers on Equiano cable Leading African carrier-scale network infrastructure provider WIOCC has confirmed putting in place restoration services on the Equiano cable for its major ISP and IP Transit provider clients affected by the ongoing w",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/wiocc-restores-major-isps-and-ip-transit-providers-on-equiano-cable",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "July 9, 2024 WIOCC GROUP and Readland Global Host Successful STEM Workshop in Lagos WIOCC GROUP, in partnership with Readland Global, is pleased to announce the successful completion of a Science, Technology, Engineering and Mathematics (STEM) workshop held on June 20.",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/wiocc-group-and-readland-global-host-successful-stem-workshop-in-lagos",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "June 18, 2024 IFC, Proparco and RMB Partner with WIOCC Group to Expand Digital Infrastructure in Africa A financing package announced today from IFC and Proparco for digital infrastructure provider WIOCC Group will fund WIOCC’s expansion strategy in three African countries, enhancing the continent’s",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/ifc-proparco-and-rmb-partner-with-wiocc-group-to-expand-digital-infrastructure-in-africa",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "May 29, 2024 FirstNet Leverages WIOCC 2Africa Cable For Unprecedented Connectivity WIOCC has connected FirstNet Technology Services, a First Technology Group company, to the 2Africa cable system between Durban and Cape Town.",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/firstnet-leverages-wiocc-2africa-cable-for-unprecedented-connectivity",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "March 19, 2024 WIOCC’s Strategic Role in Addressing Subsea Cable Outages WIOCC, Africa’s digital backbone, is leading the continent’s response to the cable cuts currently affecting the WACS, ACE, Main One and SAT3 subsea systems on Africa’s western seaboard.",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/wioccs-strategic-role-in-addressing-subsea-cable-outages",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "November 3, 2023 Beyond connectivity: WIOCC Group is transforming Africa’s digital economy From cloud operators and content providers to telcos and Internet Service Providers (ISPs), digitally-based businesses can now build the operations they want in Africa by taking advantage of WIOCC Group’s uniq",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/beyond-connectivity-wiocc-group-is-transforming-africas-digital-economy",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "July 23, 2023 Laser Light and WIOCC Sign $129M Partnership to Grow Businesses and Increase Access To Data Capacity for Africa Master Services Agreement Has Laser Light Contracting with WIOCC for Undersea Cables and Support Services with WIOCC Contracting with Laser Light for Global Connectivity.",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/laser-light-and-wiocc-sign-129m-partnership-to-grow-businesses-and-increase-access-to-data-capacity-for-africa",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "March 6, 2023 Bridging connectivity gaps via wholesale offering Wholesale international capacity demands continue to grow, from tens of Megabits per second (Mbps) per circuit to multi-100 Gigabits per second (Gbps) – on multiple routes for resilience. This is driven by African consumers’ needs to re",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/bridging-connectivity-gaps-via-wholesale-offering",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "February 8, 2023 WIOCC lands world’s largest subsea cable system in KwaZulu-Natal WIOCC, Africa’s digital backbone, has landed 2Africa – the world’s largest subsea cable system – into world-class, carrier-neutral data centre OADC Durban, owned and operated by WIOCC Group company, Open Access Data Ce",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/wiocc-lands-worlds-largest-subsea-cable-system-in-kwazulu-natal",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "November 11, 2022 WIOCC Chooses EXA Infrastructure to Diversify Network Connectivity Between Africa and Europe EXA Infrastructure, the largest dedicated digital infrastructure platform connecting Europe and North America, and WIOCC Group, Africa’s leading provider of converged open access digital in",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/wiocc-chooses-exa-infrastructure-to-diversify-network-connectivity-between-africa-and-europe",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "November 8, 2022 WIOCC to Activate its Fibre Pair on Equiano Cable with Ciena WIOCC, a leading provider of digital connectivity and infrastructure across Africa, is working with Ciena (NYSE: CIEN) to become the first operator to activate a fibre pair on the new Equiano submarine cable system.",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/wiocc-to-activate-its-fibre-pair-on-equiano-cable-with-ciena",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "September 28, 2022 IFC Equity Investment in WIOCC Group to Support Africa’s Digital Infrastructure Expansion To improve access to quality broadband internet and data hosting services for homes and businesses in Africa, IFC today announced it is expanding its relationship with West Indian Ocean Cable",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/ifc-equity-investment-in-wiocc-group-to-support-africas-digital-infrastructure-expansion",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "wiocc-news",
+      "title": "July 10, 2022 Landing of Equiano cable extends WIOCC’s wholesale offering in South Africa WIOCC’s commitment to delivering a market-leading portfolio of wholesale services, based on strategic investment in subsea and terrestrial digital infrastructure, has been further demonstrated with the arrival",
+      "summary": "",
+      "url": "https://www.wiocc.net/news/landing-of-equiano-cable-extends-wioccs-wholesale-offering-in-south-africa",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "VDES technology tested on a voyage to the North Pole",
+      "summary": "The post VDES technology tested on a voyage to the North Pole appeared first on Space Norway .",
+      "url": "https://spacenorway.com/news/vdes-technology-tested-on-a-voyage-to-the-north-pole/",
+      "publishedAt": "2026-11-18T12:24:48.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Akkodis and Space Norway sign MoU on satellite communications for civil preparedness",
+      "summary": "Space Norway announces the contract for THOR 8 satellite, to join its THOR fleet at 1° West. Following a successful agreement with Thales Alenia Space for the design, construction, testing and delivery, THOR 8 is scheduled for launch in 2027. The post Akkodis and Space Norway sign MoU on satellite c",
+      "url": "https://spacenorway.com/press-release/akkodis-and-space-norway-sign-mou-on-satellite-communications-for-civil-preparedness/",
+      "publishedAt": "2026-10-22T08:08:15.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Space Norway selects Ciena to upgrade its legacy Svalbard system and power new Arctic Way subsea cable",
+      "summary": "The post Space Norway selects Ciena to upgrade its legacy Svalbard system and power new Arctic Way subsea cable appeared first on Space Norway .",
+      "url": "https://spacenorway.com/press-release/space-norway-selects-ciena-to-upgrade-its-legacy-svalbard-system-and-power-new-arctic-way-subsea-cable/",
+      "publishedAt": "2026-10-13T08:03:59.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Bjørn Erik Reinseth elected Chair of Space Norway",
+      "summary": "The post Bjørn Erik Reinseth elected Chair of Space Norway appeared first on Space Norway .",
+      "url": "https://spacenorway.com/news/bjorn-erik-reinseth-elected-chair-of-space-norway/",
+      "publishedAt": "2026-09-25T10:27:50.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Space Norway marks 40 years of satellite operations at Nittedal Teleport",
+      "summary": "Space Norway announces the contract for THOR 8 satellite, to join its THOR fleet at 1° West. Following a successful agreement with Thales Alenia Space for the design, construction, testing and delivery, THOR 8 is scheduled for launch in 2027. The post Space Norway marks 40 years of satellite operati",
+      "url": "https://spacenorway.com/press-release/space-norway-marks-40-years-of-satellite-operations-at-nittedal-teleport/",
+      "publishedAt": "2026-09-23T12:45:14.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Rune Jensen appointed acting Chief Executive Officer of Space Norway",
+      "summary": "Space Norway announces the contract for THOR 8 satellite, to join its THOR fleet at 1° West. Following a successful agreement with Thales Alenia Space for the design, construction, testing and delivery, THOR 8 is scheduled for launch in 2027. The post Rune Jensen appointed acting Chief Executive Off",
+      "url": "https://spacenorway.com/press-release/rune-jensen-appointed-acting-chief-executive-officer-of-space-norway/",
+      "publishedAt": "2026-08-19T10:59:21.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "When emergency services need assistance",
+      "summary": "The post When emergency services need assistance appeared first on Space Norway .",
+      "url": "https://spacenorway.com/news/when-emergency-services-need-assistance/",
+      "publishedAt": "2026-08-06T09:48:33.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Rheinmetall and Space Norway cooperate on Maritime Space Surveillance",
+      "summary": "The post Rheinmetall and Space Norway cooperate on Maritime Space Surveillance appeared first on Space Norway .",
+      "url": "https://spacenorway.com/press-release/rheinmetall-and-space-norway-cooperate-on-maritime-space-surveillance/",
+      "publishedAt": "2026-07-15T13:20:26.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "When time is precious, and reliable emergency communication is key!",
+      "summary": "The post When time is precious, and reliable emergency communication is key! appeared first on Space Norway .",
+      "url": "https://spacenorway.com/news/when-time-is-precious-and-reliable-emergency-communication-is-key/",
+      "publishedAt": "2026-06-25T09:59:00.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Space Norway Launches Emergency Preparedness Solution for Enterprises and Government",
+      "summary": "The post Space Norway Launches Emergency Preparedness Solution for Enterprises and Government appeared first on Space Norway .",
+      "url": "https://spacenorway.com/news/space-norway-launches-emergency-preparedness-solution-for-enterprises-and-government/",
+      "publishedAt": "2026-06-18T09:15:13.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Seaborn Networks Announces Sean McNeill as Incoming CEO; Leadership Transition Effective July 17",
+      "summary": "Seaborn Networks Announces Sean McNeill as Incoming CEO; Leadership Transition Effective July 17 Seaborn Networks, a leading developer, owner, and operator of submarine fiber optic cable systems, today announced that Sean McNeill will assume the role of Chief Executive Officer (CEO), effective July ",
+      "url": "https://seabornnetworks.com/seaborn-networks-announces-sean-mcneill-as-incoming-ceo-leadership-transition-effective-july-17/",
+      "publishedAt": "2026-07-02T19:21:07.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "SEABORN NETWORKS APRESENTA SOLUÇÃO ANTI-DDOS PARA REDES",
+      "summary": "A Seaborn Networks anunciou o lançamento do Seaborn Anti-DDoS Services, nova solução de proteção contra ataques de negação de serviço distribuída (DDoS) desenvolvida para ampliar a segurança e a estabilidade das operações digitais de empresas, operadoras e provedores de conectividade nas Américas. S",
+      "url": "https://seabornnetworks.com/seaborn-networks-apresenta-solucao-anti-ddos-para-redes/",
+      "publishedAt": "2026-03-11T22:44:26.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Orchest Technologies Enters into expanded South American Network Services Agreement with Seaborn Networks",
+      "summary": "Sao Paulo, Brazil. March 13th, 2023, — Orchest Technologies (“Orchest”), the leading international provider of Network Solutions and Cloud Connection services throughout Latin America, today announced an expanded Network Services Agreement with Seaborn Networks (“Seaborn”), the developer-owner-opera",
+      "url": "https://seabornnetworks.com/orchest-technologies-enters-into-expanded-south-american-network-services-agreement-with-seaborn-networks/",
+      "publishedAt": "2023-03-13T13:30:24.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Seaborn Networks is certified by B3 (Brazilian Stock Exchange) as an RCB provider in Brazil",
+      "summary": "São Paulo, Brazil, February 1, 2022 – Seabras 1 Brasil Ltda. (“Seaborn”), leading developer-owner-operator of submarine fiber optic cable systems, and B3, the Brazilian Stock Exchange and one of the world’s leading financial infrastructure companies in the market, announce that Seaborn’s network has",
+      "url": "https://seabornnetworks.com/seaborn-networks-is-certified-by-b3-brazilian-stock-exchange-as-an-rcb-provider-in-brazil/",
+      "publishedAt": "2022-02-09T10:19:59.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Seaborn Networks Appoint Lin Gentemann as General Counsel and Sean McNeill as Chief Financial Officer",
+      "summary": "Boston. September 15, 2021 – Seaborn Networks (“Seaborn”), a leading developer-owner-operator of submarine fiber optic cable systems, announced today the appointment of Lin Gentemann as General Counsel and Sean McNeill as Chief Financial Officer. Lin was most recently Vice President, Legal for Seabo",
+      "url": "https://seabornnetworks.com/seaborn-networks-appoint-lin-gentemann-as-general-counsel-and-sean-mcneill-as-chief-financial-officer/",
+      "publishedAt": "2021-09-15T11:00:07.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Seaborn Selects Infinera’s ICE6 Technology and Expands Spectrum Delivery in the Americas",
+      "summary": "San Jose, Calif. – July 6, 2021 – Infinera (NASDAQ: INFN) and Seaborn Networks (Seaborn), a leading developer-owner-operator of submarine fiber optic cable systems, announced today the selection of Infinera’s industry-leading ICE6 800G coherent technology for Seaborn’s subsea network. Once deployed ",
+      "url": "https://seabornnetworks.com/seaborn-selects-infineras-ice6-technology-and-expands-spectrum-delivery-in-the-americas/",
+      "publishedAt": "2021-07-06T13:39:44.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Seaborn Networks Appoints Eric Brooks as Senior Vice President, Sales and Marketing, North America",
+      "summary": "Boston. June 2, 2021 – Seaborn Networks (“Seaborn”), a leading developer-owner-operator of submarine fiber optic cable systems, announced today the appointment of Eric Brooks as Senior Vice President of Sales and Marketing, North America. Eric will lead Seaborn’s North America sales organization, ch",
+      "url": "https://seabornnetworks.com/seaborn-networks-appoints-eric-brooks-as-senior-vice-president-sales-and-marketing-north-america/",
+      "publishedAt": "2021-06-02T12:00:29.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Seaborn Networks Provides International Broadband Connectivity to Webby Internet’s Backbone in Brazil",
+      "summary": "São Paulo, Brazil, May 25, 2021 – Seaborn Networks (“Seaborn”), a leading developer-owner-operator of submarine fiber optic cable systems, and Webby Internet, a broadband network operator in the states of São Paulo, Paraná and Mato Grosso do Sul, announce today that Seaborn’s network is providing in",
+      "url": "https://seabornnetworks.com/seaborn-networks-provides-international-broadband-connectivity-to-webby-internets-backbone-in-brazil/",
+      "publishedAt": "2021-05-25T16:40:58.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Seaborn Delivers High-Capacity International Connectivity to Ascenty Data Centers in Brazil",
+      "summary": "Boston, Mass. and São Paulo, Brazil, 27 April 2021 – Seaborn Networks (“Seaborn”), a leading developer-owner-operator of submarine fiber optic cable systems, and Ascenty, the largest data center and connectivity service provider in Latin America, announce today that Seaborn’s most reliable internati",
+      "url": "https://seabornnetworks.com/seaborn-delivers-high-capacity-international-connectivity-to-ascenty-data-centers-in-brazil/",
+      "publishedAt": "2021-04-27T14:23:47.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Profile of a Founder – Andy Bax",
+      "summary": "The post Profile of a Founder – Andy Bax appeared first on Seaborn Networks .",
+      "url": "https://seabornnetworks.com/profile-of-a-founder-andy-bax/",
+      "publishedAt": "2021-03-31T14:13:20.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "tata-communications",
+      "title": "Tata Communications to Build India’s AI Super Highway",
+      "summary": "Tata Communications , a leading global communications technology player, today announced strategic investments of close to USD 450 million to build an AI super highway in India - a high-speed, low-latency network fabric connecting India’s key AI data-centre corridors. The company will build around 1",
+      "url": "https://www.tatacommunications.com/press-release/tata-communications-to-build-indias-ai-super-highway",
+      "publishedAt": "2026-10-26T08:51:18.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "tata-communications",
+      "title": "Q2 records highest EBITDA and fastest EBITDA growth",
+      "summary": "Tata Communications , a leading global communications technology player, announced its financial results for the quarter ended 30th September 2026. Highlights | Q2 FY2027 Gross revenue increases 9.6% YoY, digital platform revenue grew by 18.6% YoY Data revenue grew by 12.2% YoY Absolute EBITDA grew ",
+      "url": "https://www.tatacommunications.com/press-release/q2-fy2027-financial-results",
+      "publishedAt": "2026-10-15T09:05:44.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "tata-communications",
+      "title": "Air India and Tata Communications for EasyRoam Travel SIM",
+      "summary": "Air India , India’s leading global airline and Tata Communications , a leading global communications technology player, today announced the launch of EasyRoam – an Air India-branded travel SIM, offering international roaming service, developed in partnership with Tata Communications. EasyRoam is an ",
+      "url": "https://www.tatacommunications.com/press-release/air-india-and-tata-communications-for-easyroam-travel-sim",
+      "publishedAt": "2026-10-08T05:39:52.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "tata-communications",
+      "title": "Tata Communications and Tata Motors Power Sierra.ev with 5G",
+      "summary": "Tata Communications , a leading global communications technology player and Tata Motors Passenger Vehicles (TMPV), India’s leading automobile manufacturer, today announced collaboration to power the newly launched Sierra.ev, with in-built 5G cellular connectivity, paving the way for futuristic Softw",
+      "url": "https://www.tatacommunications.com/press-release/tata-communications-tata-motors-sierra-ev-5g-connectivity",
+      "publishedAt": "2026-08-25T05:33:28.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "tata-communications",
+      "title": "Tata Communications, Tata Tele Business Services Join Forces to Bring Unified AI Infrastructure to India’s SMB Economy",
+      "summary": "Tata Communications and Tata Tele Business Services (TTBS) today announced a strategic collaboration to accelerate AI adoption among India’s Small and Medium Businesses (SMB) through a unified AI platform stack designed specifically for this segment. The collaboration combines their complementary st",
+      "url": "https://www.tatacommunications.com/press-release/tata-communications-tata-tele-business-services-unified-ai-infrastructure",
+      "publishedAt": "2026-07-28T06:35:15.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "tata-communications",
+      "title": "Narottam Sharma appointed as Chief Transformation Officer",
+      "summary": "Tata Communications, a leading communications technology player, today announced the appointment of Narottam Sharma as Chief Transformation Officer . He will take charge of the new role from September 2026 and will be a part of the Global Management Committee at the company. A seasoned technology le",
+      "url": "https://www.tatacommunications.com/press-release/narottam-sharma-appointed-as-chief-transformation-officer",
+      "publishedAt": "2026-07-23T12:31:19.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "tata-communications",
+      "title": "Next-Gen Connectivity Platforms Drive Strong Double-Digit Growth",
+      "summary": "Tata Communications , the leading global communications technology player, announced its financial results for the quarter and financial year ended 30th June 2026. Highlights | Q1 FY2027 Normalised EBITDA growth at 12.7% YoY Last two quarters YoY average EBITDA growth exceeding 10% Commenting on the",
+      "url": "https://www.tatacommunications.com/press-release/q1-fy2027-financial-results",
+      "publishedAt": "2026-07-22T09:01:18.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "tata-communications",
+      "title": "Tata Communications Announces New Leadership Appointments",
+      "summary": "Tata Communications , a leading communications technology player, today announced two strategic leadership appointments aimed at strengthening its capabilities across network infrastructure, cloud, and cybersecurity services. Rupesh Chokshi has been appointed as Executive Vice President and Global B",
+      "url": "https://www.tatacommunications.com/press-release/leadership-appointments-network-cloud-cybersecurity",
+      "publishedAt": "2026-06-30T14:15:59.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "tata-communications",
+      "title": "Tata Communications Strengthens India–Singapore Digital Corridor",
+      "summary": "Tata Communications, a leading global communications technology player, today announced strategic investments in subsea cable infrastructure via acquisition of significant fiber capacity, to strengthen its connectivity solutions between the emerging AI hubs of Mumbai and Chennai in India and Singapo",
+      "url": "https://www.tatacommunications.com/press-release/india-singapore-digital-corridor-ai-ready-connectivity",
+      "publishedAt": "2026-06-30T05:51:10.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "tata-communications",
+      "title": "Enterprise AI Scaling Crisis: Key Challenges | Tata Communications",
+      "summary": "AI has become a universal corporate mandate, but a new global study from Tata Communications and Bloomberg Media Studios reveals a sharper question taking shape inside enterprises: AI investment is no longer in doubt, but the systems beneath it may not be built to carry it, at scale. According to Bu",
+      "url": "https://www.tatacommunications.com/press-release/enterprise-ai-scaling-crisis",
+      "publishedAt": "2026-06-04T06:12:57.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "traficom-news",
+      "title": "Inspection reveals regrooving of used tyres – consumers should be vigilant",
+      "summary": "",
+      "url": "https://www.traficom.fi/en/news/inspection-reveals-regrooving-used-tyres-consumers-should-be-vigilant",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "traficom-news",
+      "title": "Interruptions in electronic services on Saturday 21 November 8:30 AM–2:30 PM and on Sunday 22 November 8:30 AM–2:00 PM",
+      "summary": "",
+      "url": "https://www.traficom.fi/en/news/interruptions-electronic-services-saturday-21-november-830-am-230-pm-and-sunday-22-november-830-am-200-pm",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "traficom-news",
+      "title": "Finnish-led project to receive EUR 9.55 million in EU funding",
+      "summary": "",
+      "url": "https://www.traficom.fi/en/news/finnish-led-project-receive-eur-955-million-eu-funding",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "18.11.2026 GTA 6 slippes denne uken: Pass på skurkene utenfor spillet Svindelekspert advarer mot at kriminelle kan utnytte interessen for lanseringen av GTA 6 med falske nettbutikker og tilbud.",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/gta-6-slippes-denne-uken-pass-pa-skurkene-utenfor-spillet",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Ny veileder skal styrke samarbeidet mellom ekom- og kraftsektoren Når strøm, mobil eller bredbånd faller ut, er rask informasjonsdeling avgjørende.",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/ny-veileder-skal-styrke-samarbeidet-mellom-ekom-og-kraftsektoren",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Advarer om beredskapsradioer som ikke oppfyller kravene Mange følger myndighetenes råd om å ha en radio i sin beredskapskasse. Men en ting må du være oppmerksom på når du skal kjøpe en nødradio.",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/advarer-om-beredskapsradioer",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Slik gjer du mobilen tryggare på 10 minutt Mobilen din kan vere full av appar som veit meir om deg enn du trur. Cyberekspert i Nkom åtvarar mot skjult sporing, falske appar og tilgangar du aldri burde ha gitt.",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/slik-gjor-du-mobilen-tryggere-pa-10-minutter",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Hacking av frysarar: Noreg kan også bli ramma Aktørar i heile verdikjeda må ta ansvar for tryggleiken, seier avdelingsdirektør Espen Slette i Nkom.",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/hacking-av-frysarar-noreg-kan-ogsa-bli-ramma",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Derfor blokkeres mobiler fra mobilnettene Telia og Lyse Tele (Ice) har fått pålegg av Nkom om å blokkere mobiltelefoner som ikke når frem med nødanrop, dersom de ikke klarer å finne en annen løsning.",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/derfor-blokkeres-mobiler-fra-mobilnettene",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Ny satellitt-funksjon kan bidra til å redde liv En ny funksjon på nyere iPhone-modeller gjør det mulig å sende nødmeldinger til Hovedredningssentralen (HRS) selv om du mangler mobildekning. Tjenesten har allerede trolig bidratt til å redde liv.",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/ny-satellitt-funksjon-kan-bidra-til-a-redde-liv",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "NSM hever risikonivået for cyberangrep Nasjonal sikkerhetsmyndighet (NSM) hever det nasjonale cyberrisikonivået fra moderat til høyt.",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/nsm-hever-trusselnivaet-for-cyberangrep",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Dette bør du gjøre hvis mobil og internett ikke virker Denne uken er det den årlige Egenberedskapsuka. I år er teamet bortfall av elektronisk kommunikasjon.",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/dette-bor-du-gjore-hvis-mobil-og-internett-ikke-virker",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "– Tøffere konkurranse gir lavere bredbåndspriser Aldri før har så mange nordmenn vurdert å bytte internettleverandør. Kamilla Sharma i Nkom mener dette er godt nytt og vil styrke konkurransen i bredbåndsmarkedet.",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/toffere-konkurranse-gir-lavere-bredbandspriser",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Første testflyvning for nytt nødnett: – Positivt Nød- og beredskapsbrukerne må ha god kommunikasjon også når oppdraget foregår i lufta. Nå har Nkom testet hvordan teknologien for luftdekning kan fungere i nytt nødnett.",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/forste-testflyvning-for-nytt-nodnett-positivt",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Sikkerheten i norske datasentre må styrkes Ny risikoanalyse peker på flere trusler mot Norges digitale infrastruktur. Nkom-direktør, John-Eivind Velure, mener det er særlig viktig å øke sikkerheten rundt datasentre.",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/nkom-ros-2026",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Slik følger Nkom opp mobilfeilen hos Telenor Problemene med Telenors mobilnett har ført til stor oppmerksomhet og mange spørsmål til Nasjonal kommunikasjonsmyndighet (Nkom). Her er svar på noen av spørsmålene vi får nå.",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/slik-folger-nkom-opp-mobilfeilen-hos-telenor",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Nkom hever beredskapen og varsler tilsyn mot Telenor Nasjonal kommunikasjonsmyndighet (Nkom) hever beredskapen og varsler tilsyn mot Telenor etter problemer med deres mobilnett. Feilen i mobilnettet ble rettet torsdag kveld, og mobiltrafikken går igjen som normalt.",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/nkom-hever-beredskapen-og-varsler-tilsyn-mot-telenor",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Telenor melder om feil i sitt mobilnett Mobilselskapet melder om forbedringer etter feil i sitt mobilnett, men det er fortsatt problemer med å ringe nødnummeret.",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/telenor-melder-om-feil-i-sitt-mobilnett",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Nkom opnar tilsyn med Telenor etter SIM-kortfeil Nasjonal kommunikasjonsmyndigheit (Nkom) ber Telenor om ei utgreiing etter at ei rutinemessig oppdatering førte til at rundt 20 000 SIM-kort slutta å fungere.",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/nkom-opnar-tilsyn-med-telenor-etter-sim-kortfeil",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Millioner til økt digital sikkerhet og nytt nødnett I forslaget til budsjett for 2027 foreslår regjeringen å øke bevilgningen til arbeidet med nytt nødnett med 200 millioner kroner, slik at den totale bevilgningen blir på 324,5 millioner kroner for neste år. Budsjettet inneholder også økte midler fo",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/millioner-til-okt-digital-sikkerhet-og-nytt-nodnett",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Nytt system vil gjøre Norge mindre avhengig av tidssignaler fra GPS – viktig for samfunnssikkerheten Regjeringen foreslår å bruke nesten 100 millioner kroner til en nasjonal tjeneste for presis tid. Bortfall av presis og sporbar tid fra satellitter kan nemlig sette hele vår digitale infrastruktur på",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/tema-frekvensforum-2026",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Nkom styrkjer arbeidet med nytt naudnett Nkom gjer organisatoriske tilpassingar for å styrkje arbeidet med nytt naudnett og sikre god framdrift i ei viktig og omfattande oppgåve.",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/nkom-styrkjer-arbeidet-med-nytt-naudnett",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Over 100 millioner svindelforsøk stoppet De siste to årene har over 100 millioner svindelforsøk med norske telefonnumre blitt stanset før de nådde norske kunder. Resultatet viser at tett samarbeid mellom myndighetene og mobiloperatørene er avgjørende i kampen mot digital svindel.",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/over-100-millioner-svindelforsok-stoppet",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Varsler vedtak i BankID-saken Nkom har konkludert med at seks tidligere BankID-utstedere ikke har oppfylt kravene til sikkerhetsnivå «høyt». Det varslede vedtaket får ingen konsekvenser for brukere av BankID.",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/varsler-vedtak-i-bankid-saken",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Telia og Lyse Tele må sikre nødanrop Nkom ber Telia og Lyse Tele om å følge opp kunder med mobiltelefoner der nødanrop ikke fungerer som de skal. Hvis problemet ikke kan løses, må telefonene stenges ute fra mobilnettet.",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/telia-og-lyse-tele-ma-sikre-nodanrop",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Kunngjøring, mottatt søknad for frekvenstillatelse for 630 kHz, 1314 kHz og 5895 kHz Nasjonal kommunikasjonsmyndighet (Nkom) har mottatt søknad om frekvenstillatelse for 630 kHz, 1314 kHz og 5895 kHz. Alle interesserte gis herved mulighet til å søke om frekvenstillatelse for en eller flere av disse",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/kunngjoring-mottatt-soknad-for-frekvenstillatelse-for-630-khz-1314-khz-og-5895-khz",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Nordmenns kunnskaper om kart og kompass er for dårlig: – Lær dere grunnleggende navigasjon Under halvparten av nordmenn mener de har nok kunnskap til å finne fram uten digitale hjelpemidler. Det er urovekkende mener Nasjonal kommunikasjonsmyndighet (Nkom).",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/nordmenns-kunnskaper-om-kart-og-kompass-er-for-darlig-laer-dere-grunnleggende-navigasjon",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Skal du bruke jaktradio i høst? Dette bør du vite før høstjakta Jaktradioen er for mange en fast del av utstyret når jakta starter. Men før du tar den i bruk, må du ha kontroll på både tillatelse, kanaler og utstyr.",
+      "summary": "",
+      "url": "https://nkom.no/aktuelt/skal-du-bruke-jaktradio-i-host-dette-bor-du-vite-for-hostjakta",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "EU Funds Baltic Subsea Cable Repair Capacity",
+      "summary": "EU Funds Baltic Subsea Cable Repair Capacity TraficomNovember 18, 2026 The European Union has awarded EUR 9.55 million in co-funding to Merikarhu, a project designed to make submarine cable repair capacity available quickly in the Baltic Sea when commercial repair capacity is unavailable. The award ",
+      "url": "https://subtelforum.com/eu-funds-baltic-subsea-cable-repair-capacity/",
+      "publishedAt": "2026-11-18T16:00:00.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "ReuNION Begins Marine Surveys for South Africa Link",
+      "summary": "ReuNION Begins Marine Surveys for South Africa Link Manny Pham, Developing TelecomsNovember 18, 2026 A consortium of six companies is moving ahead with plans for a submarine cable between La Reunion and South Africa. The project, called ReuNION, stands for Reunion New Indian Ocean Network. The conso",
+      "url": "https://subtelforum.com/reunion-begins-marine-surveys-for-south-africa-link/",
+      "publishedAt": "2026-11-18T15:00:00.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "Nigeria Proposes West African Cable Protocol",
+      "summary": "Nigeria Proposes West African Cable Protocol Federal Ministry of Communications, Innovation and Digital EconomyNovember 16, 2026 Nigeria has proposed a shared West African protocol for digital-infrastructure resilience, including arrangements to reroute network traffic and coordinate repairs when su",
+      "url": "https://subtelforum.com/nigeria-proposes-west-african-cable-protocol/",
+      "publishedAt": "2026-11-17T18:00:00.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "FPT Telecom Backs Vietnam-Singapore Cable",
+      "summary": "FPT Telecom Backs Vietnam-Singapore Cable Duc Dao, TNGlobalNovember 17, 2026 FPT Telecom will jointly invest in the Vietnam-Singapore Submarine Cable project, or VTS, according to TNGlobal's current report. The report cited a board resolution dated November 12 and said the company provided no furthe",
+      "url": "https://subtelforum.com/fpt-telecom-backs-vietnam-singapore-cable/",
+      "publishedAt": "2026-11-17T17:00:00.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "TM Tech Receives SALAM Cable Project Approval",
+      "summary": "TM Tech Receives SALAM Cable Project Approval Telekom Malaysia Berhad filingNovember 17, 2026 TM Technology Services Sdn Bhd has received regulatory approval for its proposed role in Malaysia’s SALAM Part 1 submarine cable project, subject to formal acceptance and applicable conditions. In a Novembe",
+      "url": "https://subtelforum.com/tm-tech-receives-salam-cable-project-approval/",
+      "publishedAt": "2026-11-17T16:00:00.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "Windward Reports Vessel Activity Near Asia Cable Routes",
+      "summary": "Windward Reports Vessel Activity Near Asia Cable Routes Windward Maritime Intelligence Operations Center, WindwardNovember 9, 2026 Windward's Maritime Intelligence Operations Center has published an analysis of vessel movements near submarine cable corridors in East Asia and the western Pacific. Its",
+      "url": "https://subtelforum.com/windward-reports-vessel-activity-near-asia-cable-routes/",
+      "publishedAt": "2026-11-17T15:00:00.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "Arctic Cable Plans Face Icebreaker and Mapping Gaps",
+      "summary": "Arctic Cable Plans Face Icebreaker and Mapping Gaps Anna Desmarais, IEEE SpectrumNovember 12, 2026 European plans for Arctic submarine connections face practical gaps in vessel availability, seabed surveys and repair access, according to reporting by Anna Desmarais in IEEE Spectrum. Interviews with ",
+      "url": "https://subtelforum.com/arctic-cable-plans-face-icebreaker-and-mapping-gaps/",
+      "publishedAt": "2026-11-17T14:00:00.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "SubTel Forum Issue 151 – Data Centers & New Technology OUT NOW!",
+      "summary": "SubTel Forum Issue 151 explores data centers, subsea connectivity, AI infrastructure and new technology, with a PTC’27 preview and 25th anniversary features. The post SubTel Forum Issue 151 – Data Centers & New Technology OUT NOW! appeared first on SubTel Forum .",
+      "url": "https://subtelforum.com/subtel-forum-issue-151-data-centers-new-technology-out-now/",
+      "publishedAt": "2026-11-16T05:01:28.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "Ghana Proposes Global Network Resilience Plan",
+      "summary": "Ghana Proposes Global Network Resilience Plan Judith Twumwaa, Information Services DepartmentNovember 11, 2026 Ghana has proposed a global framework to make telecommunications networks more resilient and improve how service is restored after disruptions. Samuel Nartey George, the country's Minister ",
+      "url": "https://subtelforum.com/ghana-proposes-global-network-resilience-plan/",
+      "publishedAt": "2026-11-13T15:00:00.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "Stavian and Midas Sign Digital Infrastructure MOU",
+      "summary": "Stavian and Midas Sign Digital Infrastructure MOU Stavian Group Staff, Stavian GroupNovember 9, 2026 Stavian Group and Midas Capital signed a memorandum of understanding in Tokyo on November 9, 2026, setting out a framework for cooperation on submarine cables and digital infrastructure in Vietnam. T",
+      "url": "https://subtelforum.com/stavian-and-midas-sign-digital-infrastructure-mou/",
+      "publishedAt": "2026-11-13T14:00:00.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "14.03.2025 Cinia's C-Lion1 submarine cable has been repaired The Disturbance in Cinia's C-Lion1 Submarine Cable has been repaired. Read full post",
+      "summary": "",
+      "url": "https://www.cinia.fi/en/news/disturbance-in-cinias-c-lion1-submarine-cable-has-been-repaired",
+      "publishedAt": null,
+      "expected": "clear-restored"
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "20.02.2025 Disturbance in Cinia's C-Lion Submarine Cable Some disturbance has been detected on the C-Lion1 submarine cable between Finland and Germany. Read full post",
+      "summary": "",
+      "url": "https://www.cinia.fi/en/news/disturbance-in-cinia-c-lion-submarine-cable",
+      "publishedAt": null,
+      "expected": "clear-fault"
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "18.02.2025 European Parties Sign MoU to collaborate on Pan-Arctic Cable System for enhanced resilience and connectivity Cinia Oy, NORDUnet A/S, Tusass A/S, the Dutch Subsea Cable Coalition, GlobalConnect AB, and Tampnet AS have signed a European Memorandum of Understanding. Read full post",
+      "summary": "",
+      "url": "https://www.cinia.fi/en/news/european-parties-sign-mou-to-collaborate-on-pan-arctic-cable-system-for-enhanced-resilience-and-connectivity",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "07.01.2025 C-Lion1 Submarine Cable Fully Restored The fault in the submarine cable was detected on Wednesday 25th of December 2024 and the repair work in the Gulf of Finland was completed on Monday 6th of January. Read full post",
+      "summary": "",
+      "url": "https://www.cinia.fi/en/news/c-lion1-submarine-cable-fully-restored",
+      "publishedAt": null,
+      "expected": "clear-restored"
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "26.12.2024 Fault Detected in Cinia C-Lion1 Submarine Cable A fault was detected in Cinia Oy's C-Lion1 submarine cable, connecting Finland and Germany, on Wednesday, December 25, 2024, at 6:44 p.m. Read full post",
+      "summary": "",
+      "url": "https://www.cinia.fi/en/news/fault-detected-in-cinia-c-lion1-submarine-cable",
+      "publishedAt": null,
+      "expected": "clear-fault"
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "29.11.2024 Cinia's C-Lion1 Submarine Cable Has Fully Restored The break in Cinia's C-Lion1 submarine cable has been repaired and the direct submarine cable connection between Finland and Germany is back online. Read full post",
+      "summary": "",
+      "url": "https://www.cinia.fi/en/news/cinias-c-lion1-submarine-cable-has-fully-restored",
+      "publishedAt": null,
+      "expected": "clear-restored",
+      "breakConfirmed": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "18.11.2024 A fault in the Cinia C-Lion1 submarine cable between Finland and Germany A fault has been detected in the Cinia C-Lion1 submarine cable between Finland and Germany Read full post",
+      "summary": "",
+      "url": "https://www.cinia.fi/en/news/a-fault-in-the-cinia-c-lion1-submarine-cable-between-finland-and-germany",
+      "publishedAt": null,
+      "expected": "clear-fault"
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "30.08.2024 New CEO for Cinia Jaakko Tapanainen will start as Cinia’s CEO on 1 January 2025 when Ari-Jussi Knaapila retires. Read full post",
+      "summary": "",
+      "url": "https://www.cinia.fi/en/news/new-ceo-for-cinia",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "11.04.2023 Far North Fiber takes a major step forward – cable route study started The Far North Fiber submarine cable system connecting Europe and Asia via North America, is moving forward with the start of the cable route study. Read full post",
+      "summary": "",
+      "url": "https://www.cinia.fi/en/news/far-north-fiber-takes-a-major-step-forward-cable-route-study-started",
+      "publishedAt": null,
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "traficom-news",
+      "title": "Damage detected on the Finland-Estonia 2 (EESF-2) submarine cable",
+      "summary": "",
+      "url": "https://example.invalid/synthetic/damage-detected-on-the-finland-estonia-2",
+      "publishedAt": null,
+      "expected": "clear-fault",
+      "synthetic": true,
+      "note": "Regulator, cable in its remit (pattern of the October 2023 Gulf of Finland damage)"
+    },
+    {
+      "sourceId": "traficom-news",
+      "title": "Traficom investigating damage to the Sweden-Estonia (EE-S 1) cable",
+      "summary": "",
+      "url": "https://example.invalid/synthetic/traficom-investigating-damage-to-the-swe",
+      "publishedAt": null,
+      "expected": "not-clear",
+      "synthetic": true,
+      "note": "Regulator, but EE-S 1 does not land in Finland: outside its remit"
+    },
+    {
+      "sourceId": "tata-communications",
+      "title": "Faults on the SEACOM/Tata TGN-Eurasia and EIG cables in the Red Sea",
+      "summary": "",
+      "url": "https://example.invalid/synthetic/faults-on-the-seacom-tata-tgn-eurasia-an",
+      "publishedAt": null,
+      "expected": "not-clear",
+      "synthetic": true,
+      "note": "Operator writing about consortium cables it does not run (pattern of the 2024 Red Sea cuts)"
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "Three Red Sea cables cut, operators confirm",
+      "summary": "",
+      "url": "https://example.invalid/synthetic/three-red-sea-cables-cut-operators-conf",
+      "publishedAt": null,
+      "expected": "not-clear",
+      "synthetic": true,
+      "note": "News: a lead, never a clear signal"
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "WACS, MainOne, SAT-3 and ACE cables damaged off Côte d’Ivoire",
+      "summary": "",
+      "url": "https://example.invalid/synthetic/wacs-mainone-sat-3-and-ace-cables-dama",
+      "publishedAt": null,
+      "expected": "not-clear",
+      "synthetic": true,
+      "note": "News about the March 2024 West Africa outage"
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Service on the C-Lion1 submarine cable has not yet been restored",
+      "summary": "",
+      "url": "https://example.invalid/synthetic/service-on-the-c-lion1-submarine-cable-h",
+      "publishedAt": null,
+      "expected": "not-clear",
+      "synthetic": true,
+      "note": "Operator, but negated repair wording"
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 submarine cable repaired; traffic was rerouted during the repair",
+      "summary": "",
+      "url": "https://example.invalid/synthetic/c-lion1-submarine-cable-repaired-traffi",
+      "publishedAt": null,
+      "expected": "not-clear",
+      "synthetic": true,
+      "note": "Repair next to rerouting: no automatic close"
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Vessel seen anchoring near the C-Lion1 submarine cable route",
+      "summary": "",
+      "url": "https://example.invalid/synthetic/vessel-seen-anchoring-near-the-c-lion1-s",
+      "publishedAt": null,
+      "expected": "not-clear",
+      "synthetic": true,
+      "note": "Threat wording only: a red flag, not a fault"
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 submarine cable cut near Gotland",
+      "summary": "",
+      "url": "https://example.invalid/synthetic/c-lion1-submarine-cable-cut-near-gotland",
+      "publishedAt": null,
+      "expected": "clear-fault",
+      "synthetic": true,
+      "note": "Operator states a cut on its own cable",
+      "breakConfirmed": true
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Fault on one of the Svalbard Undersea Cable System cables",
+      "summary": "",
+      "url": "https://example.invalid/synthetic/fault-on-one-of-the-svalbard-undersea-ca",
+      "publishedAt": null,
+      "expected": "clear-fault",
+      "synthetic": true,
+      "note": "Operator, own cable (pattern of the January 2022 Svalbard fault)"
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Skade på sjøkabel til Svalbard",
+      "summary": "",
+      "url": "https://example.invalid/synthetic/skade-p-sj-kabel-til-svalbard",
+      "publishedAt": null,
+      "expected": "not-clear",
+      "synthetic": true,
+      "note": "Norwegian regulator: no catalogue name and Norwegian wording, so doubt (phase 2)"
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Seaborn completes planned maintenance on Seabras-1",
+      "summary": "",
+      "url": "https://example.invalid/synthetic/seaborn-completes-planned-maintenance-on",
+      "publishedAt": null,
+      "expected": "not-clear",
+      "synthetic": true,
+      "note": "Planned maintenance: no incident wording"
+    }
+  ]
+}
