@@ -403,6 +403,20 @@ Before the quote rules above, the same run gave three wrong `llm-clear`
 ("Possible fault on …", "Suspected fault …", and a C-Lion1 fault for
 "Fault on the EE-S 1 cable; C-Lion1 traffic normal").
 
+Three review rounds of phase 2 ended with no remaining wrong `llm-clear`
+that does not need the model to make a mistake. These misses were
+accepted for safety:
+
+- Operator sentences that quote someone are rejected as attribution:
+  "Cinia said the fault was detected …", or a CEO quote next to the fault
+  sentence.
+- A denial two sentences away is not seen; only the sentences either side
+  are checked.
+- Block words can drop a whole wrapper (`elementor-widget-container`,
+  `share-enabled`, WordPress `tag-*` classes), leaving title and summary
+  only.
+- A fault stated only in a bullet list inside the post body is missed.
+
 ## Next integration
 
 Replay a labelled set of faults, repairs, false positives and
