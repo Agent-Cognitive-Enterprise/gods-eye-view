@@ -1,0 +1,34 @@
+{
+  "evidence": [
+    {
+      "id": "cinia-fault-2024-11-18",
+      "incidentId": "2024-11-18",
+      "cableName": "C-Lion1",
+      "claim": "fault",
+      "sourceKind": "operator",
+      "sourceUrl": "https://www.cinia.fi/en/news/a-fault-in-the-cinia-c-lion1-submarine-cable-between-finland-and-germany",
+      "effectiveAt": "2024-11-18T02:04:00Z",
+      "knownAt": "2024-11-19T00:00:00Z"
+    },
+    {
+      "id": "cinia-break-2024-11-29",
+      "incidentId": "2024-11-18",
+      "cableName": "C-Lion1",
+      "claim": "break",
+      "sourceKind": "operator",
+      "sourceUrl": "https://www.cinia.fi/en/news/cinias-c-lion1-submarine-cable-has-fully-restored",
+      "effectiveAt": "2024-11-18T02:04:00Z",
+      "knownAt": "2024-11-30T00:00:00Z"
+    },
+    {
+      "id": "cinia-restored-2024-11-29",
+      "incidentId": "2024-11-18",
+      "cableName": "C-Lion1",
+      "claim": "restored",
+      "sourceKind": "operator",
+      "sourceUrl": "https://www.cinia.fi/en/news/cinias-c-lion1-submarine-cable-has-fully-restored",
+      "effectiveAt": "2024-11-28T19:00:00Z",
+      "knownAt": "2024-11-30T00:00:00Z"
+    }
+  ]
+}
