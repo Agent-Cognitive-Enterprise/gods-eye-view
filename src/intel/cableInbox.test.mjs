@@ -374,3 +374,21 @@ test('a distinctive name with a digit needs no cable word', () => {
 test('zero-width, Arabic letter mark and BOM characters are removed too', () => {
   assert.equal(printable('a​b؜c﻿d'), 'a b c d');
 });
+
+test('Nordic and German cable words count as text about cables', () => {
+  for (const text of [
+    'Skade på sjøkabelen: Echo',
+    'Feil på kablene: Echo',
+    'Vika merikaapelissa: Echo',
+    'Störung am Seekabel Echo',
+    'Fel på kablar: Echo',
+  ])
+    assert.deepEqual(ids(text), ['echo'], text);
+  assert.deepEqual(ids('Echo is down'), []);
+  const real = bundledNames();
+  assert.deepEqual(
+    cableMentions('Grace Hopper sjøkabel', real).map((m) => m.cableId),
+    ['grace-hopper'],
+  );
+  assert.deepEqual(cableMentions('Grace Hopper Celebration', real), []);
+});

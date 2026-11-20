@@ -7,8 +7,11 @@ const SINGLE_WORD = /^[^\s\d-]+$/u;
 const WORD_CHAR = /[\p{L}\p{N}]/u;
 const DAY_MS = 24 * 3600_000;
 // Text that names a cable has to be about a cable: catalogue names include
-// "Northern Lights", "Cook Strait", "Italy-Albania" and "T3".
-const ABOUT_CABLES = /\b(?:cables?|subsea|submarine|undersea)\b/;
+// "Northern Lights", "Cook Strait", "Italy-Albania" and "T3". Nordic and
+// German regulators write kabel, kabler, kablene, kablar, sjøkabel, Seekabel or
+// (meri)kaapeli, often inside a compound word, so those match anywhere.
+const ABOUT_CABLES =
+  /\b(?:cables?|subsea|submarine|undersea)\b|kabel|kabl[aeiu]|kaapeli/;
 // One token of five or more characters with a digit ("SeaMeWe-4",
 // "2Africa", "C-Lion1") is distinctive enough to match without that word.
 // Names with a space are not: "Germany-Denmark 3" is also a football score.

@@ -91,15 +91,35 @@ failing that a full HTTPS `<guid>`; other items are skipped. Redirects are follo
 five, and any hop that is not HTTPS fails the source. A feed item that
 links to another site than the feed's own (`www.` aside) is proposed as
 `news`, whatever the source, and marked as linking elsewhere. A page
-source keeps only links on the page's own site. The example lists:
+source keeps only links on the page's own site. The example lists the
+sources checked on 2026-11-20:
 
-- Cinia's own feed.
-- The same notices as a page source, switched off.
-- SubTel Forum's industry news, as `news`.
+| Source                   | Kind      | Covers                      | Note                                         |
+| ------------------------ | --------- | --------------------------- | -------------------------------------------- |
+| Cinia feed               | operator  | C-Lion1                     | The page version is listed too, switched off |
+| WIOCC news page          | operator  | EASSy, Equiano, 2Africa     | Mostly commercial news                       |
+| Space Norway feed        | operator  | Svalbard cables, Arctic Way |                                              |
+| Seaborn feed             | operator  | Seabras-1                   |                                              |
+| Tata Communications feed | operator  | TGN, consortium shares      | Mostly corporate news                        |
+| Traficom news page       | authority | Finland                     | Lists only its newest notices: poll daily    |
+| Nkom news page           | authority | Norway, Svalbard            | In Norwegian                                 |
+| SubTel Forum feed        | news      | Industry news               | Leads only                                   |
 
-Most operators publish no feed (WIOCC and SEACOM post web pages), so add
-their news page as a `page` source, after checking that it is their own
-notice page. The first poll of a source that lists notices only records
+Checked and not usable as they stand:
+
+- **SEACOM, Sweden's PTS, Telia, Taiwan's NCC:** the news list is built by
+  JavaScript, so the page has no article links.
+- **Liquid, Sparkle, Southern Cross, ACE, Chunghwa Telecom:** the news
+  addresses tried return 404.
+- **MainOne:** refuses automated requests (403).
+- **Faroese Telecom:** redirects to its home page.
+- **Tonga Cable, status.seacom.com:** no answer.
+- **Telstra:** the media page has no article links.
+
+Most operators publish no feed, so add their news page as a `page`
+source, after checking that it is their own notice page. Wording cues are
+English only: a notice in another language may name its cable but gets
+no suggested claim. The first poll of a source that lists notices only records
 them, so old news does not flood the inbox. A poll that lists nothing,
 such as a consent page, records nothing. `--include-existing` proposes
 the notices already listed too. A URL is proposed once: if an operator
@@ -108,7 +128,8 @@ updates a notice in place, the inbox will not see the update.
 **Proposals.** A proposal lists the catalogue cables that its title and
 summary name. It finds them by catalogue name, ignoring case, as whole
 words, with no fuzzy match, and only in text that says cable, subsea,
-submarine or undersea. Catalogue names include "Northern Lights", "Cook
+submarine or undersea, or kabel, kabler, kablene, kablar or kaapeli (also inside a
+compound word such as sjøkabel or merikaapeli). Catalogue names include "Northern Lights", "Cook
 Strait" and "T3". A one-token name of five or more characters with a
 digit, such as "SeaMeWe-4" or "C-Lion1", is matched without that word, so "C-Lion1 repair
 completed" still names the cable. Non-English notices name a cable only by
