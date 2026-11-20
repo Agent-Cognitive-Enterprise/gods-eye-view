@@ -94,16 +94,23 @@ links to another site than the feed's own (`www.` aside) is proposed as
 source keeps only links on the page's own site. The example lists the
 sources checked on 2026-11-20:
 
-| Source                   | Kind      | Covers                      | Note                                         |
-| ------------------------ | --------- | --------------------------- | -------------------------------------------- |
-| Cinia feed               | operator  | C-Lion1                     | The page version is listed too, switched off |
-| WIOCC news page          | operator  | EASSy, Equiano, 2Africa     | Mostly commercial news                       |
-| Space Norway feed        | operator  | Svalbard cables, Arctic Way |                                              |
-| Seaborn feed             | operator  | Seabras-1                   |                                              |
-| Tata Communications feed | operator  | TGN, consortium shares      | Mostly corporate news                        |
-| Traficom news page       | authority | Finland                     | Lists only its newest notices: poll daily    |
-| Nkom news page           | authority | Norway, Svalbard            | In Norwegian                                 |
-| SubTel Forum feed        | news      | Industry news               | Leads only                                   |
+| Source                   | Kind      | Covers                                  | Note                                         |
+| ------------------------ | --------- | --------------------------------------- | -------------------------------------------- |
+| Cinia feed               | operator  | C-Lion1                                 | The page version is listed too, switched off |
+| WIOCC news page          | operator  | Its capacity on EASSy, Equiano, 2Africa | Mostly commercial news; see below            |
+| Space Norway feed        | operator  | Svalbard cables, Arctic Way             |                                              |
+| Seaborn feed             | operator  | Seabras-1                               |                                              |
+| Tata Communications feed | operator  | TGN, consortium shares                  | Mostly corporate news                        |
+| Traficom news page       | authority | Finland                                 | Lists only its newest notices: poll daily    |
+| Nkom news page           | authority | Norway, Svalbard                        | In Norwegian                                 |
+| SubTel Forum feed        | news      | Industry news                           | Leads only                                   |
+
+An `operator` source is primary only for cables it runs. WIOCC holds
+capacity on Equiano and 2Africa but does not run them. A notice such as
+"WIOCC restores ISPs on Equiano cable" is about WIOCC moving its own
+customers, not about a repair of the cable. Record such a notice as
+`news` (`--source-kind news`) unless it is about a cable WIOCC operates.
+The same holds for Tata on consortium cables.
 
 Checked and not usable as they stand:
 
@@ -129,7 +136,9 @@ updates a notice in place, the inbox will not see the update.
 summary name. It finds them by catalogue name, ignoring case, as whole
 words, with no fuzzy match, and only in text that says cable, subsea,
 submarine or undersea, or kabel, kabler, kablene, kablar or kaapeli (also inside a
-compound word such as sjøkabel or merikaapeli). Catalogue names include "Northern Lights", "Cook
+compound word such as sjøkabel or merikaapeli). Those words also occur in names
+("Kabelvåg", "Kabel Eins"), so they can let a name like "Northern Lights"
+through; the reviewer still decides. Catalogue names include "Northern Lights", "Cook
 Strait" and "T3". A one-token name of five or more characters with a
 digit, such as "SeaMeWe-4" or "C-Lion1", is matched without that word, so "C-Lion1 repair
 completed" still names the cable. Non-English notices name a cable only by
