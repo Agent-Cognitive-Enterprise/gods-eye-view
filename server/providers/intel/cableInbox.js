@@ -217,14 +217,13 @@ export function itemsFromFeed(xml, feedUrl) {
   for (const { inner: block } of entries) {
     const linkText = rss.length ? plain(inner(block, 'link')) : null;
     const guid = rss.length ? plain(inner(block, 'guid')) : null;
-    const url = linkText
-      ? canonicalUrl(linkText)
-      : rss.length
-        ? canonicalUrl(guid ?? '')
-        : (() => {
-            const href = atomLink(block);
-            return href ? canonicalUrl(href, feedUrl) : null;
-          })();
+    // RSS links must be full HTTPS URLs; a bad link falls back to the guid.
+    const url = rss.length
+      ? ((linkText ? canonicalUrl(linkText) : null) ?? canonicalUrl(guid ?? ''))
+      : (() => {
+          const href = atomLink(block);
+          return href ? canonicalUrl(href, feedUrl) : null;
+        })();
     if (!url) continue;
     out.push({
       url,

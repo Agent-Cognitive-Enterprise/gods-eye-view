@@ -86,7 +86,8 @@ between, the row is there and the proposal still shows as new.
 **Sources.** Each source is `rss` (RSS or Atom) or `page`, a news listing
 page whose article links start with `pathPrefix`. Each also has a
 `sourceKind`: `operator` or `authority` for primary notices, `news` for
-leads. Only HTTPS is accepted. Redirects are followed by hand, at most
+leads. Only HTTPS is accepted. An RSS item needs a full HTTPS `<link>`, or
+failing that a full HTTPS `<guid>`; other items are skipped. Redirects are followed by hand, at most
 five, and any hop that is not HTTPS fails the source. A feed item that
 links to another site than the feed's own (`www.` aside) is proposed as
 `news`, whatever the source, and marked as linking elsewhere. A page
@@ -108,16 +109,16 @@ updates a notice in place, the inbox will not see the update.
 summary name. It finds them by catalogue name, ignoring case, as whole
 words, with no fuzzy match, and only in text that says cable, subsea,
 submarine or undersea. Catalogue names include "Northern Lights", "Cook
-Strait" and "T3". A name of five or more characters with a digit, such as
-"SeaMeWe-4" or "C-Lion1", is matched without that word, so "C-Lion1 repair
+Strait" and "T3". A one-token name of five or more characters with a
+digit, such as "SeaMeWe-4" or "C-Lion1", is matched without that word, so "C-Lion1 repair
 completed" still names the cable. Non-English notices name a cable only by
 such a name. A one-word name such as "Echo" or "SAFE" is also
 matched only with its catalogue capitals, and is shown as weak. Stored and
 printed text has control and bidirectional characters removed.
 
 The proposal suggests a claim from the wording: `restored` for repaired
-or back in service, nothing when doubtful wording such as "not yet
-restored" or "rerouted" comes with it, otherwise `fault`. It never suggests a physical
+or back in service, `fault` when the notice says it is not yet restored,
+nothing when repair wording comes with rerouting, otherwise `fault`. It never suggests a physical
 `break`. Words like "cut" or "damaged" are listed for you to check against
 the notice itself. A suggestion is only a hint, so read the notice.
 

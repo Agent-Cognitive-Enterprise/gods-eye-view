@@ -761,3 +761,16 @@ test('the report says when an accepted row stays a lead', async () => {
     /accepted as p-[0-9a-f]{16}-break \(stays a lead: p-[0-9a-f]{16}-break non-primary-source\)/,
   );
 });
+
+test('an RSS item with a bad link falls back to a full HTTPS guid', () => {
+  const feed = `<rss><channel>
+    <item><title>a</title><link>/en/news/1</link><guid>https://operator.example/en/news/1</guid></item>
+    <item><title>b</title><link>http://operator.example/en/news/2</link><guid>https://operator.example/en/news/2</guid></item>
+    <item><title>c</title><link></link><guid>https://operator.example/en/news/3</guid></item>
+    <item><title>d</title><link>/en/news/4</link><guid>4</guid></item>
+  </channel></rss>`;
+  assert.deepEqual(
+    itemsFromFeed(feed, operatorSource.url).map((i) => i.url),
+    [1, 2, 3].map((n) => `https://operator.example/en/news/${n}`),
+  );
+});

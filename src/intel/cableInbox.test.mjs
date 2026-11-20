@@ -293,15 +293,33 @@ test('indices stay aligned when lower-casing would lengthen the text', () => {
   );
 });
 
-test('repair wording next to doubtful wording suggests nothing', () => {
-  for (const text of [
-    'Traffic restored via alternative routes while the cable awaits repair',
-    'The C-Lion1 cable has not yet been restored',
+test('a repair not yet done is a fault; repair next to rerouting suggests nothing', () => {
+  for (const [text, expected] of [
+    [
+      'Traffic restored via alternative routes while the cable awaits repair',
+      'fault',
+    ],
+    ['The C-Lion1 cable has not yet been restored', 'fault'],
+    ['C-Lion1 fault: service has not yet been restored', 'fault'],
+    [
+      'C-Lion1 submarine cable has fully restored. During the repair, traffic was rerouted via alternative routes.',
+      null,
+    ],
   ]) {
     const { suggestedClaim, cues } = claimCues(text);
-    assert.equal(suggestedClaim, null, text);
+    assert.equal(suggestedClaim, expected, text);
     assert.ok(cues.doubt.length, text);
   }
+});
+
+test('a name with a space and a number is not taken from a score or a timetable', () => {
+  const real = bundledNames();
+  for (const text of [
+    'Germany-Denmark 3-1: hosts through to the final',
+    'Portsmouth-Ryde 10:15 hovercraft cancelled after fault',
+    'Jeju-Mainland 2 ferries suspended',
+  ])
+    assert.deepEqual(cableMentions(text, real), [], text);
 });
 
 test('stored text loses terminal escapes and bidi overrides', () => {

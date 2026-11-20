@@ -9,9 +9,14 @@ const DAY_MS = 24 * 3600_000;
 // Text that names a cable has to be about a cable: catalogue names include
 // "Northern Lights", "Cook Strait", "Italy-Albania" and "T3".
 const ABOUT_CABLES = /\b(?:cables?|subsea|submarine|undersea)\b/;
-// A name of five or more characters with a digit ("SeaMeWe-4", "2Africa",
-// "C-Lion1") is distinctive enough to match without that word.
-const DISTINCT = (name) => /\d/.test(name) && name.length >= 5;
+// One token of five or more characters with a digit ("SeaMeWe-4",
+// "2Africa", "C-Lion1") is distinctive enough to match without that word.
+// Names with a space are not: "Germany-Denmark 3" is also a football score.
+const DISTINCT = (name) =>
+  /\d/.test(name) && name.length >= 5 && !/\s/.test(name);
+// Repair wording that says the repair has not happened.
+const PENDING =
+  /\b(?:not (?:yet )?(?:been )?(?:restored|repaired)|(?:not been|hasn't been|has not been) (?:restored|repaired)|yet to be (?:restored|repaired)|awaits?(?:ing)? repairs?|until (?:the )?repairs?)\b/;
 // C0 and C1 controls (terminal escapes, BEL) and bidirectional overrides.
 const UNPRINTABLE =
   /[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g;
@@ -136,8 +141,8 @@ const CUES = [
 
 /**
  * Wording cues for the reviewer. The suggestion is only `fault` or
- * `restored`, and `restored` only without doubtful wording ("not yet
- * restored", "traffic rerouted"). A physical `break` is never suggested,
+ * `restored`: `fault` when the repair has not happened ("not yet
+ * restored"), and nothing when repair wording comes with rerouting. A physical `break` is never suggested,
  * because the notice has to confirm it expressly, so break wording is listed
  * for the reviewer to check instead.
  */
@@ -148,12 +153,14 @@ export function claimCues(text) {
     const words = [...new Set([...folded.matchAll(pattern)].map((m) => m[1]))];
     if (words.length) cues[claim] = words.sort();
   }
-  // Repair wording next to doubtful wording could go either way: no
-  // suggestion, and the reviewer reads the notice.
+  // "Not yet restored" is still a fault. Repair wording next to rerouting
+  // could go either way: no suggestion, and the reviewer reads the notice.
   const suggestedClaim = cues.restored
-    ? cues.doubt
-      ? null
-      : 'restored'
+    ? PENDING.test(folded)
+      ? 'fault'
+      : cues.doubt
+        ? null
+        : 'restored'
     : cues.fault || cues.break
       ? 'fault'
       : null;
