@@ -36,7 +36,10 @@ const MAX_LOG_BYTES = 5 * 1024 * 1024;
 
 /**
  * The checked sources (2026-11-20; see tools/cable-incidents/README.md).
- * `cables` lists the catalogue cables a source speaks for: an operator's own
+ * `speakers` are the source's own names: the only words allowed before a
+ * cable's name in a clear title, and `places` the only names a "between A
+ * and B" clause may use. `cables` lists the catalogue cables a source
+ * speaks for: an operator's own
  * cables, a regulator's cables in its country. A notice about any other
  * cable is never a clear signal from that source. WIOCC holds capacity on
  * EASSy, Equiano and 2Africa but does not run them, so it speaks for none.
@@ -44,6 +47,8 @@ const MAX_LOG_BYTES = 5 * 1024 * 1024;
 export const CABLE_SOURCES = Object.freeze([
   {
     id: 'cinia-news',
+    places: ['Finland', 'Germany', 'Helsinki', 'Rostock'],
+    speakers: ['Cinia', 'Cinia Oy'],
     format: 'rss',
     url: 'https://www.cinia.fi/en/news/rss.xml',
     sourceKind: 'operator',
@@ -51,6 +56,7 @@ export const CABLE_SOURCES = Object.freeze([
   },
   {
     id: 'wiocc-news',
+    speakers: ['WIOCC'],
     format: 'page',
     url: 'https://www.wiocc.net/news',
     pathPrefix: '/news/',
@@ -59,6 +65,8 @@ export const CABLE_SOURCES = Object.freeze([
   },
   {
     id: 'space-norway',
+    places: ['Norway', 'Svalbard', 'Longyearbyen'],
+    speakers: ['Space Norway'],
     format: 'rss',
     url: 'https://spacenorway.com/feed/',
     sourceKind: 'operator',
@@ -66,6 +74,8 @@ export const CABLE_SOURCES = Object.freeze([
   },
   {
     id: 'seaborn-news',
+    places: ['Brazil', 'United States', 'US', 'USA'],
+    speakers: ['Seaborn', 'Seaborn Networks'],
     format: 'rss',
     url: 'https://seabornnetworks.com/feed/',
     sourceKind: 'operator',
@@ -73,6 +83,7 @@ export const CABLE_SOURCES = Object.freeze([
   },
   {
     id: 'tata-communications',
+    speakers: ['Tata Communications', 'Tata'],
     format: 'rss',
     url: 'https://www.tatacommunications.com/press-release/rss.xml',
     sourceKind: 'operator',
@@ -87,6 +98,16 @@ export const CABLE_SOURCES = Object.freeze([
   },
   {
     id: 'traficom-news',
+    places: [
+      'Finland',
+      'Estonia',
+      'Sweden',
+      'Germany',
+      'Helsinki',
+      'Tallinn',
+      'Stockholm',
+    ],
+    speakers: ['Traficom'],
     format: 'page',
     url: 'https://www.traficom.fi/en/newsroom',
     pathPrefix: '/en/news/',
@@ -103,6 +124,8 @@ export const CABLE_SOURCES = Object.freeze([
   },
   {
     id: 'nkom-news',
+    places: ['Norway', 'Svalbard', 'Longyearbyen'],
+    speakers: ['Nkom'],
     format: 'page',
     url: 'https://nkom.no/aktuelt',
     pathPrefix: '/aktuelt/',
@@ -111,6 +134,7 @@ export const CABLE_SOURCES = Object.freeze([
   },
   {
     id: 'subtel-forum',
+    speakers: ['SubTel Forum'],
     format: 'rss',
     url: 'https://subtelforum.com/feed/',
     sourceKind: 'news',

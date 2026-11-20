@@ -255,25 +255,52 @@ function isoTime(value) {
 
 const HEADING_CLASS = /(?:^|\s)class\s*=\s*(?:"([^"]*)"|'([^']*)')/i;
 
-/** The heading text of a news card, or null. */
+// A title class is a whole class token: "title", "card-title",
+// "heading-style-h4". "series-title", "tag-title" and "eyebrow" are labels.
+const TITLE_CLASS =
+  /^(?:(?:card|post|entry|article|news|item|teaser|list)[-_])?(?:title|heading)$|^heading-style-h[1-6]$/;
+// Link text that names no notice.
+const GENERIC_LINK =
+  /^(?:read (?:more|full (?:post|story|article))|more|continue reading|lue lisää|les mer|läs mer|weiterlesen|mehr)$/i;
+const MAX_HEADING_CANDIDATES = 50;
+
+/**
+ * The heading text of a news card, or null: the first heading element
+ * (h1-h6) or element with a title class, in document order. A heading that
+ * is empty or says only "Read more" is skipped.
+ */
 function cardHeading(markup) {
   const source = String(markup ?? '').slice(0, 20_000);
-  for (const level of ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']) {
-    const [first] = elements(source, level, 1);
-    const text = first ? plain(first.inner) : '';
-    if (text) return text;
-  }
-  for (const name of ['div', 'span', 'p', 'strong']) {
-    for (const element of elements(source, name, 200)) {
-      const classes = HEADING_CLASS.exec(element.attributes.slice(0, 2048));
-      const value = (classes?.[1] ?? classes?.[2] ?? '').toLowerCase();
-      if (/\b(?:heading|title)\b/.test(value) && !/sub-?title/.test(value)) {
-        const text = plain(element.inner);
-        if (text) return text;
-      }
+  const lower = source.toLowerCase();
+  let at = 0;
+  let gt = -1;
+  let candidates = 0;
+  for (;;) {
+    const lt = lower.indexOf('<', at);
+    if (lt < 0) return null;
+    // One search for '>' serves every '<' before it: linear.
+    if (gt < lt) gt = lower.indexOf('>', lt);
+    if (gt < 0) return null;
+    at = lt + 1;
+    const tag = /^<(h[1-6]|div|span|p|strong)(?=[\s>/])/.exec(
+      lower.slice(lt, lt + 8),
+    );
+    if (!tag) continue;
+    const name = tag[1];
+    if (name[0] !== 'h') {
+      const classes = HEADING_CLASS.exec(
+        source.slice(lt + 1 + name.length, gt).slice(0, 2048),
+      );
+      const tokens = (classes?.[1] ?? classes?.[2] ?? '')
+        .toLowerCase()
+        .split(/\s+/);
+      if (!tokens.some((token) => TITLE_CLASS.test(token))) continue;
     }
+    if (++candidates > MAX_HEADING_CANDIDATES) return null;
+    const [element] = elements(source.slice(lt), name, 1);
+    const text = element ? plain(element.inner) : '';
+    if (text && !GENERIC_LINK.test(text)) return text;
   }
-  return null;
 }
 
 const NOT_AN_ARTICLE =
@@ -312,7 +339,9 @@ export function itemsFromPage(html, pageUrl, pathPrefix) {
       !/<(?:p|div|section|article|header|footer|ul|ol|li|table|br|h[1-6])\b/i.test(
         anchor.inner.slice(0, 20_000),
       );
-    const heading = cardHeading(anchor.inner) ?? (inline && card ? card : null);
+    const heading =
+      cardHeading(anchor.inner) ??
+      (inline && card && !GENERIC_LINK.test(card) ? card : null);
     const title = (heading ?? card).slice(0, 300);
     const item = heading
       ? {

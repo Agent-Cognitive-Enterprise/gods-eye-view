@@ -220,9 +220,22 @@ without a person (`src/intel/cableSignals.js`):
      front of its card ("18.11.2024 …", "August 14, 2024 …"). A date in the
      future is refused.
    - The whole title has one of the allowed shapes, tied to the cable's
-     name. At most two words ("the Cinia", "Cinia's") may stand before the
-     name, and a place may follow ("between Finland and Germany", "near
-     Gotland"):
+     name and followed by the word "cable" (unless the name has it), with
+     the incident in the singular:
+     - Only the source's own name may stand before the cable's name: "the
+       Cinia", "Cinia's", "Cinia Oy's", from the source's `speakers` list.
+       "Fault in the former C-Lion1 cable" and "Preventing C-Lion1 cable
+       faults" are no shape.
+     - A place may follow, as a capitalised proper name: "near Gotland",
+       "off Fujairah". It may also be "between A and B" when both are on
+       the source's `places` list (Cinia: Finland, Germany). "In" and "at"
+       are not allowed: "damaged in the film", "cut in prices" and "outage
+       in December" are no shape.
+     - The only labels taken off the title are the source's own name and
+       "Update" ("Cinia: …", "… | Cinia", "… - Press release"). "Satire:"
+       and "Opinion:" stay, so the title is no shape.
+
+     The allowed shapes are:
      - a fault: "A fault in the Cinia C-Lion1 submarine cable", "Fault
        detected in …", "Disturbance on …", "C-Lion1 cable outage",
        "C-Lion1 submarine cable cut", "C-Lion1 cable damaged",
@@ -230,6 +243,7 @@ without a person (`src/intel/cableSignals.js`):
      - a repair stated as done: "C-Lion1 submarine cable has been repaired",
        "… has fully restored", "C-Lion1 cable back online", "Disturbance in
        the C-Lion1 cable has been repaired".
+
    - No blocking word appears in the title, as a second line of defence:
      - negation, denial or hedging (no, not, n't, unaffected, normal, usual,
        denies, false, claims, feared, unconfirmed, suspected, possible);
@@ -256,8 +270,11 @@ without a person (`src/intel/cableSignals.js`):
    nobody to stop it, so a real incident in any other wording becomes
    doubt instead.
 
-   On page sources the title is the card's heading (Cinia: `<h3>`, WIOCC: a
-   "heading" class) or a plain text link. A card with neither is doubt.
+   On page sources the title is the card's first heading in document order:
+   an `<h1>`–`<h6>`, or an element with a title class (`title`,
+   `card-title`, `heading-style-h4`; not `series-title`, `tag-title` or
+   `eyebrow`). A plain text link counts too, unless it only says "Read
+   more". A card with no title is doubt.
    Traficom's and Nkom's links carry no date, so their notices are doubt
    until phase 2.
 
@@ -292,16 +309,16 @@ when every source fails; a single failing source is logged in
   fault and repair notices from 2024–25.
 - **12 synthetic notices**, marked as such: paraphrased patterns of
   documented events, not quotations.
-- **195 attack titles** written in two review rounds to break the rules ("No fault
+- **333 attack titles** written in three review rounds to break the rules ("No fault
   found on C-Lion1", "Planned maintenance … interruptions expected", "Cinia
   cuts latency on C-Lion1", "One year since the C-Lion1 cable cut"). Each
   is labelled by what it actually says.
 
-A second review round added 89 more attack titles. On all 328 notices the
-rules give no wrong clear signal. They catch five of the six real
+Second and third review rounds added 89 and 138 more attack titles. On
+all 466 notices the rules give no wrong clear signal. They catch five of the six real
 incidents; the sixth is titled "Disturbance in Cinia's C-Lion Submarine
-Cable", with "C-Lion", not the catalogue's "C-Lion1". Of the 30 notices
-that should be clear, they catch 13. The other misses are synthetic or
+Cable", with "C-Lion", not the catalogue's "C-Lion1". Of the 51 notices
+that should be clear, they catch 33. The other misses are synthetic or
 attack notices: Finnish or Norwegian wording, "second fault after repair",
 other title wordings, and Tata's short names such as "TGN-Pacific". Those
 go to doubt. The tests pin no wrong clear signal, and the one known real

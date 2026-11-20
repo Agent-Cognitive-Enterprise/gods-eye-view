@@ -23,7 +23,13 @@ const names = catalogueNames({
     feature('echo', 'Echo'),
   ],
 });
-const operator = { id: 'op', sourceKind: 'operator', cables: ['c-lion1'] };
+const operator = {
+  id: 'op',
+  sourceKind: 'operator',
+  cables: ['c-lion1'],
+  speakers: ['Cinia', 'Cinia Oy'],
+  places: ['Finland', 'Germany'],
+};
 const DATED = { publishedAt: '2026-11-18T09:00:00.000Z' };
 const NOW = Date.parse('2026-11-20T00:00:00Z');
 const judge = (title, source = operator, extra = {}) =>
@@ -107,6 +113,19 @@ test('any other title is doubt: review attacks from both rounds', () => {
     'Fault found during routine inspection of decommissioned C-Lion1 spare cable',
     'C-Lion1 may have a cable fault',
     "Fault detected on the C-Lion1 cable in November '24",
+    // Round 3: lead words, place clauses and labels.
+    'Fault in the former C-Lion1 cable',
+    'Unrelated C-Lion1 cable outage',
+    'Preventing C-Lion1 cable faults',
+    'Remembering the C-Lion1 cable cut',
+    'Recent C-Lion1 cable outages',
+    'C-Lion1 cable damaged in the film',
+    'C-Lion1 cut in prices',
+    'C-Lion1 cable outage in December',
+    'Fault in the C-Lion1 cable between Russia and Ukraine',
+    'Satire: C-Lion1 cable cut',
+    'Opinion: C-Lion1 cable outage',
+    'Gulf section C-Lion1 restored',
   ])
     assert.equal(judge(title).signal, 'doubt', title);
 });

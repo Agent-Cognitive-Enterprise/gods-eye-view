@@ -33,17 +33,11 @@ export const FAULT_FADE_MS = 30 * 24 * 3600_000;
 // address (a page relayout, a sidebar link), not a new signal.
 export const STALE_NOTICE_MS = 7 * 24 * 3600_000;
 
-const INCIDENT_NOUN =
-  '(?:fault|faults|disturbance|disturbances|outage|outages|damage|interruption|interruptions|failure|failures|cut|break)';
+// One incident, singular: "cable faults" is a topic, not an event.
+const INCIDENT =
+  '(?:fault|disturbance|outage|damage|interruption|failure|cut|break)';
 const BROKEN = '(?:cut|severed|damaged|broken|down|out of service|interrupted)';
 const REPAIRED = '(?:repaired|restored)';
-// Where it happened: "between Finland and Germany", "near Gotland", "in the
-// Gulf of Finland". Letters only, a few words.
-const W = "[\\p{L}][\\p{L}'-]*";
-// Words allowed before a cable's name ("Cinia's", "the Cinia"): never a verb
-// or question word, so "Is the C-Lion1 cable down" is no title shape.
-const LEAD = `(?!(?:is|are|was|were|has|have|had|did|does|do|why|how|what|when|who|which|will)\\b)${W}`;
-const PLACE = `(?: between ${W}(?: ${W})? and ${W}(?: ${W})?| (?:off|near|in|at) (?:the )?${W}(?: ${W}){0,3})?`;
 // Any of these in the title makes it doubtful, whatever its shape.
 const BLOCKERS = [
   // Negation, denial, hedging.
@@ -80,14 +74,14 @@ const MONTHS = [
   'december',
 ];
 const LEADING_DATES = [
-  [/^(\d{1,2})\.(\d{1,2})\.(\d{4})\s+/, (m) => [m[3], m[2], m[1]]],
-  [/^(\d{4})-(\d{2})-(\d{2})\s+/, (m) => [m[1], m[2], m[3]]],
+  [/^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+|$)/, (m) => [m[3], m[2], m[1]]],
+  [/^(\d{4})-(\d{2})-(\d{2})(?:\s+|$)/, (m) => [m[1], m[2], m[3]]],
   [
-    new RegExp(`^(${MONTHS.join('|')}) (\\d{1,2}),? (\\d{4})\\s+`, 'i'),
+    new RegExp(`^(${MONTHS.join('|')}) (\\d{1,2}),? (\\d{4})(?:\\s+|$)`, 'i'),
     (m) => [m[3], MONTHS.indexOf(m[1].toLowerCase()) + 1, m[2]],
   ],
   [
-    new RegExp(`^(\\d{1,2}) (${MONTHS.join('|')}),? (\\d{4})\\s+`, 'i'),
+    new RegExp(`^(\\d{1,2}) (${MONTHS.join('|')}),? (\\d{4})(?:\\s+|$)`, 'i'),
     (m) => [m[3], MONTHS.indexOf(m[2].toLowerCase()) + 1, m[1]],
   ],
 ];
@@ -130,13 +124,35 @@ export function datedNotice(item) {
   };
 }
 
-// "the Cinia C-Lion1 submarine cable", "Cinia's C-Lion1 cable system".
-const cablePhrase = (name) =>
-  `(?:the )?(?:${LEAD} ){0,2}${escape(fold(name))}(?: (?:submarine|subsea|undersea|sea))?(?: cable(?: system)?)?`;
+// Where it happened, only as a proper name in the original capitals:
+// "between Finland and Germany", "near Gotland", "off Fujairah". No "in" or
+// "at": "damaged in the film", "cut in prices", "outage in December".
+const NAME = "\\p{Lu}[\\p{L}'-]*";
+// "Between A and B" must name the source's own places (Cinia: Finland and
+// Germany), so "between Russia and Ukraine" is no shape.
+const PLACE_TAIL = new RegExp(
+  ` (?:between (?<from>${NAME}(?: ${NAME})?) and (?<to>${NAME}(?: ${NAME})?)|(?:near|off) (?:the )?${NAME}(?: (?:of )?${NAME}){0,2})$`,
+  'u',
+);
+
+/**
+ * The cable as a title names it. Before the name only the publisher may
+ * stand ("the Cinia", "Cinia's", "Cinia Oy's"), never another word
+ * ("former", "unrelated", "preventing"). The word "cable" must follow the
+ * name unless the name has it.
+ */
+function cablePhrase(name, speakers, { cable = true } = {}) {
+  const publishers = speakers.map((s) => escape(fold(s)));
+  const lead = publishers.length
+    ? `(?:the )?(?:(?:${publishers.join('|')})(?:'s|')? )?`
+    : '(?:the )?';
+  const named = /\bcable\b/i.test(name) || !cable;
+  return `${lead}${escape(fold(name))}(?: (?:submarine|subsea|undersea|sea))?${named ? '(?: cable(?: system)?)?' : ' cable(?: system)?'}`;
+}
 
 /** Sentence openings that state a physical break of the named cable. */
-function breakShapesFor(name) {
-  const cable = cablePhrase(name);
+function breakShapesFor(name, speakers) {
+  const cable = cablePhrase(name, speakers, { cable: false });
   return [
     new RegExp(`^(?:the |a )?(?:break|cut) (?:in|on|of|to) ${cable}\\b`, 'u'),
     new RegExp(`^${cable} (?:was|has been|is) (?:cut|severed|broken)\\b`, 'u'),
@@ -144,33 +160,24 @@ function breakShapesFor(name) {
 }
 
 /** The allowed title shapes for one cable name, as [claim, pattern]. */
-function shapesFor(name) {
-  const cable = cablePhrase(name);
+function shapesFor(name, speakers) {
+  const cable = cablePhrase(name, speakers);
   const u = 'u';
   return [
-    // "A fault in the Cinia C-Lion1 submarine cable between …"
+    // "A fault in the Cinia C-Lion1 submarine cable"
     [
       'fault',
       new RegExp(
-        `^(?:an? |the |some )?${INCIDENT_NOUN}(?: (?:has been|was|is))?(?: (?:detected|found|identified|located))? (?:in|on|to|at|affecting) ${cable}${PLACE}$`,
+        `^(?:an? |the |some )?${INCIDENT} (?:(?:has been|was|is) )?(?:(?:detected|found|identified|located) )?(?:in|on|to|at|affecting) ${cable}$`,
         u,
       ),
     ],
-    // "C-Lion1 cable outage", "C-Lion1 Fault Detected"
-    [
-      'fault',
-      new RegExp(`^${cable} ${INCIDENT_NOUN}(?: detected)?${PLACE}$`, u),
-    ],
-    // "C-Lion1 submarine cable cut near Gotland", "C-Lion1 cable damaged"
-    [
-      'fault',
-      new RegExp(`^${cable} (?:(?:has been|was|is) )?${BROKEN}${PLACE}$`, u),
-    ],
+    // "C-Lion1 cable outage", "C-Lion1 Cable Fault Detected"
+    ['fault', new RegExp(`^${cable} ${INCIDENT}(?: detected)?$`, u)],
+    // "C-Lion1 submarine cable cut", "C-Lion1 cable damaged"
+    ['fault', new RegExp(`^${cable} (?:(?:has been|was|is) )?${BROKEN}$`, u)],
     // "Svalbard Undersea Cable System: fault"
-    [
-      'fault',
-      new RegExp(`^${cable}: (?:an? )?${INCIDENT_NOUN}(?: detected)?$`, u),
-    ],
+    ['fault', new RegExp(`^${cable}: (?:an? )?${INCIDENT}(?: detected)?$`, u)],
     // "Cinia's C-Lion1 submarine cable has been repaired", "… Fully Restored"
     [
       'restored',
@@ -187,19 +194,19 @@ function shapesFor(name) {
         u,
       ),
     ],
-    // "Disturbance in Cinia's C-Lion1 submarine cable has been repaired",
+    // "Disturbance in Cinia's C-Lion1 submarine cable has been repaired"
+    [
+      'restored',
+      new RegExp(
+        `^(?:the )?${INCIDENT} (?:in|on) ${cable} (?:has been|was) (?:fully )?${REPAIRED}$`,
+        u,
+      ),
+    ],
     // "The Finland-Estonia 2 cable fault has been repaired"
     [
       'restored',
       new RegExp(
-        `^(?:the )?${INCIDENT_NOUN} (?:in|on) ${cable} (?:has been|was) (?:fully )?${REPAIRED}$`,
-        u,
-      ),
-    ],
-    [
-      'restored',
-      new RegExp(
-        `^${cable} ${INCIDENT_NOUN} (?:has been|was) (?:fully )?${REPAIRED}$`,
+        `^(?:the )?${cable} ${INCIDENT} (?:has been|was) (?:fully )?${REPAIRED}$`,
         u,
       ),
     ],
@@ -208,40 +215,71 @@ function shapesFor(name) {
 
 /**
  * The claim a title states in an allowed shape about the named cable, or
- * why it does not: {claim, breakConfirmed} or {reason}. `summary` may only
- * confirm a break, and only in an allowed shape of its own.
+ * why it does not: {claim, breakConfirmed} or {reason}. `speakers` are the
+ * source's own names: the only words allowed before the cable's name, and
+ * the only "Name:" or "| Name" labels taken off the title. `places` are
+ * the only names a "between A and B" clause may use. `summary` may
+ * only confirm a break, and only in a sentence that opens with it.
  */
-export function templateClaim(title, cableName, noticeYear, summary = '') {
-  const clean = (text) =>
-    fold(text)
-      .replace(/\s+/g, ' ')
-      // A leading "Cinia:" or "Traficom:" names the speaker, not the event.
-      .replace(/^(?!.*\bcable\b.*:)[\p{L}\p{N} .&'-]{1,40}: /u, '')
-      // Decoration: emoji, punctuation and spaces at either end.
-      .replace(/^[\s\p{P}\p{S}]+|[\s\p{P}\p{S}]+$/gu, '');
+export function templateClaim(
+  title,
+  cableName,
+  noticeYear,
+  summary = '',
+  speakers = [],
+  places = [],
+) {
   // A question is never a report, whatever its shape.
   if (/[?？]/.test(title)) return { reason: 'doubtful-wording' };
-  const text = clean(title);
-  if (BLOCKERS.some((pattern) => pattern.test(text)))
+  const labels = speakers.map((s) => escape(s));
+  let raw = String(title ?? '')
+    .normalize('NFC')
+    .replace(APOSTROPHES, "'")
+    .replace(/\s+/g, ' ')
+    // Decoration: emoji and full stops at either end.
+    .replace(/^[\s\p{S}]+|[\s\p{S}.!,;:]+$/gu, '');
+  raw = raw
+    .replace(
+      new RegExp(`^(?:${[...labels, 'update'].join('|')}) ?[:|–—-] `, 'iu'),
+      '',
+    )
+    .replace(
+      new RegExp(
+        ` [|–—-] (?:${[...labels, 'press release'].join('|')})$`,
+        'iu',
+      ),
+      '',
+    );
+  const whole = fold(raw);
+  if (BLOCKERS.some((pattern) => pattern.test(whole)))
     return { reason: 'doubtful-wording' };
   // A year in the title other than the notice's own is history; so is '24.
-  for (const m of text.matchAll(/\b(19\d\d|20\d\d)\b/g))
+  for (const m of whole.matchAll(/\b(19\d\d|20\d\d)\b/g))
     if (Number(m[1]) !== noticeYear) return { reason: 'doubtful-wording' };
-  if (/'\d\d\b/.test(text)) return { reason: 'doubtful-wording' };
-  const shapes = shapesFor(cableName);
+  if (/'\d\d\b/.test(whole)) return { reason: 'doubtful-wording' };
+  const place = PLACE_TAIL.exec(raw);
+  if (place?.groups?.from) {
+    const own = new Set(places.map((p) => fold(p)));
+    if (!own.has(fold(place.groups.from)) || !own.has(fold(place.groups.to)))
+      return { reason: 'place-outside-source-area' };
+  }
+  const text = fold(place ? raw.slice(0, place.index) : raw);
+  const shapes = shapesFor(cableName, speakers);
   const match = shapes.find(([, pattern]) => pattern.test(text));
   if (!match) return { reason: 'no-allowed-title-shape' };
   const [claim] = match;
   // A break stated in the summary counts only when a sentence opens with
-  // it: "The break in Cinia's C-Lion1 submarine cable has been repaired …",
-  // "C-Lion1 was cut …". Nothing else in the summary is judged.
+  // it: "The break in Cinia's C-Lion1 submarine cable has been repaired …".
+  // Nothing else in the summary is judged.
   const summaryBreak = String(summary)
     .split(/(?<=[.!])\s+/)
-    .map(clean)
+    .map((sentence) => fold(sentence).trim())
     .some((sentence) =>
-      breakShapesFor(cableName).some((pattern) => pattern.test(sentence)),
+      breakShapesFor(cableName, speakers).some((pattern) =>
+        pattern.test(sentence),
+      ),
     );
-  return { claim, breakConfirmed: PHYSICAL.test(text) || summaryBreak };
+  return { claim, breakConfirmed: PHYSICAL.test(whole) || summaryBreak };
 }
 
 /**
@@ -303,6 +341,8 @@ export function assessNotice({ item, source, names, now = Date.now() }) {
     inTitle[0].name,
     new Date(published).getUTCFullYear(),
     item.summary ?? '',
+    source.speakers ?? [],
+    source.places ?? [],
   );
   if (judged.reason) return doubt(judged.reason);
   return {

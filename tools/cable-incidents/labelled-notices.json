@@ -3042,6 +3042,1392 @@
       "expected": "not-clear",
       "synthetic": true,
       "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Fault in the former C-Lion1 cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/1",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Damage to the abandoned C-Lion1 cable near Gotland",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/2",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Fault on Cinia's old C-Lion1 cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/3",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Fault on the original C-Lion1 cable route",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/4",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Damage to retired C-Lion1 cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/5",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Fault in Germany's C-Lion1 cable section",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/6",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Fault in a fictional C-Lion1 cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/7",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Fault in the hypothetical C-Lion1 cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/8",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Damage to mock C-Lion1 cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/9",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Fault in competing C-Lion1 cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/10",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Unrelated C-Lion1 cable outage",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/11",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Earlier C-Lion1 cable outage",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/12",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Previous C-Lion1 cable outage",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/13",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Historic C-Lion1 cable cut",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/14",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Famous C-Lion1 cable cut",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/15",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Infamous C-Lion1 cable cut",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/16",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Recent C-Lion1 cable outages",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/17",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Rare C-Lion1 cable faults",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/18",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Frequent C-Lion1 cable faults",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/19",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Preventing C-Lion1 cable faults",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/20",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Understanding C-Lion1 cable faults",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/21",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Detecting C-Lion1 cable faults",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/22",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Avoiding C-Lion1 cable outages",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/23",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Handling C-Lion1 cable outages",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/24",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Remembering the C-Lion1 cable cut",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/25",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Revisiting the C-Lion1 cable cut",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/26",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "After the C-Lion1 cable cut",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/27",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Beyond the C-Lion1 cable outage",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/28",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Hunting the C-Lion1 cable fault",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/29",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Pinpointing the C-Lion1 cable fault",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/30",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable outages in the past",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/31",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable faults in the Baltic",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/32",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable was damaged in the Eagle S incident",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/33",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable was cut in the Christmas Day incident",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/34",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable damaged in January",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/35",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable outage in December",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/36",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 submarine cable cut in early spring",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/37",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable damaged in the film",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/38",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable cut in the documentary",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/39",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable damaged in the wargame scenario",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/40",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable damaged in the tabletop scenario",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/41",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable damaged at the factory",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/42",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable damaged in transport",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/43",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable damaged in storage",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/44",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable cut in theory",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/45",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable cut in half the cost of satellite",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/46",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cut in prices",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/47",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cut in fees at the start of the year",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/48",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 break in the clouds",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/49",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable down in price",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/50",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable down near the old landing",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/51",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable cut near the old route",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/52",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Fault at Cinia C-Lion1 cable museum",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/53",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Fault in the C-Lion1 cable between Russia and Ukraine",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/54",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Fault on the C-Lion1 cable at the trade fair",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/55",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Fault in the C-Lion1 cable in Russian media",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/56",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Fault in the C-Lion1 cable in the news",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/57",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable outage at the Cinia booth",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/58",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-LION1 CABLE CUT",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/59",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "breakConfirmed": true,
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable cut | Cinia",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/60",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "breakConfirmed": true,
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable cut - Press release",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/61",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "breakConfirmed": true,
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Press release: C-Lion1 cable cut",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/62",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Opinion: C-Lion1 cable cut",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/63",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Blog: C-Lion1 cable outage",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/64",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Podcast: C-Lion1 cable outage",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/65",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Case study: C-Lion1 cable fault",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/66",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Throwback: C-Lion1 cable cut",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/67",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Satire: C-Lion1 cable cut",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/68",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Fiction: C-Lion1 cable cut",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/69",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "In the archive: C-Lion1 cable cut",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/70",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Webinar recording: C-Lion1 cable fault",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/71",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Quiz: C-Lion1 cable outage",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/72",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Correction: C-Lion1 cable outage",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/73",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Retraction: C-Lion1 cable cut",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/74",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Update: C-Lion1 cable cut",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/75",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "breakConfirmed": true,
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 Cable Outage: Update",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/76",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable: fault",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/77",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable: no fault",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/78",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable: rumoured fault",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/79",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable: alleged fault",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/80",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable: imaginary fault",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/81",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Rumoured fault on the C-Lion1 cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/82",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Disputed fault on the C-Lion1 cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/83",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Apparent fault on the C-Lion1 cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/84",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Fault reported on the C-Lion1 cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/85",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Brief fault on the C-Lion1 cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/86",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Minor fault on the C-Lion1 cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/87",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Earlier fault on the C-Lion1 cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/88",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Old fault on the C-Lion1 cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/89",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Fake fault on the C-Lion1 cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/90",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Staged fault on the C-Lion1 cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/91",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Deliberate fault on the C-Lion1 cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/92",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "A fault in the C-Lion1 cable has been found",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/93",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable has been restored to partial capacity",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/94",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable has been restored temporarily",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/95",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable restored after storm",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/96",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable mostly restored",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/97",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable nearly repaired",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/98",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable almost repaired",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/99",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable half repaired",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/100",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable provisionally repaired",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/101",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable has been temporarily repaired",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/102",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Partly repaired C-Lion1 cable restored",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/103",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Damaged C-Lion1 cable restored",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/104",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Finnish C-Lion1 cable section restored",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/105",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Finnish section C-Lion1 cable restored",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/106",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Gulf section C-Lion1 restored",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/107",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "One C-Lion1 fibre pair restored",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/108",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Some C-Lion1 capacity restored",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/109",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "First C-Lion1 cable repaired",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/110",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Southern C-Lion1 cable repaired",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/111",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 restored",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/112",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable is now restored",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/113",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-restored",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable back in operation",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/114",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-restored",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "The disturbance in the C-Lion1 cable was repaired",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/115",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-restored",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable outage was repaired",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/116",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-restored",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Seabras-1 cable outage",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/117",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Fault on the Seabras-1 cable off Fortaleza",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/118",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Fault on the Seabras-1 cable off the coast of Brazil",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/119",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Seabras-1 cable cut near Praia Grande",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/120",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "breakConfirmed": true,
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Seabras-1 down in Sao Paulo",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/121",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Seabras-1 down at Wall Township",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/122",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Fault on the Svalbard Undersea Cable System",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/123",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Fault on the Svalbard Undersea Cable System cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/124",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Damage to the Arctic Way cable near Bodø",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/125",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Arctic Way cable damaged in the ice",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/126",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Arctic Way cable damaged in the factory test",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/127",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Arctic Way cable damaged at the plant in Calais",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/128",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Arctic Way cable cut in the lay operation",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/129",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "traficom-news",
+      "title": "Fault in the Finland-Estonia 2 cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/130",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "traficom-news",
+      "title": "Fault in the Finland-Estonia 3 cable between Helsinki and Tallinn",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/131",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "traficom-news",
+      "title": "Eastern Light Sweden-Finland I cable fault",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/132",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "traficom-news",
+      "title": "Eastern Light Sweden-Finland II cable fault",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/133",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "traficom-news",
+      "title": "Fault in Eastern Light Sweden-Finland I cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/134",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "tata-communications",
+      "title": "Tata TGN-Pacific cable cut off Guam",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/135",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "breakConfirmed": true,
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "tata-communications",
+      "title": "Tata TGN-Gulf cable outage at Fujairah",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/136",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "tata-communications",
+      "title": "Tata TGN-Gulf Express cable outage",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/137",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "tata-communications",
+      "title": "Tata TGN-Gulf cable cut off the record",
+      "summary": "",
+      "url": "https://example.invalid/adversarial-3/138",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
     }
   ]
 }
