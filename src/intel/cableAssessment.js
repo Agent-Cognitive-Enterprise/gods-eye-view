@@ -35,7 +35,11 @@ const RESTORE_WORDS =
   /\b(?:repaired|restored|back in service|back online|back in operation|fully operational|repair (?:work )?(?:has been |was )?completed)\b/;
 
 // Wording that says the fault is over.
-const RESOLVED_WORDS = /\b(?:resolved|fixed|ended|over|cleared)\b/;
+const RESOLVED_WORDS =
+  /\b(?:resolved|fixed|ended|cleared|(?:is|are|was|were) (?:now )?over)\b/;
+// Someone else's words: "according to media", "said one blogger".
+const ATTRIBUTION =
+  /\b(?:according to|media|press|says|said|say|sources?|blog\w*|wrote|writes|told|rumou?r\w*|allegedly|reportedly)\b/;
 
 const fold = (text) =>
   String(text ?? '')
@@ -104,12 +108,37 @@ export function buildCablePrompt({ notice, source, cables, today, article }) {
 
 /** The sentences of a notice: the title, then the summary and article split
  * at sentence ends, each folded. */
+// A full stop after these does not end a sentence: "at approx. 06:40",
+// "at 6 a.m. the cable".
+const ABBREVIATION =
+  /(?:\b(?:approx|ca|no|nr|st|mr|mrs|ms|dr|prof|inc|ltd|oy|ab|as|co|corp|vs|etc|e\.g|i\.e|a\.m|p\.m|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)|\b[a-z])\.$/i;
+
+/** One text split at sentence ends, abbreviations aside. */
+function splitSentences(text) {
+  const out = [];
+  let current = '';
+  for (const piece of String(text ?? '').split(/(?<=[.!?;])\s+|\n+/)) {
+    current = current ? `${current} ${piece}` : piece;
+    if (!ABBREVIATION.test(current.trimEnd())) {
+      if (current.trim()) out.push(current);
+      current = '';
+    }
+  }
+  if (current.trim()) out.push(current);
+  return out;
+}
+
+/** The sentences of a notice, folded, each tagged with where it came from:
+ * the title, the summary or the article. */
 function sentencesOf(notice, article) {
-  const out = [fold(notice.title)];
-  for (const part of [notice.summary, article])
-    for (const sentence of String(part ?? '').split(/(?<=[.!?;])\s+|\n+/))
-      if (sentence.trim()) out.push(fold(sentence));
-  return out.filter(Boolean);
+  const out = [{ text: fold(notice.title), from: 'title' }];
+  for (const [part, from] of [
+    [notice.summary, 'summary'],
+    [article, 'article'],
+  ])
+    for (const sentence of splitSentences(part))
+      out.push({ text: fold(sentence), from });
+  return out.filter((s) => s.text);
 }
 
 /** Every catalogue name of a cable: the one found, plus its aliases. */
@@ -156,15 +185,32 @@ export function validateCableAssessment(
   // Judge the whole sentence the quote comes from, never the quote alone:
   // "fault in the C-Lion1 cable" quoted from "Possible fault in the C-Lion1
   // cable" is the hedged sentence.
-  const sentence = sentencesOf(notice, article).find((s) => s.includes(said));
-  if (!sentence) return reject('quote-not-in-notice');
+  const all = sentencesOf(notice, article);
+  const at = all.findIndex((s) => s.text.includes(said));
+  if (at < 0) return reject('quote-not-in-notice');
+  const sentence = all[at].text;
   const title = fold(notice.title);
   for (const text of new Set([sentence, title]))
-    if (QUOTE_BLOCKERS.some((pattern) => pattern.test(text)))
+    if (
+      QUOTE_BLOCKERS.some((pattern) => pattern.test(text)) ||
+      ATTRIBUTION.test(text)
+    )
       return reject('quote-hedged');
+  // The sentences around it may deny, hedge or attribute it: "Reports are
+  // unconfirmed. The C-Lion1 cable was cut."
+  for (const near of [all[at - 1], all[at + 1]])
+    if (
+      near &&
+      near.from === all[at].from &&
+      (QUOTE_BLOCKERS[0].test(near.text) || ATTRIBUTION.test(near.text))
+    )
+      return reject('context-hedged');
   if (NOT_AN_INCIDENT.test(sentence) || NOT_AN_INCIDENT.test(title))
     return reject('not-an-incident-notice');
   if (claim === 'restored') {
+    // Closing an incident wrongly is the worst failure, and article bodies
+    // carry related-news lists: a repair counts only from title or summary.
+    if (all[at].from === 'article') return reject('repair-only-in-article');
     if (!RESTORE_WORDS.test(sentence))
       return reject('quote-does-not-state-repair');
     if (PARTIAL_SERVICE.test(sentence)) return reject('quote-hedged');

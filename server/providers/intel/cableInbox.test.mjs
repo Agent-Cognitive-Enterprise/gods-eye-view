@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   acceptProposal,
+  articleText,
   buildReport,
   canonicalUrl,
   emptyInbox,
@@ -795,5 +796,20 @@ test('an RSS item with a bad link falls back to a full HTTPS guid', () => {
   assert.deepEqual(
     itemsFromFeed(feed, operatorSource.url).map((i) => i.url),
     [1, 2, 3].map((n) => `https://operator.example/en/news/${n}`),
+  );
+});
+
+test('a comment or teaser marked up as an article is never the article', () => {
+  const comment = `<article class="post"><p>Cinia holds a short drill.</p></article>
+    <section id="comments"><article class="comment-1"><p>${'Long comment. '.repeat(40)}The C-Lion1 submarine cable was cut near Gotland this evening.</p></article></section>`;
+  assert.equal(articleText(comment), 'Cinia holds a short drill.');
+  const teaser = `<main><div class="content"><p>The body is not an article here.</p></div>
+    <article class="teaser"><h3>Fault Detected in Cinia C-Lion1 Submarine Cable</h3></article></main>`;
+  assert.doesNotMatch(articleText(teaser), /Fault Detected/);
+  assert.match(articleText(teaser), /The body is not an article here/);
+  // data-id is not id.
+  assert.equal(
+    articleText('<article><div data-id="share-1"><p>Kept.</p></div></article>'),
+    'Kept.',
   );
 });

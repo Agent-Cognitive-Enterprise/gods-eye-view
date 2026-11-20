@@ -78,7 +78,8 @@ test('an answer is rejected unless the notice itself supports it', () => {
   );
   assert.equal(reason({ quote: '' }), 'no-quote');
   assert.equal(reason({ claim: 'break' }), 'quote-does-not-state-break');
-  assert.equal(reason({ claim: 'restored' }), 'quote-does-not-state-repair');
+  // A repair quoted from the article body never counts.
+  assert.equal(reason({ claim: 'restored' }), 'repair-only-in-article');
   assert.equal(
     reason({ quote: 'Repair vessel on its way' }),
     'quote-does-not-state-fault',
@@ -129,7 +130,7 @@ test('a break and a repair need their own words in the quote', () => {
     "The break in Cinia's C-Lion1 submarine cable has been repaired.";
   const back = check(
     { claim: 'restored', quote: repaired },
-    { article: repaired },
+    { notice: { ...notice, summary: repaired } },
   );
   assert.equal(back.claim, 'restored');
   assert.equal(back.breakConfirmed, true);
@@ -189,7 +190,10 @@ test('a hedged quote, or one naming another cable, is rejected', () => {
     );
   const partial = 'The C-Lion1 cable has been partially restored.';
   assert.equal(
-    check({ claim: 'restored', quote: partial }, { article: partial }).reason,
+    check(
+      { claim: 'restored', quote: partial },
+      { notice: { ...notice, summary: partial } },
+    ).reason,
     'quote-hedged',
   );
 });
@@ -274,5 +278,50 @@ test('a cable named by another of its catalogue names counts as another cable', 
       { article: text, cables: two },
     ).reason,
     'quote-names-another-cable',
+  );
+});
+
+test('neighbouring sentences, attribution and abbreviations keep their meaning', () => {
+  for (const [text, quote, claim] of [
+    [
+      'Reports are unconfirmed. The C-Lion1 cable was cut.',
+      'The C-Lion1 cable was cut.',
+      'break',
+    ],
+    [
+      'Cinia denies this. According to Finnish media, the C-Lion1 cable was cut near Gotland.',
+      'the C-Lion1 cable was cut near Gotland',
+      'break',
+    ],
+    [
+      'Finnish media say the C-Lion1 cable was cut near Gotland. Cinia has found no fault.',
+      'the C-Lion1 cable was cut near Gotland',
+      'break',
+    ],
+    [
+      'The C-Lion1 cable was damaged, said one blogger.',
+      'The C-Lion1 cable was damaged',
+      'fault',
+    ],
+    [
+      'Unconfirmed reports say that at approx. 06:40 the C-Lion1 submarine cable was cut near Gotland.',
+      '06:40 the C-Lion1 submarine cable was cut near Gotland',
+      'break',
+    ],
+    [
+      'It is possible that at 6 a.m. the C-Lion1 submarine cable was damaged by an anchor.',
+      'the C-Lion1 submarine cable was damaged by an anchor',
+      'fault',
+    ],
+  ]) {
+    const got = check({ claim, quote }, { article: text });
+    assert.equal(got.signal, 'llm-rejected', text);
+  }
+  // "over the Gulf of Finland" is a place, not "the fault is over".
+  const over =
+    'A fault was detected on the C-Lion1 cable over the Gulf of Finland.';
+  assert.equal(
+    check({ quote: over.slice(0, -1) }, { article: over }).signal,
+    'llm-clear',
   );
 });

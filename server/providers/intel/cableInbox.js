@@ -227,7 +227,15 @@ function dropElement(value, name) {
 // teasers, comments, sidebars, share bars. Their old incident headlines
 // must not become a quote.
 const NOT_ARTICLE_BLOCK =
-  /\b(?:related|teaser|recommend\w*|more-news|latest|read-more|comments?|comment-list|respond|sidebar|widget|share\w*|social|newsletter|subscribe|breadcrumbs?|tags?|pagination|cookie\w*|banner)\b/;
+  /\b(?:related|teaser|recommend\w*|more-news|latest|read-more|comments?|comment-list|respond|sidebar|widget|share\w*|social|newsletter|subscribe|breadcrumbs?|tags?|pagination|cookie\w*|banner|news-list|recent|archive|more|list)\b/;
+
+/** Whether an opening tag's own class or id marks a not-article block. */
+function notArticleTag(attributes) {
+  const marks = /(?:^|\s)(?:class|id)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi;
+  for (const m of String(attributes).slice(0, 2048).matchAll(marks))
+    if (NOT_ARTICLE_BLOCK.test((m[1] ?? m[2] ?? '').toLowerCase())) return true;
+  return false;
+}
 const BLOCK_TAGS = new Set(['div', 'section', 'ul', 'ol', 'aside', 'article']);
 
 /**
@@ -244,11 +252,9 @@ function dropBlocks(value) {
     if (gt < 0) break;
     const tag = /^<([a-z]+)\b/.exec(lower.slice(lt, lt + 12));
     if (tag && BLOCK_TAGS.has(tag[1])) {
-      const head = lower.slice(lt, gt).slice(0, 2048);
-      const marks = /\b(?:class|id)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
-      let found = false;
-      for (const m of head.matchAll(marks))
-        if (NOT_ARTICLE_BLOCK.test(m[1] ?? m[2] ?? '')) found = true;
+      const found = notArticleTag(
+        lower.slice(lt + 1 + tag[1].length, gt).slice(0, 2048),
+      );
       if (found) {
         // Skip to the matching close tag of this element.
         const name = tag[1];
@@ -286,7 +292,11 @@ function dropBlocks(value) {
 export function articleText(html, max = 8000) {
   const source = String(html ?? '').slice(0, MAX_SOURCE_BYTES);
   // A page's related teasers can be <article> too: take the longest one.
-  const articles = elements(source, 'article', 50);
+  // A comment, teaser or related item can be an <article> too, and longer
+  // than the post: only articles not marked as such count.
+  const articles = elements(source, 'article', 50).filter(
+    (a) => !notArticleTag(a.attributes),
+  );
   const longest = articles.reduce(
     (best, a) => (a.inner.length > (best?.inner.length ?? -1) ? a : best),
     null,
