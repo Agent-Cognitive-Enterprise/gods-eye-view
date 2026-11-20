@@ -56,10 +56,12 @@ function fakeFetch(routes) {
       routes[url] ?? routes[new URL(url).origin + new URL(url).pathname];
     if (route instanceof Error) throw route;
     if (!route) return new Response('missing', { status: 404 });
-    const response = new Response(route.body, { status: route.status ?? 200 });
-    if (route.finalUrl)
-      Object.defineProperty(response, 'url', { value: route.finalUrl });
-    return response;
+    if (route.location)
+      return new Response(null, {
+        status: route.status ?? 302,
+        headers: { location: route.location },
+      });
+    return new Response(route.body, { status: route.status ?? 200 });
   };
   return { fetchImpl, calls };
 }
@@ -227,10 +229,10 @@ test('a failing or redirected source is recorded and never stops the others', as
   }).sources;
   const { fetchImpl, calls } = fakeFetch({
     'https://down.example/rss': new Error('connect ECONNREFUSED'),
-    'https://moved.example/rss': {
-      body: rss([FAULT]),
-      finalUrl: 'http://moved.example/rss',
-    },
+    // HTTPS at both ends, plain HTTP in the middle: refused at the hop.
+    'https://moved.example/rss': { location: 'http://moved.example/hop' },
+    'http://moved.example/hop': { location: 'https://moved.example/final' },
+    'https://moved.example/final': { body: rss([FAULT]) },
     'https://big.example/rss': { body: 'x'.repeat(2 * 1024 * 1024 + 1) },
     [operatorSource.url]: { body: rss([FAULT]) },
   });
@@ -245,6 +247,10 @@ test('a failing or redirected source is recorded and never stops the others', as
   assert.equal(summary.length, 4);
   assert.match(summary[0].error, /ECONNREFUSED/);
   assert.match(summary[1].error, /HTTPS/);
+  assert.equal(
+    calls.some((c) => c.url.startsWith('http:')),
+    false,
+  );
   assert.match(summary[2].error, /too large/i);
   assert.equal(summary[3].added, 1);
   assert.equal(inbox.sources.down.baselineAt, null);
@@ -366,6 +372,15 @@ test('accepting a proposal adds one validated evidence row; rejecting keeps it o
     effectiveAt: '2024-11-18T02:04:00Z',
   });
   assert.deepEqual(asNews.outcome, { lead: 'non-primary-source' });
+  // Recording another source kind or URL means it was found now.
+  assert.equal(asNews.row.knownAt, '2024-11-20T00:00:00Z');
+  const elsewhere = acceptProposal({
+    ...base,
+    claim: 'fault',
+    sourceUrl: 'https://operator.example/en/news/found-later',
+    effectiveAt: '2024-11-18T02:04:00Z',
+  });
+  assert.equal(elsewhere.row.knownAt, '2024-11-20T00:00:00Z');
   const rejected = rejectProposal({ inbox, proposal: id, reason: 'duplicate' });
   assert.equal(rejected.proposals[0].status, 'rejected');
   assert.throws(
@@ -461,7 +476,7 @@ test('the report shows yesterday-to-today changes, pending review and IODA apart
     ioda,
     asOf: '2024-11-18T12:00:00Z',
   });
-  assert.equal(today.since, '2024-11-17T12:00:00Z');
+  assert.equal(today.since, '2024-11-17T12:00:00.000Z');
   assert.equal(today.changes.length, 1);
   assert.equal(today.changes[0].change, 'new');
   assert.equal(today.open.length, 1);
@@ -499,4 +514,184 @@ test('the report shows yesterday-to-today changes, pending review and IODA apart
   );
   assert.match(waiting, /Waiting for review: 1/);
   assert.match(waiting, /cables: c-lion1; suggested: fault/);
+});
+
+test('hostile markup is parsed in linear time and printed without escapes', () => {
+  const started = performance.now();
+  const lots = 2 * 1024 * 1024 - 200;
+  itemsFromFeed(
+    `<rss><item><title>${'&lt;'.repeat(lots / 4)}</title><link>https://operator.example/x</link></item></rss>`,
+    operatorSource.url,
+  );
+  itemsFromFeed(
+    `<rss><item><title>${'<![CDATA['.repeat(lots / 9)}</title></item></rss>`,
+    operatorSource.url,
+  );
+  itemsFromPage(
+    `<a href="/en/news/x">${'<'.repeat(lots)}</a>`,
+    'https://operator.example/en/news',
+    '/en/news/',
+  );
+  itemsFromPage(
+    '<a href="/en/news/x">'.repeat(lots / 21),
+    'https://operator.example/en/news',
+    '/en/news/',
+  );
+  assert.ok(performance.now() - started < 5000);
+  const [item] = itemsFromFeed(
+    rss([
+      [
+        'All clear&#27;[2J&#x1b;[H &#8238;fake',
+        'https://operator.example/en/news/a',
+        '',
+      ],
+    ]),
+    operatorSource.url,
+  );
+  assert.equal(item.title, 'All clear [2J [H fake');
+});
+
+test('feed links to other sites are proposed as news, whatever the source', async () => {
+  const items = itemsFromFeed(
+    rss([
+      ['C-Lion1 cable fault', '//evil.example/x', ''],
+      ['C-Lion1 cable fault', 'https://www.operator.example/en/news/y', ''],
+      ['No link at all', '', ''],
+    ]),
+    operatorSource.url,
+  );
+  assert.deepEqual(
+    items.map((i) => [i.url, i.offHost ?? false]),
+    [
+      ['https://evil.example/x', true],
+      ['https://www.operator.example/en/news/y', false],
+    ],
+  );
+  const { fetchImpl } = fakeFetch({
+    [operatorSource.url]: {
+      body: rss([['C-Lion1 cable fault', 'https://evil.example/x', '']]),
+    },
+  });
+  const { inbox } = await pollSources({
+    sources: readSources({ sources: [operatorSource] }).sources,
+    inbox: emptyInbox(),
+    catalogue,
+    fetchImpl,
+    now: () => Date.parse('2024-11-18T10:00:00Z'),
+    includeExisting: true,
+  });
+  assert.equal(inbox.proposals[0].sourceKind, 'news');
+  assert.equal(inbox.proposals[0].offHost, true);
+  const atom = `<feed><entry><title>t</title><link rel="replies" href="https://grid.example/c"/><link rel='alternate' href='https://grid.example/n/2'/></entry></feed>`;
+  assert.equal(
+    itemsFromFeed(atom, 'https://grid.example/feed')[0].url,
+    'https://grid.example/n/2',
+  );
+});
+
+test('page links follow the page’s own site, and skip comments, tags and feeds', () => {
+  const html = `<!-- <a href="/en/news/hidden">hidden</a> -->
+    <a data-href="/en/news/data" href="/en/news/real">Real</a>
+    <a href="/en/news/tag/cables">Tag</a>
+    <a href="/en/news/feed">Feed</a>`;
+  assert.deepEqual(
+    itemsFromPage(
+      html,
+      'https://www.operator.example/en/news',
+      '/en/news/',
+    ).map((i) => i.url),
+    ['https://www.operator.example/en/news/real'],
+  );
+});
+
+test('an empty first poll records no baseline; a source may be called constructor', async () => {
+  const source = { ...operatorSource, id: 'constructor' };
+  const feed = { body: rss([]) };
+  const { fetchImpl } = fakeFetch({ [operatorSource.url]: feed });
+  const poll = (inbox) =>
+    pollSources({
+      sources: readSources({ sources: [source] }).sources,
+      inbox,
+      catalogue,
+      fetchImpl,
+      now: () => Date.parse('2024-11-18T10:00:00Z'),
+    });
+  const empty = await poll(emptyInbox());
+  assert.equal(empty.inbox.sources.constructor.baselineAt, null);
+  assert.equal(Object.hasOwn(empty.inbox.sources, 'constructor'), true);
+  feed.body = rss([FAULT, CEO]);
+  const listed = await poll(JSON.parse(JSON.stringify(empty.inbox)));
+  assert.deepEqual(listed.summary[0], {
+    source: 'constructor',
+    items: 2,
+    added: 0,
+    baseline: true,
+  });
+});
+
+test('a notice reviewed days after it was seen is listed as reviewed that day', async () => {
+  const inbox = await inboxWithFault();
+  const { evidence, inbox: reviewed } = acceptProposal({
+    inbox,
+    evidence: [],
+    catalogue,
+    proposal: inbox.proposals[0].id,
+    claim: 'fault',
+    incidentId: '2024-11-18',
+    effectiveAt: '2024-11-18T02:04:00Z',
+    now: () => Date.parse('2024-11-21T09:00:00Z'),
+  });
+  const report = buildReport({
+    catalogue,
+    evidence,
+    inbox: reviewed,
+    ioda: null,
+    asOf: '2024-11-21T12:00:00Z',
+  });
+  assert.deepEqual(report.changes, []);
+  assert.equal(report.reviewed.length, 1);
+  assert.equal(report.open.length, 1);
+  assert.match(
+    formatReport(report),
+    /Reviewed in the last 24 hours: 1\n {2}p-[0-9a-f]{16} accepted as p-[0-9a-f]{16}-fault/,
+  );
+});
+
+test('a weak match next to a strong one still needs the reviewer to name the cable', async () => {
+  const local = {
+    features: [feature('c-lion1', 'C-Lion1'), feature('echo', 'Echo')],
+  };
+  const { fetchImpl } = fakeFetch({
+    [operatorSource.url]: {
+      body: rss([
+        [
+          'Echo and C-Lion1 cable faults',
+          'https://operator.example/en/news/z',
+          '',
+        ],
+      ]),
+    },
+  });
+  const { inbox } = await pollSources({
+    sources: readSources({ sources: [operatorSource] }).sources,
+    inbox: emptyInbox(),
+    catalogue: local,
+    fetchImpl,
+    now: () => Date.parse('2024-11-18T10:00:00Z'),
+    includeExisting: true,
+  });
+  assert.throws(
+    () =>
+      acceptProposal({
+        inbox,
+        evidence: [],
+        catalogue: local,
+        proposal: inbox.proposals[0].id,
+        claim: 'fault',
+        incidentId: 'x',
+        effectiveAt: '2024-11-18T02:04:00Z',
+        now: () => Date.parse('2024-11-19T00:00:00Z'),
+      }),
+    /Name the cable/,
+  );
 });

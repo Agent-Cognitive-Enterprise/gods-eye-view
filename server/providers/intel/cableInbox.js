@@ -6,12 +6,13 @@
 
 import { createHash } from 'node:crypto';
 import { readResponseTextCapped } from '../common/http.js';
-import { blocks, elements, attr, tag, text } from './connectors/xml.js';
+import { elements } from './connectors/xml.js';
 import {
   catalogueNames,
   dayBefore,
   diffSnapshots,
   iodaOutages,
+  printable,
   proposalFor,
 } from '../../../src/intel/cableInbox.js';
 import { replayCableIncidents } from '../../../src/intel/cableIncidents.js';
@@ -20,9 +21,12 @@ export const IODA_EVENTS_URL =
   'https://api.ioda.inetintel.cc.gatech.edu/v2/outages/events';
 const USER_AGENT = 'gods-eye-view-cable-inbox/0.1 (local, observe-only)';
 const TIMEOUT_MS = 30_000;
+const MAX_REDIRECTS = 5;
+const REDIRECTS = new Set([301, 302, 303, 307, 308]);
 const MAX_SOURCE_BYTES = 2 * 1024 * 1024;
 const MAX_IODA_BYTES = 4 * 1024 * 1024;
 const MAX_ITEMS_PER_SOURCE = 100;
+const MAX_FIELD = 20_000;
 const MAX_SOURCES = 50;
 const MAX_KEPT_PROPOSALS = 5000;
 const SOURCE_KINDS = new Set([
@@ -85,8 +89,11 @@ export function readSources(config) {
       format,
       url: parsed.href,
       sourceKind,
-      publisher: typeof source.publisher === 'string' ? source.publisher : null,
-      remit: typeof source.remit === 'string' ? source.remit : null,
+      publisher:
+        typeof source.publisher === 'string'
+          ? printable(source.publisher)
+          : null,
+      remit: typeof source.remit === 'string' ? printable(source.remit) : null,
       pathPrefix: format === 'page' ? pathPrefix : null,
     };
   });
@@ -115,73 +122,157 @@ export function canonicalUrl(value, base) {
 export const proposalId = (url) =>
   `p-${createHash('sha256').update(url).digest('hex').slice(0, 16)}`;
 
-const decodeNumeric = (value) =>
-  String(value ?? '').replace(/&#(x[0-9a-f]+|\d+);/gi, (whole, code) => {
+// The same site with or without "www.".
+const siteOf = (url) => new URL(url).hostname.replace(/^www\./, '');
+
+// Linear text helpers. A hostile feed cannot make them rescan: every loop
+// moves forward with indexOf, and no regex can backtrack across the input.
+
+/** Everything between `open` and `close` removed (or kept with `keep`). */
+function sections(value, open, close, keep) {
+  let out = '';
+  let at = 0;
+  for (;;) {
+    const start = value.indexOf(open, at);
+    if (start < 0) return out + value.slice(at);
+    out += value.slice(at, start);
+    const end = value.indexOf(close, start + open.length);
+    if (end < 0) return out + (keep ? value.slice(start + open.length) : '');
+    if (keep) out += value.slice(start + open.length, end);
+    at = end + close.length;
+  }
+}
+
+function stripTags(value) {
+  let out = '';
+  let at = 0;
+  for (;;) {
+    const start = value.indexOf('<', at);
+    if (start < 0) return out + value.slice(at);
+    out += `${value.slice(at, start)} `;
+    const end = value.indexOf('>', start + 1);
+    if (end < 0) return out;
+    at = end + 1;
+  }
+}
+
+const NAMED = { lt: '<', gt: '>', amp: '&', quot: '"', apos: "'", nbsp: ' ' };
+const ENTITY = /&(#x[0-9a-f]{1,6}|#\d{1,7}|lt|gt|amp|quot|apos|nbsp);/gi;
+const decode = (value) =>
+  value.replace(ENTITY, (whole, name) => {
+    if (name[0] !== '#') return NAMED[name.toLowerCase()];
     const point =
-      code[0].toLowerCase() === 'x'
-        ? parseInt(code.slice(1), 16)
-        : parseInt(code, 10);
-    return point > 0 && point <= 0x10ffff ? String.fromCodePoint(point) : '';
+      name[1].toLowerCase() === 'x'
+        ? parseInt(name.slice(2), 16)
+        : parseInt(name.slice(1), 10);
+    return point > 0 && point <= 0x10ffff ? String.fromCodePoint(point) : ' ';
   });
-const plain = (value) =>
-  text(decodeNumeric(value).replace(/&nbsp;/g, ' ')).slice(0, 2000);
+
+/** Feed or page markup to printable plain text. */
+function plain(markup) {
+  const raw = String(markup ?? '').slice(0, MAX_FIELD);
+  const html = decode(sections(raw, '<![CDATA[', ']]>', true));
+  return printable(
+    decode(stripTags(sections(html, '<!--', '-->', false))),
+  ).slice(0, 2000);
+}
+
+const inner = (block, name) => elements(block, name, 1)[0]?.inner ?? null;
+
+const ATTRIBUTE = /([a-z][a-z0-9:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi;
+function attributesOf(text) {
+  const out = {};
+  for (const m of String(text).slice(0, 4096).matchAll(ATTRIBUTE)) {
+    const key = m[1].toLowerCase();
+    if (!(key in out)) out[key] = decode(m[2] ?? m[3] ?? '');
+  }
+  return out;
+}
+
+/** Atom: the `alternate` link, or a link with no `rel`. */
+function atomLink(block) {
+  for (const link of elements(block, 'link', 20)) {
+    const { rel, href } = attributesOf(link.attributes);
+    if (href && (!rel || rel === 'alternate')) return href;
+  }
+  return null;
+}
+
+/**
+ * RSS items or Atom entries, as {url, title, summary, publishedAt, offHost}.
+ * An item with no link of its own is skipped, never given the feed's URL. An
+ * item linking to another site than the feed's is marked `offHost`.
+ */
+export function itemsFromFeed(xml, feedUrl) {
+  const source = String(xml ?? '');
+  const rss = elements(source, 'item', MAX_ITEMS_PER_SOURCE);
+  const entries = rss.length
+    ? rss
+    : elements(source, 'entry', MAX_ITEMS_PER_SOURCE);
+  const site = siteOf(feedUrl);
+  const out = [];
+  for (const { inner: block } of entries) {
+    const linkText = rss.length ? plain(inner(block, 'link')) : null;
+    const guid = rss.length ? plain(inner(block, 'guid')) : null;
+    const url = linkText
+      ? canonicalUrl(linkText, feedUrl)
+      : rss.length
+        ? canonicalUrl(guid ?? '')
+        : (() => {
+            const href = atomLink(block);
+            return href ? canonicalUrl(href, feedUrl) : null;
+          })();
+    if (!url) continue;
+    out.push({
+      url,
+      title: plain(inner(block, 'title')),
+      summary: plain(
+        inner(block, 'description') ??
+          inner(block, 'summary') ??
+          inner(block, 'content') ??
+          '',
+      ),
+      publishedAt: isoTime(
+        plain(
+          inner(block, 'pubDate') ??
+            inner(block, 'dc:date') ??
+            inner(block, 'published') ??
+            inner(block, 'updated'),
+        ),
+      ),
+      ...(siteOf(url) !== site ? { offHost: true } : {}),
+    });
+  }
+  return out;
+}
 
 function isoTime(value) {
   const time = Date.parse(String(value ?? ''));
   return Number.isFinite(time) ? new Date(time).toISOString() : null;
 }
 
-/** RSS items or Atom entries, as {url, title, summary, publishedAt}. */
-export function itemsFromFeed(xml, base) {
-  const rss = blocks(xml, 'item', MAX_ITEMS_PER_SOURCE);
-  const entries = rss.length ? rss : blocks(xml, 'entry', MAX_ITEMS_PER_SOURCE);
-  const out = [];
-  for (const block of entries) {
-    const link =
-      (rss.length ? tag(block, 'link') : null) ??
-      attr(block, 'link', 'href') ??
-      tag(block, 'guid');
-    const url = canonicalUrl(decodeNumeric(link), base);
-    if (!url) continue;
-    out.push({
-      url,
-      title: plain(tag(block, 'title')),
-      summary: plain(
-        tag(block, 'description') ??
-          tag(block, 'summary') ??
-          tag(block, 'content') ??
-          '',
-      ),
-      publishedAt: isoTime(
-        tag(block, 'pubDate') ??
-          tag(block, 'dc:date') ??
-          tag(block, 'published') ??
-          tag(block, 'updated'),
-      ),
-    });
-  }
-  return out;
-}
-
-const NOT_AN_ARTICLE = /(?:\/page\/\d+\/?|\.(?:xml|rss|atom|pdf|jpe?g|png))$/i;
+const NOT_AN_ARTICLE =
+  /(?:\/page\/\d+\/?|\/(?:feed|rss|tag|tags|category|categories|author)(?:\/[^/]*)*\/?|\.(?:xml|rss|atom|pdf|jpe?g|png))$/i;
+const HREF = /(?:^|\s)href\s*=\s*(?:"([^"]*)"|'([^']*)')/i;
 
 /**
- * Links on a news listing page under `pathPrefix`, same host only, as
- * {url, title}. Listing pages and feeds under the prefix are skipped.
+ * Links on a news listing page under `pathPrefix`, on the page's own site
+ * (after any redirect), as {url, title}. Listing, tag and feed pages under
+ * the prefix are skipped, and so are links inside HTML comments.
  */
 export function itemsFromPage(html, pageUrl, pathPrefix) {
   const page = new URL(pageUrl);
+  const site = siteOf(page.href);
+  const visible = sections(String(html ?? ''), '<!--', '-->', false);
   const byUrl = new Map();
-  for (const anchor of elements(html, 'a', 5000)) {
-    const href = /\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(
-      anchor.attributes,
-    );
+  for (const anchor of elements(visible, 'a', 5000)) {
+    const href = HREF.exec(anchor.attributes.slice(0, 4096));
     if (!href) continue;
-    const url = canonicalUrl(decodeNumeric(href[1] ?? href[2]), page);
+    const url = canonicalUrl(decode(href[1] ?? href[2]), page);
     if (!url) continue;
     const parsed = new URL(url);
     if (
-      parsed.host !== page.host ||
+      siteOf(url) !== site ||
       !parsed.pathname.startsWith(pathPrefix) ||
       parsed.pathname.length <= pathPrefix.length ||
       NOT_AN_ARTICLE.test(parsed.pathname)
@@ -196,29 +287,47 @@ export function itemsFromPage(html, pageUrl, pathPrefix) {
   return [...byUrl.values()];
 }
 
-/** Bounded HTTPS GET of text. Redirects must stay on HTTPS. */
+/**
+ * Bounded HTTPS GET of text. Redirects are followed by hand, at most five,
+ * and every hop must be HTTPS. One timeout covers the whole chain and the
+ * body. Returns {text, url} with the URL the text came from.
+ */
 export async function fetchText(url, { fetchImpl, accept = '*/*', maxBytes }) {
-  const response = await fetchImpl(url, {
-    headers: { Accept: accept, 'User-Agent': USER_AGENT },
-    redirect: 'follow',
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
-  if (response.url && !httpsUrl(response.url)) {
-    await response.body?.cancel().catch(() => {});
-    throw new Error('redirected away from HTTPS');
+  const signal = AbortSignal.timeout(TIMEOUT_MS);
+  let current = url;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
+    const response = await fetchImpl(current, {
+      headers: { Accept: accept, 'User-Agent': USER_AGENT },
+      redirect: 'manual',
+      signal,
+    });
+    if (REDIRECTS.has(response.status)) {
+      await response.body?.cancel().catch(() => {});
+      const next = httpsUrl(response.headers.get('location') ?? '', current);
+      if (!next) throw new Error('redirected away from HTTPS');
+      current = next.href;
+      continue;
+    }
+    if (!response.ok) {
+      await response.body?.cancel().catch(() => {});
+      throw new Error(`HTTP ${response.status}`);
+    }
+    return {
+      text: await readResponseTextCapped(response, maxBytes, signal),
+      url: current,
+    };
   }
-  if (!response.ok) {
-    await response.body?.cancel().catch(() => {});
-    throw new Error(`HTTP ${response.status}`);
-  }
-  return readResponseTextCapped(response, maxBytes);
+  throw new Error('too many redirects');
 }
 
+const own = (object, key) => Object.hasOwn(object, key);
+
 /**
- * Poll every enabled source once. A source's first poll only records what
- * is already listed (its baseline), so old news does not flood the inbox;
- * `includeExisting` proposes those too. One failing source never stops the
- * others. Returns the new inbox and a summary; the input is not changed.
+ * Poll every enabled source once. A source's first poll that lists notices
+ * only records them (its baseline), so old news does not flood the inbox;
+ * `includeExisting` proposes those too. A poll that lists nothing records
+ * no baseline. One failing source never stops the others. Returns the new
+ * inbox and a summary; the input is not changed.
  */
 export async function pollSources({
   sources,
@@ -234,15 +343,17 @@ export async function pollSources({
   const summary = [];
   for (const source of sources) {
     if (!source.enabled) continue;
-    const status = (next.sources[source.id] ??= {
-      baselineAt: null,
-      lastPollAt: null,
-      lastOkAt: null,
-      lastError: null,
-    });
+    if (!own(next.sources, source.id))
+      next.sources[source.id] = {
+        baselineAt: null,
+        lastPollAt: null,
+        lastOkAt: null,
+        lastError: null,
+      };
+    const status = next.sources[source.id];
     status.lastPollAt = seenAt;
     try {
-      const body = await fetchText(source.url, {
+      const fetched = await fetchText(source.url, {
         fetchImpl,
         maxBytes: MAX_SOURCE_BYTES,
         accept:
@@ -252,12 +363,12 @@ export async function pollSources({
       });
       const items =
         source.format === 'rss'
-          ? itemsFromFeed(body, source.url)
-          : itemsFromPage(body, source.url, source.pathPrefix);
+          ? itemsFromFeed(fetched.text, fetched.url)
+          : itemsFromPage(fetched.text, fetched.url, source.pathPrefix);
       const baseline = !status.baselineAt && !includeExisting;
       let added = 0;
       for (const item of items) {
-        if (next.seen[item.url]) continue;
+        if (own(next.seen, item.url)) continue;
         if (baseline) {
           next.seen[item.url] = 'baseline';
           continue;
@@ -267,17 +378,17 @@ export async function pollSources({
         next.proposals.push(proposalFor({ id, source, item, seenAt, names }));
         added += 1;
       }
-      status.baselineAt ??= seenAt;
+      if (items.length) status.baselineAt ??= seenAt;
       status.lastOkAt = seenAt;
       status.lastError = null;
       summary.push({
         source: source.id,
         items: items.length,
         added,
-        baseline,
+        baseline: baseline && items.length > 0,
       });
     } catch (error) {
-      status.lastError = String(error?.message ?? error).slice(0, 200);
+      status.lastError = printable(error?.message ?? error).slice(0, 200);
       summary.push({ source: source.id, error: status.lastError });
     }
   }
@@ -312,33 +423,38 @@ export async function pollIoda({
     entityType: 'country',
     limit: '2000',
   }).toString();
-  const body = JSON.parse(
-    await fetchText(query.href, {
-      fetchImpl,
-      accept: 'application/json',
-      maxBytes: MAX_IODA_BYTES,
-    }),
-  );
+  const { text } = await fetchText(query.href, {
+    fetchImpl,
+    accept: 'application/json',
+    maxBytes: MAX_IODA_BYTES,
+  });
+  const body = JSON.parse(text);
   if (body?.error) throw new Error('IODA returned an error');
   return {
     fetchedAt: new Date(now()).toISOString(),
     from: new Date(from * 1000).toISOString(),
     until: new Date(until * 1000).toISOString(),
     copyright:
-      typeof body?.copyright === 'string' ? body.copyright.slice(0, 300) : null,
-    outages: iodaOutages(body),
+      typeof body?.copyright === 'string'
+        ? printable(body.copyright).slice(0, 300)
+        : null,
+    outages: iodaOutages(body, { from, until }),
   };
 }
 
-const UTC_SECONDS = (time) =>
-  new Date(time).toISOString().replace('.000Z', 'Z');
+/** A time rounded up to the whole second, so it is never earlier. */
+const secondAfter = (time) =>
+  new Date(Math.ceil(time / 1000) * 1000).toISOString().replace('.000Z', 'Z');
 
 /**
  * Turn a reviewed proposal into one evidence row, validated by replaying the
- * whole file with it. `knownAt` is when the inbox first saw the notice;
- * `effectiveAt` is when the condition began, from the notice itself. Returns
- * the new inbox and evidence plus the row's replay outcome; inputs are not
- * changed.
+ * whole file with it. `effectiveAt` is when the condition began, from the
+ * notice itself. `knownAt` is when the inbox first saw the notice, or the
+ * time of this accept when the reviewer records another URL or source kind
+ * (that notice was found now, not when the proposal arrived). The cable is
+ * the one the reviewer names, or the notice's only cable match when it has
+ * exactly one and no weak one. Returns the new inbox and evidence, the row
+ * and its replay outcome; inputs are not changed.
  */
 export function acceptProposal({
   inbox,
@@ -361,14 +477,17 @@ export function acceptProposal({
   if (!CLAIMS.has(claim))
     throw new Error('claim must be fault, break or restored');
   let cable = { cableId, cableName };
+  let cableFrom = 'given';
   if (!cableId && !cableName) {
     const strong = proposal.cables.filter((c) => !c.weak);
-    if (strong.length !== 1)
+    if (strong.length !== 1 || strong.length !== proposal.cables.length)
       throw new Error(
         'Name the cable with --cable or --cable-name: the notice does not name exactly one cable',
       );
     cable = { cableId: strong[0].cableId, cableName: null };
+    cableFrom = 'matched';
   }
+  const overridden = sourceKind !== null || sourceUrl !== null;
   const row = {
     id: `${proposal.id}-${claim}`,
     incidentId,
@@ -377,7 +496,7 @@ export function acceptProposal({
     sourceKind: sourceKind ?? proposal.sourceKind,
     sourceUrl: sourceUrl ?? proposal.url,
     effectiveAt,
-    knownAt: proposal.seenAt.replace('.000Z', 'Z'),
+    knownAt: secondAfter(overridden ? now() : Date.parse(proposal.seenAt)),
   };
   if (!row.cableId) delete row.cableId;
   if (!row.cableName) delete row.cableName;
@@ -388,10 +507,11 @@ export function acceptProposal({
   const snapshot = replayCableIncidents({
     catalogue,
     evidence: rows,
-    asOf: UTC_SECONDS(Math.max(now(), Date.parse(row.knownAt))),
+    asOf: secondAfter(Math.max(now(), Date.parse(row.knownAt))),
   });
   const lead = snapshot.leads.find((l) => l.evidence.id === row.id);
   proposal.status = 'accepted';
+  proposal.decidedAt = new Date(now()).toISOString();
   proposal.evidenceIds = [
     ...new Set([...(proposal.evidenceIds ?? []), row.id]),
   ];
@@ -399,36 +519,50 @@ export function acceptProposal({
     inbox: next,
     evidence: rows,
     row,
+    cableFrom,
     outcome: lead ? { lead: lead.reason } : { incident: true },
   };
 }
 
 /** Mark a proposal as not cable evidence. */
-export function rejectProposal({ inbox, proposal: wanted, reason = '' }) {
+export function rejectProposal({
+  inbox,
+  proposal: wanted,
+  reason = '',
+  now = () => Date.now(),
+}) {
   const next = structuredClone(inbox);
   const proposal = next.proposals.find((p) => p.id === wanted);
   if (!proposal) throw new Error(`No proposal ${wanted}`);
   if (proposal.status === 'accepted')
     throw new Error(`${wanted} is already accepted`);
   proposal.status = 'rejected';
-  proposal.reason = String(reason).slice(0, 300) || null;
+  proposal.decidedAt = new Date(now()).toISOString();
+  proposal.reason = printable(reason).slice(0, 300) || null;
   return next;
 }
 
 /**
- * The daily view: what changed in the reviewed incidents since a day before
- * `asOf`, what is still open, the proposals waiting for review and, kept
- * apart, IODA's country outages.
+ * The daily view, a day before `asOf` to `asOf`:
+ * - what changed in the reviewed incidents, going by when each notice was
+ *   first seen, so a notice reviewed days later changes that earlier day;
+ * - the proposals reviewed in the window, whenever they were first seen;
+ * - what is still open, and the proposals waiting for review;
+ * - kept apart, IODA's country outages.
  */
 export function buildReport({ catalogue, evidence, inbox, ioda, asOf }) {
-  const since = dayBefore(asOf).replace('.000Z', 'Z');
   const replay = (at) =>
     replayCableIncidents({ catalogue, evidence, asOf: at });
   const today = replay(asOf);
+  const yesterday = replay(dayBefore(today.asOf));
+  const inWindow = (time) => time > yesterday.asOf && time <= today.asOf;
   return {
     asOf: today.asOf,
-    since,
-    changes: diffSnapshots(replay(since), today),
+    since: yesterday.asOf,
+    changes: diffSnapshots(yesterday, today),
+    reviewed: inbox.proposals.filter(
+      (p) => p.status !== 'new' && p.decidedAt && inWindow(p.decidedAt),
+    ),
     open: today.incidents.filter((i) => i.status !== 'reported-restored'),
     leads: today.leads.length,
     pending: inbox.proposals.filter((p) => p.status === 'new'),
@@ -442,61 +576,71 @@ const CHANGE_WORDS = {
   updated: 'changed',
   removed: 'removed from the reviewed file',
 };
+const statusText = (status, breakConfirmed) =>
+  `${status}${breakConfirmed && status !== 'break-confirmed' ? ', break confirmed' : ''}`;
 
-/** Plain-text report for the terminal. */
+/** Plain-text report for the terminal. Stored text is printed printable. */
 export function formatReport(report) {
+  const p = printable;
   const lines = [
     `Submarine cable inbox, ${report.since} to ${report.asOf}`,
     '',
-    'Reviewed cable incidents (operator or authority notices only):',
+    'Reviewed cable incidents (operator or authority notices only), by when each notice was first seen:',
   ];
   if (!report.changes.length) lines.push('  no change in the last 24 hours');
   for (const c of report.changes) {
     const from = c.from
-      ? ` (was ${c.from.status}${c.from.breakConfirmed ? ', break confirmed' : ''})`
+      ? ` (was ${statusText(c.from.status, c.from.breakConfirmed)})`
       : '';
     lines.push(
-      `  ${c.cableId} [${c.incidentId}]: ${CHANGE_WORDS[c.change]}, ${c.status}${c.breakConfirmed ? ', break confirmed' : ''}${c.reason ? ` (${c.reason})` : ''}${from}`,
+      `  ${p(c.cableId)} [${p(c.incidentId)}]: ${CHANGE_WORDS[c.change]}, ${statusText(c.status, c.breakConfirmed)}${c.reason ? ` (${c.reason})` : ''}${from}`,
     );
-    for (const url of new Set(c.sources ?? [])) lines.push(`    ${url}`);
+    for (const url of new Set(c.sources ?? [])) lines.push(`    ${p(url)}`);
   }
   lines.push(
-    `  open: ${report.open.length ? report.open.map((i) => `${i.cableId} ${i.status}`).join('; ') : 'none'}`,
+    `  open: ${report.open.length ? report.open.map((i) => `${p(i.cableId)} ${i.status}`).join('; ') : 'none'}`,
     `  leads (not cable evidence): ${report.leads}`,
     '',
-    `Waiting for review: ${report.pending.length}`,
+    `Reviewed in the last 24 hours: ${report.reviewed.length}`,
   );
-  for (const p of report.pending.slice(0, 50)) {
-    const cables = p.cables.length
-      ? p.cables
-          .map((c) => `${c.cableId}${c.weak ? ' (weak match)' : ''}`)
+  for (const r of report.reviewed)
+    lines.push(
+      `  ${p(r.id)} ${r.status}${r.evidenceIds ? ` as ${r.evidenceIds.map(p).join(', ')}` : ''}${r.reason ? ` (${p(r.reason)})` : ''}: ${p(r.title || r.url)}`,
+    );
+  lines.push('', `Waiting for review: ${report.pending.length}`);
+  for (const r of report.pending.slice(0, 50)) {
+    const cables = r.cables.length
+      ? r.cables
+          .map((c) => `${p(c.cableId)}${c.weak ? ' (weak match)' : ''}`)
           .join(', ')
       : 'no catalogue cable named';
     lines.push(
-      `  ${p.id} ${p.sourceKind} ${p.sourceId}: ${p.title || p.url}`,
-      `    ${p.url}`,
-      `    cables: ${cables}; suggested: ${p.suggestedClaim ?? 'none'}${p.cues.break ? `; break wording to check: ${p.cues.break.join(', ')}` : ''}`,
+      `  ${p(r.id)} ${p(r.sourceKind)} ${p(r.sourceId)}${r.offHost ? ' (links to another site)' : ''}: ${p(r.title || r.url)}`,
+      `    ${p(r.url)}`,
+      `    cables: ${cables}; suggested: ${p(r.suggestedClaim ?? 'none')}${r.cues?.break ? `; break wording to check: ${r.cues.break.map(p).join(', ')}` : ''}${r.cues?.doubt ? `; doubtful wording: ${r.cues.doubt.map(p).join(', ')}` : ''}`,
     );
   }
-  const failing = Object.entries(report.sources ?? {}).filter(
-    ([, s]) => s.lastError,
-  );
-  for (const [id, s] of failing)
-    lines.push(`  source ${id} failed at ${s.lastPollAt}: ${s.lastError}`);
+  if (report.pending.length > 50)
+    lines.push(`  … ${report.pending.length - 50} more: run list`);
+  for (const [id, s] of Object.entries(report.sources ?? {}))
+    if (s.lastError)
+      lines.push(
+        `  source ${p(id)} failed at ${p(s.lastPollAt)}: ${p(s.lastError)}`,
+      );
   lines.push('', 'IODA country outages (impact only, not cable attribution):');
   if (!report.ioda) lines.push('  not polled (off unless --ioda is given)');
   else {
-    lines.push(`  ${report.ioda.from} to ${report.ioda.until}`);
+    lines.push(`  ${p(report.ioda.from)} to ${p(report.ioda.until)}`);
     if (!report.ioda.outages.length) lines.push('  none');
     // An event IODA has not closed ends at the end of the window asked for.
     const windowEnd = Date.parse(report.ioda.until);
     for (const o of report.ioda.outages) {
       const ongoing = Date.parse(o.end) >= windowEnd;
       lines.push(
-        `  ${o.country} ${o.name}: ${o.start} ${ongoing ? 'and still open at the end of the window' : `to ${o.end}`}, ${[...new Set(o.signals.map((s) => s.datasource))].join(', ')}`,
+        `  ${p(o.country)} ${p(o.name)}: ${p(o.start)} ${ongoing ? 'and still open at the end of the window' : `to ${p(o.end)}`}, ${[...new Set(o.signals.map((s) => p(s.datasource)))].join(', ')}`,
       );
     }
-    if (report.ioda.copyright) lines.push(`  ${report.ioda.copyright}`);
+    if (report.ioda.copyright) lines.push(`  ${p(report.ioda.copyright)}`);
   }
   return `${lines.join('\n')}\n`;
 }

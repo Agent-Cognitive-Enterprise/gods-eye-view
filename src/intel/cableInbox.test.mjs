@@ -5,6 +5,7 @@ import {
   cableMentions,
   catalogueNames,
   claimCues,
+  printable,
   dayBefore,
   diffSnapshots,
   iodaOutages,
@@ -30,9 +31,11 @@ test('names cables only by their exact catalogue name, as whole words', () => {
   assert.deepEqual(ids('A fault in the Cinia C-Lion1 submarine cable'), [
     'c-lion1',
   ]);
-  assert.deepEqual(ids('c-lion1 is down'), ['c-lion1']);
+  assert.deepEqual(ids('c-lion1 cable is down'), ['c-lion1']);
+  // Text that is not about a cable names no cable.
+  assert.deepEqual(ids('C-Lion1 is down'), []);
   // No fuzzy or partial match.
-  assert.deepEqual(ids('C-Lion 1 and C-Lion12 and xC-Lion1'), []);
+  assert.deepEqual(ids('C-Lion 1 and C-Lion12 and xC-Lion1 cables'), []);
   // The longer name wins; the shorter one is reported only on its own.
   assert.deepEqual(ids('Atlantis-2 cable repaired'), ['atlantis-2']);
   assert.deepEqual(ids('Atlantis-2 and Atlantis cables'), [
@@ -125,6 +128,7 @@ test('the daily diff reports a new fault, then the confirmed break and repair', 
   assert.deepEqual(closed.from, {
     status: 'fault-confirmed',
     breakConfirmed: false,
+    evidence: 1,
   });
   assert.equal(closed.status, 'reported-restored');
   assert.equal(closed.breakConfirmed, true);
@@ -242,4 +246,82 @@ test('the bundled catalogue names C-Lion1 in Cinia’s own headline', () => {
     ['c-lion1'],
   );
   assert.ok(real.length > 600);
+});
+
+const bundledNames = () =>
+  catalogueNames(
+    JSON.parse(
+      readFileSync(
+        new URL(
+          '../data/local_data/telegeography_submarine_cables/cable-geo.json',
+          import.meta.url,
+        ),
+        'utf8',
+      ),
+    ),
+  );
+
+test('news that is not about a cable names no cable, even when a name fits', () => {
+  const real = bundledNames();
+  for (const headline of [
+    'Northern Lights could be visible tonight across Scotland',
+    'Italy-Albania migrant deal faces court challenge',
+    'Ferries cancelled across Cook Strait after storm',
+    'Heathrow T3 power outage delays flights',
+    'Grace Hopper Celebration opens in Orlando',
+  ])
+    assert.deepEqual(cableMentions(headline, real), [], headline);
+  assert.deepEqual(
+    cableMentions('Grace Hopper subsea cable lands in Bilbao', real).map(
+      (m) => m.cableId,
+    ),
+    ['grace-hopper'],
+  );
+});
+
+test('indices stay aligned when lower-casing would lengthen the text', () => {
+  const text = `${'İ'.repeat(36)} Thetis Express cable fault`;
+  const local = catalogueNames({
+    features: [
+      feature('thetis', 'Thetis'),
+      feature('thetis-express', 'Thetis Express'),
+    ],
+  });
+  assert.deepEqual(
+    cableMentions(text, local).map((m) => m.cableId),
+    ['thetis-express'],
+  );
+});
+
+test('doubtful wording keeps a repair from being suggested as restored', () => {
+  for (const text of [
+    'Traffic restored via alternative routes while the cable awaits repair',
+    'The C-Lion1 cable has not yet been restored',
+  ]) {
+    const { suggestedClaim, cues } = claimCues(text);
+    assert.equal(suggestedClaim, 'fault', text);
+    assert.ok(cues.doubt.length, text);
+  }
+});
+
+test('stored text loses terminal escapes and bidi overrides', () => {
+  assert.equal(
+    printable('\u001b[2J\u001b[HAll clear\u0007 ‮evil\u0085 '),
+    '[2J [HAll clear evil',
+  );
+});
+
+test('IODA events outside the window asked for are dropped', () => {
+  const event = (start, duration) => ({
+    location: 'country/FI',
+    start,
+    duration,
+    datasource: 'bgp',
+  });
+  const outages = iodaOutages(
+    { data: [event(1e12, 60), event(1000, 60), event(5000, 600)] },
+    { from: 4000, until: 9000 },
+  );
+  assert.equal(outages[0].signals.length, 1);
+  assert.equal(outages[0].start, new Date(5_000_000).toISOString());
 });

@@ -6,17 +6,39 @@
 const SINGLE_WORD = /^[^\s\d-]+$/u;
 const WORD_CHAR = /[\p{L}\p{N}]/u;
 const DAY_MS = 24 * 3600_000;
+// Text that names a cable has to be about a cable: catalogue names include
+// "Northern Lights", "Cook Strait", "Italy-Albania" and "T3".
+const ABOUT_CABLES = /\b(?:cables?|subsea|submarine|undersea)\b/;
+// C0 and C1 controls (terminal escapes, BEL) and bidirectional overrides.
+const UNPRINTABLE = /[\u0000-\u001f\u007f-\u009f‎‏‪-‮⁦-⁩]/g;
 
-const fold = (text) =>
-  String(text ?? '')
-    .normalize('NFC')
-    .toLowerCase();
+/** Text safe to store and print: no control or bidi characters. */
+export const printable = (value) =>
+  String(value ?? '')
+    .replace(UNPRINTABLE, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+/**
+ * NFC and lower case, one UTF-16 unit per unit, so an index in the folded
+ * text is the same index in the original ("İ" lengthens when lower-cased
+ * and is kept as it is).
+ */
+function fold(text) {
+  const raw = String(text ?? '').normalize('NFC');
+  let out = '';
+  for (let i = 0; i < raw.length; i += 1) {
+    const lower = raw[i].toLowerCase();
+    out += lower.length === 1 ? lower : raw[i];
+  }
+  return out;
+}
 
 /**
  * Catalogue names for matching in free text, one entry per cable ID.
  * A single word with no digit or hyphen ("Echo", "SAFE", "Blue") is weak:
- * it is matched only with its catalogue capitals and in text that also says
- * "cable", and reported as weak.
+ * it is matched only with its catalogue capitals, and reported as weak.
+ * Every match also needs text about a cable (see cableMentions).
  */
 export function catalogueNames(collection) {
   if (!Array.isArray(collection?.features))
@@ -58,21 +80,20 @@ function wholeWordAt(haystack, needle) {
 
 /**
  * Catalogue cables named in `text`, by exact catalogue name (case-folded,
- * whole words). No fuzzy, partial or nearest match: "C-Lion 1" does not find
+ * whole words), and only when the text says cable, subsea, submarine or
+ * undersea. No fuzzy, partial or nearest match: "C-Lion 1" does not find
  * "C-Lion1". A name inside a longer matched name ("Atlantis" in
  * "Atlantis-2") is not reported separately.
  */
 export function cableMentions(text, names) {
   const raw = String(text ?? '').normalize('NFC');
   const folded = fold(raw);
-  const saysCable = /\bcables?\b/.test(folded);
+  if (!ABOUT_CABLES.test(folded)) return [];
   const taken = [];
   const out = [];
   for (const entry of names) {
     const spans = entry.weak
-      ? saysCable
-        ? wholeWordAt(raw, entry.name)
-        : []
+      ? wholeWordAt(raw, entry.name)
       : wholeWordAt(folded, entry.key);
     const free = spans.filter(
       (start) =>
@@ -100,26 +121,33 @@ const CUES = [
     'fault',
     /\b(faults?|outages?|disruptions?|disturbances?|interrupted|interruptions?|failures?|failed|down)\b/g,
   ],
+  // Wording that makes "restored" doubtful: not yet, awaiting, traffic moved.
+  [
+    'doubt',
+    /\b(not (?:yet )?(?:been )?(?:restored|repaired)|yet to be (?:restored|repaired)|awaits?(?:ing)? repairs?|until (?:the )?repairs?|(?:alternative|alternate|backup) routes?|rerouted|rerouting)\b/g,
+  ],
 ];
 
 /**
  * Wording cues for the reviewer. The suggestion is only `fault` or
- * `restored`: a physical `break` is never suggested, because the notice has
- * to confirm it expressly, so break wording is listed for the reviewer to
- * check instead.
+ * `restored`, and `restored` only without doubtful wording ("not yet
+ * restored", "traffic rerouted"). A physical `break` is never suggested,
+ * because the notice has to confirm it expressly, so break wording is listed
+ * for the reviewer to check instead.
  */
 export function claimCues(text) {
-  const folded = fold(text);
+  const folded = fold(String(text ?? '').slice(0, 4000));
   const cues = {};
   for (const [claim, pattern] of CUES) {
     const words = [...new Set([...folded.matchAll(pattern)].map((m) => m[1]))];
     if (words.length) cues[claim] = words.sort();
   }
-  const suggestedClaim = cues.restored
-    ? 'restored'
-    : cues.fault || cues.break
-      ? 'fault'
-      : null;
+  const suggestedClaim =
+    cues.restored && !cues.doubt
+      ? 'restored'
+      : cues.fault || cues.break || cues.restored
+        ? 'fault'
+        : null;
   return { suggestedClaim, cues };
 }
 
@@ -131,14 +159,17 @@ export function proposalFor({ id, source, item, seenAt, names }) {
   const text = `${item.title ?? ''}\n${item.summary ?? ''}`;
   const { suggestedClaim, cues } = claimCues(text);
   return {
+    // A feed link to another host is not the publisher's own notice: it is
+    // proposed as news, whatever the source is.
+    ...(item.offHost ? { offHost: true } : {}),
     id,
     status: 'new',
     sourceId: source.id,
-    sourceKind: source.sourceKind,
+    sourceKind: item.offHost ? 'news' : source.sourceKind,
     publisher: source.publisher ?? null,
     url: item.url,
-    title: String(item.title ?? '').slice(0, 300),
-    summary: String(item.summary ?? '').slice(0, 600),
+    title: printable(item.title).slice(0, 300),
+    summary: printable(item.summary).slice(0, 600),
     publishedAt: item.publishedAt ?? null,
     seenAt,
     cables: cableMentions(text, names),
@@ -172,13 +203,16 @@ export function diffSnapshots(before, after) {
     if (!previous) changes.push({ change: 'new', ...base });
     else if (
       previous.status !== incident.status ||
-      previous.breakConfirmed !== incident.breakConfirmed
+      previous.breakConfirmed !== incident.breakConfirmed ||
+      previous.reason !== incident.reason ||
+      previous.evidence.length !== incident.evidence.length
     )
       changes.push({
         change: 'updated',
         from: {
           status: previous.status,
           breakConfirmed: previous.breakConfirmed,
+          evidence: previous.evidence.length,
         },
         ...base,
       });
@@ -209,7 +243,10 @@ const DATASOURCES = new Set(['bgp', 'gtr', 'ping-slash24', 'merit-nt']);
  * signals dropped, per country, with each signal kept separate. It says
  * nothing about which cable, if any, was involved.
  */
-export function iodaOutages(body, { maxEvents = 2000 } = {}) {
+export function iodaOutages(
+  body,
+  { maxEvents = 2000, from = -Infinity, until = Infinity } = {},
+) {
   if (!Array.isArray(body?.data)) throw new Error('malformed IODA events');
   const byCountry = new Map();
   for (const event of body.data.slice(0, maxEvents)) {
@@ -223,18 +260,23 @@ export function iodaOutages(body, { maxEvents = 2000 } = {}) {
       !Number.isFinite(start) ||
       start <= 0 ||
       !Number.isFinite(duration) ||
-      duration < 0
+      duration < 0 ||
+      // Outside the window asked for (seconds), or no valid date.
+      start > until ||
+      start + duration < from ||
+      start > 1e10 ||
+      start + duration > 1e10
     )
       continue;
     if (!byCountry.has(code))
       byCountry.set(code, {
         country: code,
-        name: String(event.location_name ?? code).slice(0, 80),
+        name: printable(event.location_name ?? code).slice(0, 80),
         signals: [],
       });
     byCountry.get(code).signals.push({
       datasource: event.datasource,
-      method: String(event.method ?? '').slice(0, 40) || null,
+      method: printable(event.method).slice(0, 40) || null,
       start: new Date(start * 1000).toISOString(),
       end: new Date((start + duration) * 1000).toISOString(),
       score: Number.isFinite(score) ? Math.round(score) : null,
