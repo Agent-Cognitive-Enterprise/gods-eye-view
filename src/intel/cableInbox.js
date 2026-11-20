@@ -133,7 +133,7 @@ const CUES = [
   // come, or traffic moved to other routes.
   [
     'doubt',
-    /\b(not|never|no longer|(?:has|have|had|is|are|was|were|will|can|could)n't|yet to be|awaits?|awaiting|until|pending|(?:alternative|alternate|backup) routes?|rerouted|rerouting)\b/g,
+    /\b(not|cannot|never|no longer|\w+n't|yet to be|awaits?|awaiting|until|pending|partial(?:ly)?|(?:alternative|alternate|backup) routes?|rerouted|rerouting)\b/g,
   ],
 ];
 
@@ -147,8 +147,8 @@ const CUES = [
  * is listed for the reviewer to check instead.
  */
 export function claimCues(text) {
-  // Curly apostrophes, as in "hasn’t", read as straight ones.
-  const folded = fold(String(text ?? '').slice(0, 4000)).replace(/[‘’]/g, "'");
+  // Curly and look-alike apostrophes, as in "hasn’t", read as straight ones.
+  const folded = fold(String(text ?? '').slice(0, 4000)).replace(/[‘’ʼ]/g, "'");
   const cues = {};
   for (const [claim, pattern] of CUES) {
     const words = [...new Set([...folded.matchAll(pattern)].map((m) => m[1]))];

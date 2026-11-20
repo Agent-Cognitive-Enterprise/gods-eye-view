@@ -301,6 +301,13 @@ test('repair wording next to doubtful wording never suggests restored', () => {
     'Service hasn’t been restored yet',
     "Services haven't been restored",
     'Service will not be restored until next week',
+    "Service won't be restored this week",
+    'Service won’t be back online this week',
+    "The cable can't be repaired before December",
+    'The cable cannot be repaired before December',
+    "Service didn't come back online after the repair attempt",
+    'Service hasnʼt been restored',
+    'Partially restored; full repair expected next month',
     'C-Lion1 submarine cable has fully restored. During the repair, traffic was rerouted via alternative routes.',
   ]) {
     const { suggestedClaim, cues } = claimCues(text);
