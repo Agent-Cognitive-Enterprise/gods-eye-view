@@ -157,6 +157,29 @@ test('a page source lists same-host article links under its prefix', () => {
       },
     ],
   );
+  // A card's heading is its title; the rest of the card is its summary.
+  assert.deepEqual(
+    itemsFromPage(
+      `<a href="/en/news/x"><span>18.11.2024</span><h3>A fault in C-Lion1</h3><p>Detected at 04:04.</p></a>
+       <a href="/en/news/y"><div class="date sub-title">1.1.2025</div><div class="heading-style-h4">Repaired</div></a>`,
+      'https://operator.example/en/news',
+      '/en/news/',
+    ),
+    [
+      {
+        url: 'https://operator.example/en/news/x',
+        title: 'A fault in C-Lion1',
+        summary: '18.11.2024 Detected at 04:04.',
+        publishedAt: null,
+      },
+      {
+        url: 'https://operator.example/en/news/y',
+        title: 'Repaired',
+        summary: '1.1.2025',
+        publishedAt: null,
+      },
+    ],
+  );
 });
 
 test('the first poll records a baseline; later notices become proposals', async () => {

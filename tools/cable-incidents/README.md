@@ -208,35 +208,58 @@ without a person (`src/intel/cableSignals.js`):
    priority is `incident` (fault, outage, cut, damage, repair wording),
    `threat` (anchor, vessel, trawler, sabotage, investigation, police, navy,
    coast guard) or `mention`.
-2. **Clear signal:** all of these hold.
+2. **Clear signal:** decided on the notice's **title alone**. The summary
+   is never judged, because company boilerplate ("Cinia also operates the
+   C-Lion1 submarine cable") names cables too. All of these must hold:
    - The source is an operator or regulator, and the item links to its own
      site.
-   - The notice names exactly one catalogue cable, and it is in the source's
-     own `cables` list: an operator's own cables, a regulator's cables in its
-     country. WIOCC and the news source speak for none.
+   - The title names exactly one catalogue cable, and it is in the source's
+     own `cables` list: an operator's own cables, a regulator's cables in
+     its country. WIOCC and the news source speak for none.
    - The notice is dated: by its feed, or by the date a listing page puts in
-     front of the title ("18.11.2024 …", "August 14, 2024 …").
-   - Its wording matches a strict template: a fault ("fault detected in",
-     "a fault in", "disturbance on", "cable cut", "C-Lion1 cable outage") or
-     a repair stated as done ("has been repaired", "fully restored", "back
-     online").
-   - None of this appears:
-     - negation or denial (no, not, n't, unaffected, normal, denies, false);
-     - future, plans or questions (will, to be, expected, planned, until,
-       in case, a question mark);
-     - unconfirmed wording (suspected, possible, investigation);
-     - other kinds of notice (maintenance, upgrade, drill, exercise, test,
-       anniversary, years, since, last, results, latency, contract, award,
-       route, project, court);
-     - another cable or line (another, second, again, power cable,
-       pipeline);
-     - a year other than the notice's own or the one before;
-     - both fault and repair wording.
+     front of its card ("18.11.2024 …", "August 14, 2024 …"). A date in the
+     future is refused.
+   - The whole title has one of the allowed shapes, tied to the cable's
+     name. At most two words ("the Cinia", "Cinia's") may stand before the
+     name, and a place may follow ("between Finland and Germany", "near
+     Gotland"):
+     - a fault: "A fault in the Cinia C-Lion1 submarine cable", "Fault
+       detected in …", "Disturbance on …", "C-Lion1 cable outage",
+       "C-Lion1 submarine cable cut", "C-Lion1 cable damaged",
+       "Svalbard Undersea Cable System: fault";
+     - a repair stated as done: "C-Lion1 submarine cable has been repaired",
+       "… has fully restored", "C-Lion1 cable back online", "Disturbance in
+       the C-Lion1 cable has been repaired".
+   - No blocking word appears in the title, as a second line of defence:
+     - negation, denial or hedging (no, not, n't, unaffected, normal, usual,
+       denies, false, claims, feared, unconfirmed, suspected, possible);
+     - future, plans or questions (will, may, to be, expected, planned,
+       until, in case, a question mark);
+     - partial or moved service (partially, alternative, rerouted, remains,
+       still, resolved, fixed, again, second, another);
+     - other kinds of notice (maintenance, upgrade, drill, exercise,
+       inspection, anniversary, years, last, timeline, review, results,
+       cost, damages, compensation, contract, court, crew, sanctions,
+       statement, power, pipeline, gas, exchange).
+   - No year in the title other than the notice's own, and no '24-style
+     years.
 
-   Its claim is `fault` or `restored`. A break is recorded only when the
-   notice says cut, severed, broken or break. The templates are narrow on
-   purpose: a wrong clear signal would reach the map with nobody to stop it.
-   A real incident in other words becomes doubt instead.
+   Its claim is `fault` or `restored`. A break is recorded when the title
+   says cut, severed, broken or break, or when a summary sentence opens
+   with it ("The break in Cinia's C-Lion1 submarine cable has been
+   repaired …").
+
+   Allowed shapes decide, not a list of blocked words. Two review rounds
+   showed that a blocklist alone never stops the next wrong signal: "Cinia
+   files damages claim over C-Lion1 cable cut" and "Disturbance in C-Lion1
+   resolved" both passed it. A wrong clear signal would reach the map with
+   nobody to stop it, so a real incident in any other wording becomes
+   doubt instead.
+
+   On page sources the title is the card's heading (Cinia: `<h3>`, WIOCC: a
+   "heading" class) or a plain text link. A card with neither is doubt.
+   Traficom's and Nkom's links carry no date, so their notices are doubt
+   until phase 2.
 
 3. **Doubt:** any other incident or threat red flag. In phase 2 a local
    model will judge these. Without one they are dropped. A clear notice
@@ -269,17 +292,20 @@ when every source fails; a single failing source is logged in
   fault and repair notices from 2024–25.
 - **12 synthetic notices**, marked as such: paraphrased patterns of
   documented events, not quotations.
-- **106 attack titles** written in review to break the rules ("No fault
+- **195 attack titles** written in two review rounds to break the rules ("No fault
   found on C-Lion1", "Planned maintenance … interruptions expected", "Cinia
   cuts latency on C-Lion1", "One year since the C-Lion1 cable cut"). Each
   is labelled by what it actually says.
 
-On that set the rules give no wrong clear signal and catch all six real
-incidents. They catch 14 of the 26 notices that should be clear. The
-misses are synthetic or attack notices: Finnish or Norwegian wording,
-"second fault after repair", fault and repair in one title, and Tata's
-short names such as "TGN-Pacific". Those go to doubt. The tests pin no
-wrong clear signal and no missed real incident.
+A second review round added 89 more attack titles. On all 328 notices the
+rules give no wrong clear signal. They catch five of the six real
+incidents; the sixth is titled "Disturbance in Cinia's C-Lion Submarine
+Cable", with "C-Lion", not the catalogue's "C-Lion1". Of the 30 notices
+that should be clear, they catch 13. The other misses are synthetic or
+attack notices: Finnish or Norwegian wording, "second fault after repair",
+other title wordings, and Tata's short names such as "TGN-Pacific". Those
+go to doubt. The tests pin no wrong clear signal, and the one known real
+miss.
 
 Known limits:
 

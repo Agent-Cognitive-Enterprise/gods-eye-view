@@ -2,19 +2,22 @@
 // clear enough to show without a person, and the incident each one opens,
 // updates, closes or lets fade. Pure: no fetching, no clock, no storage.
 //
-// A clear signal needs all of these:
-// - a primary source speaking for its own cable;
-// - exactly one catalogue cable named;
-// - a dated notice;
-// - wording that matches a strict incident template ("fault detected in",
-//   "a fault in", "cable cut", "has been repaired");
-// - nothing that makes it doubtful: a negation, future or hypothetical
-//   wording, maintenance, drills, business news, an anniversary, another
-//   cable, a question.
-// Anything else that looks like an incident is "doubt": a local model may
-// settle it (phase 2), and without one it is dropped. A wrong clear signal
-// would reach the map with nobody to stop it, so the templates are narrow
-// on purpose. Traffic data is never a cable signal.
+// A clear signal is decided on the notice's title alone, which must have
+// one of a few allowed shapes that tie the incident to the cable's name:
+//   "A fault in the Cinia C-Lion1 submarine cable between Finland and Germany"
+//   "Fault detected in Cinia C-Lion1 Submarine Cable"
+//   "C-Lion1 submarine cable cut near Gotland"
+//   "C-Lion1 cable outage"
+//   "Cinia's C-Lion1 submarine cable has been repaired"
+// Nothing else may be in the title, and no blocking word (negation, plans,
+// history, business, hedging) either. The notice must also come from a
+// primary source speaking for that cable, and it must be dated. Anything else
+// that looks like an incident is "doubt": a local model may settle it
+// (phase 2), and without one it is dropped. Allowed shapes, not blocked
+// words, decide: review showed a blocklist alone never stops the next
+// wrong signal ("Cinia files damages claim over C-Lion1 cable cut"). The
+// summary is never judged: company boilerplate names cables too. Traffic
+// data is never a cable signal.
 
 import { cableMentions, claimCues, printable } from './cableInbox.js';
 
@@ -30,52 +33,37 @@ export const FAULT_FADE_MS = 30 * 24 * 3600_000;
 // address (a page relayout, a sidebar link), not a new signal.
 export const STALE_NOTICE_MS = 7 * 24 * 3600_000;
 
-const INCIDENT =
-  '(?:faults?|disturbances?|outages?|damage|interruptions?|failures?|cuts?|breaks?)';
-// Fault templates: "fault detected", "a fault in …", "… cable cut".
-const FAULT_TEMPLATES = [
-  new RegExp(
-    `\\b${INCIDENT} (?:has been |have been |was |were |is |are )?(?:detected|found|occurred|reported|identified|located|discovered)\\b`,
-  ),
-  new RegExp(
-    `^(?:an? |the |some )?${INCIDENT} (?:in|on|to|of|affecting|at)\\b`,
-  ),
-  /\bcables? (?:has been |have been |was |were |is |are )?(?:cut|severed|damaged|broken|down|out of service|interrupted)\b/,
-  // "EASSy cable outage", "C-Lion1 cable fault".
-  // One incident on one cable: singular, ending the phrase. "Subsea cable
-  // faults" (plural, a topic) is not one.
-  /\bcable (?:fault|outage|disturbance|failure|interruption|damage|cut|break)(?:$|[:;,.]| (?:on|in|at|between|near|off|affecting)\b)/,
-  // "Svalbard Undersea Cable System: fault", once the name is taken off.
-  new RegExp(`^${INCIDENT}$`),
-  new RegExp(`: ${INCIDENT}$`),
-];
-// Repair templates: the cable is back, stated as done.
-const RESTORE_TEMPLATES = [
-  /\b(?:has been |have been |was |were |is now |are now |has |have )?(?:fully )?(?:repaired|restored)\b/,
-  /\bback (?:in|into) (?:service|operation)\b|\bback online\b|\brepair work (?:has been |was )?completed\b/,
-];
-// Any of these makes a notice doubtful. Each comes from a wrong clear
-// signal found in review ("No fault found", "Planned maintenance …
-// interruptions expected", "Cinia cuts latency", "One year since the cut").
+const INCIDENT_NOUN =
+  '(?:fault|faults|disturbance|disturbances|outage|outages|damage|interruption|interruptions|failure|failures|cut|break)';
+const BROKEN = '(?:cut|severed|damaged|broken|down|out of service|interrupted)';
+const REPAIRED = '(?:repaired|restored)';
+// Where it happened: "between Finland and Germany", "near Gotland", "in the
+// Gulf of Finland". Letters only, a few words.
+const W = "[\\p{L}][\\p{L}'-]*";
+// Words allowed before a cable's name ("Cinia's", "the Cinia"): never a verb
+// or question word, so "Is the C-Lion1 cable down" is no title shape.
+const LEAD = `(?!(?:is|are|was|were|has|have|had|did|does|do|why|how|what|when|who|which|will)\\b)${W}`;
+const PLACE = `(?: between ${W}(?: ${W})? and ${W}(?: ${W})?| (?:off|near|in|at) (?:the )?${W}(?: ${W}){0,3})?`;
+// Any of these in the title makes it doubtful, whatever its shape.
 const BLOCKERS = [
-  // Negation and denial.
-  /\b(?:no|not|none|never|nothing|without|zero|unaffected|unharmed|intact|normal|normally|deny|denies|denied|false|unfounded|rumou?rs?|hoax|untrue|ei)\b|n't\b|-free\b|\bfree of\b|\btolerant\b/,
-  // Future, plans, conditions and questions.
-  /(?<!\d )\bmay\b(?! \d)|\b(?:will|would|shall|might|could|can|should|must|to be|to start|expected|expects?|planned|plans?|scheduled|upcoming|soon|once|until|awaits?|awaiting|delayed|pending|if|whether|what|how|why|in case)\b|\?/,
-  // Not confirmed.
-  /\b(?:suspected|possible|possibly|potential|likely|reportedly|reports? of|alleged|allegedly|investigat\w*|probe)\b/,
-  // Not an incident notice: maintenance, drills, history, business.
-  /\b(?:maintenance|upgrade\w*|drills?|exercises?|simulat\w*|test(?:s|ed|ing)?|preparedness|readiness|prepar\w*|anniversary|celebrat\w*|years?|since|ago|last|lessons|looking back|history|reports?|results?|revenue|q[1-4]|quarter\w*|latency|awards?|wins?|contracts?|agreements?|signs?|mou|partner\w*|joins?|projects?|build\w*|construct\w*|routes?|ring|launch\w*|announc\w*|courts?|convict\w*|charges?|captain|minister|uptime|standby|resilien\w*|protect\w*|risks?|redundan\w*|prevent\w*|avoid\w*|helps?|customers?|capacity|demand|data cent\w*|fibre network|fiber network|lay|laying)\b/,
-  // Another cable or another kind of line in the same notice.
-  /\b(?:another|other|second|again|involved|belongs?|power cables?|power lines?|pipelines?|gas|electricity|interconnectors?)\b/,
+  // Negation, denial, hedging.
+  /\b(?:no|not|none|never|nothing|without|zero|unaffected|unharmed|intact|normal|normally|usual|deny|denies|denied|false|unfounded|baseless|rumou?rs?|hoax|untrue|claims?|rejects?|refutes?|feared|unconfirmed|confirm\w*|suspected|possible|possibly|potential|likely|reportedly|alleged|allegedly|ei)\b|n't\b|-free\b|\btolerant\b/u,
+  // Future, plans, conditions, questions.
+  /(?<!(?:^|[^\p{L}\p{N}-])\d{1,2} )\bmay\b(?! \d)|\b(?:will|would|shall|might|could|can|should|must|to be|to start|expected|expects?|planned|plans?|scheduled|upcoming|soon|once|until|awaits?|awaiting|delayed|pending|if|whether|what|how|why|in case)\b|\?/u,
+  // Partial, temporary or moved: not a clean repair.
+  /\b(?:partial|partially|alternative|alternate|backup|rerout\w*|remains?|continues?|still|during|while|temporar\w*|resolved|fixed|ended|over|again|second|another|other)\b/u,
+  // Not an incident notice: maintenance, drills, history, money, law.
+  /\b(?:maintenance|upgrade\w*|drills?|exercises?|simulat\w*|test(?:s|ed|ing)?|inspection|decommission\w*|spare|preparedness|readiness|anniversary|years?|since|ago|last|lessons|timeline|history|explained|review\w*|insights|report|reports|results?|revenue|cost|costs|eur|usd|damages|compensation|lasted|latency|award\w*|contracts?|agreements?|mou|partner\w*|projects?|routes?|courts?|prosecutor\w*|crew|sanctions?|statement|thanks|welcomes?|reminder|impact|standby|power|pipeline|gas|electricity|converter|exchange|data cent\w*)\b/u,
 ];
 const PHYSICAL = /\b(?:cut|cuts|severed|broken|break|breaks|breakage)\b/;
+const APOSTROPHES = /[‘’ʼ´`′]/g;
 
 const fold = (text) =>
   String(text ?? '')
     .normalize('NFC')
     .toLowerCase()
-    .replace(/[‘’ʼ]/g, "'");
+    .replace(APOSTROPHES, "'");
+const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const MONTHS = [
   'january',
@@ -104,58 +92,156 @@ const LEADING_DATES = [
   ],
 ];
 
-/**
- * A listing page puts the date in front of the title ("18.11.2024 A fault
- * in…", "August 14, 2024 WIOCC…"). Returns the item with that date as
- * `publishedAt` (UTC midnight) when it had none, and the date removed from
- * the title.
- */
-export function datedNotice(item) {
-  const title = String(item.title ?? '').trim();
+function leadingDate(text) {
   for (const [pattern, parts] of LEADING_DATES) {
-    const m = pattern.exec(title);
+    const m = pattern.exec(text);
     if (!m) continue;
     const [y, mo, d] = parts(m).map(Number);
-    const time = Date.UTC(y, mo - 1, d);
-    const back = new Date(time);
+    const back = new Date(Date.UTC(y, mo - 1, d));
     if (
       back.getUTCFullYear() !== y ||
       back.getUTCMonth() !== mo - 1 ||
       back.getUTCDate() !== d
     )
-      break;
-    return {
-      ...item,
-      title: title.slice(m[0].length),
-      publishedAt: item.publishedAt ?? back.toISOString(),
-    };
+      return null;
+    return { length: m[0].length, iso: back.toISOString() };
   }
-  return item;
+  return null;
 }
 
 /**
- * The claim a notice states by a strict template, or why it does not:
- * {claim, breakConfirmed} or {reason}.
+ * A listing page puts the date in front of the title or the card text
+ * ("18.11.2024 A fault in…", "August 14, 2024 WIOCC…"). Returns the item
+ * with that date as `publishedAt` (UTC midnight) when it had none, and the
+ * date taken off the title.
  */
-export function templateClaim(text, noticeYear) {
-  // A leading "Cinia:" or "Traficom:" names the speaker, not the event.
-  const folded = fold(text).replace(/^[\p{L}\p{N} .&'-]{1,40}: /u, '');
-  if (BLOCKERS.some((pattern) => pattern.test(folded)))
-    return { reason: 'doubtful-wording' };
-  // A year other than the notice's own, or the one before, is history.
-  for (const m of folded.matchAll(/\b(19\d\d|20\d\d)\b/g)) {
-    const year = Number(m[1]);
-    if (year > noticeYear || year < noticeYear - 1)
-      return { reason: 'doubtful-wording' };
-  }
-  const fault = FAULT_TEMPLATES.some((pattern) => pattern.test(folded));
-  const restored = RESTORE_TEMPLATES.some((pattern) => pattern.test(folded));
-  if (fault && restored) return { reason: 'fault-and-repair-wording' };
-  if (!fault && !restored) return { reason: 'no-incident-template' };
+export function datedNotice(item) {
+  const title = String(item.title ?? '').trim();
+  const summary = String(item.summary ?? '').trim();
+  const inTitle = leadingDate(title);
+  const inSummary = inTitle ? null : leadingDate(summary);
+  const found = inTitle ?? inSummary;
+  if (!found) return item;
   return {
-    claim: restored ? 'restored' : 'fault',
-    breakConfirmed: PHYSICAL.test(folded),
+    ...item,
+    title: inTitle ? title.slice(inTitle.length) : title,
+    summary: inSummary ? summary.slice(inSummary.length) : item.summary,
+    publishedAt: item.publishedAt ?? found.iso,
   };
+}
+
+// "the Cinia C-Lion1 submarine cable", "Cinia's C-Lion1 cable system".
+const cablePhrase = (name) =>
+  `(?:the )?(?:${LEAD} ){0,2}${escape(fold(name))}(?: (?:submarine|subsea|undersea|sea))?(?: cable(?: system)?)?`;
+
+/** Sentence openings that state a physical break of the named cable. */
+function breakShapesFor(name) {
+  const cable = cablePhrase(name);
+  return [
+    new RegExp(`^(?:the |a )?(?:break|cut) (?:in|on|of|to) ${cable}\\b`, 'u'),
+    new RegExp(`^${cable} (?:was|has been|is) (?:cut|severed|broken)\\b`, 'u'),
+  ];
+}
+
+/** The allowed title shapes for one cable name, as [claim, pattern]. */
+function shapesFor(name) {
+  const cable = cablePhrase(name);
+  const u = 'u';
+  return [
+    // "A fault in the Cinia C-Lion1 submarine cable between …"
+    [
+      'fault',
+      new RegExp(
+        `^(?:an? |the |some )?${INCIDENT_NOUN}(?: (?:has been|was|is))?(?: (?:detected|found|identified|located))? (?:in|on|to|at|affecting) ${cable}${PLACE}$`,
+        u,
+      ),
+    ],
+    // "C-Lion1 cable outage", "C-Lion1 Fault Detected"
+    [
+      'fault',
+      new RegExp(`^${cable} ${INCIDENT_NOUN}(?: detected)?${PLACE}$`, u),
+    ],
+    // "C-Lion1 submarine cable cut near Gotland", "C-Lion1 cable damaged"
+    [
+      'fault',
+      new RegExp(`^${cable} (?:(?:has been|was|is) )?${BROKEN}${PLACE}$`, u),
+    ],
+    // "Svalbard Undersea Cable System: fault"
+    [
+      'fault',
+      new RegExp(`^${cable}: (?:an? )?${INCIDENT_NOUN}(?: detected)?$`, u),
+    ],
+    // "Cinia's C-Lion1 submarine cable has been repaired", "… Fully Restored"
+    [
+      'restored',
+      new RegExp(
+        `^${cable} (?:(?:has been|have been|was|is now|has) )?(?:fully )?${REPAIRED}$`,
+        u,
+      ),
+    ],
+    // "C-Lion1 cable back in service"
+    [
+      'restored',
+      new RegExp(
+        `^${cable} (?:is )?back (?:in service|online|in operation)$`,
+        u,
+      ),
+    ],
+    // "Disturbance in Cinia's C-Lion1 submarine cable has been repaired",
+    // "The Finland-Estonia 2 cable fault has been repaired"
+    [
+      'restored',
+      new RegExp(
+        `^(?:the )?${INCIDENT_NOUN} (?:in|on) ${cable} (?:has been|was) (?:fully )?${REPAIRED}$`,
+        u,
+      ),
+    ],
+    [
+      'restored',
+      new RegExp(
+        `^${cable} ${INCIDENT_NOUN} (?:has been|was) (?:fully )?${REPAIRED}$`,
+        u,
+      ),
+    ],
+  ];
+}
+
+/**
+ * The claim a title states in an allowed shape about the named cable, or
+ * why it does not: {claim, breakConfirmed} or {reason}. `summary` may only
+ * confirm a break, and only in an allowed shape of its own.
+ */
+export function templateClaim(title, cableName, noticeYear, summary = '') {
+  const clean = (text) =>
+    fold(text)
+      .replace(/\s+/g, ' ')
+      // A leading "Cinia:" or "Traficom:" names the speaker, not the event.
+      .replace(/^(?!.*\bcable\b.*:)[\p{L}\p{N} .&'-]{1,40}: /u, '')
+      // Decoration: emoji, punctuation and spaces at either end.
+      .replace(/^[\s\p{P}\p{S}]+|[\s\p{P}\p{S}]+$/gu, '');
+  // A question is never a report, whatever its shape.
+  if (/[?？]/.test(title)) return { reason: 'doubtful-wording' };
+  const text = clean(title);
+  if (BLOCKERS.some((pattern) => pattern.test(text)))
+    return { reason: 'doubtful-wording' };
+  // A year in the title other than the notice's own is history; so is '24.
+  for (const m of text.matchAll(/\b(19\d\d|20\d\d)\b/g))
+    if (Number(m[1]) !== noticeYear) return { reason: 'doubtful-wording' };
+  if (/'\d\d\b/.test(text)) return { reason: 'doubtful-wording' };
+  const shapes = shapesFor(cableName);
+  const match = shapes.find(([, pattern]) => pattern.test(text));
+  if (!match) return { reason: 'no-allowed-title-shape' };
+  const [claim] = match;
+  // A break stated in the summary counts only when a sentence opens with
+  // it: "The break in Cinia's C-Lion1 submarine cable has been repaired …",
+  // "C-Lion1 was cut …". Nothing else in the summary is judged.
+  const summaryBreak = String(summary)
+    .split(/(?<=[.!])\s+/)
+    .map(clean)
+    .some((sentence) =>
+      breakShapesFor(cableName).some((pattern) => pattern.test(sentence)),
+    );
+  return { claim, breakConfirmed: PHYSICAL.test(text) || summaryBreak };
 }
 
 /**
@@ -167,11 +253,12 @@ export function templateClaim(text, noticeYear) {
  * - `signal`: `clear` (show it), `doubt` (a local model may settle it) or
  *   `none`, with the `reason`;
  * - for a clear signal, `claim` (`fault` or `restored`), `breakConfirmed`
- *   (the notice says cut, severed, broken or break) and `cableIds`.
+ *   and `cableIds`.
  * `source` is {id, sourceKind, cables: [catalogue IDs it speaks for]}. Give
- * `item` through datedNotice() first.
+ * `item` through datedNotice() first; a page item without a heading has
+ * `titleKnown: false`. `now` rejects notices dated in the future.
  */
-export function assessNotice({ item, source, names }) {
+export function assessNotice({ item, source, names, now = Date.now() }) {
   const text = `${item.title ?? ''}\n${item.summary ?? ''}`;
   const folded = fold(text);
   const cables = cableMentions(text, names);
@@ -202,14 +289,20 @@ export function assessNotice({ item, source, names }) {
   if (!PRIMARY.has(source.sourceKind) || item.offHost)
     return doubt('not-a-primary-source');
   if (!incident) return doubt('threat-wording-only');
-  if (!cables.length) return doubt('no-catalogue-cable-named');
-  if (cables.length > 1) return doubt('several-cables-named');
-  if (!remit.has(cables[0].cableId)) return doubt('cable-outside-source-remit');
+  if (item.titleKnown === false) return doubt('no-title');
+  const inTitle = cableMentions(item.title ?? '', names);
+  if (!inTitle.length) return doubt('no-catalogue-cable-in-title');
+  if (inTitle.length > 1) return doubt('several-cables-named');
+  if (!remit.has(inTitle[0].cableId))
+    return doubt('cable-outside-source-remit');
   const published = Date.parse(item.publishedAt ?? '');
   if (!Number.isFinite(published)) return doubt('undated');
+  if (published > now + 24 * 3600_000) return doubt('dated-in-the-future');
   const judged = templateClaim(
-    `${item.title ?? ''} ${item.summary ?? ''}`.trim(),
+    item.title ?? '',
+    inTitle[0].name,
     new Date(published).getUTCFullYear(),
+    item.summary ?? '',
   );
   if (judged.reason) return doubt(judged.reason);
   return {
@@ -218,7 +311,7 @@ export function assessNotice({ item, source, names }) {
     reason: null,
     claim: judged.claim,
     breakConfirmed: judged.breakConfirmed,
-    cableIds: [cables[0].cableId],
+    cableIds: [inTitle[0].cableId],
   };
 }
 

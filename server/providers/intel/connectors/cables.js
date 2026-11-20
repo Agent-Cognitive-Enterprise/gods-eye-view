@@ -241,7 +241,7 @@ export async function pollCableSources({
       .map((item) => ({
         item,
         at: noticeTime(item, seenAt),
-        assessment: assessNotice({ item, source, names }),
+        assessment: assessNotice({ item, source, names, now: now() }),
       }))
       .sort(
         (a, b) =>

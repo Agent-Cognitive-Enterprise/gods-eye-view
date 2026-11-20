@@ -36,7 +36,7 @@ const FAULT = [
   'Mon, 18 Nov 2024 09:00:00 GMT',
 ];
 const REPAIRED = [
-  'C-Lion1 submarine cable has been repaired after the break',
+  'C-Lion1 submarine cable has been repaired',
   'repaired',
   'Fri, 29 Nov 2024 09:00:00 GMT',
 ];
@@ -77,7 +77,7 @@ test('the first poll records a baseline; later notices are judged and logged', a
   const third = await poll(second.state, '2024-11-30T00:00:00Z');
   assert.deepEqual(
     third.lines.map((l) => [l.claim, l.change, l.breakConfirmed]),
-    [['restored', 'would-close', true]],
+    [['restored', 'would-close', false]],
   );
   assert.equal(third.state.incidents['c-lion1'].status, 'closed');
   // Nothing new: nothing logged.
@@ -266,7 +266,7 @@ test('a listing page date dates the notice', async () => {
     url: 'https://op.example/news',
     pathPrefix: '/news/',
   };
-  const html = `<a href="/news/fault">18.11.2024 A fault in the C-Lion1 submarine cable A fault has been detected. Read full post</a>`;
+  const html = `<a href="/news/fault"><span>18.11.2024</span><h3>A fault in the C-Lion1 submarine cable</h3><p>A fault has been detected.</p> Read full post</a>`;
   const fetchImpl = async () => new Response(html);
   const { lines } = await pollCableSources({
     sources: [page],
@@ -277,12 +277,6 @@ test('a listing page date dates the notice', async () => {
   });
   assert.deepEqual(
     lines.map((l) => [l.signal, l.change, l.title]),
-    [
-      [
-        'clear',
-        'would-show',
-        'A fault in the C-Lion1 submarine cable A fault has been detected. Read full post',
-      ],
-    ],
+    [['clear', 'would-show', 'A fault in the C-Lion1 submarine cable']],
   );
 });

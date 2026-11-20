@@ -253,6 +253,29 @@ function isoTime(value) {
   return Number.isFinite(time) ? new Date(time).toISOString() : null;
 }
 
+const HEADING_CLASS = /(?:^|\s)class\s*=\s*(?:"([^"]*)"|'([^']*)')/i;
+
+/** The heading text of a news card, or null. */
+function cardHeading(markup) {
+  const source = String(markup ?? '').slice(0, 20_000);
+  for (const level of ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']) {
+    const [first] = elements(source, level, 1);
+    const text = first ? plain(first.inner) : '';
+    if (text) return text;
+  }
+  for (const name of ['div', 'span', 'p', 'strong']) {
+    for (const element of elements(source, name, 200)) {
+      const classes = HEADING_CLASS.exec(element.attributes.slice(0, 2048));
+      const value = (classes?.[1] ?? classes?.[2] ?? '').toLowerCase();
+      if (/\b(?:heading|title)\b/.test(value) && !/sub-?title/.test(value)) {
+        const text = plain(element.inner);
+        if (text) return text;
+      }
+    }
+  }
+  return null;
+}
+
 const NOT_AN_ARTICLE =
   /(?:\/page\/\d+\/?|\/(?:feed|rss|tag|tags|category|categories|author)(?:\/[^/]*)*\/?|\.(?:xml|rss|atom|pdf|jpe?g|png))$/i;
 const HREF = /(?:^|\s)href\s*=\s*(?:"([^"]*)"|'([^']*)')/i;
@@ -280,10 +303,45 @@ export function itemsFromPage(html, pageUrl, pathPrefix) {
       NOT_AN_ARTICLE.test(parsed.pathname)
     )
       continue;
-    const title = plain(anchor.inner).slice(0, 300);
+    // A card's own heading is its title (Cinia: <h3>, WIOCC: a "heading"
+    // class); the rest of the card is the summary. Without one the whole
+    // card text is kept as the title and marked as not a known title.
+    const card = plain(anchor.inner).slice(0, 2000);
+    // A plain text link ("<a href>Title</a>") is its own title.
+    const inline =
+      !/<(?:p|div|section|article|header|footer|ul|ol|li|table|br|h[1-6])\b/i.test(
+        anchor.inner.slice(0, 20_000),
+      );
+    const heading = cardHeading(anchor.inner) ?? (inline && card ? card : null);
+    const title = (heading ?? card).slice(0, 300);
+    const item = heading
+      ? {
+          url,
+          title,
+          // The card text without its heading: date, then summary.
+          summary: (heading === card ? '' : card)
+            .replace(heading, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 600),
+          publishedAt: null,
+        }
+      : {
+          url,
+          title,
+          summary: '',
+          publishedAt: null,
+          titleKnown: false,
+        };
+    // Several links to one notice: a card with a heading wins, then the
+    // longest card.
     const known = byUrl.get(url);
-    if (!known || title.length > known.title.length)
-      byUrl.set(url, { url, title, summary: '', publishedAt: null });
+    if (
+      !known ||
+      (known.titleKnown === false &&
+        (heading || card.length > known.title.length))
+    )
+      byUrl.set(url, item);
     if (byUrl.size >= MAX_ITEMS_PER_SOURCE) break;
   }
   return [...byUrl.values()];
