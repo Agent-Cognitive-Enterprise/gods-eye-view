@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import {
   CABLE_SOURCES,
   cableConnector,
+  checkWithModel,
   pollCableSources,
   readShadowState,
 } from './cables.js';
@@ -279,4 +280,202 @@ test('a listing page date dates the notice', async () => {
     lines.map((l) => [l.signal, l.change, l.title]),
     [['clear', 'would-show', 'A fault in the C-Lion1 submarine cable']],
   );
+});
+
+function stubModel({ replies = [], status = 'online', busy = false } = {}) {
+  const calls = [];
+  return {
+    calls,
+    status: () => ({ status, model: 'stub' }),
+    probe: async () => {},
+    busy: async () => busy,
+    async complete(messages, schema) {
+      calls.push({ messages, schema });
+      const next = replies.shift();
+      if (next instanceof Error) throw next;
+      return { text: JSON.stringify(next), latencyMs: 5 };
+    },
+  };
+}
+
+const ARTICLE_URL = 'https://op.example/n/update';
+const pendingState = (extra = {}) => ({
+  version: 1,
+  seen: {},
+  baselines: { op: 'x' },
+  incidents: {},
+  pending: [
+    {
+      item: {
+        url: ARTICLE_URL,
+        title: 'Update on the C-Lion1 situation',
+        summary: '',
+        publishedAt: '2024-11-18T09:00:00.000Z',
+      },
+      sourceId: 'op',
+      seenAt: '2024-11-18T10:00:00.000Z',
+      at: Date.parse('2024-11-18T09:00:00Z'),
+      attempts: 0,
+    },
+  ],
+  ...extra,
+});
+const articleFetch = async (url) =>
+  url === ARTICLE_URL
+    ? new Response(
+        '<html><body><nav>menu</nav><article><p>A fault has been detected in the C-Lion1 submarine cable.</p></article></body></html>',
+      )
+    : new Response('missing', { status: 404 });
+const FAULT_ANSWER = {
+  about_incident: true,
+  current: true,
+  cable_id: 'c-lion1',
+  claim: 'fault',
+  started_on: '2024-11-18',
+  quote: 'A fault has been detected in the C-Lion1 submarine cable',
+};
+
+test('a doubtful notice naming a cable is queued for the model', async () => {
+  feed.body = rss([
+    [
+      'Update on the C-Lion1 submarine cable fault situation',
+      'update',
+      'Mon, 18 Nov 2024 09:00:00 GMT',
+    ],
+  ]);
+  const { state } = await pollCableSources({
+    sources: [source],
+    state: { version: 1, seen: {}, baselines: { op: 'x' }, incidents: {} },
+    names,
+    fetchImpl: feed(feed.body),
+    now: () => Date.parse('2024-11-18T10:00:00Z'),
+  });
+  assert.equal(state.pending.length, 1);
+  assert.equal(state.pending[0].item.url, 'https://op.example/n/update');
+});
+
+test('the model confirms a queued operator notice from the article text', async () => {
+  const llm = stubModel({ replies: [FAULT_ANSWER] });
+  const { state, lines } = await checkWithModel({
+    state: pendingState(),
+    sources: [source],
+    names,
+    llm,
+    fetchImpl: articleFetch,
+    now: () => Date.parse('2024-11-18T12:00:00Z'),
+  });
+  assert.equal(lines[0].signal, 'llm-clear');
+  assert.equal(lines[0].change, 'would-show');
+  assert.equal(state.incidents['c-lion1'].status, 'open');
+  assert.equal(state.pending.length, 0);
+  // The article was read without its navigation, as data in the prompt.
+  const user = llm.calls[0].messages[1].content;
+  assert.match(user, /A fault has been detected in the C-Lion1/);
+  assert.doesNotMatch(user, /menu/);
+  assert.deepEqual(llm.calls[0].schema.properties.cable_id.enum, [
+    'c-lion1',
+    'none',
+  ]);
+});
+
+test('a made-up quote is rejected and changes nothing', async () => {
+  const llm = stubModel({
+    replies: [{ ...FAULT_ANSWER, quote: 'C-Lion1 was destroyed by sabotage' }],
+  });
+  const { state, lines } = await checkWithModel({
+    state: pendingState(),
+    sources: [source],
+    names,
+    llm,
+    fetchImpl: articleFetch,
+    now: () => Date.parse('2024-11-18T12:00:00Z'),
+  });
+  assert.deepEqual(
+    lines.map((l) => [l.signal, l.reason]),
+    [['llm-rejected', 'quote-not-in-notice']],
+  );
+  assert.deepEqual(state.incidents, {});
+});
+
+test('a busy, offline or foreground model leaves the queue as it is', async () => {
+  for (const llm of [
+    stubModel({ busy: true }),
+    stubModel({ status: 'offline' }),
+  ]) {
+    const { state, lines } = await checkWithModel({
+      state: pendingState(),
+      sources: [source],
+      names,
+      llm,
+      fetchImpl: articleFetch,
+      now: () => Date.parse('2024-11-18T12:00:00Z'),
+    });
+    assert.deepEqual(lines, []);
+    assert.equal(state.pending.length, 1);
+    assert.equal(llm.calls.length, 0);
+  }
+  const llm = stubModel({ replies: [FAULT_ANSWER] });
+  const { state } = await checkWithModel({
+    state: pendingState(),
+    sources: [source],
+    names,
+    llm,
+    fetchImpl: articleFetch,
+    now: () => Date.parse('2024-11-18T12:00:00Z'),
+    foreground: () => true,
+  });
+  assert.equal(state.pending.length, 1);
+  assert.equal(llm.calls.length, 0);
+});
+
+test('a failing model is retried, then the notice is dropped', async () => {
+  let state = pendingState();
+  const llm = stubModel({
+    replies: [new Error('timeout'), new Error('timeout'), new Error('timeout')],
+  });
+  const run = () =>
+    checkWithModel({
+      state,
+      sources: [source],
+      names,
+      llm,
+      fetchImpl: articleFetch,
+      now: () => Date.parse('2024-11-18T12:00:00Z'),
+    });
+  for (let i = 0; i < 2; i += 1) {
+    const result = await run();
+    state = result.state;
+    assert.equal(state.pending.length, 1);
+  }
+  const last = await run();
+  assert.equal(last.state.pending.length, 0);
+  assert.match(last.lines[0].reason, /model-failed: timeout/);
+});
+
+test('stale notices are skipped and the hourly cap holds', async () => {
+  const stale = await checkWithModel({
+    state: pendingState(),
+    sources: [source],
+    names,
+    llm: stubModel({ replies: [FAULT_ANSWER] }),
+    fetchImpl: articleFetch,
+    now: () => Date.parse('2024-12-20T12:00:00Z'),
+  });
+  assert.deepEqual(
+    stale.lines.map((l) => [l.signal, l.reason]),
+    [['llm-skipped', 'stale-notice']],
+  );
+  const at = Date.parse('2024-11-18T12:00:00Z');
+  const capped = await checkWithModel({
+    state: pendingState({
+      modelChecks: Array.from({ length: 12 }, () => at - 1000),
+    }),
+    sources: [source],
+    names,
+    llm: stubModel({ replies: [FAULT_ANSWER] }),
+    fetchImpl: articleFetch,
+    now: () => at,
+  });
+  assert.deepEqual(capped.lines, []);
+  assert.equal(capped.state.pending.length, 1);
 });

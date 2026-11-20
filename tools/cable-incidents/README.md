@@ -331,6 +331,56 @@ Known limits:
   TGN-Pacific".
 - Real notices rarely use the full "Svalbard Undersea Cable System".
 
+## Automatic signals (phase 2: the local model, shadow mode)
+
+A doubtful notice that names a catalogue cable waits in a queue in
+`cables-shadow-state.json` (at most 200, the oldest dropped). After each
+poll the shared local model reads up to three of them, at most twelve an
+hour. It runs only while the model is online and idle and no voice
+conversation holds it. `GEV_INTEL_CABLES_LLM=0` or `GEV_LLM_DISABLED=1`
+leaves the feed on rules alone (`src/intel/cableAssessment.js`):
+
+1. The article is fetched from the publisher's own site, and its readable
+   text kept: `<article>`, `<main>` or `<body>`, without scripts,
+   navigation, headers or footers.
+2. The model answers in a fixed format:
+   - is it about an incident, and is it current;
+   - which cable, chosen only from the cables the notice names;
+   - fault, break, restored or none;
+   - the start date;
+   - a word-for-word quote that names the cable.
+
+   The notice is given to the model as data, never as instructions.
+
+3. The answer counts only if all of these hold:
+   - the quote is found in the notice and names the chosen cable and no
+     other cable the notice names;
+   - the quote states the claim: fault wording, break wording for a break,
+     repair wording for a repair;
+   - the quote has no negation, hedging, plan or condition words
+     ("suspected", "possible", "normal", "will", "until"), and a repair is
+     not partial or rerouted;
+   - the start date, if given, is in the last 30 days.
+4. A valid answer from an operator or regulator about its own cable is
+   `llm-clear` and updates the shadow incidents like a clear signal. Any
+   other valid answer is `llm-unverified`, a report that is logged only.
+   Anything else is `llm-rejected` with its reason. A busy, offline or
+   failing model leaves the queue for the next poll; after three failures
+   a notice is dropped.
+
+`node tools/cable-incidents/evaluate-llm.mjs` runs the model on the
+labelled notices the rules leave in doubt, using title and summary only.
+On 60 of them, against Qwen3.6-35B through KoboldCpp on 2026-11-20:
+
+- no wrong `llm-clear`;
+- two correct ones: Cinia's real February 2025 notice titled "C-Lion",
+  and a Svalbard fault;
+- seven real incidents missed, mostly judged "not current".
+
+Before the quote rules above, the same run gave three wrong `llm-clear`
+("Possible fault on …", "Suspected fault …", and a C-Lion1 fault for
+"Fault on the EE-S 1 cable; C-Lion1 traffic normal").
+
 ## Next integration
 
 Replay a labelled set of faults, repairs, false positives and

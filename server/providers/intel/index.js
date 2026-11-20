@@ -28,6 +28,7 @@ import {
   fastFeedsEnabled,
 } from '../fastfeeds/index.js';
 import { createLatencyBook } from '../fastfeeds/latency.js';
+import { foregroundActive } from './llmGate.js';
 import { createLocalLlm } from './localLlm.js';
 import { createIntelService } from './service.js';
 
@@ -51,6 +52,7 @@ export function intelConnectors({
   ghostMapsWatcher,
   airSeaHub,
   dir = null,
+  llm = null,
 } = {}) {
   if (env.GEV_INTEL_OFFLINE === '1') return [];
   const on = (name) => env[`GEV_INTEL_${name}`] !== '0';
@@ -89,8 +91,16 @@ export function intelConnectors({
     connectors.push(airSeaConnector({ hub: airSeaHub }));
   // Submarine cable notices (fork): opt-in, shadow mode only, so they log
   // what would be shown and send nothing to the engine.
+  // The local model reads doubtful cable notices unless
+  // GEV_INTEL_CABLES_LLM=0; a voice conversation keeps it for itself.
   if (env.GEV_INTEL_CABLES === '1' && dir)
-    connectors.push(cableConnector({ dir }));
+    connectors.push(
+      cableConnector({
+        dir,
+        llm: env.GEV_INTEL_CABLES_LLM === '0' ? null : llm,
+        foreground: () => foregroundActive(),
+      }),
+    );
   return connectors;
 }
 
@@ -233,17 +243,18 @@ export function intelProxy({
     const dir = env.GEV_INTEL_DB
       ? path.dirname(path.resolve(env.GEV_INTEL_DB))
       : path.join(root, '.gev-cache', 'intel');
-    const connectors = intelConnectors({
-      env,
-      ghostMapsWatcher,
-      airSeaHub,
-      dir,
-    });
     // Loopback-only local model; GEV_LLM_DISABLED=1 keeps scoring rule-based.
     const llm =
       env.GEV_LLM_DISABLED === '1'
         ? null
         : createLocalLlm({ baseUrl: env.GEV_LLM_BASE_URL });
+    const connectors = intelConnectors({
+      env,
+      ghostMapsWatcher,
+      airSeaHub,
+      dir,
+      llm,
+    });
     const latency = createLatencyBook();
     service = createIntelService({
       storeFile: env.GEV_INTEL_DB || path.join(dir, 'intel.sqlite'),

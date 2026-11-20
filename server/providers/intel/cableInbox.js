@@ -179,6 +179,58 @@ function plain(markup) {
 
 const inner = (block, name) => elements(block, name, 1)[0]?.inner ?? null;
 
+const asciiLower = (text) => text.replace(/[A-Z]/g, (c) => c.toLowerCase());
+
+/** `<name …>…</name>` removed, case-insensitive, in one forward pass. */
+function dropElement(value, name) {
+  const lower = asciiLower(value);
+  const open = `<${name}`;
+  const close = `</${name}>`;
+  let out = '';
+  let at = 0;
+  for (;;) {
+    let start = lower.indexOf(open, at);
+    // "<nav" must not match "<navigation".
+    while (start >= 0 && /[a-z0-9-]/.test(lower[start + open.length] ?? ''))
+      start = lower.indexOf(open, start + 1);
+    if (start < 0) return out + value.slice(at);
+    out += value.slice(at, start);
+    const end = lower.indexOf(close, start + open.length);
+    if (end < 0) return out;
+    at = end + close.length;
+  }
+}
+
+/**
+ * The readable text of an article page: its <article>, <main> or <body>,
+ * without scripts, styles, navigation, headers, footers or forms, as
+ * printable plain text of at most `max` characters.
+ */
+export function articleText(html, max = 8000) {
+  const source = String(html ?? '').slice(0, MAX_SOURCE_BYTES);
+  let part =
+    inner(source, 'article') ??
+    inner(source, 'main') ??
+    inner(source, 'body') ??
+    source;
+  for (const name of [
+    'script',
+    'style',
+    'noscript',
+    'template',
+    'svg',
+    'nav',
+    'header',
+    'footer',
+    'aside',
+    'form',
+  ])
+    part = dropElement(part, name);
+  return printable(
+    decode(stripTags(sections(part, '<!--', '-->', false))),
+  ).slice(0, max);
+}
+
 // The lookbehind starts a name only at a name boundary, so a long run of
 // letters with no "=" is not retried from every letter.
 const ATTRIBUTE =

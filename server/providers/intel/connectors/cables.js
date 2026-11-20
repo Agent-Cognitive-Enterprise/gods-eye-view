@@ -10,12 +10,24 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  articleText,
   canonicalUrl,
   fetchText,
   itemsFromFeed,
   itemsFromPage,
 } from '../cableInbox.js';
-import { catalogueNames } from '../../../../src/intel/cableInbox.js';
+import {
+  cableMentions,
+  catalogueNames,
+  printable,
+} from '../../../../src/intel/cableInbox.js';
+import {
+  CABLE_PROMPT_VERSION,
+  MAX_ARTICLE_CHARS,
+  buildCablePrompt,
+  cableAssessmentSchema,
+  validateCableAssessment,
+} from '../../../../src/intel/cableAssessment.js';
 import {
   STALE_NOTICE_MS,
   applySignal,
@@ -285,6 +297,9 @@ export async function pollCableSources({
         assessment = { ...assessment, signal: 'doubt', reason: 'stale-notice' };
       if (assessment.signal !== 'clear') {
         lines.push(shadowLine({ item, source, assessment, seenAt }));
+        // Doubt that names a cable waits for the local model (phase 2).
+        if (assessment.signal === 'doubt' && assessment.cables.length)
+          queueForModel(next, { item, sourceId: source.id, seenAt, at });
         continue;
       }
       for (const cableId of assessment.cableIds) {
@@ -317,6 +332,163 @@ export async function pollCableSources({
   return { state: next, lines, errors, latest };
 }
 
+const MAX_PENDING = 200;
+const MAX_ATTEMPTS = 3;
+const MAX_MODEL_CHECKS_PER_POLL = 3;
+const MAX_MODEL_CHECKS_PER_HOUR = 12;
+const HOUR_MS = 3600_000;
+
+/** Keep a doubtful notice for the model; the oldest go first when full. */
+function queueForModel(state, { item, sourceId, seenAt, at }) {
+  state.pending ??= [];
+  if (state.pending.some((p) => p.item.url === item.url)) return;
+  state.pending.push({ item, sourceId, seenAt, at, attempts: 0 });
+  if (state.pending.length > MAX_PENDING)
+    state.pending.splice(0, state.pending.length - MAX_PENDING);
+}
+
+/**
+ * Phase 2: let the local model read queued doubtful notices, a few per poll
+ * and under an hourly cap. It runs only while the model is online and idle
+ * and no one is talking to it (voice). A primary source's confirmed notice
+ * updates the shadow incidents; anything else is only logged. Returns the
+ * new state and the log lines. A busy or failing model leaves the queue
+ * for the next poll.
+ */
+export async function checkWithModel({
+  state,
+  sources,
+  names,
+  llm,
+  fetchImpl,
+  now,
+  foreground = () => false,
+}) {
+  const next = structuredClone(state);
+  const lines = [];
+  next.pending ??= [];
+  next.modelChecks = (next.modelChecks ?? []).filter(
+    (t) => now() - t < HOUR_MS,
+  );
+  if (!llm || !next.pending.length) return { state: next, lines };
+  const byId = new Map(sources.map((s) => [s.id, s]));
+  let checked = 0;
+  while (next.pending.length && checked < MAX_MODEL_CHECKS_PER_POLL) {
+    if (next.modelChecks.length >= MAX_MODEL_CHECKS_PER_HOUR) break;
+    if (foreground()) break;
+    if (llm.status().status !== 'online') await llm.probe();
+    if (llm.status().status !== 'online') break;
+    if (await llm.busy()) break;
+    const entry = next.pending[0];
+    const source = byId.get(entry.sourceId);
+    const base = {
+      seenAt: new Date(now()).toISOString(),
+      source: entry.sourceId,
+      url: entry.item.url,
+      title: printable(entry.item.title).slice(0, 300),
+    };
+    // Old news is not a new signal, model or not.
+    if (!source || now() - entry.at > STALE_NOTICE_MS) {
+      next.pending.shift();
+      lines.push({ ...base, signal: 'llm-skipped', reason: 'stale-notice' });
+      continue;
+    }
+    // The article itself, from the publisher's own site only.
+    let article = '';
+    if (!entry.item.offHost)
+      try {
+        const page = await fetchText(entry.item.url, {
+          fetchImpl,
+          maxBytes: MAX_SOURCE_BYTES,
+          accept: 'text/html',
+        });
+        article = articleText(page.text, MAX_ARTICLE_CHARS);
+      } catch {
+        // Title and summary only.
+      }
+    const notice = {
+      title: entry.item.title,
+      summary: entry.item.summary,
+      offHost: entry.item.offHost,
+    };
+    const named = cableMentions(
+      [notice.title, notice.summary, article].join('\n'),
+      names,
+    );
+    const cables = [
+      ...new Map(
+        named.map((c) => [c.cableId, { cableId: c.cableId, name: c.name }]),
+      ).values(),
+    ];
+    if (!cables.length) {
+      next.pending.shift();
+      lines.push({ ...base, signal: 'llm-skipped', reason: 'no-cable-named' });
+      continue;
+    }
+    const today = base.seenAt.slice(0, 10);
+    let reply;
+    try {
+      next.modelChecks.push(now());
+      checked += 1;
+      reply = await llm.complete(
+        buildCablePrompt({ notice, source, cables, today, article }),
+        cableAssessmentSchema(cables.map((c) => c.cableId)),
+      );
+    } catch (error) {
+      entry.attempts += 1;
+      if (entry.attempts >= MAX_ATTEMPTS) {
+        next.pending.shift();
+        lines.push({
+          ...base,
+          signal: 'llm-skipped',
+          reason: `model-failed: ${String(error?.message ?? error).slice(0, 80)}`,
+        });
+      }
+      break;
+    }
+    next.pending.shift();
+    const verdict = validateCableAssessment(reply.text, {
+      notice,
+      article,
+      source,
+      cables,
+      now: now(),
+    });
+    const line = {
+      ...base,
+      signal: verdict.signal,
+      reason: verdict.reason ?? null,
+      cables: verdict.cableId
+        ? [verdict.cableId]
+        : cables.map((c) => c.cableId),
+      claim: verdict.claim ?? null,
+      breakConfirmed: verdict.breakConfirmed ?? false,
+      quote: verdict.quote ?? null,
+      model: llm.status().model ?? null,
+      promptVersion: CABLE_PROMPT_VERSION,
+      latencyMs: reply.latencyMs ?? null,
+      change: null,
+    };
+    if (verdict.signal === 'llm-clear') {
+      const started = verdict.startedOn
+        ? Date.parse(`${verdict.startedOn}T00:00:00Z`)
+        : entry.at;
+      const applied = applySignal(next.incidents, {
+        cableId: verdict.cableId,
+        claim: verdict.claim,
+        breakConfirmed: verdict.breakConfirmed,
+        at: Math.min(started, now()),
+        url: entry.item.url,
+        sourceId: entry.sourceId,
+      });
+      next.incidents = applied.incidents;
+      line.change = applied.change;
+    }
+    lines.push(line);
+  }
+  return { state: next, lines };
+}
+
 /**
  * The Autopilot connector. Shadow mode only in phase 1: poll() always
  * returns no records, so nothing reaches the engine, the map or the camera.
@@ -326,6 +498,9 @@ export function cableConnector({
   sources = CABLE_SOURCES,
   fetchImpl = (...args) => globalThis.fetch(...args),
   intervalMs = 60 * 60_000,
+  // Phase 2: the shared local model, or null to judge by the rules alone.
+  llm = null,
+  foreground = () => false,
 } = {}) {
   if (!dir) throw new Error('cableConnector needs the intel folder');
   for (const source of sources)
@@ -367,6 +542,19 @@ export function cableConnector({
             ]
           : result.lines,
       );
+      // The saved state already holds this poll; the model's turn comes
+      // after, so a slow or failing model never loses a poll.
+      const checked = await checkWithModel({
+        state: result.state,
+        sources,
+        names,
+        llm,
+        fetchImpl,
+        now,
+        foreground,
+      });
+      writeJson(stateFile, checked.state);
+      appendLines(logFile, checked.lines);
       return { records: [], latestObservationAt: result.latest || undefined };
     },
   };

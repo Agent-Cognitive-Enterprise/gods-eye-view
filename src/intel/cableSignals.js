@@ -49,6 +49,10 @@ const BLOCKERS = [
   // Not an incident notice: maintenance, drills, history, money, law.
   /\b(?:maintenance|upgrade\w*|drills?|exercises?|simulat\w*|test(?:s|ed|ing)?|inspection|decommission\w*|spare|preparedness|readiness|anniversary|years?|since|ago|last|lessons|timeline|history|explained|review\w*|insights|report|reports|results?|revenue|cost|costs|eur|usd|damages|compensation|lasted|latency|award\w*|contracts?|agreements?|mou|partner\w*|projects?|routes?|courts?|prosecutor\w*|crew|sanctions?|statement|thanks|welcomes?|reminder|impact|standby|power|pipeline|gas|electricity|converter|exchange|data cent\w*)\b/u,
 ];
+// For a model's quote (phase 2): negation, hedging, plans and conditions
+// always disqualify it; partial or moved service disqualifies a repair.
+export const QUOTE_BLOCKERS = Object.freeze([BLOCKERS[0], BLOCKERS[1]]);
+export const PARTIAL_SERVICE = BLOCKERS[2];
 const PHYSICAL = /\b(?:cut|cuts|severed|broken|break|breaks|breakage)\b/;
 const APOSTROPHES = /[‘’ʼ´`′]/g;
 
