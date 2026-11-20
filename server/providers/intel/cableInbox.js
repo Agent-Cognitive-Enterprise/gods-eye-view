@@ -179,7 +179,10 @@ function plain(markup) {
 
 const inner = (block, name) => elements(block, name, 1)[0]?.inner ?? null;
 
-const ATTRIBUTE = /([a-z][a-z0-9:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi;
+// The lookbehind starts a name only at a name boundary, so a long run of
+// letters with no "=" is not retried from every letter.
+const ATTRIBUTE =
+  /(?<![a-z0-9:-])([a-z][a-z0-9:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi;
 function attributesOf(text) {
   const out = {};
   for (const m of String(text).slice(0, 4096).matchAll(ATTRIBUTE)) {
@@ -193,7 +196,7 @@ function attributesOf(text) {
 function atomLink(block) {
   for (const link of elements(block, 'link', 20)) {
     const { rel, href } = attributesOf(link.attributes);
-    if (href && (!rel || rel === 'alternate')) return href;
+    if (href && (!rel || rel.toLowerCase() === 'alternate')) return href;
   }
   return null;
 }
@@ -215,7 +218,7 @@ export function itemsFromFeed(xml, feedUrl) {
     const linkText = rss.length ? plain(inner(block, 'link')) : null;
     const guid = rss.length ? plain(inner(block, 'guid')) : null;
     const url = linkText
-      ? canonicalUrl(linkText, feedUrl)
+      ? canonicalUrl(linkText)
       : rss.length
         ? canonicalUrl(guid ?? '')
         : (() => {
@@ -303,7 +306,9 @@ export async function fetchText(url, { fetchImpl, accept = '*/*', maxBytes }) {
     });
     if (REDIRECTS.has(response.status)) {
       await response.body?.cancel().catch(() => {});
-      const next = httpsUrl(response.headers.get('location') ?? '', current);
+      const location = response.headers.get('location');
+      if (!location?.trim()) throw new Error('redirect without a Location');
+      const next = httpsUrl(location, current);
       if (!next) throw new Error('redirected away from HTTPS');
       current = next.href;
       continue;
@@ -442,9 +447,7 @@ export async function pollIoda({
   };
 }
 
-/** A time rounded up to the whole second, so it is never earlier. */
-const secondAfter = (time) =>
-  new Date(Math.ceil(time / 1000) * 1000).toISOString().replace('.000Z', 'Z');
+const isoAt = (time) => new Date(time).toISOString();
 
 /**
  * Turn a reviewed proposal into one evidence row, validated by replaying the
@@ -496,7 +499,7 @@ export function acceptProposal({
     sourceKind: sourceKind ?? proposal.sourceKind,
     sourceUrl: sourceUrl ?? proposal.url,
     effectiveAt,
-    knownAt: secondAfter(overridden ? now() : Date.parse(proposal.seenAt)),
+    knownAt: overridden ? isoAt(now()) : proposal.seenAt,
   };
   if (!row.cableId) delete row.cableId;
   if (!row.cableName) delete row.cableName;
@@ -507,11 +510,16 @@ export function acceptProposal({
   const snapshot = replayCableIncidents({
     catalogue,
     evidence: rows,
-    asOf: secondAfter(Math.max(now(), Date.parse(row.knownAt))),
+    asOf: isoAt(Math.max(now(), Date.parse(row.knownAt))),
   });
   const lead = snapshot.leads.find((l) => l.evidence.id === row.id);
   proposal.status = 'accepted';
   proposal.decidedAt = new Date(now()).toISOString();
+  if (lead)
+    proposal.leads = [
+      ...(proposal.leads ?? []).filter((l) => l.id !== row.id),
+      { id: row.id, reason: lead.reason },
+    ];
   proposal.evidenceIds = [
     ...new Set([...(proposal.evidenceIds ?? []), row.id]),
   ];
@@ -555,7 +563,12 @@ export function buildReport({ catalogue, evidence, inbox, ioda, asOf }) {
     replayCableIncidents({ catalogue, evidence, asOf: at });
   const today = replay(asOf);
   const yesterday = replay(dayBefore(today.asOf));
-  const inWindow = (time) => time > yesterday.asOf && time <= today.asOf;
+  const start = Date.parse(yesterday.asOf);
+  const end = Date.parse(today.asOf);
+  const inWindow = (iso) => {
+    const time = Date.parse(iso);
+    return time > start && time <= end;
+  };
   return {
     asOf: today.asOf,
     since: yesterday.asOf,
@@ -605,7 +618,7 @@ export function formatReport(report) {
   );
   for (const r of report.reviewed)
     lines.push(
-      `  ${p(r.id)} ${r.status}${r.evidenceIds ? ` as ${r.evidenceIds.map(p).join(', ')}` : ''}${r.reason ? ` (${p(r.reason)})` : ''}: ${p(r.title || r.url)}`,
+      `  ${p(r.id)} ${r.status}${r.evidenceIds ? ` as ${r.evidenceIds.map(p).join(', ')}` : ''}${r.leads?.length ? ` (stays a lead: ${r.leads.map((l) => `${p(l.id)} ${p(l.reason)}`).join(', ')})` : ''}${r.reason ? ` (${p(r.reason)})` : ''}: ${p(r.title || r.url)}`,
     );
   lines.push('', `Waiting for review: ${report.pending.length}`);
   for (const r of report.pending.slice(0, 50)) {

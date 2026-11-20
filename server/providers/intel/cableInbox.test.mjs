@@ -329,7 +329,7 @@ test('accepting a proposal adds one validated evidence row; rejecting keeps it o
     sourceKind: 'operator',
     sourceUrl: 'https://operator.example/en/news/c-lion1-fault',
     effectiveAt: '2024-11-18T02:04:00Z',
-    knownAt: '2024-11-18T10:00:00Z',
+    knownAt: '2024-11-18T10:00:00.000Z',
   });
   assert.deepEqual(accepted.outcome, { incident: true });
   assert.equal(accepted.inbox.proposals[0].status, 'accepted');
@@ -373,14 +373,14 @@ test('accepting a proposal adds one validated evidence row; rejecting keeps it o
   });
   assert.deepEqual(asNews.outcome, { lead: 'non-primary-source' });
   // Recording another source kind or URL means it was found now.
-  assert.equal(asNews.row.knownAt, '2024-11-20T00:00:00Z');
+  assert.equal(asNews.row.knownAt, '2024-11-20T00:00:00.000Z');
   const elsewhere = acceptProposal({
     ...base,
     claim: 'fault',
     sourceUrl: 'https://operator.example/en/news/found-later',
     effectiveAt: '2024-11-18T02:04:00Z',
   });
-  assert.equal(elsewhere.row.knownAt, '2024-11-20T00:00:00Z');
+  assert.equal(elsewhere.row.knownAt, '2024-11-20T00:00:00.000Z');
   const rejected = rejectProposal({ inbox, proposal: id, reason: 'duplicate' });
   assert.equal(rejected.proposals[0].status, 'rejected');
   assert.throws(
@@ -554,7 +554,8 @@ test('hostile markup is parsed in linear time and printed without escapes', () =
 test('feed links to other sites are proposed as news, whatever the source', async () => {
   const items = itemsFromFeed(
     rss([
-      ['C-Lion1 cable fault', '//evil.example/x', ''],
+      ['C-Lion1 cable fault', 'https://evil.example/x', ''],
+      ['C-Lion1 cable fault', '//evil.example/protocol-relative', ''],
       ['C-Lion1 cable fault', 'https://www.operator.example/en/news/y', ''],
       ['No link at all', '', ''],
     ]),
@@ -693,5 +694,70 @@ test('a weak match next to a strong one still needs the reviewer to name the cab
         now: () => Date.parse('2024-11-19T00:00:00Z'),
       }),
     /Name the cable/,
+  );
+});
+
+test('long attribute names cannot slow the Atom link reader', () => {
+  const junk = `<entry><title>t</title>${`<link ${'a'.repeat(4090)}/>`.repeat(20)}</entry>`;
+  const started = performance.now();
+  const items = itemsFromFeed(
+    `<feed>${junk.repeat(24)}<entry><link href="https://grid.example/n/3"/></entry></feed>`,
+    'https://grid.example/feed',
+  );
+  assert.ok(performance.now() - started < 2000);
+  assert.equal(items[0].url, 'https://grid.example/n/3');
+  assert.equal(
+    itemsFromFeed(
+      `<feed><entry><link rel="ALTERNATE" href="https://grid.example/n/4"/></entry></feed>`,
+      'https://grid.example/feed',
+    )[0].url,
+    'https://grid.example/n/4',
+  );
+  // An RSS link must be a full HTTPS URL, not text relative to the feed.
+  assert.deepEqual(
+    itemsFromFeed(rss([['t', 'not a url', '']]), operatorSource.url),
+    [],
+  );
+});
+
+test('a redirect without a Location fails at once', async () => {
+  const { fetchImpl, calls } = fakeFetch({
+    [operatorSource.url]: { location: ' ' },
+  });
+  const { summary } = await pollSources({
+    sources: readSources({ sources: [operatorSource] }).sources,
+    inbox: emptyInbox(),
+    catalogue,
+    fetchImpl,
+    now: () => 0,
+  });
+  assert.match(summary[0].error, /without a Location/);
+  assert.equal(calls.length, 1);
+});
+
+test('the report says when an accepted row stays a lead', async () => {
+  const inbox = await inboxWithFault();
+  const { evidence, inbox: reviewed } = acceptProposal({
+    inbox,
+    evidence: [],
+    catalogue,
+    proposal: inbox.proposals[0].id,
+    claim: 'break',
+    sourceKind: 'news',
+    incidentId: 'x',
+    effectiveAt: '2024-11-18T02:04:00Z',
+    now: () => Date.parse('2024-11-18T11:00:00Z'),
+  });
+  assert.match(
+    formatReport(
+      buildReport({
+        catalogue,
+        evidence,
+        inbox: reviewed,
+        ioda: null,
+        asOf: '2024-11-18T12:00:00Z',
+      }),
+    ),
+    /accepted as p-[0-9a-f]{16}-break \(stays a lead: p-[0-9a-f]{16}-break non-primary-source\)/,
   );
 });

@@ -108,13 +108,16 @@ updates a notice in place, the inbox will not see the update.
 summary name. It finds them by catalogue name, ignoring case, as whole
 words, with no fuzzy match, and only in text that says cable, subsea,
 submarine or undersea. Catalogue names include "Northern Lights", "Cook
-Strait" and "T3". A one-word name such as "Echo" or "SAFE" is also
+Strait" and "T3". A name of five or more characters with a digit, such as
+"SeaMeWe-4" or "C-Lion1", is matched without that word, so "C-Lion1 repair
+completed" still names the cable. Non-English notices name a cable only by
+such a name. A one-word name such as "Echo" or "SAFE" is also
 matched only with its catalogue capitals, and is shown as weak. Stored and
 printed text has control and bidirectional characters removed.
 
 The proposal suggests a claim from the wording: `restored` for repaired
-or back in service, unless doubtful wording such as "not yet restored" or
-"rerouted" appears; otherwise `fault`. It never suggests a physical
+or back in service, nothing when doubtful wording such as "not yet
+restored" or "rerouted" comes with it, otherwise `fault`. It never suggests a physical
 `break`. Words like "cut" or "damaged" are listed for you to check against
 the notice itself. A suggestion is only a hint, so read the notice.
 
@@ -126,12 +129,11 @@ the notice itself. A suggestion is only a hint, so read the notice.
 - The cable (`--cable` or `--cable-name`), unless the notice names exactly
   one catalogue cable and no weak one. `accept` prints the cable it used.
 
-`knownAt` is when the inbox first saw the notice, rounded up to the
-second. `--source-kind` and `--url` let you record the operator's own
+`knownAt` is when the inbox first saw the notice. `--source-kind` and `--url` let you record the operator's own
 notice behind a news story. Because you found that notice now, `knownAt`
-is then the time of the accept.
-Every accept replays the whole file, so an invalid or conflicting row is
-refused. A row from a non-primary source is kept, but it stays a lead. One
+is then the time of the accept. Every accept replays the whole file, so an invalid or conflicting row is
+refused. A row from a non-primary source is kept, but it stays a lead, and
+the report says so. One
 notice can be accepted for more than one claim. Cinia's repair notice, for
 example, supports both `break` (effective at the fault time) and
 `restored`.

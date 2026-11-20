@@ -9,8 +9,12 @@ const DAY_MS = 24 * 3600_000;
 // Text that names a cable has to be about a cable: catalogue names include
 // "Northern Lights", "Cook Strait", "Italy-Albania" and "T3".
 const ABOUT_CABLES = /\b(?:cables?|subsea|submarine|undersea)\b/;
+// A name of five or more characters with a digit ("SeaMeWe-4", "2Africa",
+// "C-Lion1") is distinctive enough to match without that word.
+const DISTINCT = (name) => /\d/.test(name) && name.length >= 5;
 // C0 and C1 controls (terminal escapes, BEL) and bidirectional overrides.
-const UNPRINTABLE = /[\u0000-\u001f\u007f-\u009f‎‏‪-‮⁦-⁩]/g;
+const UNPRINTABLE =
+  /[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g;
 
 /** Text safe to store and print: no control or bidi characters. */
 export const printable = (value) =>
@@ -54,6 +58,7 @@ export function catalogueNames(collection) {
       name: trimmed,
       key: fold(trimmed),
       weak: SINGLE_WORD.test(trimmed),
+      distinct: DISTINCT(trimmed),
     });
   }
   return [...byId.values()].sort(
@@ -81,17 +86,18 @@ function wholeWordAt(haystack, needle) {
 /**
  * Catalogue cables named in `text`, by exact catalogue name (case-folded,
  * whole words), and only when the text says cable, subsea, submarine or
- * undersea. No fuzzy, partial or nearest match: "C-Lion 1" does not find
+ * undersea, unless the name has a digit and five or more characters. No fuzzy, partial or nearest match: "C-Lion 1" does not find
  * "C-Lion1". A name inside a longer matched name ("Atlantis" in
  * "Atlantis-2") is not reported separately.
  */
 export function cableMentions(text, names) {
   const raw = String(text ?? '').normalize('NFC');
   const folded = fold(raw);
-  if (!ABOUT_CABLES.test(folded)) return [];
+  const aboutCables = ABOUT_CABLES.test(folded);
   const taken = [];
   const out = [];
   for (const entry of names) {
+    if (!aboutCables && !entry.distinct) continue;
     const spans = entry.weak
       ? wholeWordAt(raw, entry.name)
       : wholeWordAt(folded, entry.key);
@@ -142,12 +148,15 @@ export function claimCues(text) {
     const words = [...new Set([...folded.matchAll(pattern)].map((m) => m[1]))];
     if (words.length) cues[claim] = words.sort();
   }
-  const suggestedClaim =
-    cues.restored && !cues.doubt
-      ? 'restored'
-      : cues.fault || cues.break || cues.restored
-        ? 'fault'
-        : null;
+  // Repair wording next to doubtful wording could go either way: no
+  // suggestion, and the reviewer reads the notice.
+  const suggestedClaim = cues.restored
+    ? cues.doubt
+      ? null
+      : 'restored'
+    : cues.fault || cues.break
+      ? 'fault'
+      : null;
   return { suggestedClaim, cues };
 }
 

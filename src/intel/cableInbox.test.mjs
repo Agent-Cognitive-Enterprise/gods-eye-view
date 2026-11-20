@@ -33,7 +33,7 @@ test('names cables only by their exact catalogue name, as whole words', () => {
   ]);
   assert.deepEqual(ids('c-lion1 cable is down'), ['c-lion1']);
   // Text that is not about a cable names no cable.
-  assert.deepEqual(ids('C-Lion1 is down'), []);
+  assert.deepEqual(ids('Atlantis is down'), []);
   // No fuzzy or partial match.
   assert.deepEqual(ids('C-Lion 1 and C-Lion12 and xC-Lion1 cables'), []);
   // The longer name wins; the shorter one is reported only on its own.
@@ -293,13 +293,13 @@ test('indices stay aligned when lower-casing would lengthen the text', () => {
   );
 });
 
-test('doubtful wording keeps a repair from being suggested as restored', () => {
+test('repair wording next to doubtful wording suggests nothing', () => {
   for (const text of [
     'Traffic restored via alternative routes while the cable awaits repair',
     'The C-Lion1 cable has not yet been restored',
   ]) {
     const { suggestedClaim, cues } = claimCues(text);
-    assert.equal(suggestedClaim, 'fault', text);
+    assert.equal(suggestedClaim, null, text);
     assert.ok(cues.doubt.length, text);
   }
 });
@@ -324,4 +324,23 @@ test('IODA events outside the window asked for are dropped', () => {
   );
   assert.equal(outages[0].signals.length, 1);
   assert.equal(outages[0].start, new Date(5_000_000).toISOString());
+});
+
+test('a distinctive name with a digit needs no cable word', () => {
+  const real = bundledNames();
+  const found = (text) => cableMentions(text, real).map((m) => m.cableId);
+  assert.deepEqual(found('C-Lion1 repair completed'), ['c-lion1']);
+  assert.deepEqual(found('Update on the SeaMeWe-4 outage').length, 1);
+  assert.deepEqual(found('Heathrow T3 power outage delays flights'), []);
+  assert.deepEqual(
+    claimCues('The C-Lion1 cable has been repaired and is back in service'),
+    {
+      suggestedClaim: 'restored',
+      cues: { restored: ['back in service', 'repaired'] },
+    },
+  );
+});
+
+test('zero-width, Arabic letter mark and BOM characters are removed too', () => {
+  assert.equal(printable('a​b؜c﻿d'), 'a b c d');
 });
