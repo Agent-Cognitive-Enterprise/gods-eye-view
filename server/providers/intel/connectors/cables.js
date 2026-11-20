@@ -17,8 +17,10 @@ import {
 } from '../cableInbox.js';
 import { catalogueNames } from '../../../../src/intel/cableInbox.js';
 import {
+  STALE_NOTICE_MS,
   applySignal,
   assessNotice,
+  datedNotice,
   fadeIncidents,
   noticeTime,
   shadowLine,
@@ -117,14 +119,41 @@ export const CABLE_SOURCES = Object.freeze([
 ]);
 
 /** Saved state: notices seen, sources with a baseline, shadow incidents. */
-export function readShadowState(file) {
+const isObject = (value) =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
+/**
+ * Saved state, or a fresh one. A file that cannot be read as a state is
+ * moved aside (cables-shadow-state.json.corrupt-<time>) and reported in
+ * `reset`, so lost incidents are visible in the log, never silent.
+ */
+export function readShadowState(file, now = Date.now()) {
+  const fresh = { version: 1, seen: {}, baselines: {}, incidents: {} };
+  let text;
   try {
-    const state = JSON.parse(fs.readFileSync(file, 'utf8'));
-    if (state?.version === 1) return state;
+    text = fs.readFileSync(file, 'utf8');
   } catch {
-    // Missing or unreadable: start over, recording a baseline again.
+    return fresh;
   }
-  return { version: 1, seen: {}, baselines: {}, incidents: {} };
+  try {
+    const state = JSON.parse(text);
+    if (
+      state?.version === 1 &&
+      isObject(state.seen) &&
+      isObject(state.baselines) &&
+      isObject(state.incidents)
+    )
+      return state;
+  } catch {
+    // Not JSON: handled below.
+  }
+  const aside = `${file}.corrupt-${now}`;
+  try {
+    fs.renameSync(file, aside);
+  } catch {
+    // Left in place: it is overwritten by the next save.
+  }
+  return { ...fresh, reset: aside };
 }
 
 /** Write beside the target, then rename: crash-recoverable, not atomically visible. */
@@ -169,7 +198,10 @@ export async function pollCableSources({
 }) {
   const seenAt = new Date(now()).toISOString();
   const next = structuredClone(state);
-  const lines = [];
+  const lines = state.reset
+    ? [{ seenAt, change: 'state-reset', movedTo: state.reset }]
+    : [];
+  delete next.reset;
   const errors = [];
   let latest = 0;
   for (const source of sources) {
@@ -193,7 +225,10 @@ export async function pollCableSources({
       );
       continue;
     }
-    const fresh = items.filter((item) => !Object.hasOwn(next.seen, item.url));
+    // Listing pages carry their date in front of the title.
+    const fresh = items
+      .filter((item) => !Object.hasOwn(next.seen, item.url))
+      .map(datedNotice);
     for (const item of fresh) next.seen[item.url] = seenAt;
     // The first poll that lists notices only records them: old news is
     // not a new signal.
@@ -201,13 +236,29 @@ export async function pollCableSources({
       if (items.length) next.baselines[source.id] = seenAt;
       continue;
     }
-    // Oldest first, so a fault comes before its repair.
-    fresh.sort((a, b) => noticeTime(a, seenAt) - noticeTime(b, seenAt));
-    for (const item of fresh) {
-      const at = noticeTime(item, seenAt);
+    // Oldest first, a fault before a repair at the same time.
+    const judged = fresh
+      .map((item) => ({
+        item,
+        at: noticeTime(item, seenAt),
+        assessment: assessNotice({ item, source, names }),
+      }))
+      .sort(
+        (a, b) =>
+          a.at - b.at ||
+          (a.assessment.claim === 'restored') -
+            (b.assessment.claim === 'restored'),
+      );
+    for (const { item, at, assessment: judgedNow } of judged) {
       latest = Math.max(latest, at);
-      const assessment = assessNotice({ item, source, names });
+      let assessment = judgedNow;
       if (!assessment.redFlag) continue;
+      // Old news under a new address is not a new signal.
+      if (
+        assessment.signal === 'clear' &&
+        Date.parse(seenAt) - at > STALE_NOTICE_MS
+      )
+        assessment = { ...assessment, signal: 'doubt', reason: 'stale-notice' };
       if (assessment.signal !== 'clear') {
         lines.push(shadowLine({ item, source, assessment, seenAt }));
         continue;
@@ -274,7 +325,7 @@ export function cableConnector({
       fs.mkdirSync(dir, { recursive: true });
       const result = await pollCableSources({
         sources,
-        state: readShadowState(stateFile),
+        state: readShadowState(stateFile, now()),
         names,
         fetchImpl,
         now,

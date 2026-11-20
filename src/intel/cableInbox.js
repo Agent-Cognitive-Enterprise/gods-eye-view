@@ -44,7 +44,8 @@ function fold(text) {
 }
 
 /**
- * Catalogue names for matching in free text, one entry per cable ID.
+ * Catalogue names for matching in free text: each cable's full name, plus
+ * distinctive parts of a bracketed name.
  * A single word with no digit or hyphen ("Echo", "SAFE", "Blue") is weak:
  * it is matched only with its catalogue capitals, and reported as weak.
  * Every match also needs text about a cable (see cableMentions).
@@ -69,13 +70,19 @@ export function catalogueNames(collection) {
     if (!trimmed || seen.has(id)) continue;
     seen.add(id);
     add(id, trimmed);
-    // "Eastern Africa Submarine System (EASSy)": notices use either part
-    // on its own, so both are names of the cable too.
+    // "Finland-Estonia 2 (EESF-2)", "Eastern Africa Submarine System
+    // (EASSy)": notices often use one part on its own. A part is a name of
+    // the cable too only when it is distinctive: it has a digit, or it is
+    // a mixed-case acronym like EASSy. "LION", "MSC", "BICS", "Sweden-
+    // Estonia" and "Norte Conectado" are not.
     const parts = /^(.*\S)\s*\(([^()]+)\)$/.exec(trimmed);
-    if (parts) {
-      add(id, parts[1].trim());
-      add(id, parts[2].trim());
-    }
+    if (parts)
+      for (const part of [parts[1].trim(), parts[2].trim()])
+        if (
+          /\d/.test(part) ||
+          /^(?=.*[A-Z].*[A-Z])(?=.*[a-z])[A-Za-z]{4,}$/.test(part)
+        )
+          add(id, part);
   }
   return entries.sort(
     (a, b) => b.name.length - a.name.length || (a.cableId < b.cableId ? -1 : 1),

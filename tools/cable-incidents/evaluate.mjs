@@ -28,5 +28,8 @@ console.log(
     `missed ${score.missed.length}; red flags ${score.redFlags}`,
 );
 for (const n of score.wrongClear) console.log(`WRONG CLEAR  ${n.title}`);
-for (const n of score.missed) console.log(`missed (${n.reason})  ${n.title}`);
+for (const n of score.missed)
+  console.log(
+    `missed${n.synthetic ? ' (synthetic)' : ''}, ${n.reason}: ${n.title}`,
+  );
 process.exitCode = score.wrongClear.length ? 1 : 0;

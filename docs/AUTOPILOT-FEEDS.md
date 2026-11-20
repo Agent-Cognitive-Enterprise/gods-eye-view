@@ -40,9 +40,10 @@ in [EARLY-WARNING.md](EARLY-WARNING.md#sources-registry). Status as of
   Its observe-only inbox polls chosen operator and news sources, and IODA
   outages if asked, when you run it, and proposes notices for review. With
   `GEV_INTEL_CABLES=1` the same sources are polled hourly inside Autopilot and
-  judged automatically, in shadow mode: what would be shown goes to
-  `.gev-cache/intel/cables-shadow.jsonl`. None of these publishes to
-  Autopilot or the globe yet.
+  judged automatically, in shadow mode: the feed is listed as "Submarine cable
+  notices (shadow mode)", and what would be shown goes to
+  `.gev-cache/intel/cables-shadow.jsonl`. Nothing any of these finds is
+  shown on the map or used by the camera yet.
 - **Economic stress** is annual inflation only: no exchange-rate, market,
   food-price or sovereign-debt series, so a fast currency crisis appears
   months late, if at all.

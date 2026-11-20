@@ -1,5 +1,5 @@
 {
-  "about": "Labelled notices for the automatic cable signal rules. Real items were fetched from the listed sources on 2026-11-20 (titles and listing summaries only). Items with synthetic: true are paraphrased patterns of documented events, not quotations; their URLs are placeholders.",
+  "about": "Labelled notices for the automatic cable signal rules. Real items were fetched from the listed sources on 2026-11-20 (titles and listing summaries only). Items with synthetic: true are paraphrased patterns of documented events, not quotations; their URLs are placeholders. Items with adversarial: true are attack titles written in review to break the rules, labelled by what they actually say.",
   "notices": [
     {
       "sourceId": "cinia-news",
@@ -975,7 +975,7 @@
       "title": "Damage detected on the Finland-Estonia 2 (EESF-2) submarine cable",
       "summary": "",
       "url": "https://example.invalid/synthetic/damage-detected-on-the-finland-estonia-2",
-      "publishedAt": null,
+      "publishedAt": "2026-11-20T00:00:00.000Z",
       "expected": "clear-fault",
       "synthetic": true,
       "note": "Regulator, cable in its remit (pattern of the October 2023 Gulf of Finland damage)"
@@ -985,7 +985,7 @@
       "title": "Traficom investigating damage to the Sweden-Estonia (EE-S 1) cable",
       "summary": "",
       "url": "https://example.invalid/synthetic/traficom-investigating-damage-to-the-swe",
-      "publishedAt": null,
+      "publishedAt": "2026-11-20T00:00:00.000Z",
       "expected": "not-clear",
       "synthetic": true,
       "note": "Regulator, but EE-S 1 does not land in Finland: outside its remit"
@@ -995,7 +995,7 @@
       "title": "Faults on the SEACOM/Tata TGN-Eurasia and EIG cables in the Red Sea",
       "summary": "",
       "url": "https://example.invalid/synthetic/faults-on-the-seacom-tata-tgn-eurasia-an",
-      "publishedAt": null,
+      "publishedAt": "2026-11-20T00:00:00.000Z",
       "expected": "not-clear",
       "synthetic": true,
       "note": "Operator writing about consortium cables it does not run (pattern of the 2024 Red Sea cuts)"
@@ -1005,7 +1005,7 @@
       "title": "Three Red Sea cables cut, operators confirm",
       "summary": "",
       "url": "https://example.invalid/synthetic/three-red-sea-cables-cut-operators-conf",
-      "publishedAt": null,
+      "publishedAt": "2026-11-20T00:00:00.000Z",
       "expected": "not-clear",
       "synthetic": true,
       "note": "News: a lead, never a clear signal"
@@ -1015,7 +1015,7 @@
       "title": "WACS, MainOne, SAT-3 and ACE cables damaged off Côte d’Ivoire",
       "summary": "",
       "url": "https://example.invalid/synthetic/wacs-mainone-sat-3-and-ace-cables-dama",
-      "publishedAt": null,
+      "publishedAt": "2026-11-20T00:00:00.000Z",
       "expected": "not-clear",
       "synthetic": true,
       "note": "News about the March 2024 West Africa outage"
@@ -1025,7 +1025,7 @@
       "title": "Service on the C-Lion1 submarine cable has not yet been restored",
       "summary": "",
       "url": "https://example.invalid/synthetic/service-on-the-c-lion1-submarine-cable-h",
-      "publishedAt": null,
+      "publishedAt": "2026-11-20T00:00:00.000Z",
       "expected": "not-clear",
       "synthetic": true,
       "note": "Operator, but negated repair wording"
@@ -1035,17 +1035,17 @@
       "title": "C-Lion1 submarine cable repaired; traffic was rerouted during the repair",
       "summary": "",
       "url": "https://example.invalid/synthetic/c-lion1-submarine-cable-repaired-traffi",
-      "publishedAt": null,
-      "expected": "not-clear",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-restored",
       "synthetic": true,
-      "note": "Repair next to rerouting: no automatic close"
+      "note": "It says the cable was repaired: restored is right, whatever happened to traffic meanwhile"
     },
     {
       "sourceId": "cinia-news",
       "title": "Vessel seen anchoring near the C-Lion1 submarine cable route",
       "summary": "",
       "url": "https://example.invalid/synthetic/vessel-seen-anchoring-near-the-c-lion1-s",
-      "publishedAt": null,
+      "publishedAt": "2026-11-20T00:00:00.000Z",
       "expected": "not-clear",
       "synthetic": true,
       "note": "Threat wording only: a red flag, not a fault"
@@ -1055,7 +1055,7 @@
       "title": "C-Lion1 submarine cable cut near Gotland",
       "summary": "",
       "url": "https://example.invalid/synthetic/c-lion1-submarine-cable-cut-near-gotland",
-      "publishedAt": null,
+      "publishedAt": "2026-11-20T00:00:00.000Z",
       "expected": "clear-fault",
       "synthetic": true,
       "note": "Operator states a cut on its own cable",
@@ -1066,7 +1066,7 @@
       "title": "Fault on one of the Svalbard Undersea Cable System cables",
       "summary": "",
       "url": "https://example.invalid/synthetic/fault-on-one-of-the-svalbard-undersea-ca",
-      "publishedAt": null,
+      "publishedAt": "2026-11-20T00:00:00.000Z",
       "expected": "clear-fault",
       "synthetic": true,
       "note": "Operator, own cable (pattern of the January 2022 Svalbard fault)"
@@ -1076,7 +1076,7 @@
       "title": "Skade på sjøkabel til Svalbard",
       "summary": "",
       "url": "https://example.invalid/synthetic/skade-p-sj-kabel-til-svalbard",
-      "publishedAt": null,
+      "publishedAt": "2026-11-20T00:00:00.000Z",
       "expected": "not-clear",
       "synthetic": true,
       "note": "Norwegian regulator: no catalogue name and Norwegian wording, so doubt (phase 2)"
@@ -1086,10 +1086,1072 @@
       "title": "Seaborn completes planned maintenance on Seabras-1",
       "summary": "",
       "url": "https://example.invalid/synthetic/seaborn-completes-planned-maintenance-on",
-      "publishedAt": null,
+      "publishedAt": "2026-11-20T00:00:00.000Z",
       "expected": "not-clear",
       "synthetic": true,
       "note": "Planned maintenance: no incident wording"
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Planned maintenance on the C-Lion1 submarine cable: short service interruptions expected",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/1",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 submarine cable maintenance break on 12 December",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/2",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Cinia and the Finnish Navy hold cable fault drill on C-Lion1",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/3",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Exercise: simulated fault on the C-Lion1 submarine cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/4",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 submarine cable has been fault-free for ten years",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/5",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "No fault found on the C-Lion1 submarine cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/6",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 operating normally; no faults detected",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/7",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 has operated without disruption since 2016",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/8",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "What happens in case of a fault in the C-Lion1 submarine cable?",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/9",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "How Cinia prepares for submarine cable faults on C-Lion1",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/10",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Cinia signs repair-readiness agreement to speed up C-Lion1 fault repairs",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/11",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "One year since the C-Lion1 cable cut: lessons learned",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/12",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Looking back at last year's C-Lion1 fault",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/13",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1, which was damaged in 2024, gets a capacity upgrade",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/14",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 submarine cable celebrates its 10th anniversary",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/15",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 unaffected by the damage to the Balticconnector gas pipeline",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/16",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Damage to the Estlink 2 power cable: C-Lion1 operating normally",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/17",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Was C-Lion1 cut? Cinia answers frequently asked questions",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/18",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Minister: \"the C-Lion1 cable cut must be investigated\"",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/19",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Cinia: C-Lion1 kaapelivika korjattu",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/20",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-restored",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Cinia cuts latency on the C-Lion1 submarine cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/21",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 brings latency down between Helsinki and Frankfurt",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/22",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Cinia wins award for breakthrough C-Lion1 submarine cable resilience",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/23",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Cinia joins EU project to protect C-Lion1 and other cables from damage",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/24",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Cinia report: cable damage risk in the Baltic Sea and C-Lion1",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/25",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Court convicts captain over 2024 C-Lion1 cable damage",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/26",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Eagle S case: Finnish court dismisses charges over cable damage to C-Lion1",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/27",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Cinia: C-Lion1 submarine cable fully operational after upgrade",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/28",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 back in service after planned maintenance",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/29",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Cinia to build second route to avoid C-Lion1 outages",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/30",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Cinia announces C-Lion1 fault-tolerant ring with new route",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/31",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Fault on the EE-S 1 cable; C-Lion1 traffic normal",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/32",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Fault on the BCS East-West Interlink cable; C-Lion1 traffic normal",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/33",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Disturbance in Cinia's Helsinki data centre",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/34",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Cinia Q3 results: revenue down; C-Lion1 cable demand grows",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/35",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Fault in Cinia's fibre network in Oulu",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/36",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Repair ship on standby for Baltic subsea cable faults, C-Lion1 owner Cinia says",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/37",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Is the C-Lion1 submarine cable down?",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/38",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable may have been damaged, Cinia investigates",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/39",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Suspected fault on C-Lion1 submarine cable under investigation",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/40",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Possible fault on the C-Lion1 submarine cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/41",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Cinia: reports of C-Lion1 cable cut are false",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/42",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Cinia denies C-Lion1 cable damage",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/43",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Rumours of a C-Lion1 outage are unfounded",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/44",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Disturbance in Cinia's C-Lion1 Submarine Cable has been repaired",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/45",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-restored",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 submarine cable repaired after the fault on 18 November",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/46",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-restored",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 repair to start once weather allows; cable remains broken",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/47",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "breakConfirmed": true,
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 repair ship arrives; fault expected to be repaired by Friday",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/48",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable will be repaired next week",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/49",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 is expected to be restored within days",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/50",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 to be restored on Monday",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/51",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 restoration delayed by storm",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/52",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 repair work completed, but a second fault was found",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/53",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Second fault found on C-Lion1 after repair",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/54",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 fault repaired; the cable broke again on Monday",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/55",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "breakConfirmed": true,
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Space Norway signs contract for Arctic Way cable; laying starts after ice break-up",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/56",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Arctic Way: a new subsea cable to give Svalbard redundancy in case of failure",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/57",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Space Norway: Svalbard Undersea Cable System upgraded to prevent outages",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/58",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Two years since the fault on the Svalbard Undersea Cable System",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/59",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Svalbard Undersea Cable System back in full operation after planned maintenance",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/60",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Arctic Way cable lay completed; system fully operational",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/61",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "space-norway",
+      "title": "Svalbard Undersea Cable System: why a cable break would be serious",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/62",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Seaborn's Seabras-1 achieves 99.999% uptime with zero outages",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/63",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Seaborn completes planned maintenance on Seabras-1; service fully operational",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/64",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Seabras-1 helps customers avoid disruption from the Red Sea cable cuts",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/65",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Seaborn: Seabras-1 unaffected by the fault on the SAm-1 cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/66",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Seaborn: Seabras-1 unaffected by the fault on the Monet cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/67",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "seaborn-news",
+      "title": "Seaborn: Seabras-1 unaffected by the fault on a cable off Brazil",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/68",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "tata-communications",
+      "title": "Tata Communications cuts latency on the Tata TGN-Pacific cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/69",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "tata-communications",
+      "title": "Tata Communications' TGN-Pacific cable fault repaired",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/70",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-restored",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "tata-communications",
+      "title": "Tata TGN-Intra Asia (TGN-IA) cable: no service disruption for customers",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/71",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "tata-communications",
+      "title": "Tata Communications reports Q2 results; Tata TGN-Gulf cable outages down 40%",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/72",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "tata-communications",
+      "title": "TGN-IA cable outage",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/73",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "traficom-news",
+      "title": "Traficom: Finland-Estonia 3 cable damage investigation completed",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/74",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "traficom-news",
+      "title": "Traficom exercise tested preparedness for damage to the EESF-2 cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/75",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "traficom-news",
+      "title": "Traficom: communications working normally despite damage to C-Lion1 and EE-S 1",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/76",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "traficom-news",
+      "title": "Traficom: communications working normally despite damage to C-Lion1",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/77",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "traficom-news",
+      "title": "Traficom report: 2024 faults on C-Lion1 and FEC-2 cables caused no major disruption",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/78",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "traficom-news",
+      "title": "Traficom: the Finland-Estonia 2 cable fault has been repaired",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/79",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-restored",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "traficom-news",
+      "title": "Traficom: telecom operators prepare for submarine cable damage; C-Lion1 repair vessel contract",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/80",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Feil på Svalbardkabelen er rettet",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/81",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-restored",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "nkom-news",
+      "title": "Svalbard Undersea Cable System: fault",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/82",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Sea cable break in the Gulf of Finland: Cinia's C-Lion1 not involved",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/83",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Cinia: C-Lion1 is NOT affected by the fault",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/84",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Cinia: C-Lion1 isn’t affected",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/85",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Cinia: C-Lion1 ei vikaantunut - fault reports about another cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/86",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "C-Lion1 cable intact after Baltic outage; Cinia says the damaged cable belongs to another company",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/87",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "MSC container ship dragged its anchor across a subsea cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/88",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "BICS signs capacity deal on new subsea cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/89",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "SAS flights resume as subsea cable work ends",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/90",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "Building the first submarine cable in the Philippines",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/91",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "World Bank's Caribbean Regional Communications Infrastructure Program funds cable landing",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/92",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "New UK-Ireland subsea cable approved",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/93",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "Norte Conectado cable reaches Manaus",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/94",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "Pan European Crossing cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/95",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "A new Sydney-Melbourne-Adelaide-Perth cable route",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/96",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "Kochi-Lakshadweep Islands cable project",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/97",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "Sweden-Estonia power cable damaged",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/98",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "NASA MARS mission data via subsea cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/99",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "subtel-forum",
+      "title": "FEC-2 coding gain on the new subsea cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/100",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "CINIA: C-LION 1 CABLE FAULT REPAIRED",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/101",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-restored",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "cinia-news",
+      "title": "Cinia and the TEAMS operator sign a subsea cable MoU; C-Lion1 fault repaired",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/102",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-restored",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "tata-communications",
+      "title": "Tata TGN-Pacific cable outage; services rerouted via the TGN-IA cable",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/103",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "clear-fault",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "traficom-news",
+      "title": "Traficom: fault on FEC-2 cable; C-Lion1 repaired",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/104",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "traficom-news",
+      "title": "Traficom: C-Lion1 cable fault repaired; FEC-2 fault continues",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/105",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "traficom-news",
+      "title": "Finland, Sweden and Estonia strengthen submarine cable repair preparedness in the Baltic Sea",
+      "summary": "",
+      "url": "https://example.invalid/adversarial/106",
+      "publishedAt": "2026-11-20T00:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
     }
   ]
 }

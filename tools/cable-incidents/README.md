@@ -209,35 +209,84 @@ without a person (`src/intel/cableSignals.js`):
    `threat` (anchor, vessel, trawler, sabotage, investigation, police, navy,
    coast guard) or `mention`.
 2. **Clear signal:** all of these hold.
-   - The source is an operator or regulator.
-   - Every cable the notice names is in the source's own `cables` list: an
-     operator's own cables, a regulator's cables in its country. WIOCC and
-     the news source speak for none.
-   - The notice uses incident wording, with nothing doubtful.
+   - The source is an operator or regulator, and the item links to its own
+     site.
+   - The notice names exactly one catalogue cable, and it is in the source's
+     own `cables` list: an operator's own cables, a regulator's cables in its
+     country. WIOCC and the news source speak for none.
+   - The notice is dated: by its feed, or by the date a listing page puts in
+     front of the title ("18.11.2024 …", "August 14, 2024 …").
+   - Its wording matches a strict template: a fault ("fault detected in",
+     "a fault in", "disturbance on", "cable cut", "C-Lion1 cable outage") or
+     a repair stated as done ("has been repaired", "fully restored", "back
+     online").
+   - None of this appears:
+     - negation or denial (no, not, n't, unaffected, normal, denies, false);
+     - future, plans or questions (will, to be, expected, planned, until,
+       in case, a question mark);
+     - unconfirmed wording (suspected, possible, investigation);
+     - other kinds of notice (maintenance, upgrade, drill, exercise, test,
+       anniversary, years, since, last, results, latency, contract, award,
+       route, project, court);
+     - another cable or line (another, second, again, power cable,
+       pipeline);
+     - a year other than the notice's own or the one before;
+     - both fault and repair wording.
 
    Its claim is `fault` or `restored`. A break is recorded only when the
-   notice says cut, severed, broken or break.
+   notice says cut, severed, broken or break. The templates are narrow on
+   purpose: a wrong clear signal would reach the map with nobody to stop it.
+   A real incident in other words becomes doubt instead.
 
-3. **Doubt:** any other incident or threat red flag. In phase 2 a local model
-   will judge these. Without one they are dropped.
-4. **Shadow incidents:** a clear fault opens an incident on its cable, or
-   updates the open one. A clear repair notice closes it. An open incident
-   with no report for 30 days fades: it was last reported then, not proven
-   repaired.
+3. **Doubt:** any other incident or threat red flag. In phase 2 a local
+   model will judge these. Without one they are dropped. A clear notice
+   dated more than 7 days before it was first seen is old news under a new
+   address, so it is doubt too.
+4. **Shadow incidents:** each cable has at most one incident at a time,
+   and notices are applied in time order, a fault before a repair at the
+   same time.
+   - A clear fault opens an incident on its cable, or updates the open one.
+   - A clear repair notice closes it, unless the repair is dated before the
+     incident began.
+   - A fault dated no later than the close belongs to the closed incident.
+   - An open incident with no report for 30 days fades: it was last
+     reported then, not proven repaired.
 
-Nothing reaches the engine, the map or the camera. Each red flag and each
-would-be change goes to `cables-shadow.jsonl` in the intel folder
+Nothing reaches the engine, the map or the camera. The feed is listed in
+Autopilot's feeds as "Submarine cable notices (shadow mode)". Each red flag
+and each would-be change goes to `cables-shadow.jsonl` in the intel folder
 (`.gev-cache/intel`, or the folder of `GEV_INTEL_DB`), next to
 `cables-shadow-state.json`. The first poll of each source records only a
-baseline.
+baseline. A state file that cannot be read is moved aside
+(`.corrupt-<time>`), and the reset is logged. The feed counts as failed only
+when every source fails; a single failing source is logged in
+`cables-shadow.jsonl` only.
 
 `node tools/cable-incidents/evaluate.mjs` scores the rules on
-`labelled-notices.json`. It holds 121 real notices fetched on 2026-11-20,
-including Cinia's six C-Lion1 fault and repair notices from 2024–25, plus 12
-synthetic notices marked as such: paraphrased patterns of documented
-events, not quotations. The tests require no wrong clear signal and no
-missed one on that set. The synthetic notices were written knowing the
-rules, so the set flatters the rules. Add real notices as they arrive.
+`labelled-notices.json`, which holds three kinds of notice:
+
+- **121 real notices** fetched on 2026-11-20, including Cinia's six C-Lion1
+  fault and repair notices from 2024–25.
+- **12 synthetic notices**, marked as such: paraphrased patterns of
+  documented events, not quotations.
+- **106 attack titles** written in review to break the rules ("No fault
+  found on C-Lion1", "Planned maintenance … interruptions expected", "Cinia
+  cuts latency on C-Lion1", "One year since the C-Lion1 cable cut"). Each
+  is labelled by what it actually says.
+
+On that set the rules give no wrong clear signal and catch all six real
+incidents. They catch 14 of the 26 notices that should be clear. The
+misses are synthetic or attack notices: Finnish or Norwegian wording,
+"second fault after repair", fault and repair in one title, and Tata's
+short names such as "TGN-Pacific". Those go to doubt. The tests pin no
+wrong clear signal and no missed real incident.
+
+Known limits:
+
+- Nkom writes in Norwegian, so it can raise red flags but no clear signal.
+- Tata's notices name "TGN-Pacific", not the catalogue's "Tata
+  TGN-Pacific".
+- Real notices rarely use the full "Svalbard Undersea Cable System".
 
 ## Next integration
 

@@ -36,7 +36,7 @@ const FAULT = [
   'Mon, 18 Nov 2024 09:00:00 GMT',
 ];
 const REPAIRED = [
-  'The break in the C-Lion1 submarine cable has been repaired',
+  'C-Lion1 submarine cable has been repaired after the break',
   'repaired',
   'Fri, 29 Nov 2024 09:00:00 GMT',
 ];
@@ -193,5 +193,96 @@ test('every source speaks only for cables in the bundled catalogue', () => {
       (s) => s.cables,
     ),
     [],
+  );
+});
+
+test('old news under a new address is not a new signal', async () => {
+  const fetchImpl = feed(rss([]));
+  const state = { version: 1, seen: {}, baselines: { op: 'x' }, incidents: {} };
+  feed.body = rss([FAULT]);
+  const { lines, state: next } = await pollCableSources({
+    sources: [source],
+    state,
+    names,
+    fetchImpl,
+    now: () => Date.parse('2024-12-20T00:00:00Z'),
+  });
+  assert.deepEqual(
+    lines.map((l) => [l.signal, l.reason]),
+    [['doubt', 'stale-notice']],
+  );
+  assert.deepEqual(next.incidents, {});
+});
+
+test('a fault and its repair dated alike apply fault first', async () => {
+  const fetchImpl = feed(rss([]));
+  const state = { version: 1, seen: {}, baselines: { op: 'x' }, incidents: {} };
+  const day = 'Mon, 18 Nov 2024 09:00:00 GMT';
+  feed.body = rss([
+    [REPAIRED[0], 'repaired', day],
+    [FAULT[0], 'fault', day],
+  ]);
+  const { lines } = await pollCableSources({
+    sources: [source],
+    state,
+    names,
+    fetchImpl,
+    now: () => Date.parse('2024-11-18T12:00:00Z'),
+  });
+  assert.deepEqual(
+    lines.map((l) => l.change),
+    ['would-show', 'would-close'],
+  );
+});
+
+test('a corrupt state file is moved aside and the reset is logged', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gev-cables-'));
+  try {
+    const file = path.join(dir, 'cables-shadow-state.json');
+    fs.writeFileSync(file, '{"version":1,"seen":{}}');
+    const state = readShadowState(file, 42);
+    assert.equal(state.reset, `${file}.corrupt-42`);
+    assert.ok(fs.existsSync(`${file}.corrupt-42`));
+    assert.equal(fs.existsSync(file), false);
+    const { lines, state: next } = await pollCableSources({
+      sources: [source],
+      state,
+      names,
+      fetchImpl: feed(rss([OLD])),
+      now: () => Date.parse('2024-11-17T00:00:00Z'),
+    });
+    assert.equal(lines[0].change, 'state-reset');
+    assert.equal('reset' in next, false);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a listing page date dates the notice', async () => {
+  const page = {
+    ...source,
+    id: 'page',
+    format: 'page',
+    url: 'https://op.example/news',
+    pathPrefix: '/news/',
+  };
+  const html = `<a href="/news/fault">18.11.2024 A fault in the C-Lion1 submarine cable A fault has been detected. Read full post</a>`;
+  const fetchImpl = async () => new Response(html);
+  const { lines } = await pollCableSources({
+    sources: [page],
+    state: { version: 1, seen: {}, baselines: { page: 'x' }, incidents: {} },
+    names,
+    fetchImpl,
+    now: () => Date.parse('2024-11-19T00:00:00Z'),
+  });
+  assert.deepEqual(
+    lines.map((l) => [l.signal, l.change, l.title]),
+    [
+      [
+        'clear',
+        'would-show',
+        'A fault in the C-Lion1 submarine cable A fault has been detected. Read full post',
+      ],
+    ],
   );
 });
