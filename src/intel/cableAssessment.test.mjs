@@ -325,3 +325,21 @@ test('neighbouring sentences, attribution and abbreviations keep their meaning',
     'llm-clear',
   );
 });
+
+test('press-release and media-contact boilerplate is not attribution', () => {
+  const text =
+    'A fault has been detected in the C-Lion1 submarine cable. Media contacts: Cinia communications.';
+  assert.equal(
+    check(
+      { quote: 'A fault has been detected in the C-Lion1 submarine cable' },
+      {
+        article: text,
+        notice: {
+          ...notice,
+          title: 'Update on the C-Lion1 situation – Press release',
+        },
+      },
+    ).signal,
+    'llm-clear',
+  );
+});

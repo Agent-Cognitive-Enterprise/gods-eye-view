@@ -813,3 +813,9 @@ test('a comment or teaser marked up as an article is never the article', () => {
     'Kept.',
   );
 });
+
+test('an unmarked teaser article far shorter than main does not stand in for the page', () => {
+  const page = `<main><div class="grid"><article><h3>Fault Detected in Cinia C-Lion1 Submarine Cable</h3></article></div>
+    <div class="content"><p>${'The body of the page says something else entirely. '.repeat(6)}</p></div></main>`;
+  assert.match(articleText(page), /The body of the page/);
+});

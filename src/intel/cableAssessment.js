@@ -39,7 +39,7 @@ const RESOLVED_WORDS =
   /\b(?:resolved|fixed|ended|cleared|(?:is|are|was|were) (?:now )?over)\b/;
 // Someone else's words: "according to media", "said one blogger".
 const ATTRIBUTION =
-  /\b(?:according to|media|press|says|said|say|sources?|blog\w*|wrote|writes|told|rumou?r\w*|allegedly|reportedly)\b/;
+  /\b(?:according to|media(?! contacts?\b)|press(?! releases?\b)|says|said|say|sources?|blog\w*|wrote|writes|told|rumou?r\w*|allegedly|reportedly)\b/;
 
 const fold = (text) =>
   String(text ?? '')

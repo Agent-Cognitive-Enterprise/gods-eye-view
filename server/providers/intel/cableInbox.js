@@ -301,8 +301,14 @@ export function articleText(html, max = 8000) {
     (best, a) => (a.inner.length > (best?.inner.length ?? -1) ? a : best),
     null,
   );
-  let part =
-    longest?.inner ?? inner(source, 'main') ?? inner(source, 'body') ?? source;
+  // An unmarked teaser <article> far shorter than the page's <main> is not
+  // the page: read <main> then.
+  const main = inner(source, 'main');
+  const chosen =
+    longest && !(main && longest.inner.length * 3 < main.length)
+      ? longest.inner
+      : null;
+  let part = chosen ?? main ?? inner(source, 'body') ?? source;
   part = dropBlocks(part);
   for (const name of [
     'script',
