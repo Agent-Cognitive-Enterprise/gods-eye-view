@@ -348,7 +348,10 @@ export function materialChanges(observation, event, lineage) {
     observation.provider === 'cables' &&
     isCableSubtype(observation.subtype)
   ) {
-    if (observation.subtype !== event.subtype)
+    if (
+      observation.subtype === 'submarine_cable_break' &&
+      event.subtype !== 'submarine_cable_break'
+    )
       reasons.push('cable_cut_confirmed');
     if (
       Number.isFinite(observation.valid_until) &&

@@ -251,12 +251,12 @@ function applyMaterial(event, observation, lineage, reasons) {
     next.summary_source = familyKey;
   }
   if (observation.subtype && !next.subtype) next.subtype = observation.subtype;
-  // Fork: the cable feed's record says what its incident is now (a fault
-  // its source confirms as a cut becomes a break; never the reverse).
+  // Fork: a cable fault its source confirms as a cut becomes a break; a
+  // break never turns back into a fault.
   else if (
     observation.official &&
     observation.provider === 'cables' &&
-    isCableSubtype(observation.subtype) &&
+    observation.subtype === 'submarine_cable_break' &&
     isCableSubtype(next.subtype)
   )
     next.subtype = observation.subtype;

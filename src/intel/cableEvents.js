@@ -148,8 +148,14 @@ export function liveRecords({
     incidentId: incidentIdOf(incident),
     openedAt: incident.openedAt ?? null,
     lastReportedAt: incident.lastReportedAt ?? null,
+    breakConfirmed: Boolean(incident.breakConfirmed),
     status,
   });
+  // A repair counts only within the shown incident's life: by then an
+  // incident with no report has faded, and so has its event.
+  const inLife = (sent, closedAt) =>
+    Date.parse(closedAt ?? '') <=
+    Date.parse(sent.lastReportedAt ?? '') + FAULT_FADE_MS;
   for (const [cableId, incident] of Object.entries(incidents ?? {})) {
     const sent = published[cableId];
     if (sent?.key === publishKey(incident)) continue;
@@ -158,13 +164,15 @@ export function liveRecords({
       const own =
         sent?.status === 'open' &&
         incidentIdOf(incident) !== null &&
-        sent.incidentId === incidentIdOf(incident);
+        sent.incidentId === incidentIdOf(incident) &&
+        inLife(sent, incident.closedAt);
       // The state was lost: the repair is a marker with no incident.
       const recovered =
         sent?.status === 'open' &&
         !incident.openedAt &&
         Date.parse(incident.closedAt ?? '') >=
-          Date.parse(sent.lastReportedAt ?? '');
+          Date.parse(sent.lastReportedAt ?? '') &&
+        inLife(sent, incident.closedAt);
       if (!own && !recovered) {
         keys[cableId] = { ...sent, key: publishKey(incident) };
         continue;
@@ -175,6 +183,9 @@ export function liveRecords({
           incidentId: sent.incidentId,
           openedAt: sent.openedAt,
           lastReportedAt: sent.lastReportedAt,
+          breakConfirmed: Boolean(
+            incident.breakConfirmed || sent.breakConfirmed,
+          ),
         };
     } else if (incident.status !== 'open') {
       // Faded: its marker expires by itself through valid_until.
@@ -185,7 +196,12 @@ export function liveRecords({
       cableId,
       incident: shown,
       feature: features.get(cableId),
-      publisher: publisherOf(incident.sourceId),
+      // A repair is the repairing source's word.
+      publisher: publisherOf(
+        incident.status === 'closed'
+          ? (incident.closedBy ?? incident.sourceId)
+          : incident.sourceId,
+      ),
     });
     if (!record) continue;
     records.push(record);

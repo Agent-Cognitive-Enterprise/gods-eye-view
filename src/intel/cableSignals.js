@@ -407,6 +407,7 @@ export function applySignal(
           ...(current ?? { cableId, openedAt: null, sources: [] }),
           status: 'closed',
           closedAt: when,
+          closedBy: sourceId,
           sources: [...new Set([...(current?.sources ?? []), url])],
         };
       return { incidents: next, change: 'restore-without-open-incident' };
@@ -417,6 +418,7 @@ export function applySignal(
       ...open,
       status: 'closed',
       closedAt: when,
+      closedBy: sourceId,
       breakConfirmed: open.breakConfirmed || breakConfirmed,
       sources: [...new Set([...open.sources, url])],
     };
@@ -441,6 +443,8 @@ export function applySignal(
   }
   next[cableId] = {
     ...open,
+    // Older state has no id: it is fixed now, before openedAt can move.
+    incidentId: open.incidentId ?? open.openedAt,
     openedAt: when < open.openedAt ? when : open.openedAt,
     lastReportedAt: when > open.lastReportedAt ? when : open.lastReportedAt,
     breakConfirmed: open.breakConfirmed || breakConfirmed,

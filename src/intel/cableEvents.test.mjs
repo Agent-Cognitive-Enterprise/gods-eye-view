@@ -485,3 +485,69 @@ test('a cable id cut to 80 characters in its entity still finds its route', () =
   assert.deepEqual(routeFor(index, id), index.get(long));
   assert.equal(routeFor(index, 'c-lion'), null);
 });
+
+test('a repair outside the shown incident’s 30 days closes nothing, and a close names the repairing source (review round 2)', () => {
+  const first = liveRecords({
+    incidents: { 'c-lion1': open },
+    features,
+    publisherOf,
+  });
+  const marker = {
+    cableId: 'c-lion1',
+    openedAt: null,
+    sources: ['https://www.cinia.fi/en/news/repaired'],
+    status: 'closed',
+    closedAt: '2027-01-10T00:00:00.000Z',
+    closedBy: 'cinia-news',
+  };
+  // Long after the shown event expired: it does not come back as repaired.
+  assert.deepEqual(
+    liveRecords({
+      incidents: { 'c-lion1': marker },
+      published: first.keys,
+      features,
+      publisherOf,
+    }).records,
+    [],
+  );
+  const inTime = liveRecords({
+    incidents: {
+      'c-lion1': { ...marker, closedAt: '2026-11-25T00:00:00.000Z' },
+    },
+    published: first.keys,
+    features,
+    publisherOf: (id) => (id === 'cinia-news' ? 'Cinia' : 'Traficom'),
+  });
+  assert.equal(inTime.records[0].publisher, 'Cinia');
+});
+
+test('through the engine: a confirmed cut never turns back into a fault', () => {
+  let clock = Date.parse('2026-11-18T03:00:00Z');
+  const engine = createIntelEngine({
+    store: createMemoryIntelStore(),
+    now: () => clock,
+  });
+  const cut = { ...open, breakConfirmed: true };
+  const first = liveRecords({
+    incidents: { 'c-lion1': cut },
+    features,
+    publisherOf,
+  });
+  engine.ingest(first.records);
+  clock += 3600_000;
+  // A later fault-only record (a recovered close without the break).
+  const later = {
+    ...open,
+    lastReportedAt: new Date(clock).toISOString(),
+    sources: [...open.sources, 'https://x.example/2'],
+  };
+  engine.ingest(
+    liveRecords({
+      incidents: { 'c-lion1': later },
+      published: { 'c-lion1': { ...first.keys['c-lion1'], key: 'old' } },
+      features,
+      publisherOf,
+    }).records,
+  );
+  assert.equal(engine.activeEvents()[0].subtype, 'submarine_cable_break');
+});
