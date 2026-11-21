@@ -11,7 +11,13 @@
  * camera. The panel stays hidden unless the server reports the feature on.
  * Nothing runs while the tab is hidden; on return one step catches up.
  */
-import { Cesium, viewerBehind } from '../fork/engine.js';
+import {
+  Cesium,
+  addScenePrimitive,
+  removeScenePrimitive,
+  requestSceneRender,
+  viewerBehind,
+} from '../fork/engine.js';
 import {
   formatNumber,
   formatRelativeTime,
@@ -1154,7 +1160,7 @@ export function createIntelConsole({
   }
 
   function renderCableRoutes() {
-    if (!viewer?.scene || !Cesium || viewer.isDestroyed?.()) return;
+    if (!viewer || !Cesium || viewer.isDestroyed?.()) return;
     if (abort.signal.aborted) return;
     const targets = cableRouteTargets(data.events);
     if (!targets.size && !cableLineState.size) return;
@@ -1162,7 +1168,8 @@ export function createIntelConsole({
       loadCableRoutes();
       return;
     }
-    cableLines ??= viewer.scene.primitives.add(new Cesium.PolylineCollection());
+    cableLines ??= addScenePrimitive(viewer, new Cesium.PolylineCollection());
+    if (!cableLines) return;
     let changed = false;
     for (const [id, target] of targets) {
       const look = `${target.opacity}|${target.resolved}`;
@@ -1190,7 +1197,7 @@ export function createIntelConsole({
       cableLineState.delete(id);
       changed = true;
     }
-    if (changed) viewer.scene.requestRender?.();
+    if (changed) requestSceneRender(viewer);
   }
 
   function renderMarkers() {
@@ -2207,8 +2214,7 @@ export function createIntelConsole({
         viewer.scene.primitives.remove(points);
       points = null;
       markerState.clear();
-      if (cableLines && !viewer.isDestroyed?.())
-        viewer.scene.primitives.remove(cableLines);
+      removeScenePrimitive(viewer, cableLines);
       cableLines = null;
       cableLineState.clear();
       labelLook = '';

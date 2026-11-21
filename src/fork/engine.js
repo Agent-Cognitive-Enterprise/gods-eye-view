@@ -84,3 +84,30 @@ export function setForkRenderer(id) {
  */
 export const forkEngineWanted = () =>
   rendererId === null || rendererId === 'cesium';
+
+/**
+ * Add a primitive to a Cesium viewer's scene (the fork's direct drawing goes
+ * through this file), or return null when there is no scene.
+ * @param {object|null|undefined} viewer
+ * @param {object} primitive
+ */
+export function addScenePrimitive(viewer, primitive) {
+  const primitives = viewer?.scene?.primitives;
+  return primitives ? primitives.add(primitive) : null;
+}
+
+/**
+ * Remove a primitive added with {@link addScenePrimitive}, unless the viewer
+ * is gone.
+ * @param {object|null|undefined} viewer
+ * @param {object|null|undefined} primitive
+ */
+export function removeScenePrimitive(viewer, primitive) {
+  if (!primitive || viewer?.isDestroyed?.()) return;
+  viewer?.scene?.primitives?.remove(primitive);
+}
+
+/** Ask a Cesium viewer's scene for a frame (it renders on demand). */
+export function requestSceneRender(viewer) {
+  viewer?.scene?.requestRender?.();
+}
