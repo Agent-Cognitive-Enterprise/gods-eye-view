@@ -3,6 +3,7 @@ import { storeToRefs } from 'pinia';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { t } from '../../../i18n/index.js';
 import UiButton from '../../kit/UiButton.vue';
+import UiIcon from '../../kit/UiIcon.vue';
 import RailPanel from '../../rail/RailPanel.vue';
 import { MAX_CHANNELS, MAX_SOURCES, parseSource, youtubeEmbedUrl } from '../../liveTvChannels.js';
 import { YOUTUBE_STARTUP_MS, attachLiveStream, startupGuard } from '../../liveTvPlayer.js';
@@ -299,7 +300,7 @@ const listErrors = computed(() => errors.value.filter((e) => e.channel === 0).ma
 <template>
   <RailPanel :id="PANEL_ID" start-collapsed :title="t('LIVE TV')">
     <template #actions>
-      <button type="button" class="live-tv-gear" :class="{ active: editing }" :aria-pressed="String(editing)" :aria-label="t('Channel settings')" :title="t('Channel settings')" @click.stop="toggleSettings"><span class="material-symbols-outlined" aria-hidden="true">settings</span></button>
+      <UiButton class="live-tv-gear" pressed-class="active" :pressed="editing" :label="t('Channel settings')" @click.stop="toggleSettings"><UiIcon name="settings" :size="null" /></UiButton>
     </template>
     <div id="live-tv-body">
       <template v-if="!editing">
@@ -325,9 +326,9 @@ const listErrors = computed(() => errors.value.filter((e) => e.channel === 0).ma
         <div v-for="(row, index) in draft" :key="index" class="live-tv-row">
           <div class="live-tv-row-head">
             <input v-model="row.name" class="gev-field" type="text" maxlength="40" :aria-label="t('Name')" :placeholder="t('Name')" />
-            <button type="button" class="live-tv-icon" :disabled="index === 0" :aria-label="t('Move up')" :title="t('Move up')" @click="move(index, -1)">▲</button>
-            <button type="button" class="live-tv-icon" :disabled="index === draft.length - 1" :aria-label="t('Move down')" :title="t('Move down')" @click="move(index, 1)">▼</button>
-            <button type="button" class="live-tv-icon" :aria-label="t('Remove')" :title="t('Remove')" @click="removeRow(index)">✕</button>
+            <UiButton class="live-tv-icon" :disabled="index === 0" :label="t('Move up')" @click="move(index, -1)">▲</UiButton>
+            <UiButton class="live-tv-icon" :disabled="index === draft.length - 1" :label="t('Move down')" @click="move(index, 1)">▼</UiButton>
+            <UiButton class="live-tv-icon" :label="t('Remove')" @click="removeRow(index)">✕</UiButton>
           </div>
           <textarea v-model="row.sources" class="gev-field" rows="2" dir="ltr" spellcheck="false" :aria-label="t('Sources, one per line')" :placeholder="t('Sources, one per line')"></textarea>
           <p v-for="message in rowErrors(index)" :key="message" class="live-tv-error" role="alert">{{ message }}</p>
