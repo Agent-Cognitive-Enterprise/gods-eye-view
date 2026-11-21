@@ -189,6 +189,10 @@ export function layoutLeftPanelRail({
   // on whichever side of them has more room, and the panels may use all of
   // it, above the corridor's usual top too; with no room on either side the
   // obstacles are read as before.
+  // Fork: a rail drawn as a row above the stack (--panel-rail-band) sits in
+  // the band above the panels, so the room beside the obstacles must hold it
+  // too, and the panels start one band lower.
+  const railBand = panelRailBand(stack, getComputedStyle);
   const beside = bandBesideMidpointObstacles({
     midpoint: viewportHeight * 0.5,
     top: topInset,
@@ -196,11 +200,11 @@ export function layoutLeftPanelRail({
     obstacles: inLane,
     gap: safeGap,
     // A side thinner than this holds no usable panel.
-    minimum: viewportHeight * 0.08,
+    minimum: viewportHeight * 0.08 + railBand,
   });
   if (beside) {
-    obstacleSafeTop = beside.top;
-    safeTop = beside.top;
+    obstacleSafeTop = beside.top + railBand;
+    safeTop = beside.top + railBand;
     bottomObstacles.length = 0;
     bottomObstacles.push({ top: beside.bottom + safeGap });
   }
@@ -211,7 +215,6 @@ export function layoutLeftPanelRail({
   });
   // A rail drawn as a row above the stack (--panel-rail-band) needs that band
   // kept clear: no layout may lift the panels above their resting top.
-  const railBand = panelRailBand(stack, getComputedStyle);
   const restingTop = safeTop;
   if (railBand > 0) obstacleSafeTop = Math.max(obstacleSafeTop, restingTop);
 
