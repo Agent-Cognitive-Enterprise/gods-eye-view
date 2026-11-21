@@ -42,8 +42,9 @@ const MAX_BODY = 16 * 1024;
  * The feed set for this environment. Public no-key feeds are on unless
  * GEV_INTEL_<NAME>=0; GDELT (machine-coded news) is opt-in with
  * GEV_INTEL_GDELT=1; ReliefWeb and ACLED are listed and wait for credentials.
- * Submarine cable notices are opt-in with GEV_INTEL_CABLES=1, in shadow mode:
- * logged in the intel folder, never sent to the engine.
+ * Submarine cable notices are opt-in with GEV_INTEL_CABLES=1, in shadow mode
+ * (logged in the intel folder, never sent to the engine) unless
+ * GEV_INTEL_CABLES_LIVE=1 sends the confirmed incidents.
  * GEV_INTEL_OFFLINE=1 contacts no feed at all: drills and the stored archive
  * only (CI, demonstrations, air-gapped use).
  */
@@ -89,8 +90,10 @@ export function intelConnectors({
   // Air & Sea signals (fork): only where the air/sea plugin runs too.
   if (airSeaHub && env.GEV_AIRSEA_ENABLED === '1' && on('AIRSEA'))
     connectors.push(airSeaConnector({ hub: airSeaHub }));
-  // Submarine cable notices (fork): opt-in, shadow mode only, so they log
-  // what would be shown and send nothing to the engine.
+  // Submarine cable notices (fork): opt-in. In shadow mode they log what
+  // would be shown and send nothing to the engine; GEV_INTEL_CABLES_LIVE=1
+  // sends the confirmed incidents (operators' and regulators' own, never
+  // news) to Autopilot.
   // The local model reads doubtful cable notices unless
   // GEV_INTEL_CABLES_LLM=0; a voice conversation keeps it for itself.
   if (env.GEV_INTEL_CABLES === '1' && dir)
@@ -99,6 +102,7 @@ export function intelConnectors({
         dir,
         llm: env.GEV_INTEL_CABLES_LLM === '0' ? null : llm,
         foreground: () => foregroundActive(),
+        live: env.GEV_INTEL_CABLES_LIVE === '1',
       }),
     );
   return connectors;

@@ -1,10 +1,12 @@
-// Submarine cable notices (fork), phase 1: shadow mode. Off unless
-// GEV_INTEL_CABLES=1. Polls operator, regulator and news sources and judges
-// every new notice automatically (src/intel/cableSignals.js), but sends
-// nothing to the engine: what would have been shown, updated, closed or
+// Submarine cable notices (fork). Off unless GEV_INTEL_CABLES=1. Polls
+// operator, regulator and news sources and judges every new notice
+// automatically (src/intel/cableSignals.js, and the local model for doubt:
+// src/intel/cableAssessment.js). What would be shown, updated, closed or
 // faded goes to cables-shadow.jsonl in the intel folder, beside the state it
-// needs (cables-shadow-state.json). Reuse: each publisher's own terms; only
-// titles, summaries and links are kept.
+// needs (cables-shadow-state.json). In shadow mode that is all. With
+// GEV_INTEL_CABLES_LIVE=1 (phase 3) the confirmed incidents also go to the
+// engine as records (src/intel/cableEvents.js); news never does. Reuse: each
+// publisher's own terms; only titles, summaries and links are kept.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -29,6 +31,8 @@ import {
   cableAssessmentSchema,
   validateCableAssessment,
 } from '../../../../src/intel/cableAssessment.js';
+import { liveRecords } from '../../../../src/intel/cableEvents.js';
+import { mergedCableFeatures } from '../../../../src/intel/cableRoutes.js';
 import {
   STALE_NOTICE_MS,
   applySignal,
@@ -663,8 +667,42 @@ export async function checkWithModel({
 }
 
 /**
- * The Autopilot connector. Shadow mode only in phase 1: poll() always
- * returns no records, so nothing reaches the engine, the map or the camera.
+ * What was sent to Autopilot per cable, or {} (a file that cannot be read
+ * as that is moved aside: the events it sent then expire by themselves).
+ */
+function readPublished(file) {
+  let text;
+  try {
+    text = fs.readFileSync(file, 'utf8');
+  } catch {
+    return {};
+  }
+  try {
+    const value = JSON.parse(text);
+    if (isObject(value) && Object.values(value).every(isObject)) return value;
+  } catch {
+    // Not JSON: handled below.
+  }
+  try {
+    fs.renameSync(file, `${file}.corrupt-${Date.now()}`);
+  } catch {
+    // Left in place: it is overwritten by the next send.
+  }
+  return {};
+}
+
+/** A source's name for a record: its publisher, else its first speaker. */
+const publisherOf = (sources) => (id) => {
+  const source = sources.find((s) => s.id === id);
+  return source?.publisher ?? source?.speakers?.[0] ?? id ?? null;
+};
+
+/**
+ * The Autopilot connector. In shadow mode poll() returns no records, so
+ * nothing reaches the engine, the map or the camera. With `live`, it
+ * returns a record each time a confirmed incident opens, changes or closes;
+ * the runner calls commit() once they are stored, and only then is the
+ * incident marked as sent (a failed store sends it again).
  */
 export function cableConnector({
   dir,
@@ -674,6 +712,8 @@ export function cableConnector({
   // Phase 2: the shared local model, or null to judge by the rules alone.
   llm = null,
   foreground = () => false,
+  // Phase 3: confirmed incidents go to the engine.
+  live = false,
 } = {}) {
   if (!dir) throw new Error('cableConnector needs the intel folder');
   for (const source of sources)
@@ -681,7 +721,11 @@ export function cableConnector({
       throw new Error(`${source.id}: url must be HTTPS`);
   const stateFile = path.join(dir, 'cables-shadow-state.json');
   const logFile = path.join(dir, 'cables-shadow.jsonl');
+  // What was sent to Autopilot, kept apart from the shadow state so a reset
+  // of that state cannot lose it.
+  const publishedFile = path.join(dir, 'cables-published.json');
   let names = null;
+  let features = null;
   return {
     id: 'submarine-cables',
     provider: 'cables',
@@ -691,9 +735,13 @@ export function cableConnector({
     staleAfterMs: 60 * 24 * 3600_000,
     license: "Each publisher's own terms",
     attribution: 'Cable operators and regulators (see the cable feed sources)',
-    shadow: true,
+    shadow: !live,
     async poll({ now }) {
-      names ??= catalogueNames(JSON.parse(fs.readFileSync(CATALOGUE, 'utf8')));
+      if (!names) {
+        const catalogue = JSON.parse(fs.readFileSync(CATALOGUE, 'utf8'));
+        names = catalogueNames(catalogue);
+        features = mergedCableFeatures(catalogue);
+      }
       fs.mkdirSync(dir, { recursive: true });
       const result = await pollCableSources({
         sources,
@@ -728,7 +776,38 @@ export function cableConnector({
       });
       writeJson(stateFile, checked.state);
       appendLines(logFile, checked.lines);
-      return { records: [], latestObservationAt: result.latest || undefined };
+      if (!live)
+        return { records: [], latestObservationAt: result.latest || undefined };
+      const published = readPublished(publishedFile);
+      const { records, keys } = liveRecords({
+        incidents: checked.state.incidents,
+        published,
+        features,
+        publisherOf: publisherOf(sources),
+      });
+      return {
+        records,
+        notModified: records.length === 0,
+        latestObservationAt: result.latest || undefined,
+        // Marked as sent only once the runner has stored the records.
+        commit: () => {
+          if (!Object.keys(keys).length) return;
+          writeJson(publishedFile, {
+            ...readPublished(publishedFile),
+            ...keys,
+          });
+          appendLines(
+            logFile,
+            records.map((record) => ({
+              seenAt: new Date(now()).toISOString(),
+              change: 'sent-to-autopilot',
+              cables: record.entities.map((e) => e.replace(/^cable:/, '')),
+              status: record.status_hint,
+              title: record.title,
+            })),
+          );
+        },
+      };
     },
   };
 }

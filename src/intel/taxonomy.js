@@ -240,6 +240,16 @@ export const ADVISORY_SUBTYPES = Object.freeze(
   new Set(['possible_navigation_integrity_anomaly']),
 );
 export const isAdvisorySubtype = (subtype) => ADVISORY_SUBTYPES.has(subtype);
+
+/**
+ * Fork: a submarine cable incident from the cable feed (src/intel/cableEvents.js).
+ * Like an advisory it joins only its own event: a news item or a power cut
+ * near the marker is not the operator's fault notice.
+ */
+export const CABLE_SUBTYPES = Object.freeze(
+  new Set(['submarine_cable_fault', 'submarine_cable_break']),
+);
+export const isCableSubtype = (subtype) => CABLE_SUBTYPES.has(subtype);
 export const isSourceType = (value) => SOURCE_TYPES.includes(value);
 export const isVerification = (value) => VERIFICATION_STATES.includes(value);
 export const isPrecision = (value) => LOCATION_PRECISIONS.includes(value);

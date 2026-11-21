@@ -5561,6 +5561,7 @@
       "src/intel/clustering.js",
       "src/intel/evidence.js",
       "src/intel/taxonomy.js",
+      "src/intel/cableRoutes.js",
       "src/app/layers/bankingAccess.js",
       "src/layers/bankingAccess/index.js",
       "src/layers/bankingAccess/source.js",

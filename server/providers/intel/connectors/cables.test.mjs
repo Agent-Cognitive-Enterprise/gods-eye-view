@@ -749,3 +749,87 @@ test('operator notices are checked before news, and a busy model is not a failur
   assert.equal(result.state.pending[1].attempts, 0);
   assert.deepEqual(result.state.modelChecks, []);
 });
+
+test('live mode sends a confirmed incident once it is stored, and never a news report', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gev-cables-live-'));
+  try {
+    const realNames = catalogueNames(
+      JSON.parse(
+        fs.readFileSync(
+          new URL(
+            '../../../../src/data/local_data/telegeography_submarine_cables/cable-geo.json',
+            import.meta.url,
+          ),
+          'utf8',
+        ),
+      ),
+    );
+    assert.ok(realNames.length);
+    const news = {
+      ...source,
+      id: 'news',
+      url: 'https://news.example/rss',
+      sourceKind: 'news',
+      cables: [],
+    };
+    const bodies = new Map();
+    const fetchImpl = async (url) =>
+      bodies.has(url)
+        ? new Response(bodies.get(url))
+        : new Response('missing', { status: 404 });
+    const connector = cableConnector({
+      dir,
+      sources: [{ ...source, speakers: ['Cinia'] }, news],
+      fetchImpl,
+      live: true,
+    });
+    assert.equal(connector.shadow, false);
+    bodies.set(source.url, rss([OLD]));
+    bodies.set(news.url, rss([OLD]));
+    const first = await connector.poll({
+      now: () => Date.parse('2024-11-17T00:00:00Z'),
+    });
+    assert.deepEqual(first.records, []);
+    bodies.set(source.url, rss([FAULT, OLD]));
+    // The same clear headline from news is never sent.
+    bodies.set(
+      news.url,
+      rss([[FAULT[0], 'news-fault', FAULT[2]], OLD]).replaceAll(
+        'op.example',
+        'news.example',
+      ),
+    );
+    const second = await connector.poll({
+      now: () => Date.parse('2024-11-18T10:00:00Z'),
+    });
+    assert.equal(second.records.length, 1);
+    assert.equal(second.records[0].subtype, 'submarine_cable_fault');
+    assert.equal(second.records[0].publisher, 'Cinia');
+    assert.equal(second.records[0].url, 'https://op.example/n/fault');
+    // Not stored yet: sent again.
+    const again = await connector.poll({
+      now: () => Date.parse('2024-11-18T11:00:00Z'),
+    });
+    assert.equal(again.records.length, 1);
+    again.commit();
+    const third = await connector.poll({
+      now: () => Date.parse('2024-11-18T12:00:00Z'),
+    });
+    assert.deepEqual(third.records, []);
+    const log = fs
+      .readFileSync(path.join(dir, 'cables-shadow.jsonl'), 'utf8')
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+    assert.equal(log.filter((l) => l.change === 'sent-to-autopilot').length, 1);
+    // Shadow mode sends nothing at all.
+    const shadow = cableConnector({
+      dir: fs.mkdtempSync(path.join(dir, 's-')),
+      sources: [source],
+      fetchImpl,
+    });
+    assert.equal(shadow.shadow, true);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

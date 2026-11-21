@@ -9,6 +9,7 @@ import { observationTime, textTokens } from './evidence.js';
 import {
   CATEGORY_POLICY,
   isAdvisorySubtype,
+  isCableSubtype,
   isPushReport,
 } from './taxonomy.js';
 
@@ -128,6 +129,9 @@ export function matchCandidate(observation, event) {
     isAdvisorySubtype(observation.subtype) ||
     isAdvisorySubtype(event.subtype)
   )
+    return null;
+  // Fork: a cable incident joins only its own event too (by event_key).
+  if (isCableSubtype(observation.subtype) || isCableSubtype(event.subtype))
     return null;
   // One article can describe several incidents, so a shared lineage still has
   // to agree in space and time before it means "same event".
@@ -337,6 +341,21 @@ export function materialChanges(observation, event, lineage) {
     reasons.push('reported_severity_increased');
   if (observation.status_hint && observation.status_hint !== event.status_hint)
     reasons.push(`status_${observation.status_hint}`);
+  // Fork: the cable feed's own update of its incident. A new report keeps
+  // it on the map (its valid_until moves on), and a confirmed cut changes
+  // what it is; the same lineage would otherwise make both non-material.
+  if (
+    observation.provider === 'cables' &&
+    isCableSubtype(observation.subtype)
+  ) {
+    if (observation.subtype !== event.subtype)
+      reasons.push('cable_cut_confirmed');
+    if (
+      Number.isFinite(observation.valid_until) &&
+      observation.valid_until > (event.valid_until ?? 0)
+    )
+      reasons.push('cable_reported_again');
+  }
   // Air & Sea measurements: a different reading, or a large revision.
   if (m.observation && m.observation !== e.observation)
     reasons.push('traffic_observation_changed');

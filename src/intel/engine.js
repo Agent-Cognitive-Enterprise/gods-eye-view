@@ -22,6 +22,7 @@ import { ruleSeverity, scoreEvent, verificationOf } from './scoring.js';
 import {
   CATEGORY_POLICY,
   isAdvisorySubtype,
+  isCableSubtype,
   isPostsOnly,
   isPushReport,
   isSocialOnly,
@@ -250,6 +251,15 @@ function applyMaterial(event, observation, lineage, reasons) {
     next.summary_source = familyKey;
   }
   if (observation.subtype && !next.subtype) next.subtype = observation.subtype;
+  // Fork: the cable feed's record says what its incident is now (a fault
+  // its source confirms as a cut becomes a break; never the reverse).
+  else if (
+    observation.official &&
+    observation.provider === 'cables' &&
+    isCableSubtype(observation.subtype) &&
+    isCableSubtype(next.subtype)
+  )
+    next.subtype = observation.subtype;
   if (Number.isFinite(observation.valid_until))
     next.valid_until = Math.max(next.valid_until ?? 0, observation.valid_until);
   if (!observation.time_zone_known) next.time_zone_known = false;

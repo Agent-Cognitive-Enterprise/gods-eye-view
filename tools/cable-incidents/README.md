@@ -309,8 +309,9 @@ without a person (`src/intel/cableSignals.js`):
    - An open incident with no report for 30 days fades: it was last
      reported then, not proven repaired.
 
-Nothing reaches the engine, the map or the camera. The feed is listed in
-Autopilot's feeds as "Submarine cable notices (shadow mode)". Each red flag
+In shadow mode nothing reaches the engine, the map or the camera (phase 3
+changes that, below). The feed is listed in
+Autopilot's feeds as "Submarine cable notices". Each red flag
 and each would-be change goes to `cables-shadow.jsonl` in the intel folder
 (`.gev-cache/intel`, or the folder of `GEV_INTEL_DB`), next to
 `cables-shadow-state.json`. The first poll of each source records only a
@@ -525,10 +526,50 @@ accepted for safety:
   only.
 - A fault stated only in a bullet list inside the post body is missed.
 
+## Automatic signals (phase 3: live in Autopilot)
+
+`GEV_INTEL_CABLES_LIVE=1`, beside `GEV_INTEL_CABLES=1`, sends the shadow
+incidents to Autopilot (`src/intel/cableEvents.js`). Without it the feed
+stays in shadow mode, as above.
+
+- **What is sent:** a shadow incident, so only one opened by a clear signal
+  or an `llm-clear` answer: an operator or regulator about its own cable.
+  `llm-unverified` reports, news among them, are never sent.
+- **When:** one record each time what an operator would see changes: the
+  incident opens, gets a new report, is confirmed cut, or closes on a repair
+  notice. Each record is marked as sent in `cables-published.json` (kept
+  apart from the shadow state, so a reset of that state cannot lose it)
+  after the runner has stored the poll's records; if storing throws, they
+  are sent again. A record the runner drops because the incident opened
+  more than 90 days ago is marked sent all the same. Each send is logged as
+  `sent-to-autopilot`.
+- **Switching it on:** incidents already open in the shadow state are sent
+  on the first live poll. Look at `cables-shadow-state.json` first if the
+  feed ran in shadow mode for long.
+- **Repairs:** a repair is sent only for the incident that was shown open.
+  A repair of an incident that was never sent sends nothing. If the shadow
+  state was lost (a corrupt file moved aside), a repair notice dated after
+  the shown incident's last report still closes it.
+- **The record:** category `infrastructure_disruption`, subtype
+  `submarine_cable_fault`, or `submarine_cable_break` once the source
+  confirms a physical break, source type `primary_official`. One event per
+  incident: `event_key` `submarine-cable:<cable>:<incident id>`, the id
+  fixed when it opened, so an earlier-dated later report does not split
+  it. A cable event joins only its own event, never a nearby news item or
+  power cut, and the feed's own later records are material updates (a new
+  report keeps it on the map, a confirmed cut changes its subtype and
+  title). Its marker sits at the middle point of the catalogue line with
+  the most points, labelled approximate.
+- **On the globe:** the console draws the cable's catalogue route over the
+  cable layer, whether that layer is on or not. A resolved event is drawn
+  thin and dim for the hour the engine shows it, counted from the repair
+  notice's time, so a repair dated at midnight usually archives at once.
+- **How it ends:** a repair record (`status_hint` `resolved`) closes the
+  event. An open incident's record carries `valid_until` 30 days after its
+  last report, so the marker fades as the shadow incident does.
+
 ## Next integration
 
-Replay a labelled set of faults, repairs, false positives and
-silent/rerouted faults before publishing cable status to the existing
-overlay. Keep raw leads out of Autopilot, and treat publisher
-corrections/retractions as operator review until a versioned correction
-model is in place.
+IODA country outages beside a cable event, as impact only, once IODA's
+data-use terms are clear. A publisher's correction or retraction of a
+notice is not read yet: it needs a versioned correction model.

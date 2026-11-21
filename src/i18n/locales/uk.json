@@ -5006,7 +5006,7 @@
   "Memory": "Пам’ять",
   "No layers are on.": "Жоден шар не ввімкнено.",
   "No switch yet": "Перемикача поки немає",
-  "Submarine cable notices (shadow mode)": "Повідомлення про підводні кабелі (тіньовий режим)",
+  "Submarine cable notices": "Повідомлення про підводні кабелі",
   "Vessels (AISStream)": "Судна (AISStream)",
   "Canadian navigation warnings, trial data (CCG S-124)": "Навігаційні попередження Канади, тестові дані (CCG S-124)",
   "Military flights (adsb.lol)": "Військові рейси (adsb.lol)",

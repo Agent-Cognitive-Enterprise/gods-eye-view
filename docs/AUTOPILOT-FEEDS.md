@@ -40,10 +40,14 @@ in [EARLY-WARNING.md](EARLY-WARNING.md#sources-registry). Status as of
   Its observe-only inbox polls chosen operator and news sources, and IODA
   outages if asked, when you run it, and proposes notices for review. With
   `GEV_INTEL_CABLES=1` the same sources are polled hourly inside Autopilot and
-  judged automatically, in shadow mode: the feed is listed as "Submarine cable
-  notices (shadow mode)", and what would be shown goes to
-  `.gev-cache/intel/cables-shadow.jsonl`. Nothing any of these finds is
-  shown on the map or used by the camera yet.
+  judged automatically, listed as "Submarine cable notices". In shadow mode
+  what would be shown only goes to `.gev-cache/intel/cables-shadow.jsonl`.
+  With `GEV_INTEL_CABLES_LIVE=1` a cable incident that an operator or
+  regulator confirmed about its own cable becomes an Autopilot event
+  (infrastructure disruption, `submarine_cable_fault` or
+  `submarine_cable_break`), and the globe highlights the cable's route. The
+  event closes on the source's repair notice, or fades 30 days after its
+  last report. News never makes one, whatever the local model says.
 - **Economic stress** is annual inflation only: no exchange-rate, market,
   food-price or sovereign-debt series, so a fast currency crisis appears
   months late, if at all.

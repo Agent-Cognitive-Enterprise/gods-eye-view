@@ -428,6 +428,9 @@ export function applySignal(
     next[cableId] = {
       cableId,
       status: 'open',
+      // Fixed when it opens: openedAt moves earlier with an earlier report,
+      // the incident stays the same one (and so does its Autopilot event).
+      incidentId: when,
       openedAt: when,
       lastReportedAt: when,
       breakConfirmed,
