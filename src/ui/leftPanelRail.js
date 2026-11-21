@@ -6,6 +6,7 @@ import {
   resolvePanelStackCorridor,
 } from '../panelStackLayout.js';
 import { measurePanelNaturalHeight } from './panelMeasurement.js';
+import { bandBesideMidpointObstacles } from './panelRailGeometry.js';
 import { isDockedPanel, settleSideAccordion } from './panelAccordion.js';
 
 /**
@@ -140,10 +141,12 @@ export function layoutLeftPanelRail({
     : viewportHeight * 0.26;
   const baseBottomInset = viewportHeight * 0.04;
   const safeGap = viewportHeight * 0.012;
-  let obstacleSafeTop = viewportHeight * 0.04;
+  const topInset = viewportHeight * 0.04;
+  let obstacleSafeTop = topInset;
   let safeTop = baseTop;
   let safeBottom = viewportHeight - baseBottomInset;
   const bottomObstacles = [];
+  const inLane = [];
 
   for (const obstacle of obstacles) {
     if (stack.contains(obstacle)) continue;
@@ -173,6 +176,7 @@ export function layoutLeftPanelRail({
     );
     if (!overlapsHorizontally) continue;
 
+    inLane.push(rect);
     if (rect.top < baseTop && rect.bottom <= viewportHeight * 0.5) {
       const obstacleBottom = rect.bottom + safeGap;
       obstacleSafeTop = Math.max(obstacleSafeTop, obstacleBottom);
@@ -180,6 +184,25 @@ export function layoutLeftPanelRail({
     } else if (rect.top >= baseTop) {
       bottomObstacles.push({ top: rect.top });
     }
+  }
+  // Obstacles across the midpoint (common in short windows) put the panels
+  // on whichever side of them has more room, and the panels may use all of
+  // it, above the corridor's usual top too; with no room on either side the
+  // obstacles are read as before.
+  const beside = bandBesideMidpointObstacles({
+    midpoint: viewportHeight * 0.5,
+    top: topInset,
+    bottom: safeBottom,
+    obstacles: inLane,
+    gap: safeGap,
+    // A side thinner than this holds no usable panel.
+    minimum: viewportHeight * 0.08,
+  });
+  if (beside) {
+    obstacleSafeTop = beside.top;
+    safeTop = beside.top;
+    bottomObstacles.length = 0;
+    bottomObstacles.push({ top: beside.bottom + safeGap });
   }
   safeBottom = resolveLeftStackBottomBoundary({
     baseBottom: safeBottom,

@@ -11,6 +11,8 @@ import UiSegmented from '../../kit/UiSegmented.vue';
 import UiSlider from '../../kit/UiSlider.js';
 import { useDisplayStore } from '../../stores/display.js';
 import UiButton from '../../kit/UiButton.vue';
+import UiCheckbox from '../../kit/UiCheckbox.vue';
+import UiIcon from '../../kit/UiIcon.vue';
 import UiSelect from '../../kit/UiSelect.js';
 import { StyleParameterRows } from '../../styleParameters.js';
 import VisualPresets from './VisualPresets.vue';
@@ -84,10 +86,10 @@ const allocationOptions = computed(() => [
   <p class="pp-section-heading">{{ t('Overlay') }}</p>
   <Teleport :to="cockpitPortal?.hud ?? 'body'" :disabled="!cockpitPortal?.hud">
   <div class="pp-toggle-group">
-    <button class="pp-toggle-btn" :class="{ active: hud?.visible }" :aria-pressed="String(Boolean(hud?.visible))" id="hud-toggle" @click="act('toggleHud')" :title="t('Intelligence HUD (H)')">
+    <UiButton class="pp-toggle-btn" :pressed="Boolean(hud?.visible)" pressed-class="active" id="hud-toggle" @click="act('toggleHud')" :title="t('Intelligence HUD (H)')">
       <span class="pp-icon">&#x25CE;</span>
       <span class="pp-label" translate="no">HUD</span>
-    </button>
+    </UiButton>
     <div class="pp-slider-row" :class="{ visible: hud?.visible }" id="hud-layout-row">
       <span class="pp-slider-mini-label">{{ t('Layout') }}</span>
       <UiSelect id="hud-layout-select" class="pp-select gev-field gev-field--compact" :model-value="hud?.variant ?? 'tactical'" @update:model-value="act('setHudLayout', $event)" :aria-label="t('HUD layout')">
@@ -182,11 +184,10 @@ const allocationOptions = computed(() => [
   </div>
   </Teleport>
   <div class="pp-toggle-group">
-    <label class="pp-toggle-btn pp-scope-toggle" :title="t('Scope — the circular viewport mask')">
-      <span class="pp-icon material-symbols-outlined" aria-hidden="true">adjust</span>
+    <UiCheckbox class="pp-toggle-btn pp-scope-toggle" :title="t('Scope — the circular viewport mask')" input-id="scope-toggle" trailing :model-value="scopeOn" @update:model-value="act('setScopeEnabled', $event)">
+      <UiIcon class="pp-icon" name="adjust" :size="null" />
       <span class="pp-label">{{ t('Scope') }}</span>
-      <input type="checkbox" id="scope-toggle" @change="act('setScopeEnabled', $event.target.checked)" :checked="scopeOn" />
-    </label>
+    </UiCheckbox>
     <div class="pp-slider-row visible" id="scope-slider-row">
       <span class="pp-slider-mini-label">{{ t('Feather') }}</span>
       <UiSlider class="pp-slider" id="scope-feather-slider" @update:model-value="act('setScopeFeather', $event)" min="0" max="200" :model-value="scopeFeather" :disabled="!scopeOn" :aria-label="t('Scope edge feather')" :title="t('Scope edge feather as a percentage of the keyhole radius')" />
@@ -198,24 +199,23 @@ const allocationOptions = computed(() => [
       <span class="pp-slider-value" id="scope-opacity-value">{{ pct(scopeOpacity) }}</span>
     </div>
   </div>
-  <button class="pp-toggle-btn" id="clean-view-toggle" @click="act('toggleCleanView')" :title="t('Hide UI chrome')">
+  <UiButton class="pp-toggle-btn" id="clean-view-toggle" @click="act('toggleCleanView')" :title="t('Hide UI chrome')">
     <span class="pp-icon">&#x25A1;</span>
     <span class="pp-label">{{ t('Clean UI') }}</span>
-  </button>
+  </UiButton>
   <p class="pp-section-heading">{{ t('Effects') }}</p>
   <div class="pp-toggle-group">
     <UiButton class="pp-toggle-btn" :pressed="celestial?.active ?? false" pressed-class="active" id="celestial-toggle" @click="act('toggleCelestial')" :title="celestialTitle" :disabled="celestial ? !celestial.supported : undefined" :aria-disabled="celestial ? String(!celestial.supported) : undefined">
-      <span class="pp-icon material-symbols-outlined" aria-hidden="true">flare</span>
+      <UiIcon class="pp-icon" name="flare" :size="null" />
       <span class="pp-label">{{ t('Celestial') }}</span>
     </UiButton>
   </div>
   <!-- Sky: only where the renderer has a sky to set. -->
   <div v-if="sky" class="pp-toggle-group" id="sky-group">
-    <label v-for="row in skyRows" :key="row.key" class="pp-toggle-btn pp-scope-toggle" :id="`sky-${row.key}-row`">
-      <span class="pp-icon material-symbols-outlined" aria-hidden="true">{{ row.icon }}</span>
+    <UiCheckbox v-for="row in skyRows" :key="row.key" class="pp-toggle-btn pp-scope-toggle" :id="`sky-${row.key}-row`" :input-id="`sky-${row.key}-toggle`" trailing :model-value="sky.switches[row.key]" @update:model-value="act('setSkySwitch', row.key, $event)">
+      <UiIcon class="pp-icon" :name="row.icon" :size="null" />
       <span class="pp-label">{{ row.label }}</span>
-      <input type="checkbox" :id="`sky-${row.key}-toggle`" @change="act('setSkySwitch', row.key, $event.target.checked)" :checked="sky.switches[row.key]" />
-    </label>
+    </UiCheckbox>
     <div class="pp-slider-row visible" id="sky-milkyway-row">
       <span class="pp-slider-mini-label">{{ t('Milky Way') }}</span>
       <UiSlider class="pp-slider" id="sky-milkyway-slider" @update:model-value="act('setSkyMilkyWay', $event)" min="0" max="100" :model-value="sky.milkyWay" :aria-label="t('Milky Way')" />
@@ -225,11 +225,10 @@ const allocationOptions = computed(() => [
   <!-- Groups the application adds (store `publishGroup`). -->
   <div v-for="group in groups" :key="group.id" class="pp-toggle-group" :id="`${group.id}-group`">
     <template v-for="row in group.rows" :key="row.id">
-      <label v-if="row.kind === 'toggle'" class="pp-toggle-btn pp-scope-toggle" :title="row.title">
-        <span v-if="row.icon" class="pp-icon material-symbols-outlined" aria-hidden="true">{{ row.icon }}</span>
+      <UiCheckbox v-if="row.kind === 'toggle'" class="pp-toggle-btn pp-scope-toggle" :title="row.title" :input-id="`${group.id}-${row.id}-toggle`" trailing :model-value="row.checked" @update:model-value="row.onChange?.($event)">
+        <UiIcon v-if="row.icon" class="pp-icon" :name="row.icon" :size="null" />
         <span class="pp-label">{{ row.label }}</span>
-        <input type="checkbox" :id="`${group.id}-${row.id}-toggle`" @change="row.onChange?.($event.target.checked)" :checked="row.checked" />
-      </label>
+      </UiCheckbox>
       <div v-else-if="row.kind === 'note'" class="pp-slider-row visible" :id="`${group.id}-${row.id}`">
         <span class="pp-slider-mini-label">{{ row.text }}</span>
       </div>
@@ -241,28 +240,28 @@ const allocationOptions = computed(() => [
     </template>
   </div>
   <div class="pp-toggle-group">
-    <button class="pp-toggle-btn" :class="{ active: view?.bloom.active }" :aria-pressed="String(Boolean(view?.bloom.active))" id="bloom-toggle" @click="act('toggleBloom')" :title="t('Bloom / Glow')">
+    <UiButton class="pp-toggle-btn" :pressed="Boolean(view?.bloom.active)" pressed-class="active" id="bloom-toggle" @click="act('toggleBloom')" :title="t('Bloom / Glow')">
       <span class="pp-icon">&#x2728;</span>
       <span class="pp-label">{{ t('Bloom') }}</span>
-    </button>
+    </UiButton>
     <div class="pp-slider-row" :class="{ visible: view?.bloom.active }" id="bloom-slider-row">
       <UiSlider class="pp-slider" id="bloom-intensity-slider" @update:model-value="act('setBloomIntensity', $event)" min="0" max="200" :model-value="view?.bloom.intensity ?? 0" :aria-label="t('Bloom intensity')" />
       <span class="pp-slider-value" id="bloom-intensity-value">{{ pct(view?.bloom.intensity ?? 0) }}</span>
     </div>
   </div>
   <div class="pp-toggle-group">
-    <button class="pp-toggle-btn" :class="{ active: view?.sharpen.active }" :aria-pressed="String(Boolean(view?.sharpen.active))" id="sharpen-toggle" @click="act('toggleSharpen')" :title="t('Sharpening')">
+    <UiButton class="pp-toggle-btn" :pressed="Boolean(view?.sharpen.active)" pressed-class="active" id="sharpen-toggle" @click="act('toggleSharpen')" :title="t('Sharpening')">
       <span class="pp-icon">&#x1F50D;</span>
       <span class="pp-label">{{ t('Sharpen') }}</span>
-    </button>
+    </UiButton>
     <div class="pp-slider-row" :class="{ visible: view?.sharpen.active }" id="sharpen-slider-row">
       <UiSlider class="pp-slider" id="sharpen-intensity-slider" @update:model-value="act('setSharpenIntensity', $event)" min="0" max="100" :model-value="view?.sharpen.intensity ?? 49" :aria-label="t('Sharpen intensity')" />
       <span class="pp-slider-value" id="sharpen-intensity-value">{{ pct(view?.sharpen.intensity ?? 49) }}</span>
     </div>
   </div>
-  <button type="button" class="pp-reset-btn" :title="t('Reset Visual to its defaults: Normal look, HUD, scope, labels and effects')" @click="act('resetVisual')">
-    <span class="material-symbols-outlined" aria-hidden="true">restart_alt</span>{{ t('Reset to default') }}
-  </button>
+  <UiButton class="pp-reset-btn" :title="t('Reset Visual to its defaults: Normal look, HUD, scope, labels and effects')" @click="act('resetVisual')">
+    <UiIcon name="restart_alt" :size="null" />{{ t('Reset to default') }}
+  </UiButton>
 </div>
 </div>
 </template>
