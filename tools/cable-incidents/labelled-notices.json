@@ -5575,6 +5575,136 @@
       "synthetic": true,
       "adversarial": true,
       "note": "clear signal checked as a correct report in review round 4"
+    },
+    {
+      "sourceId": "dawn-news",
+      "title": "Internet provider expects submarine cable repairs to be completed by Dec 6",
+      "summary": "Internet service provider Transworld Associates has said repair work on an affected international submarine cable is expected to be completed by December 6, with users likely to experience slower internet speeds during peak hours until the work is finished. The development follows an earlier announcement by the Pakistan Telecommunication Authority (PTA) that a fault had been reported in the SEA-ME-WE 5 (SMW5) international submarine cable system, approximately 11 kilometres from Pakistan’s coast.",
+      "url": "https://www.dawn.com/news/2046093/internet-provider-expects-submarine-cable-repairs-to-be-completed-by-dec-6",
+      "publishedAt": "2026-11-21T08:07:29.000Z",
+      "expected": "not-clear"
+    },
+    {
+      "sourceId": "transworld",
+      "title": "Fault in the SeaMeWe-5 submarine cable off Pakistan",
+      "summary": "",
+      "url": "https://example.invalid/smw5/1",
+      "publishedAt": "2026-11-18T08:00:00.000Z",
+      "expected": "clear-fault",
+      "synthetic": true,
+      "note": "the 2026-11-18 fault as Transworld might announce it"
+    },
+    {
+      "sourceId": "transworld",
+      "title": "SMW5 cable fault",
+      "summary": "",
+      "url": "https://example.invalid/smw5/2",
+      "publishedAt": "2026-11-18T08:00:00.000Z",
+      "expected": "clear-fault",
+      "synthetic": true,
+      "note": "the short form SMW5 is a catalogue alias"
+    },
+    {
+      "sourceId": "transworld",
+      "title": "TW1 cable fault",
+      "summary": "",
+      "url": "https://example.invalid/smw5/3",
+      "publishedAt": "2026-11-18T08:00:00.000Z",
+      "expected": "clear-fault",
+      "synthetic": true,
+      "note": "Transworld's own cable"
+    },
+    {
+      "sourceId": "transworld",
+      "title": "Fault in the SEA-ME-WE 5 submarine cable off Pakistan",
+      "summary": "",
+      "url": "https://example.invalid/smw5/4",
+      "publishedAt": "2026-11-18T08:00:00.000Z",
+      "expected": "clear-fault",
+      "synthetic": true,
+      "note": "missed by design: a clear title needs a catalogue spelling; the local model reads it"
+    },
+    {
+      "sourceId": "transworld",
+      "title": "Possible fault in the SeaMeWe-5 submarine cable",
+      "summary": "",
+      "url": "https://example.invalid/smw5/5",
+      "publishedAt": "2026-11-18T08:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "transworld",
+      "title": "SeaMeWe-4 cable fault",
+      "summary": "",
+      "url": "https://example.invalid/smw5/6",
+      "publishedAt": "2026-11-18T08:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true,
+      "note": "outside Transworld's remit"
+    },
+    {
+      "sourceId": "transworld",
+      "title": "SeaMeWe-5 cable fault expected to be repaired by 6 December",
+      "summary": "",
+      "url": "https://example.invalid/smw5/7",
+      "publishedAt": "2026-11-18T08:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "transworld",
+      "title": "SeaMeWe-5 cable fault in 2024",
+      "summary": "",
+      "url": "https://example.invalid/smw5/8",
+      "publishedAt": "2026-11-18T08:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "transworld",
+      "title": "No fault in the SeaMeWe-5 submarine cable",
+      "summary": "",
+      "url": "https://example.invalid/smw5/9",
+      "publishedAt": "2026-11-18T08:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "transworld",
+      "title": "SeaMeWe-5 and SeaMeWe-4 cable faults",
+      "summary": "",
+      "url": "https://example.invalid/smw5/10",
+      "publishedAt": "2026-11-18T08:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
+    },
+    {
+      "sourceId": "transworld",
+      "title": "SeaMeWe-5 submarine cable has been repaired",
+      "summary": "",
+      "url": "https://example.invalid/smw5/11",
+      "publishedAt": "2026-11-18T08:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "note": "a landing party cannot close a consortium cable (review round 1)",
+      "adversarial": true
+    },
+    {
+      "sourceId": "transworld",
+      "title": "SeaMeWe-5 cable partially restored",
+      "summary": "",
+      "url": "https://example.invalid/smw5/12",
+      "publishedAt": "2026-11-18T08:00:00.000Z",
+      "expected": "not-clear",
+      "synthetic": true,
+      "adversarial": true
     }
   ]
 }

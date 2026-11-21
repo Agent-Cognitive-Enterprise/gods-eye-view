@@ -92,7 +92,8 @@ five, and any hop that is not HTTPS fails the source. A feed item that
 links to another site than the feed's own (`www.` aside) is proposed as
 `news`, whatever the source, and marked as linking elsewhere. A page
 source keeps only links on the page's own site. The example lists the
-sources checked on 2026-11-20:
+sources checked on 2026-11-20, and those added on 2026-11-21 after the
+SEA-ME-WE 5 fault off Pakistan (2026-11-18) reached none of them:
 
 | Source                   | Kind      | Covers                                  | Note                                         |
 | ------------------------ | --------- | --------------------------------------- | -------------------------------------------- |
@@ -104,6 +105,13 @@ sources checked on 2026-11-20:
 | Traficom news page       | authority | Finland                                 | Lists only its newest notices: poll daily    |
 | Nkom news page           | authority | Norway, Svalbard                        | In Norwegian                                 |
 | SubTel Forum feed        | news      | Industry news                           | Leads only                                   |
+| Transworld feed          | operator  | TW1, SEA-ME-WE 5 in Pakistan            | Mostly marketing                             |
+| PTA media page           | authority | Pakistan                                | Switched off: timed out from Australia       |
+| Dawn feed                | news      | Pakistan                                | Leads only                                   |
+| ProPakistani feed        | news      | Pakistani technology news               | Leads only                                   |
+| Telecom Review feed      | news      | Middle East telecoms                    | Leads only                                   |
+| Arab News feed           | news      | Saudi Arabia, Red Sea                   | Leads only                                   |
+| Gulf News feed           | news      | UAE, Gulf                               | Leads only                                   |
 
 An `operator` source is primary only for cables it runs. WIOCC holds
 capacity on Equiano and 2Africa but does not run them. A notice such as
@@ -134,7 +142,7 @@ updates a notice in place, the inbox will not see the update.
 
 **Proposals.** A proposal lists the catalogue cables that its title and
 summary name. It finds them by catalogue name, ignoring case, as whole
-words, with no fuzzy match, and only in text that says cable, subsea,
+words, and only in text that says cable, subsea,
 submarine or undersea, or kabel, kabler, kablene, kablar or kaapeli (also inside a
 compound word such as sjøkabel or merikaapeli). Those words also occur in names
 ("Kabelvåg", "Kabel Eins"), so they can let a name like "Northern Lights"
@@ -143,7 +151,16 @@ Strait" and "T3". A one-token name of five or more characters with a
 digit, such as "SeaMeWe-4" or "C-Lion1", is matched without that word, so "C-Lion1 repair
 completed" still names the cable. Non-English notices name a cable only by
 such a name. A one-word name such as "Echo" or "SAFE" is also
-matched only with its catalogue capitals, and is shown as weak. Stored and
+matched only with its catalogue capitals, and is shown as weak.
+
+In text that says cable (or one of the words above), a name with a
+letter and a digit may be spaced and hyphenated differently: news wrote
+"SEA-ME-WE 5" and "SMW5" for the catalogue's "SeaMeWe-5", and "C-Lion 1"
+finds "C-Lion1". A few other spellings are listed as aliases (SMW4, SMW5,
+SMW6, EIG). There is no other fuzzy match: "C-Lion12" and "SEA-ME-WE 55"
+name nothing, and neither does "Africa 1,000 km". A clear signal still
+needs the catalogue's own spelling (or an alias) in the title; any other
+spelling goes to doubt and the local model. Stored and
 printed text has control and bidirectional characters removed.
 
 The proposal suggests a claim from the wording: `restored` for repaired
@@ -334,9 +351,16 @@ Known limits:
 ## Automatic signals (phase 2: the local model, shadow mode)
 
 A doubtful notice that names a catalogue cable waits in a queue in
-`cables-shadow-state.json` (at most 200, the oldest dropped). After each
-poll the shared local model reads up to three of them, at most twelve an
-hour. It runs only while the model is online and idle and no voice
+`cables-shadow-state.json`. So does an operator's or regulator's notice
+with incident wording that names no cable in its title and summary
+("International submarine cable develops fault: PTA"): its article may
+name the cable, and if it does not, the notice is skipped as
+`no-cable-named`. News that names no cable is not queued, because general
+news says "cable fault" of power cuts all the time. The queue holds at
+most 200; when it is full the oldest news goes first, and an operator's
+or regulator's notice only when no news is left. After each poll the
+shared local model reads up to three of them, at most twelve an hour,
+and at most five articles are fetched per poll, read or not. It runs only while the model is online and idle and no voice
 conversation holds it. `GEV_INTEL_CABLES_LLM=0` or `GEV_LLM_DISABLED=1`
 leaves the feed on rules alone (`src/intel/cableAssessment.js`):
 
@@ -372,11 +396,95 @@ leaves the feed on rules alone (`src/intel/cableAssessment.js`):
      rerouted. A fault must not be one the sentence says is repaired or
      resolved.
    - The sentence names the chosen cable, and no other cable the notice
-     names, by any of their catalogue names ("EESF-2" is
-     "Finland-Estonia 2").
+     names, by any of their catalogue names in any spelling ("EESF-2" is
+     "Finland-Estonia 2", "SEA-ME-WE 5" is "SeaMeWe-5").
    - The start date, if given, is in the last 30 days.
 5. A valid answer from an operator or regulator about its own cable is
-   `llm-clear`, and it updates the shadow incidents like a clear signal.
+   `llm-clear`, and it updates the shadow incidents like a clear signal,
+   unless one of these limits it to `llm-unverified` (logged as
+   `limitedBy`):
+   - `quote-only-in-article`: the quote comes from the article body. A
+     fault, like a repair, is confirmed only from the title or summary:
+     article bodies carry teasers, related news and other cables.
+   - `quote-not-a-plain-statement`: excluding every other cable cannot
+     work ("after a fault on the Gwadar fibre", "near Karachi where the
+     Oman one failed"), so the quoted sentence must be a closed grammar,
+     as a phase-1 title is. It has one of a few whole shapes about the
+     chosen cable:
+     - "A fault was detected in the C-Lion1 cable …", "There is a fault
+       in …", "The fault in the C-Lion1 cable is located …"
+     - "The C-Lion1 cable was damaged …", "… is out of service", "The
+       C-Lion1 cable connection between Finland and Germany has been
+       interrupted", "Data traffic in the C-Lion1 cable was interrupted …"
+     - "The SMW5 cable has developed a fault …", "The SMW5 cable fault was
+       detected …"
+     - for a repair: "The C-Lion1 cable has been repaired …", "The break
+       in the C-Lion1 cable was repaired …"
+
+     The source's own name may lead ("Cinia has detected …", "Transworld
+     informs its customers that …"). After a fault only these may follow,
+     up to four of them:
+     - one of the source's own `places` or `vocabulary` (a source with
+       several cables lists each cable's places in `cablePlaces`, so
+       Traficom's C-Lion1 "between Estonia and Sweden" is not one): "between Finland
+       and Germany", "connecting Helsinki and Rostock", "near Gotland",
+       "in the Swedish economic zone", "about 11 km off Karachi", "near
+       the Karachi cable landing station";
+     - a time: "at 4:04 a.m.", "at 06:40 Finnish time";
+     - a date: "on Monday", "on 17 November 2026", "this morning".
+
+     After a repair only a date or a time may follow: "repaired on the
+     Finnish side" or "restored at reduced capacity" is not a whole
+     repair. Nothing else is allowed: no "where", "as" or "after", and no
+     other verb.
+
+   - `quote-dated-another-year`: the sentence or the title names a year
+     other than the notice's own, or a year written as '24 (phase 1's
+     rule): "damaged near Gotland in 2024" is history.
+   - `quote-dated-apart-from-notice`: the sentence, the title or the
+     summary states a calendar date more than 7 days before the notice or
+     after it, a date that does not exist ("31 February"), or the sentence
+     states two dates that differ ("repaired on 2
+     January" in a November post is a recap). Without a year the date is
+     in the notice's year, or the year before. A stated date is also the
+     event's time, for a repair too, so a repair dated before the fault
+     opened closes nothing.
+   - `model-date-differs-from-quote`: the model's start date and the
+     sentence's date differ by more than a day.
+   - `quote-may-name-another-cable`, a second layer: a list of other
+     cables would always miss some ("the PEACE system", "WACS", "the line
+     operated by PTCL"), so the check works the other way round:
+     - Every cable noun in the sentence (cable, system, link, connection,
+       line, network, segment, route) must belong to the chosen cable,
+       with only its names masked. "The Oman cable", "the Finland-Sweden
+       link", "the other system" and "the cable from Gwadar" fail;
+       "the Karachi cable landing station" and "the cable ship" do not
+       count as cables.
+     - A source's own name straight before fault wording ("the
+       Transworld fault") may mean another of its cables.
+     - With the chosen cable's names and the source's own words
+       (`speakers`, `places`, `vocabulary`) masked, nothing name-like may
+       be left: another catalogue cable in any case or spelling, also
+       without "Cable" and by its bracketed parts with their capitals
+       ("PEACE", "WACS"); an
+       unlisted one (SeaMeWe-3); a word with letters and digits; a word
+       with two capitals; or a capitalised word after the first (not
+       judged in the title, which may be in title case). Months, days and
+       time zones are allowed.
+
+     These checks cost right answers that name another place or company.
+
+   - `headline-may-name-another-cable`: the same check on the title and
+     summary, without the capitalised-word rule, and without the
+     cable-noun rule when they do not name the chosen cable ("Network
+     advisory" is a title, not another cable). A title such as "TW1 and
+     SMW5 keep Pakistan connected" names two cables, so a fault quoted from
+     its article is not confirmed.
+   - `consortium-repair`: a source that is one landing party of a
+     consortium cable (its `consortium` list; Transworld for SEA-ME-WE 5)
+     may report a fault but cannot close the whole cable. Phase 1 gives
+     doubt for the same reason. Such an incident is closed by no source:
+     it fades after 30 days.
    - A fault dates from its start date.
    - A repair dates from its notice.
    - A repair seen while no incident is open is remembered, so a report of

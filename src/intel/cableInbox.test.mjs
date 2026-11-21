@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import {
   cableMentions,
   catalogueNames,
+  namesIn,
   claimCues,
   printable,
   dayBefore,
@@ -35,13 +36,58 @@ test('names cables only by their exact catalogue name, as whole words', () => {
   // Text that is not about a cable names no cable.
   assert.deepEqual(ids('Atlantis is down'), []);
   // No fuzzy or partial match.
-  assert.deepEqual(ids('C-Lion 1 and C-Lion12 and xC-Lion1 cables'), []);
+  assert.deepEqual(ids('C-Lion12 and xC-Lion1 cables'), []);
   // The longer name wins; the shorter one is reported only on its own.
   assert.deepEqual(ids('Atlantis-2 cable repaired'), ['atlantis-2']);
   assert.deepEqual(ids('Atlantis-2 and Atlantis cables'), [
     'atlantis',
     'atlantis-2',
   ]);
+});
+
+test('a name with a digit may be spaced and hyphenated differently, in text about cables', () => {
+  const smw = catalogueNames({
+    features: [
+      feature('seamewe-5', 'SeaMeWe-5'),
+      feature('seamewe-4', 'SeaMeWe-4'),
+      feature('africa-1', 'Africa-1'),
+      feature('europe-india-gateway-eig', 'Europe India Gateway (EIG)'),
+      feature('t3', 'T3'),
+    ],
+  });
+  const found = (text) => cableMentions(text, smw).map((m) => m.cableId);
+  // The SEA-ME-WE 5 fault off Pakistan, 2026-11-18, as the news wrote it.
+  for (const text of [
+    'a fault had been reported in the SEA-ME-WE 5 (SMW5) international submarine cable system',
+    'Fault on the Sea Me We 5 cable',
+    'SMW-5 cable fault',
+    'SMW5 subsea cable fault',
+  ])
+    assert.deepEqual(found(text), ['seamewe-5'], text);
+  assert.deepEqual(ids('C-Lion 1 cable fault'), ['c-lion1']);
+  // Another spelling needs text about cables, even for a distinct name.
+  assert.deepEqual(found('SEA-ME-WE 5 fault'), []);
+  assert.deepEqual(found('SeaMeWe-5 fault'), ['seamewe-5']);
+  // Not another cable, not a longer number, not a short name.
+  assert.deepEqual(found('SEA-ME-WE 4 and SEA-ME-WE 55 cables'), ['seamewe-4']);
+  assert.deepEqual(found('a subsea cable to Africa 1,000 km long'), []);
+  assert.deepEqual(found('the SeaMeWe 5 000 km cable'), []);
+  assert.deepEqual(
+    cableMentions(
+      'Top 2 Africa cable stories',
+      catalogueNames({
+        features: [feature('2africa', '2Africa')],
+      }),
+    ),
+    [],
+  );
+  assert.deepEqual(found('the T 3 cable'), []);
+  // A one-word alias keeps its capitals.
+  assert.deepEqual(found('EIG cable cut'), ['europe-india-gateway-eig']);
+  assert.deepEqual(found('the eig cable'), []);
+  assert.equal(namesIn('fault in the sea-me-we 5 cable', 'SeaMeWe-5'), true);
+  assert.equal(namesIn('the c-lion10 cable', 'C-Lion1'), false);
+  assert.equal(namesIn('the clion1 cable', 'C-Lion1'), true);
 });
 
 test('a one-word name needs its capitals and the word cable, and is marked weak', () => {

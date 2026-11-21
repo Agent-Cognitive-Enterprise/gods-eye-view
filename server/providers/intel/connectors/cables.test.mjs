@@ -354,10 +354,164 @@ test('a doubtful notice naming a cable is queued for the model', async () => {
   assert.equal(state.pending[0].item.url, 'https://op.example/n/update');
 });
 
-test('the model confirms a queued operator notice from the article text', async () => {
-  const llm = stubModel({ replies: [FAULT_ANSWER] });
-  const { state, lines } = await checkWithModel({
+test('incident wording that names no cable is queued too; other doubt is not', async () => {
+  // The Nation, 2026-11-18: the headline names no cable, the article
+  // names SEA-ME-WE 5.
+  feed.body = rss([
+    [
+      'International submarine cable develops fault: PTA',
+      'fault',
+      'Wed, 18 Nov 2026 08:00:00 GMT',
+    ],
+    [
+      'New submarine cable route planned',
+      'route',
+      'Wed, 18 Nov 2026 07:00:00 GMT',
+    ],
+  ]);
+  const { state, lines } = await pollCableSources({
+    sources: [source],
+    state: { version: 1, seen: {}, baselines: { op: 'x' }, incidents: {} },
+    names,
+    fetchImpl: feed(feed.body),
+    now: () => Date.parse('2026-11-18T10:00:00Z'),
+  });
+  assert.deepEqual(
+    state.pending.map((p) => p.item.url),
+    ['https://op.example/n/fault'],
+  );
+  assert.deepEqual(
+    lines.map((l) => [l.priority, l.signal]),
+    [
+      ['mention', 'none'],
+      ['incident', 'doubt'],
+    ],
+  );
+});
+
+test('news that names no cable is not queued, so power-cut stories cannot flood the model', async () => {
+  const news = { ...source, sourceKind: 'news', cables: [] };
+  feed.body = rss([
+    [
+      'K-Electric says cable faults behind power outages in Karachi',
+      'power',
+      'Wed, 18 Nov 2026 08:00:00 GMT',
+    ],
+  ]);
+  const { state } = await pollCableSources({
+    sources: [news],
+    state: { version: 1, seen: {}, baselines: { op: 'x' }, incidents: {} },
+    names,
+    fetchImpl: feed(feed.body),
+    now: () => Date.parse('2026-11-18T10:00:00Z'),
+  });
+  assert.deepEqual(state.pending ?? [], []);
+});
+
+test('a full queue drops the oldest news first, and one pass fetches at most five articles', async () => {
+  const entry = (i, primary) => ({
+    item: {
+      url: `https://op.example/n/${primary ? 'p' : 'q'}${i}`,
+      title: 'Cable fault',
+      summary: '',
+      publishedAt: '2026-11-18T09:00:00.000Z',
+    },
+    sourceId: primary ? 'op' : 'news',
+    seenAt: '2026-11-18T10:00:00.000Z',
+    at: Date.parse('2026-11-18T09:00:00Z'),
+    primary,
+    attempts: 0,
+  });
+  // 200 queued, the oldest an operator's; one more news item arrives.
+  const pending = [entry(0, true)];
+  for (let i = 1; i < 200; i += 1) pending.push(entry(i, false));
+  feed.body = rss([
+    [
+      'Fault in the C-Lion1 cable expected to last',
+      'new',
+      'Wed, 18 Nov 2026 09:30:00 GMT',
+    ],
+  ]);
+  const news = { ...source, id: 'news', sourceKind: 'news', cables: [] };
+  const { state } = await pollCableSources({
+    sources: [news],
+    state: {
+      version: 1,
+      seen: {},
+      baselines: { news: 'x' },
+      incidents: {},
+      pending,
+    },
+    names,
+    fetchImpl: feed(feed.body),
+    now: () => Date.parse('2026-11-18T10:00:00Z'),
+  });
+  assert.equal(state.pending.length, 200);
+  assert.equal(state.pending[0].item.url, 'https://op.example/n/p0');
+  assert.equal(
+    state.pending.some((p) => p.item.url.endsWith('/q1')),
+    false,
+  );
+  // Articles that name no cable use no model check, but still count.
+  let fetches = 0;
+  const llm = stubModel();
+  await checkWithModel({
+    state: { ...state, pending: state.pending.slice(1) },
+    sources: [news],
+    names,
+    llm,
+    fetchImpl: async () => {
+      fetches += 1;
+      return new Response('<article><p>Nothing here.</p></article>');
+    },
+    now: () => Date.parse('2026-11-18T10:00:00Z'),
+  });
+  assert.equal(fetches, 5);
+  assert.equal(llm.calls.length, 0);
+});
+
+test('the new sources are checked feeds: Transworld speaks for SEA-ME-WE 5, the PTA is off', () => {
+  const byId = new Map(CABLE_SOURCES.map((s) => [s.id, s]));
+  assert.deepEqual(byId.get('transworld').cables, [
+    'transworld-tw1',
+    'seamewe-5',
+  ]);
+  for (const id of [
+    'dawn-news',
+    'propakistani',
+    'telecom-review',
+    'arab-news',
+    'gulf-news',
+  ])
+    assert.equal(byId.get(id).sourceKind, 'news', id);
+  // Its site timed out from here: listed in the example file, disabled.
+  assert.equal(byId.has('pta-news'), false);
+  for (const s of CABLE_SOURCES) assert.match(s.url, /^https:\/\//, s.id);
+  assert.equal(
+    new Set(CABLE_SOURCES.map((s) => s.id)).size,
+    CABLE_SOURCES.length,
+  );
+});
+
+test('the model confirms a queued operator notice from its summary, never from the article alone', async () => {
+  // Quoted from the article body only: logged, never shown.
+  const fromArticle = await checkWithModel({
     state: pendingState(),
+    sources: [source],
+    names,
+    llm: stubModel({ replies: [FAULT_ANSWER] }),
+    fetchImpl: articleFetch,
+    now: () => Date.parse('2024-11-18T12:00:00Z'),
+  });
+  assert.equal(fromArticle.lines[0].signal, 'llm-unverified');
+  assert.equal(fromArticle.lines[0].reason, 'quote-only-in-article');
+  assert.deepEqual(fromArticle.state.incidents, {});
+  const llm = stubModel({ replies: [FAULT_ANSWER] });
+  const queued = pendingState();
+  queued.pending[0].item.summary =
+    'A fault has been detected in the C-Lion1 submarine cable.';
+  const { state, lines } = await checkWithModel({
+    state: queued,
     sources: [source],
     names,
     llm,
@@ -376,6 +530,45 @@ test('the model confirms a queued operator notice from the article text', async 
     'c-lion1',
     'none',
   ]);
+});
+
+test('a confirmed repair takes the date its sentence states, so an old repair closes nothing', async () => {
+  const open = {
+    'c-lion1': {
+      cableId: 'c-lion1',
+      status: 'open',
+      openedAt: '2024-11-18T09:00:00.000Z',
+      lastReportedAt: '2024-11-18T09:00:00.000Z',
+      breakConfirmed: false,
+      sourceId: 'op',
+      sources: ['https://op.example/n/fault'],
+    },
+  };
+  const queued = pendingState({ incidents: open });
+  queued.pending[0].item.summary =
+    'The C-Lion1 submarine cable has been repaired on 15 November.';
+  queued.pending[0].item.publishedAt = '2024-11-19T09:00:00.000Z';
+  queued.pending[0].at = Date.parse('2024-11-19T09:00:00Z');
+  const { lines, state } = await checkWithModel({
+    state: queued,
+    sources: [source],
+    names,
+    llm: stubModel({
+      replies: [
+        {
+          ...FAULT_ANSWER,
+          claim: 'restored',
+          started_on: '',
+          quote: 'The C-Lion1 submarine cable has been repaired on 15 November',
+        },
+      ],
+    }),
+    fetchImpl: articleFetch,
+    now: () => Date.parse('2024-11-19T12:00:00Z'),
+  });
+  assert.equal(lines[0].signal, 'llm-clear');
+  assert.equal(lines[0].change, 'restore-before-incident');
+  assert.equal(state.incidents['c-lion1'].status, 'open');
 });
 
 test('a made-up quote is rejected and changes nothing', async () => {

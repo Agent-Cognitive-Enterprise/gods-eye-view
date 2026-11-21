@@ -76,6 +76,64 @@
       "sourceKind": "news",
       "publisher": "SubTel Forum",
       "remit": "Industry news: leads only, look for the operator's own notice"
+    },
+    {
+      "id": "transworld",
+      "format": "rss",
+      "url": "https://www.tw1.com/feed/",
+      "sourceKind": "operator",
+      "publisher": "Transworld Associates",
+      "remit": "TW1, and SEA-ME-WE 5 where it lands in Pakistan; the feed is mostly marketing"
+    },
+    {
+      "id": "pta-news",
+      "enabled": false,
+      "format": "page",
+      "url": "https://www.pta.gov.pk/en/media-center",
+      "pathPrefix": "/en/media-center/",
+      "sourceKind": "authority",
+      "publisher": "Pakistan Telecommunication Authority",
+      "remit": "Telecoms in Pakistan; it reported the SEA-ME-WE 5 fault of 2026-11-18, but its site timed out from Australia on 2026-11-21, so it is untested"
+    },
+    {
+      "id": "dawn-news",
+      "format": "rss",
+      "url": "https://www.dawn.com/feeds/home",
+      "sourceKind": "news",
+      "publisher": "Dawn",
+      "remit": "Pakistani news: leads only"
+    },
+    {
+      "id": "propakistani",
+      "format": "rss",
+      "url": "https://propakistani.pk/feed/",
+      "sourceKind": "news",
+      "publisher": "ProPakistani",
+      "remit": "Pakistani technology news: leads only"
+    },
+    {
+      "id": "telecom-review",
+      "format": "rss",
+      "url": "https://www.telecomreview.com/feed/",
+      "sourceKind": "news",
+      "publisher": "Telecom Review",
+      "remit": "Middle East telecoms news: leads only"
+    },
+    {
+      "id": "arab-news",
+      "format": "rss",
+      "url": "https://www.arabnews.com/rss.xml",
+      "sourceKind": "news",
+      "publisher": "Arab News",
+      "remit": "Saudi and Red Sea news: leads only"
+    },
+    {
+      "id": "gulf-news",
+      "format": "rss",
+      "url": "https://gulfnews.com/stories.rss",
+      "sourceKind": "news",
+      "publisher": "Gulf News",
+      "remit": "UAE and Gulf news: leads only"
     }
   ],
   "ioda": { "enabled": false }

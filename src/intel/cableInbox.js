@@ -17,6 +17,25 @@ const ABOUT_CABLES =
 // Names with a space are not: "Germany-Denmark 3" is also a football score.
 const DISTINCT = (name) =>
   /\d/.test(name) && name.length >= 5 && !/\s/.test(name);
+// Names written in other spellings: news writes "SEA-ME-WE 5" and "SMW5"
+// for the catalogue's "SeaMeWe-5". Spacing, hyphens and capitals are
+// matched loosely (see LOOSE); these are the other forms.
+const ALIASES = Object.freeze({
+  'seamewe-4': ['SMW4'],
+  'seamewe-5': ['SMW5'],
+  'seamewe-6': ['SMW6'],
+  'europe-india-gateway-eig': ['EIG'],
+  imewe: ['I-ME-WE'],
+  'transworld-tw1': ['TW-1'],
+});
+// Spaces, hyphens, dashes and underscores inside a name: "SEA-ME-WE 5",
+// "Sea Me We 5" and "SeaMeWe-5" are one name.
+const SEPARATOR = /[\s\-‐-―−_]/u;
+// A name is matched with any spacing only when it has a letter and a digit
+// and four or more characters without separators: "seamewe5", "clion1",
+// "aae1". Without a digit ("Northern Lights") or shorter ("T3") the exact
+// spelling is needed.
+const LOOSE = (key) => key.length >= 4 && /\p{L}/u.test(key) && /\d/.test(key);
 // C0 and C1 controls (terminal escapes, BEL) and bidirectional overrides.
 const UNPRINTABLE =
   /[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g;
@@ -43,9 +62,72 @@ function fold(text) {
   return out;
 }
 
+/** A name folded, with no spaces, hyphens or dashes: "seamewe5". */
+const compact = (name) =>
+  [...fold(name)].filter((c) => !SEPARATOR.test(c)).join('');
+
+/**
+ * Every [start, end) in `folded` that spells `key` (a compact name) with
+ * any spaces, hyphens or dashes, as whole words: "SEA-ME-WE 5" for
+ * "seamewe5". It is no match when a number goes on after it ("Africa 1,000
+ * km", "SeaMeWe 5 000 km"), or when a number stands apart before the
+ * letters ("Top 2 Africa"): that is counting, not a name.
+ */
+function looseAt(folded, key) {
+  let text = '';
+  const at = [];
+  for (let i = 0; i < folded.length; i += 1)
+    if (!SEPARATOR.test(folded[i])) {
+      text += folded[i];
+      at.push(i);
+    }
+  const found = [];
+  for (let j = text.indexOf(key); j >= 0; j = text.indexOf(key, j + 1)) {
+    const start = at[j];
+    const end = at[j + key.length - 1] + 1;
+    const before = folded[start - 1];
+    const after = folded[end];
+    if (before !== undefined && WORD_CHAR.test(before)) continue;
+    if (after !== undefined && WORD_CHAR.test(after)) continue;
+    if (/^[.,\s]?\d/.test(folded.slice(end, end + 2))) continue;
+    const lead = /^\d+/.exec(folded.slice(start, end))?.[0];
+    if (lead && SEPARATOR.test(folded[start + lead.length] ?? '')) continue;
+    found.push([start, end]);
+  }
+  return found;
+}
+
+/**
+ * Whether `text` names a cable by `name`: the exact name as whole words,
+ * any case, or for a name with a letter and a digit, any spacing and
+ * hyphens ("SEA-ME-WE 5" for "SeaMeWe-5"). It does not ask whether the
+ * text is about cables.
+ */
+export function namesIn(text, name) {
+  return nameSpans(text, name).length > 0;
+}
+
+/**
+ * Where `text` names a cable by `name`, as namesIn decides: [start, end)
+ * pairs in the NFC text. Lets a caller blank out one cable's names before
+ * looking for another ("Atlantis" inside "Atlantis-2").
+ */
+export function nameSpans(text, name) {
+  const folded = fold(String(text ?? '').normalize('NFC'));
+  const key = fold(String(name ?? '').normalize('NFC'));
+  if (!key) return [];
+  const spans = wholeWordAt(folded, key).map((s) => [s, s + key.length]);
+  const loose = compact(name);
+  if (LOOSE(loose))
+    for (const span of looseAt(folded, loose))
+      if (!spans.some(([s]) => s === span[0])) spans.push(span);
+  return spans;
+}
+
 /**
  * Catalogue names for matching in free text: each cable's full name, plus
- * distinctive parts of a bracketed name.
+ * distinctive parts of a bracketed name, plus the other spellings in
+ * ALIASES.
  * A single word with no digit or hyphen ("Echo", "SAFE", "Blue") is weak:
  * it is matched only with its catalogue capitals, and reported as weak.
  * Every match also needs text about a cable (see cableMentions).
@@ -55,14 +137,17 @@ export function catalogueNames(collection) {
     throw new Error('Expected cable GeoJSON features');
   const seen = new Set();
   const entries = [];
-  const add = (cableId, name) =>
+  const add = (cableId, name) => {
+    const loose = compact(name);
     entries.push({
       cableId,
       name,
       key: fold(name),
+      ...(LOOSE(loose) ? { loose } : {}),
       weak: SINGLE_WORD.test(name),
       distinct: DISTINCT(name),
     });
+  };
   for (const feature of collection.features) {
     const { id, name } = feature?.properties ?? {};
     if (typeof id !== 'string' || !id || typeof name !== 'string') continue;
@@ -83,6 +168,7 @@ export function catalogueNames(collection) {
           /^(?=.*[A-Z].*[A-Z])(?=.*[a-z])[A-Za-z]{4,}$/.test(part)
         )
           add(id, part);
+    for (const alias of ALIASES[id] ?? []) add(id, alias);
   }
   return entries.sort(
     (a, b) => b.name.length - a.name.length || (a.cableId < b.cableId ? -1 : 1),
@@ -107,11 +193,14 @@ function wholeWordAt(haystack, needle) {
 }
 
 /**
- * Catalogue cables named in `text`, by exact catalogue name (case-folded,
- * whole words), and only when the text says cable, subsea, submarine or
- * undersea, unless the name has a digit and five or more characters. No fuzzy, partial or nearest match: "C-Lion 1" does not find
- * "C-Lion1". A name inside a longer matched name ("Atlantis" in
- * "Atlantis-2") is not reported separately.
+ * Catalogue cables named in `text`, by catalogue name (case-folded, whole
+ * words), and only when the text says cable, subsea, submarine or
+ * undersea, unless the name has a digit and five or more characters.
+ * In text about cables, a name with a letter and a digit may also be
+ * spaced or hyphenated differently: "SEA-ME-WE 5" and "C-Lion 1" find
+ * "SeaMeWe-5" and "C-Lion1". No other fuzzy, partial or nearest match:
+ * "C-Lion12" does not find "C-Lion1". A name inside a longer matched name
+ * ("Atlantis" in "Atlantis-2") is not reported separately.
  */
 export function cableMentions(text, names) {
   const raw = String(text ?? '').normalize('NFC');
@@ -122,16 +211,17 @@ export function cableMentions(text, names) {
   for (const entry of names) {
     if (!aboutCables && !entry.distinct) continue;
     const spans = entry.weak
-      ? wholeWordAt(raw, entry.name)
-      : wholeWordAt(folded, entry.key);
+      ? wholeWordAt(raw, entry.name).map((s) => [s, s + entry.name.length])
+      : wholeWordAt(folded, entry.key).map((s) => [s, s + entry.key.length]);
+    // Another spelling counts only in text about cables.
+    if (entry.loose && aboutCables)
+      for (const span of looseAt(folded, entry.loose))
+        if (!spans.some(([s]) => s === span[0])) spans.push(span);
     const free = spans.filter(
-      (start) =>
-        !taken.some(
-          ([from, to]) => start < to && start + entry.name.length > from,
-        ),
+      ([start, end]) => !taken.some(([from, to]) => start < to && end > from),
     );
     if (!free.length) continue;
-    for (const start of free) taken.push([start, start + entry.name.length]);
+    for (const span of free) taken.push(span);
     // One result per cable; a strong name beats a weak one ("EASSy").
     const known = out.find((m) => m.cableId === entry.cableId);
     if (!known)

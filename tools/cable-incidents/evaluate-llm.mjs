@@ -94,6 +94,7 @@ for (const { notice, raw } of doubt) {
       source,
       cables,
       now: published + 3600_000,
+      catalogue: names,
     });
   } catch (error) {
     verdict = { signal: 'llm-rejected', reason: `error: ${error.message}` };

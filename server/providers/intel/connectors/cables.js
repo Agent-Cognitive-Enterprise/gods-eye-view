@@ -49,6 +49,9 @@ const MAX_LOG_BYTES = 5 * 1024 * 1024;
 
 /**
  * The checked sources (2026-11-20; see tools/cable-incidents/README.md).
+ * `vocabulary` are other capitalised words its notices use that name no
+ * cable: the model check masks them with `speakers` and `places` before
+ * looking for another cable in a quote.
  * `speakers` are the source's own names: the only words allowed before a
  * cable's name in a clear title, and `places` the only names a "between A
  * and B" clause may use. `cables` lists the catalogue cables a source
@@ -62,6 +65,17 @@ export const CABLE_SOURCES = Object.freeze([
     id: 'cinia-news',
     places: ['Finland', 'Germany', 'Helsinki', 'Rostock'],
     speakers: ['Cinia', 'Cinia Oy'],
+    // Other words its notices write with capitals that name no cable.
+    vocabulary: [
+      'Finnish',
+      'German',
+      'Swedish',
+      'Sweden',
+      'Gotland',
+      'Öland',
+      'Baltic Sea',
+      'Gulf of Finland',
+    ],
     format: 'rss',
     url: 'https://www.cinia.fi/en/news/rss.xml',
     sourceKind: 'operator',
@@ -121,6 +135,37 @@ export const CABLE_SOURCES = Object.freeze([
       'Stockholm',
     ],
     speakers: ['Traficom'],
+    // The model check takes only a cable's own places after it: C-Lion1
+    // "between Estonia and Sweden" is about another cable.
+    cablePlaces: {
+      'c-lion1': ['Finland', 'Germany', 'Helsinki', 'Rostock'],
+      'eastern-light-sweden-finland-i': [
+        'Sweden',
+        'Finland',
+        'Stockholm',
+        'Helsinki',
+      ],
+      'eastern-light-sweden-finland-ii': [
+        'Sweden',
+        'Finland',
+        'Stockholm',
+        'Helsinki',
+      ],
+      'finland-estonia-2-eesf-2': ['Finland', 'Estonia', 'Helsinki', 'Tallinn'],
+      'finland-estonia-3-eesf-3': ['Finland', 'Estonia', 'Helsinki', 'Tallinn'],
+      'finland-estonia-connection-1-fec-1': [
+        'Finland',
+        'Estonia',
+        'Helsinki',
+        'Tallinn',
+      ],
+      'finland-estonia-connection-2-fec-2': [
+        'Finland',
+        'Estonia',
+        'Helsinki',
+        'Tallinn',
+      ],
+    },
     format: 'page',
     url: 'https://www.traficom.fi/en/newsroom',
     pathPrefix: '/en/news/',
@@ -150,6 +195,74 @@ export const CABLE_SOURCES = Object.freeze([
     speakers: ['SubTel Forum'],
     format: 'rss',
     url: 'https://subtelforum.com/feed/',
+    sourceKind: 'news',
+    cables: [],
+  },
+  // Checked 2026-11-21, after the SEA-ME-WE 5 fault off Pakistan
+  // (2026-11-18) reached none of the sources above. Transworld lands
+  // SEA-ME-WE 5 in Pakistan and runs TW1; its feed is mostly marketing.
+  {
+    id: 'transworld',
+    places: ['Pakistan', 'Karachi', 'Oman', 'UAE'],
+    speakers: [
+      'Transworld',
+      'Transworld Associates',
+      'Transworld Associates (Pvt) Ltd',
+      'TWA',
+    ],
+    vocabulary: [
+      'Pakistani',
+      'Gwadar',
+      'Arabian Sea',
+      'PTA',
+      'Pakistan Telecommunication Authority',
+    ],
+    format: 'rss',
+    url: 'https://www.tw1.com/feed/',
+    sourceKind: 'operator',
+    cables: ['transworld-tw1', 'seamewe-5'],
+    // One landing party of a consortium cable: its fault notices count,
+    // but its repair notice cannot close the whole cable's incident.
+    consortium: ['seamewe-5'],
+  },
+  // News from Pakistan, the Gulf and the Red Sea: leads only.
+  {
+    id: 'dawn-news',
+    speakers: ['Dawn'],
+    format: 'rss',
+    url: 'https://www.dawn.com/feeds/home',
+    sourceKind: 'news',
+    cables: [],
+  },
+  {
+    id: 'propakistani',
+    speakers: ['ProPakistani'],
+    format: 'rss',
+    url: 'https://propakistani.pk/feed/',
+    sourceKind: 'news',
+    cables: [],
+  },
+  {
+    id: 'telecom-review',
+    speakers: ['Telecom Review'],
+    format: 'rss',
+    url: 'https://www.telecomreview.com/feed/',
+    sourceKind: 'news',
+    cables: [],
+  },
+  {
+    id: 'arab-news',
+    speakers: ['Arab News'],
+    format: 'rss',
+    url: 'https://www.arabnews.com/rss.xml',
+    sourceKind: 'news',
+    cables: [],
+  },
+  {
+    id: 'gulf-news',
+    speakers: ['Gulf News'],
+    format: 'rss',
+    url: 'https://gulfnews.com/stories.rss',
     sourceKind: 'news',
     cables: [],
   },
@@ -241,6 +354,9 @@ export async function pollCableSources({
   delete next.reset;
   const errors = [];
   let latest = 0;
+  const primaryIds = new Set(
+    sources.filter((s) => PRIMARY_KINDS.has(s.sourceKind)).map((s) => s.id),
+  );
   for (const source of sources) {
     let items;
     try {
@@ -298,9 +414,22 @@ export async function pollCableSources({
         assessment = { ...assessment, signal: 'doubt', reason: 'stale-notice' };
       if (assessment.signal !== 'clear') {
         lines.push(shadowLine({ item, source, assessment, seenAt }));
-        // Doubt that names a cable waits for the local model (phase 2).
-        if (assessment.signal === 'doubt' && assessment.cables.length)
-          queueForModel(next, { item, sourceId: source.id, seenAt, at });
+        // Doubt that names a cable waits for the local model (phase 2). So
+        // does an operator's or regulator's incident wording that names
+        // none ("International submarine cable develops fault: PTA"): its
+        // article may name the cable. News that names no cable does not:
+        // general news says "cable fault" of power cuts all the time.
+        const primary = PRIMARY_KINDS.has(source.sourceKind) && !item.offHost;
+        if (
+          assessment.signal === 'doubt' &&
+          (assessment.cables.length ||
+            (primary && assessment.priority === 'incident'))
+        )
+          queueForModel(
+            next,
+            { item, sourceId: source.id, seenAt, at, primary },
+            primaryIds,
+          );
         continue;
       }
       for (const cableId of assessment.cableIds) {
@@ -337,16 +466,31 @@ const PRIMARY_KINDS = new Set(['operator', 'authority']);
 const MAX_PENDING = 200;
 const MAX_ATTEMPTS = 3;
 const MAX_MODEL_CHECKS_PER_POLL = 3;
+// Articles fetched per poll, whether the model then reads them or not.
+const MAX_FETCHES_PER_POLL = 5;
 const MAX_MODEL_CHECKS_PER_HOUR = 12;
 const HOUR_MS = 3600_000;
 
-/** Keep a doubtful notice for the model; the oldest go first when full. */
-function queueForModel(state, { item, sourceId, seenAt, at }) {
+/**
+ * Keep a doubtful notice for the model. When the queue is full the oldest
+ * news goes first, and an operator's or regulator's notice only when
+ * nothing else is left.
+ */
+function queueForModel(
+  state,
+  { item, sourceId, seenAt, at, primary },
+  primaryIds = new Set(),
+) {
   state.pending ??= [];
   if (state.pending.some((p) => p.item.url === item.url)) return;
-  state.pending.push({ item, sourceId, seenAt, at, attempts: 0 });
-  if (state.pending.length > MAX_PENDING)
-    state.pending.splice(0, state.pending.length - MAX_PENDING);
+  state.pending.push({ item, sourceId, seenAt, at, primary, attempts: 0 });
+  // Entries saved before `primary` was kept: judged by their source.
+  const isPrimary = (p) =>
+    p.primary ?? (primaryIds.has(p.sourceId) && !p.item?.offHost);
+  while (state.pending.length > MAX_PENDING) {
+    const news = state.pending.findIndex((p) => !isPrimary(p));
+    state.pending.splice(news >= 0 ? news : 0, 1);
+  }
 }
 
 /**
@@ -375,8 +519,10 @@ export async function checkWithModel({
   if (!llm || !next.pending.length) return { state: next, lines };
   const byId = new Map(sources.map((s) => [s.id, s]));
   let checked = 0;
+  let fetched = 0;
   while (next.pending.length && checked < MAX_MODEL_CHECKS_PER_POLL) {
     if (next.modelChecks.length >= MAX_MODEL_CHECKS_PER_HOUR) break;
+    if (fetched >= MAX_FETCHES_PER_POLL) break;
     if (foreground()) break;
     if (llm.status().status !== 'online') await llm.probe();
     if (llm.status().status !== 'online') break;
@@ -407,6 +553,7 @@ export async function checkWithModel({
     let article = '';
     if (!entry.item.offHost)
       try {
+        fetched += 1;
         const page = await fetchText(entry.item.url, {
           fetchImpl,
           maxBytes: MAX_SOURCE_BYTES,
@@ -466,17 +613,18 @@ export async function checkWithModel({
       break;
     }
     take();
-    const verdict = validateCableAssessment(reply.text, {
+    const verdict = validateCableAssessment(reply?.text ?? '', {
       notice,
       article,
       source,
       cables,
       now: now(),
+      catalogue: names,
     });
     const line = {
       ...base,
       signal: verdict.signal,
-      reason: verdict.reason ?? null,
+      reason: verdict.reason ?? verdict.limitedBy ?? null,
       cables: verdict.cableId
         ? [verdict.cableId]
         : cables.map((c) => c.cableId),
@@ -485,14 +633,17 @@ export async function checkWithModel({
       quote: verdict.quote ?? null,
       model: llm.status().model ?? null,
       promptVersion: CABLE_PROMPT_VERSION,
-      latencyMs: reply.latencyMs ?? null,
+      latencyMs: reply?.latencyMs ?? null,
       change: null,
     };
     if (verdict.signal === 'llm-clear') {
-      // A fault dates from when it began; a repair from its notice (the
+      // The date the sentence states comes first, for a repair too: a
+      // repair dated before the fault opened closes nothing. Otherwise a
+      // fault dates from when it began, a repair from its notice (the
       // model's start date for a repair is the fault's).
-      const started =
-        verdict.claim !== 'restored' && verdict.startedOn
+      const started = verdict.statedOn
+        ? Date.parse(`${verdict.statedOn}T00:00:00Z`)
+        : verdict.claim !== 'restored' && verdict.startedOn
           ? Date.parse(`${verdict.startedOn}T00:00:00Z`)
           : entry.at;
       const applied = applySignal(next.incidents, {

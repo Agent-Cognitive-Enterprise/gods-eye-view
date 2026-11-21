@@ -355,6 +355,12 @@ export function assessNotice({ item, source, names, now = Date.now() }) {
     source.places ?? [],
   );
   if (judged.reason) return doubt(judged.reason);
+  // One landing party of a consortium cable cannot close the whole cable.
+  if (
+    judged.claim === 'restored' &&
+    (source.consortium ?? []).includes(inTitle[0].cableId)
+  )
+    return doubt('consortium-repair');
   return {
     ...base,
     signal: 'clear',
