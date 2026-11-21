@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { openSkyProxy } from './aircraft/opensky.js';
 import { celestrakProxy, rocketLaunchesProxy } from './space.js';
+import { issTelemetryProxy } from './space/issTelemetry.js';
 import { tomtomProxy } from './traffic.js';
 import { firmsProxy } from './firms.js';
 import { terrainHeightsProxy } from './terrain.js';
@@ -74,6 +75,7 @@ function localProviderPlugins({
   return [
     ...(isolated ? [] : [openSkyProxy()]),
     celestrakProxy(),
+    issTelemetryProxy(),
     tomtomProxy(),
     firmsProxy(),
     rocketLaunchesProxy(),

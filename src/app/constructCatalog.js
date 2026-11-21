@@ -137,6 +137,7 @@ export function createApplicationCatalog({
     });
     const satellites = createApplicationSatellites({
       source: sources.satellites,
+      ...(resolveAsset ? { resolveAsset } : {}),
     });
     // Fork: on another renderer the fork's Cesium-drawn layers are absent
     // (src/fork/engine.js), so are their metadata and source consumers.

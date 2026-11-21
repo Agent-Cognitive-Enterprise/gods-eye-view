@@ -35,11 +35,11 @@ async function follow() {
         <ul class="fast-activity">
           <li v-if="!panel.rows.length" class="intel-muted">{{ t('Nothing yet') }}</li>
           <li v-for="row in panel.rows" :key="row.id" class="fast-row" :class="`s-${row.status}`">
-            <button type="button" class="fast-row-button" :aria-expanded="String(row.open)" @click="store.act('toggleEvent', row.id)">
+            <UiButton class="fast-row-button" :aria-expanded="String(row.open)" @click="store.act('toggleEvent', row.id)">
               <span class="fast-badge">{{ row.badge }}</span>
               <span class="fast-row-title">{{ row.title }}</span>
               <span class="intel-muted">{{ row.meta }}</span>
-            </button>
+            </UiButton>
             <div v-if="row.timeline" class="fast-timeline">
               <p v-if="row.timeline.text" class="intel-muted">{{ row.timeline.text }}</p>
               <template v-else>
@@ -58,7 +58,7 @@ async function follow() {
             </div>
           </li>
         </ul>
-        <button type="button" class="intel-section panel-title intel-rules-toggle fast-section" :aria-expanded="String(sourcesOpen)" @click="sourcesOpen = !sourcesOpen">{{ sourcesOpen ? '▾' : '▸' }} {{ t('SOURCES') }}</button>
+        <UiButton class="intel-section panel-title intel-rules-toggle fast-section" :aria-expanded="String(sourcesOpen)" @click="sourcesOpen = !sourcesOpen">{{ sourcesOpen ? '▾' : '▸' }} {{ t('SOURCES') }}</UiButton>
         <div v-if="sourcesOpen" class="fast-sources">
           <div v-for="account in panel.accounts" :key="account.did" class="fast-account">
             <span class="fast-account-name">{{ account.name }}</span>
@@ -71,7 +71,7 @@ async function follow() {
           </form>
           <p v-if="panel.notice" class="fast-notice">{{ panel.notice }}</p>
         </div>
-        <button type="button" class="intel-section panel-title intel-rules-toggle fast-section" :aria-expanded="String(healthOpen)" @click="healthOpen = !healthOpen">{{ healthOpen ? '▾' : '▸' }} {{ t('HEALTH AND DELAY') }}</button>
+        <UiButton class="intel-section panel-title intel-rules-toggle fast-section" :aria-expanded="String(healthOpen)" @click="healthOpen = !healthOpen">{{ healthOpen ? '▾' : '▸' }} {{ t('HEALTH AND DELAY') }}</UiButton>
         <div v-if="healthOpen" class="fast-health">
           <ul class="fast-source-list">
             <li v-for="source in panel.sources" :key="source.id" class="fast-source" :class="{ 'fast-warn': source.warn }">

@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { formatNumber, t } from '../../../i18n/index.js';
 import WORLD from '../../../intel/overviewWorld.json' with { type: 'json' };
 import { project, routeSegments, segmentsPath } from '../../../intel/mercator.js';
+import UiButton from '../../kit/UiButton.vue';
 import { useWorldOverviewStore } from '../../stores/worldOverview.js';
 import WorldOverviewCamera from './WorldOverviewCamera.vue';
 
@@ -122,7 +123,7 @@ onBeforeUnmount(() => {
           <span v-if="status" class="wo-status">{{ status }}</span>
         </template>
       </div>
-      <button type="button" class="wo-toggle" :aria-expanded="String(open)" :aria-label="open ? t('Hide map') : t('Show map')" :title="open ? t('Hide map') : t('Show map')" @click="store.act('toggle')">{{ open ? '▾' : '▸' }}</button>
+      <UiButton class="wo-toggle" :aria-expanded="String(open)" :label="open ? t('Hide map') : t('Show map')" @click="store.act('toggle')">{{ open ? '▾' : '▸' }}</UiButton>
     </div>
     <svg v-if="open && model" class="world-overview__map" :viewBox="viewBox" preserveAspectRatio="xMidYMid meet" role="group" :aria-label="label">
       <g aria-hidden="true">
