@@ -444,3 +444,20 @@ test('a repair dated by day only is compared by day (fix review round 1)', () =>
   // "Repaired on 27 November": the same day as the last report closes it.
   assert.equal(step(signal('restored', '2024-11-27T00:00:00Z')), 'would-close');
 });
+
+test('a retraction worded any way, or a back-online clause about anything else, confirms no break (fix review round 2)', () => {
+  const fault = 'Fault detected in Cinia C-Lion1 submarine cable';
+  for (const summary of [
+    'The C-Lion1 submarine cable was cut. Cinia apologises for the inaccurate notice.',
+    'The C-Lion1 submarine cable was cut. The earlier notice was wrong.',
+    'The C-Lion1 submarine cable was cut. Cinia has rescinded the notice.',
+    'The C-Lion1 submarine cable was cut. This turned out to be a sensor fault.',
+    'The C-Lion1 submarine cable was cut. Update: it was a power fault at the landing station.',
+    'The C-Lion1 submarine cable is broken and the tabloid stories saying so are back online.',
+  ])
+    assert.equal(
+      judge(fault, operator, { summary }).breakConfirmed,
+      false,
+      summary,
+    );
+});

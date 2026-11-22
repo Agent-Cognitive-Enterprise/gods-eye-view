@@ -41,7 +41,7 @@ const REPAIRED = '(?:repaired|restored)';
 // Any of these in the title makes it doubtful, whatever its shape.
 const BLOCKERS = [
   // Negation, denial, hedging.
-  /\b(?:no|not|none|never|nothing|without|zero|unaffected|unharmed|intact|normal|normally|usual|deny|denies|denied|false|unfounded|baseless|rumou?rs?|hoax|untrue|claims?|rejects?|refutes?|feared|unconfirmed|confirm\w*|suspected|possible|possibly|potential|likely|reportedly|alleged|allegedly|retract\w*|withdr[ae]wn?|withdraws?|incorrect\w*|mistak\w*|errors?|erroneous\w*|misreport\w*|dismiss\w*|ruled out|ei)\b|n't\b|-free\b|\btolerant\b/u,
+  /\b(?:no|not|none|never|nothing|without|zero|unaffected|unharmed|intact|normal|normally|usual|deny|denies|denied|false|unfounded|baseless|rumou?rs?|hoax|untrue|claims?|rejects?|refutes?|feared|unconfirmed|confirm\w*|suspected|possible|possibly|potential|likely|reportedly|alleged|allegedly|retract\w*|withdr[ae]wn?|withdraws?|incorrect\w*|mistak\w*|errors?|erroneous\w*|misreport\w*|dismiss\w*|ruled out|inaccura\w*|wrong\w*|rescind\w*|turned out|ei)\b|n't\b|-free\b|\btolerant\b/u,
   // Future, plans, conditions, questions.
   /(?<!(?:^|[^\p{L}\p{N}-])\d{1,2} )\bmay\b(?! \d)|\b(?:will|would|shall|might|could|can|should|must|to be|to start|expected|expects?|planned|plans?|scheduled|upcoming|soon|once|until|awaits?|awaiting|delayed|pending|if|whether|what|how|why|in case)\b|\?/u,
   // Partial, temporary or moved: not a clean repair.
@@ -169,7 +169,7 @@ function cablePhrase(name, speakers, { cable = true } = {}) {
  */
 // The one second clause a break sentence may have: "… and the direct
 // submarine cable connection between Finland and Germany is back online".
-const BACK_ONLINE = String.raw`(?: and the [^,;]{1,90} (?:is|are) back online)?`;
+const BACK_ONLINE = String.raw`(?: and the (?:[\p{L}-]+ ){0,6}(?:connection|connections|service|services|traffic|link|links)(?: between [^,;]{1,60})? (?:is|are) back online)?`;
 
 function breakShapesFor(name, speakers) {
   const cable = cablePhrase(name, speakers, { cable: false });
@@ -298,8 +298,8 @@ export function templateClaim(
   // A break stated in the summary counts only in a whole sentence of a
   // break shape, with no doubtful wording, no other year, and at most one of
   // the source's places after it: "The break in Cinia's C-Lion1 submarine
-  // cable has been repaired." Any denial, retraction or hedge anywhere in
-  // the summary ("Cinia says it was misreported.") cancels it. Nothing else
+  // cable has been repaired." Any doubtful wording anywhere in the
+  // summary (a denial, retraction, hedge, plan, maintenance or history) ("Cinia says it was misreported.") cancels it. Nothing else
   // in the summary is judged.
   const sentences = String(summary)
     .split(/(?<=[.!])\s+/)
@@ -313,7 +313,7 @@ export function templateClaim(
     )
     .filter(Boolean);
   const denied = sentences.some((sentence) =>
-    QUOTE_BLOCKERS[0].test(fold(sentence)),
+    BLOCKERS.some((pattern) => pattern.test(fold(sentence))),
   );
   const summaryBreak =
     !denied &&
