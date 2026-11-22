@@ -55,7 +55,7 @@ export function publishKey(incident, impact = [], cleared = null) {
     incident.sources?.length ?? 0,
     // Phase 4: the country outages beside it (an open incident only).
     ...(incident.status === 'open' && impact.length
-      ? [impact.map((entry) => [entry.country, entry.start])]
+      ? [impact.map((entry) => [entry.country, entry.start, entry.end])]
       : []),
     // …or that the ones shown before are no longer shown.
     ...(incident.status === 'open' && !impact.length && cleared
@@ -105,7 +105,7 @@ export function cableRecord({
   const url = incident.sources?.at(-1) ?? null;
   return {
     provider: CABLE_EVENT_PROVIDER,
-    source_item_id: `${cableId}:${id}:${publishKey(incident, impact)}`,
+    source_item_id: `${cableId}:${id}:${publishKey(incident, impact, cleared)}`,
     // One incident, one event: every update joins it.
     event_key: `submarine-cable:${cableId}:${id}`,
     lineage_key: `submarine-cable:${cableId}:${id}`,
@@ -245,18 +245,18 @@ export function liveRecords({
     records.push(record);
     keys[cableId] = {
       ...remember(cableId, shown, incident.status),
-      key: publishKey(incident, seen, cleared),
+      // Once the removal is on the card, nothing of the impact is kept:
+      // later records are bare, with no IODA names in them.
+      key: publishKey(incident, seen, null),
       // The last impact shown on this incident, so its removal is shown.
       ...(seen.length
         ? {
             impact: {
-              key: JSON.stringify(seen.map((e) => [e.country, e.start])),
+              key: JSON.stringify(seen.map((e) => [e.country, e.start, e.end])),
               names: seen.map((e) => e.name),
             },
           }
-        : cleared
-          ? { impact: sent.impact }
-          : {}),
+        : {}),
     };
   }
   return { records, keys };

@@ -296,3 +296,62 @@ test('switching IODA off after it showed something changes the card again', () =
     0,
   );
 });
+
+test('a longer outage updates the card, and after clearing later reports carry no IODA names (review round 3)', () => {
+  const feature = {
+    ...featureOf('transworld-tw1'),
+    properties: { id: 'transworld-tw1', name: 'Transworld (TW1)' },
+  };
+  const features = new Map([['transworld-tw1', feature]]);
+  const publisherOf = () => 'Transworld';
+  const entry = (end) => ({
+    country: 'PK',
+    name: 'Pakistan',
+    start: '2026-11-18T07:00:00.000Z',
+    end,
+    datasources: ['bgp'],
+  });
+  const withImpact = (end) => ({
+    'transworld-tw1': {
+      incidentId: incident.incidentId,
+      entries: [entry(end)],
+    },
+  });
+  const a = liveRecords({
+    incidents: { 'transworld-tw1': incident },
+    features,
+    publisherOf,
+    impact: withImpact('2026-11-18T09:00:00.000Z'),
+  });
+  const b = liveRecords({
+    incidents: { 'transworld-tw1': incident },
+    published: a.keys,
+    features,
+    publisherOf,
+    impact: withImpact('2026-11-22T09:00:00.000Z'),
+  });
+  assert.equal(b.records.length, 1);
+  assert.match(b.records[0].summary, /Pakistan 2026-11-18 to 2026-11-22/);
+  // Off: the removal is shown once…
+  const off = liveRecords({
+    incidents: { 'transworld-tw1': incident },
+    published: b.keys,
+    features,
+    publisherOf,
+  });
+  assert.match(off.records[0].summary, /no longer shown/);
+  // …and a later report says nothing of IODA.
+  const later = {
+    ...incident,
+    lastReportedAt: '2026-11-25T00:00:00.000Z',
+    sources: [...incident.sources, 'https://www.tw1.com/2'],
+  };
+  const next = liveRecords({
+    incidents: { 'transworld-tw1': later },
+    published: off.keys,
+    features,
+    publisherOf,
+  });
+  assert.equal(next.records.length, 1);
+  assert.doesNotMatch(next.records[0].summary, /IODA|Pakistan/);
+});
