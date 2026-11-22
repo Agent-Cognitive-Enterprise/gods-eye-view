@@ -123,9 +123,10 @@ export function impactFor({ incident, countries, outages, now }) {
     const start = Date.parse(outage.start ?? '');
     const end = Date.parse(outage.end ?? '');
     if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
-    // An outage already running long before the incident is not "at the
-    // same time"; nor is one that has not begun.
-    if (start < opened - LEAD_MS || start > now) continue;
+    // Around the time of the fault: begun at most a day before it opened,
+    // still running when it opened, and begun by now. One already running
+    // long before, or over before the fault, is not.
+    if (start < opened - LEAD_MS || end < opened || start > now) continue;
     out.push({
       country: outage.country,
       name: String(outage.name ?? outage.country).slice(0, 80),
@@ -186,13 +187,31 @@ const MAX_LISTED = 4;
 export function impactSentence(impact) {
   const entries = (impact ?? []).filter(isEntry);
   if (!entries.length) return '';
-  const named = entries
+  // The earliest outages first; each with its days, so one that lasted two
+  // hours weeks ago does not read as still going.
+  const named = [...entries]
+    .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0))
     .slice(0, MAX_LISTED)
-    .map((entry) => `${entry.name} from ${String(entry.start).slice(0, 10)}`)
+    .map((entry) => {
+      const from = String(entry.start).slice(0, 10);
+      const to = String(entry.end).slice(0, 10);
+      return from === to
+        ? `${entry.name} on ${from}`
+        : `${entry.name} ${from} to ${to}`;
+    })
     .join(', ');
   const more =
     entries.length > MAX_LISTED
       ? ` and ${entries.length - MAX_LISTED} more`
       : '';
-  return `Impact only, cause unknown: IODA (Georgia Tech) saw internet outages where this cable lands, in ${named}${more}. `;
+  return `Impact only, cause unknown: around the time of this fault IODA (Georgia Tech) saw internet outages where this cable lands, in ${named}${more}. `;
+}
+
+/**
+ * The card's sentence once the outages shown before are no longer shown
+ * (IODA switched off, or its state lost), naming them so the card changes.
+ */
+export function impactClearedSentence(names) {
+  const list = (names ?? []).slice(0, MAX_LISTED).join(', ');
+  return `IODA outage signals${list ? ` for ${list}` : ''} are no longer shown here. `;
 }

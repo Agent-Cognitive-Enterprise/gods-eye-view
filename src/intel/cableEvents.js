@@ -10,7 +10,7 @@
 // closes on a repair notice. An incident with no report for 30 days fades
 // by itself through `valid_until`, so nothing is sent for a fade.
 
-import { impactSentence } from './cableImpact.js';
+import { impactClearedSentence, impactSentence } from './cableImpact.js';
 import { FAULT_FADE_MS } from './cableSignals.js';
 
 export const CABLE_EVENT_PROVIDER = 'cables';
@@ -46,7 +46,7 @@ export function representativePoint(feature) {
 }
 
 /** What an operator would see of an incident; a change means a new record. */
-export function publishKey(incident, impact = []) {
+export function publishKey(incident, impact = [], cleared = null) {
   return JSON.stringify([
     incident.status,
     incident.lastReportedAt ?? null,
@@ -56,6 +56,10 @@ export function publishKey(incident, impact = []) {
     // Phase 4: the country outages beside it (an open incident only).
     ...(incident.status === 'open' && impact.length
       ? [impact.map((entry) => [entry.country, entry.start])]
+      : []),
+    // …or that the ones shown before are no longer shown.
+    ...(incident.status === 'open' && !impact.length && cleared
+      ? [['cleared', cleared.key]]
       : []),
   ]);
 }
@@ -73,6 +77,8 @@ export function cableRecord({
   feature,
   publisher,
   impact = [],
+  // Phase 4: {names} of the outages no longer shown, or null.
+  cleared = null,
 }) {
   const point = representativePoint(feature);
   const name = String(feature?.properties?.name ?? cableId);
@@ -95,7 +101,7 @@ export function cableRecord({
       : `${name} submarine cable fault, ${by} reports`;
   const summary = closed
     ? `Repair reported on ${dayOf(incident.closedAt)}. The fault was first reported on ${dayOf(incident.openedAt)}.`
-    : `${impactSentence(impact)}First reported on ${dayOf(incident.openedAt)}, last reported on ${dayOf(incident.lastReportedAt)}.${broken ? ' The source confirms a physical break.' : ' A fault does not by itself mean the cable is cut.'}`;
+    : `${impact.length ? impactSentence(impact) : cleared ? impactClearedSentence(cleared.names) : ''}First reported on ${dayOf(incident.openedAt)}, last reported on ${dayOf(incident.lastReportedAt)}.${broken ? ' The source confirms a physical break.' : ' A fault does not by itself mean the cable is cut.'}`;
   const url = incident.sources?.at(-1) ?? null;
   return {
     provider: CABLE_EVENT_PROVIDER,
@@ -179,7 +185,16 @@ export function liveRecords({
       Array.isArray(held.entries)
         ? held.entries
         : [];
-    if (sent?.key === publishKey(incident, seen)) continue;
+    // Impact was shown on this incident and is gone (IODA switched off, or
+    // the state lost): the card must say so, or it keeps the old text.
+    const cleared =
+      incident.status === 'open' &&
+      !seen.length &&
+      sent?.impact?.key &&
+      sent.incidentId === incidentIdOf(incident)
+        ? sent.impact
+        : null;
+    if (sent?.key === publishKey(incident, seen, cleared)) continue;
     let shown = incident;
     if (incident.status === 'closed') {
       const own =
@@ -216,6 +231,7 @@ export function liveRecords({
     const record = cableRecord({
       cableId,
       incident: shown,
+      cleared,
       feature: features.get(cableId),
       // A repair is the repairing source's word.
       publisher: publisherOf(
@@ -229,7 +245,18 @@ export function liveRecords({
     records.push(record);
     keys[cableId] = {
       ...remember(cableId, shown, incident.status),
-      key: publishKey(incident, seen),
+      key: publishKey(incident, seen, cleared),
+      // The last impact shown on this incident, so its removal is shown.
+      ...(seen.length
+        ? {
+            impact: {
+              key: JSON.stringify(seen.map((e) => [e.country, e.start])),
+              names: seen.map((e) => e.name),
+            },
+          }
+        : cleared
+          ? { impact: sent.impact }
+          : {}),
     };
   }
   return { records, keys };

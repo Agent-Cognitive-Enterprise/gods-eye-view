@@ -108,8 +108,11 @@ test('only outages in a landing country, during the incident, are shown beside i
   );
   const sentence = impactSentence(found);
   // The qualifier comes first, so a card cut after three lines keeps it.
-  assert.match(sentence, /^Impact only, cause unknown: IODA \(Georgia Tech\)/);
-  assert.match(sentence, /Pakistan from 2026-11-18/);
+  assert.match(
+    sentence,
+    /^Impact only, cause unknown: around the time of this fault IODA \(Georgia Tech\)/,
+  );
+  assert.match(sentence, /Pakistan on 2026-11-18/);
   assert.equal(impactSentence([]), '');
 });
 
@@ -157,7 +160,7 @@ test('the impact goes on the card of the confirmed event, and a change updates i
   const [result] = engine.ingest(second.records);
   assert.equal(result.status, 'material_update');
   const [event] = engine.activeEvents();
-  assert.match(event.summary, /^Impact only, cause unknown: IODA/);
+  assert.match(event.summary, /^Impact only, cause unknown: around the time/);
   // Shown, but no news: the camera cooldown is not lifted.
   assert.equal(event.revision - (event.quiet_revisions ?? 0), 1);
   // Another incident on the cable gets none of it.
@@ -202,8 +205,94 @@ test('a cable landing in many countries still fits its qualifier on a three-line
   // The card wraps the summary at 60 characters on 3 lines.
   assert.match(
     sentence.slice(0, 180),
-    /^Impact only, cause unknown: IODA \(Georgia Tech\)/,
+    /^Impact only, cause unknown: around the time of this fault IODA \(Georgia Tech\)/,
   );
   // Malformed stored entries are dropped, never thrown on.
   assert.equal(impactSentence([{ country: 'PK' }]), '');
+});
+
+test('an outage shows its days, and one over before the fault is not listed (review round 2)', () => {
+  const now = Date.parse('2026-12-15T00:00:00Z');
+  const found = impactFor({
+    incident,
+    countries: ['OM', 'PK'],
+    outages: [
+      // Two hours on the fault's first day.
+      outage('PK', '2026-11-18T05:00:00.000Z', '2026-11-18T07:00:00.000Z'),
+      // Began 23 hours before the fault and was over before it.
+      outage('OM', '2026-11-17T08:00:00.000Z', '2026-11-17T10:00:00.000Z'),
+    ],
+    now,
+  });
+  assert.deepEqual(
+    found.map((f) => f.country),
+    ['PK'],
+  );
+  assert.match(impactSentence(found), /Pakistan on 2026-11-18\. $/);
+  const long = [{ ...found[0], end: '2026-11-20T00:00:00.000Z' }];
+  assert.match(impactSentence(long), /Pakistan 2026-11-18 to 2026-11-20\. $/);
+});
+
+test('switching IODA off after it showed something changes the card again', () => {
+  const feature = {
+    ...featureOf('transworld-tw1'),
+    properties: { id: 'transworld-tw1', name: 'Transworld (TW1)' },
+  };
+  const features = new Map([['transworld-tw1', feature]]);
+  const publisherOf = () => 'Transworld';
+  let clock = Date.parse('2026-11-18T07:00:00Z');
+  const engine = createIntelEngine({
+    store: createMemoryIntelStore(),
+    now: () => clock,
+  });
+  const first = liveRecords({
+    incidents: { 'transworld-tw1': incident },
+    features,
+    publisherOf,
+  });
+  engine.ingest(first.records);
+  const entries = impactFor({
+    incident,
+    countries: ['PK'],
+    outages: [
+      outage('PK', '2026-11-18T05:00:00.000Z', '2026-11-18T09:00:00.000Z'),
+    ],
+    now: clock,
+  });
+  const shown = liveRecords({
+    incidents: { 'transworld-tw1': incident },
+    published: first.keys,
+    features,
+    publisherOf,
+    impact: { 'transworld-tw1': { incidentId: incident.incidentId, entries } },
+  });
+  clock += 3600_000;
+  engine.ingest(shown.records);
+  // IODA switched off: no impact passed any more.
+  const off = liveRecords({
+    incidents: { 'transworld-tw1': incident },
+    published: shown.keys,
+    features,
+    publisherOf,
+  });
+  assert.equal(off.records.length, 1);
+  clock += 3600_000;
+  const [result] = engine.ingest(off.records);
+  assert.equal(result.status, 'material_update');
+  const [event] = engine.activeEvents();
+  assert.doesNotMatch(event.summary, /saw internet outages/);
+  assert.match(
+    event.summary,
+    /^IODA outage signals for Pakistan are no longer shown here\./,
+  );
+  // And it stays so: nothing more is sent.
+  assert.equal(
+    liveRecords({
+      incidents: { 'transworld-tw1': incident },
+      published: off.keys,
+      features,
+      publisherOf,
+    }).records.length,
+    0,
+  );
 });

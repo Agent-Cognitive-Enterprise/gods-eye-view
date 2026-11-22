@@ -582,15 +582,20 @@ it regularly.
   hours, covering up to seven days back. No key is needed. A failed
   request is logged as `ioda-failed` and keeps the last impact.
 - **What it shows:** outages in a country where the cable lands that began
-  no earlier than a day before the incident opened. Impact is kept per
-  incident and only grows while it lasts, so an outage seen once stays on
-  the card even after it drops out of IODA's seven-day window; a new
-  incident on the cable starts bare. The sentence leads the card's
-  summary, qualifier first, and names at most four countries: "Impact only,
-  cause unknown: IODA (Georgia Tech) saw internet outages where this cable
-  lands, in Pakistan from 2026-11-18." A change is logged as `ioda-impact`
-  and sends an updated record. It is shown, but counted as no news: it
-  lifts no camera cooldown and starts no re-alert.
+  no earlier than a day before the incident opened and were still running
+  when it opened. Impact is kept per incident and only grows while it
+  lasts, so an outage seen once stays on the card even after it drops out
+  of IODA's seven-day window; a new incident on the cable starts bare. The
+  sentence leads the card's summary, qualifier first, and names the four
+  earliest outages with their days: "Impact only, cause unknown: around the
+  time of this fault IODA (Georgia Tech) saw internet outages where this
+  cable lands, in Pakistan on 2026-11-18." A change is logged as
+  `ioda-impact` and sends an updated record. It is shown, but counted as no
+  news: it lifts no camera cooldown and starts no re-alert (the local
+  model's assessment of the event is redone, as for any revision).
+- **Switching it off:** a card that showed outages then says "IODA outage
+  signals for Pakistan are no longer shown here.", so no IODA data stays
+  on screen. The same happens if the shadow state is lost.
 - **Landing countries:** each end of each of the cable's catalogue lines,
   matched to the nearest TeleGeography landing point within 0.1°, whose
   country is looked up in Natural Earth (with a few territory names
