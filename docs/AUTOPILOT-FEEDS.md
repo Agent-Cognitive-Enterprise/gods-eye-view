@@ -47,7 +47,10 @@ in [EARLY-WARNING.md](EARLY-WARNING.md#sources-registry). Status as of
   (infrastructure disruption, `submarine_cable_fault` or
   `submarine_cable_break`), and the globe highlights the cable's route. The
   event closes on the source's repair notice, or fades 30 days after its
-  last report. News never makes one, whatever the local model says.
+  last report. News never makes one, whatever the local model says. With
+  `GEV_INTEL_CABLES_IODA=1` (off by default; IODA's data-use terms are not
+  settled) the card also lists IODA internet outages in the cable's landing
+  countries during the incident, as impact only.
 - **Economic stress** is annual inflation only: no exchange-rate, market,
   food-price or sovereign-debt series, so a fast currency crisis appears
   months late, if at all.

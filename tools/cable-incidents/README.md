@@ -568,8 +568,35 @@ stays in shadow mode, as above.
   event. An open incident's record carries `valid_until` 30 days after its
   last report, so the marker fades as the shadow incident does.
 
+## Automatic signals (phase 4: IODA impact beside a cable event)
+
+`GEV_INTEL_CABLES_IODA=1`, beside `GEV_INTEL_CABLES_LIVE=1`, adds IODA's
+country internet outages to the card of a live cable event
+(`src/intel/cableImpact.js`). It is off by default: IODA's data is marked
+"All Rights Reserved", its software licence is for academic use, and no
+data-use terms were found. Ask the IODA team (Georgia Tech) before polling
+it regularly.
+
+- **What it asks for:** one request to IODA's outage events for all
+  countries, only while a live incident is open, at most every three
+  hours, covering the open incidents (from a day before the earliest, up to
+  seven days). No key is needed. A failed request is logged as
+  `ioda-failed` and keeps the last impact.
+- **What it shows:** outages in a country where the cable lands, from a
+  day before the incident opened until now, added to the event's card:
+  "At the same time IODA (Georgia Tech) saw internet outage signals in a
+  country this cable lands in: Pakistan from 2026-11-18 (routing (BGP)).
+  That shows impact in the country; it does not say this cable caused it."
+  A change is logged as `ioda-impact` and sends an updated record.
+- **Landing countries:** each end of each of the cable's catalogue lines,
+  matched to the nearest TeleGeography landing point within 0.1°, whose
+  country is looked up in Natural Earth (with a few territory names
+  added).
+- **What it never does:** open, close or change a cable incident, or show
+  an outage on its own. Traffic data measures impact in a country; only a
+  primary notice names a cable.
+
 ## Next integration
 
-IODA country outages beside a cable event, as impact only, once IODA's
-data-use terms are clear. A publisher's correction or retraction of a
-notice is not read yet: it needs a versioned correction model.
+A publisher's correction or retraction of a notice is not read yet: it
+needs a versioned correction model.

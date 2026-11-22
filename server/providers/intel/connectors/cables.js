@@ -17,8 +17,15 @@ import {
   fetchText,
   itemsFromFeed,
   itemsFromPage,
+  pollIoda,
   sameSite,
 } from '../cableInbox.js';
+import {
+  countryCodes,
+  impactFor,
+  landingCountries,
+  landingPoints,
+} from '../../../../src/intel/cableImpact.js';
 import {
   cableMentions,
   catalogueNames,
@@ -43,6 +50,15 @@ import {
   shadowLine,
 } from '../../../../src/intel/cableSignals.js';
 
+const DATA = '../../../../src/data/local_data';
+const LANDING_POINTS = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  `${DATA}/telegeography_submarine_cables/landing-point-geo.json`,
+);
+const COUNTRIES = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  `${DATA}/natural_earth/countries.json`,
+);
 const CATALOGUE = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   '../../../../src/data/local_data/telegeography_submarine_cables/cable-geo.json',
@@ -691,6 +707,80 @@ function readPublished(file) {
   return {};
 }
 
+const IODA_EVERY_MS = 3 * 3600_000;
+const IODA_MAX_HOURS = 7 * 24;
+
+/**
+ * Phase 4: IODA's country outages beside the open incidents, at most once
+ * every three hours and only while one is open. Returns the new state and
+ * log lines; a failing IODA keeps the last impact and is logged.
+ */
+export async function checkImpact({
+  state,
+  countriesOf,
+  fetchImpl,
+  now,
+  poll = pollIoda,
+}) {
+  const next = structuredClone(state);
+  const lines = [];
+  const open = Object.entries(next.incidents ?? {}).filter(
+    ([, incident]) => incident.status === 'open',
+  );
+  // Nothing open: nothing to show beside, and no request.
+  if (!open.length) {
+    delete next.impact;
+    return { state: next, lines };
+  }
+  if (now() - Date.parse(next.iodaCheckedAt ?? '') < IODA_EVERY_MS)
+    return { state: next, lines };
+  const earliest = Math.min(
+    ...open.map(([, incident]) => Date.parse(incident.openedAt)),
+  );
+  const hours = Math.min(
+    IODA_MAX_HOURS,
+    Math.max(24, Math.ceil((now() - earliest) / 3600_000) + 24),
+  );
+  const seenAt = new Date(now()).toISOString();
+  next.iodaCheckedAt = seenAt;
+  let outages;
+  try {
+    ({ outages } = await poll({ fetchImpl, now, hours }));
+  } catch (error) {
+    lines.push({
+      seenAt,
+      change: 'ioda-failed',
+      error: String(error?.message ?? error).slice(0, 120),
+    });
+    return { state: next, lines };
+  }
+  const impact = {};
+  for (const [cableId, incident] of open) {
+    const found = impactFor({
+      incident,
+      countries: countriesOf(cableId),
+      outages,
+      now: now(),
+    });
+    if (found.length) impact[cableId] = found;
+  }
+  const before = JSON.stringify(state.impact ?? {});
+  next.impact = impact;
+  if (JSON.stringify(impact) !== before)
+    lines.push({
+      seenAt,
+      change: 'ioda-impact',
+      cables: Object.keys(impact),
+      countries: Object.fromEntries(
+        Object.entries(impact).map(([id, list]) => [
+          id,
+          list.map((entry) => entry.country),
+        ]),
+      ),
+    });
+  return { state: next, lines };
+}
+
 /** A source's name for a record: its publisher, else its first speaker. */
 const publisherOf = (sources) => (id) => {
   const source = sources.find((s) => s.id === id);
@@ -714,6 +804,9 @@ export function cableConnector({
   foreground = () => false,
   // Phase 3: confirmed incidents go to the engine.
   live = false,
+  // Phase 4: IODA country outages beside live incidents (off by default:
+  // IODA's data-use terms are not settled).
+  ioda = false,
 } = {}) {
   if (!dir) throw new Error('cableConnector needs the intel folder');
   for (const source of sources)
@@ -726,6 +819,7 @@ export function cableConnector({
   const publishedFile = path.join(dir, 'cables-published.json');
   let names = null;
   let features = null;
+  let countriesOf = null;
   return {
     id: 'submarine-cables',
     provider: 'cables',
@@ -741,6 +835,21 @@ export function cableConnector({
         const catalogue = JSON.parse(fs.readFileSync(CATALOGUE, 'utf8'));
         names = catalogueNames(catalogue);
         features = mergedCableFeatures(catalogue);
+        if (ioda) {
+          const points = landingPoints(
+            JSON.parse(fs.readFileSync(LANDING_POINTS, 'utf8')),
+            countryCodes(JSON.parse(fs.readFileSync(COUNTRIES, 'utf8'))),
+          );
+          const cache = new Map();
+          countriesOf = (cableId) => {
+            if (!cache.has(cableId))
+              cache.set(
+                cableId,
+                landingCountries(features.get(cableId), points),
+              );
+            return cache.get(cableId);
+          };
+        }
       }
       fs.mkdirSync(dir, { recursive: true });
       const result = await pollCableSources({
@@ -778,12 +887,25 @@ export function cableConnector({
       appendLines(logFile, checked.lines);
       if (!live)
         return { records: [], latestObservationAt: result.latest || undefined };
+      let { state } = checked;
+      if (ioda) {
+        const impact = await checkImpact({
+          state,
+          countriesOf,
+          fetchImpl,
+          now,
+        });
+        state = impact.state;
+        writeJson(stateFile, state);
+        appendLines(logFile, impact.lines);
+      }
       const published = readPublished(publishedFile);
       const { records, keys } = liveRecords({
-        incidents: checked.state.incidents,
+        incidents: state.incidents,
         published,
         features,
         publisherOf: publisherOf(sources),
+        impact: ioda ? (state.impact ?? {}) : {},
       });
       return {
         records,

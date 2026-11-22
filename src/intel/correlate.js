@@ -358,6 +358,9 @@ export function materialChanges(observation, event, lineage) {
       observation.valid_until > (event.valid_until ?? 0)
     )
       reasons.push('cable_reported_again');
+    // Phase 4: the country outages beside it changed the card.
+    if (observation.summary && observation.summary !== event.summary)
+      reasons.push('cable_summary_changed');
   }
   // Air & Sea measurements: a different reading, or a large revision.
   if (m.observation && m.observation !== e.observation)

@@ -103,6 +103,10 @@ export function intelConnectors({
         llm: env.GEV_INTEL_CABLES_LLM === '0' ? null : llm,
         foreground: () => foregroundActive(),
         live: env.GEV_INTEL_CABLES_LIVE === '1',
+        // IODA's data-use terms are not settled: opt-in only.
+        ioda:
+          env.GEV_INTEL_CABLES_LIVE === '1' &&
+          env.GEV_INTEL_CABLES_IODA === '1',
       }),
     );
   return connectors;

@@ -91,6 +91,7 @@ The autopilot instance's environment is set in `gev-common.ps1`
 | `GEV_INTEL_GDELT`                                                                             | off                              | `1` adds machine-coded news (unverified).                                                                                     |
 | `GEV_INTEL_CABLES`                                                                            | off                              | `1` polls submarine cable notices hourly, in shadow mode (logged in `.gev-cache/intel/cables-shadow.jsonl`).                  |
 | `GEV_INTEL_CABLES_LIVE`                                                                       | off                              | With `GEV_INTEL_CABLES=1`, `1` sends confirmed cable incidents to Autopilot (see below).                                      |
+| `GEV_INTEL_CABLES_IODA`                                                                       | off                              | With `GEV_INTEL_CABLES_LIVE=1`, `1` adds IODA country outages to a cable event's card (impact only; see below).               |
 | `GEV_INTEL_CABLES_LLM`                                                                        | on                               | `0` judges cable notices by the rules alone, without the local model.                                                         |
 | `GEV_RELIEFWEB_APPNAME`                                                                       | unset                            | Approved ReliefWeb app name; without it the feed waits.                                                                       |
 | `GEV_INTEL_DB`                                                                                | `.gev-cache/intel/intel.sqlite`  | Moves the store _and_ settings (separate state for a second instance or tests).                                               |
@@ -153,6 +154,11 @@ rules are in doubt, decide. With `GEV_INTEL_CABLES_LIVE=1`:
   An event with no new report fades after 30 days. One landing party of a
   consortium cable (Transworld for SEA-ME-WE 5) can open an event but cannot
   close it.
+- **Impact (`GEV_INTEL_CABLES_IODA=1`):** IODA (Georgia Tech) internet
+  outages in a country the cable lands in, during the incident, are added
+  to the card. They show impact in that country and never say the cable
+  caused it, and they never open or close an event. Off by default: ask
+  IODA about its data-use terms before switching it on.
 - **What to check:** every change is logged in
   `.gev-cache/intel/cables-shadow.jsonl` (`sent-to-autopilot` lines, and the
   reason for every notice that was not sent). Remove

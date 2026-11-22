@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import {
   CABLE_SOURCES,
   cableConnector,
+  checkImpact,
   checkWithModel,
   pollCableSources,
   readShadowState,
@@ -832,4 +833,84 @@ test('live mode sends a confirmed incident once it is stored, and never a news r
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('IODA is asked at most every three hours, only while an incident is open, and a failure keeps the last impact', async () => {
+  const open = {
+    cableId: 'c-lion1',
+    status: 'open',
+    incidentId: '2026-11-18T02:00:00.000Z',
+    openedAt: '2026-11-18T02:00:00.000Z',
+    lastReportedAt: '2026-11-18T02:00:00.000Z',
+    sources: ['https://op.example/n/fault'],
+  };
+  const calls = [];
+  const poll = async ({ hours }) => {
+    calls.push(hours);
+    return {
+      outages: [
+        {
+          country: 'FI',
+          name: 'Finland',
+          start: '2026-11-18T01:00:00.000Z',
+          end: '2026-11-18T05:00:00.000Z',
+          signals: [{ datasource: 'ping-slash24' }],
+        },
+      ],
+    };
+  };
+  const countriesOf = () => ['DE', 'FI'];
+  let clock = Date.parse('2026-11-18T06:00:00Z');
+  const base = { version: 1, seen: {}, baselines: {}, incidents: {} };
+  // Nothing open: no request.
+  const idle = await checkImpact({
+    state: base,
+    countriesOf,
+    now: () => clock,
+    poll,
+  });
+  assert.equal(calls.length, 0);
+  assert.equal('impact' in idle.state, false);
+  const first = await checkImpact({
+    state: { ...base, incidents: { 'c-lion1': open } },
+    countriesOf,
+    now: () => clock,
+    poll,
+  });
+  assert.equal(calls.length, 1);
+  assert.deepEqual(
+    first.state.impact['c-lion1'].map((e) => e.country),
+    ['FI'],
+  );
+  assert.equal(first.lines[0].change, 'ioda-impact');
+  // An hour later: not asked again.
+  clock += 3600_000;
+  await checkImpact({
+    state: first.state,
+    countriesOf,
+    now: () => clock,
+    poll,
+  });
+  assert.equal(calls.length, 1);
+  // Three hours on, IODA fails: the last impact stays, and it is logged.
+  clock += 3 * 3600_000;
+  const failed = await checkImpact({
+    state: first.state,
+    countriesOf,
+    now: () => clock,
+    poll: async () => {
+      throw new Error('HTTP 503');
+    },
+  });
+  assert.deepEqual(failed.state.impact, first.state.impact);
+  assert.equal(failed.lines[0].change, 'ioda-failed');
+});
+
+test('IODA stays off unless live mode and GEV_INTEL_CABLES_IODA=1 are both set', () => {
+  // The connector takes `ioda` from index.js; only the flags are checked here.
+  const src = fs.readFileSync(new URL('../index.js', import.meta.url), 'utf8');
+  assert.match(
+    src,
+    /env\.GEV_INTEL_CABLES_LIVE === '1' &&\s*env\.GEV_INTEL_CABLES_IODA === '1'/,
+  );
 });
