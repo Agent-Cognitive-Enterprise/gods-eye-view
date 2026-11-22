@@ -407,3 +407,40 @@ test('a repair dated before the latest fault report leaves the incident open (PR
   // A repair after the latest report closes it.
   assert.equal(step(signal('restored', '2026-11-22T08:00:00Z')), 'would-close');
 });
+
+test('a retracted, old or denied break in the summary confirms nothing (fix review round 1)', () => {
+  const fault = 'Fault detected in Cinia C-Lion1 submarine cable';
+  for (const summary of [
+    'The C-Lion1 submarine cable was cut and this was later retracted.',
+    'The C-Lion1 submarine cable was cut and Cinia has withdrawn it.',
+    'The C-Lion1 submarine cable was cut and this was incorrect.',
+    'A break in the C-Lion1 submarine cable was detected and later ruled out.',
+    'The C-Lion1 submarine cable was cut and repaired in 2019.',
+    'Earlier media claimed this. The C-Lion1 submarine cable was cut. Cinia says it was misreported.',
+  ])
+    assert.equal(
+      judge(fault, operator, { summary }).breakConfirmed,
+      false,
+      summary,
+    );
+  assert.equal(
+    judge("Cinia's C-Lion1 Submarine Cable Has Fully Restored", operator, {
+      summary:
+        "The break in Cinia's C-Lion1 submarine cable has been repaired and the direct submarine cable connection between Finland and Germany is back online.",
+    }).breakConfirmed,
+    true,
+  );
+});
+
+test('a repair dated by day only is compared by day (fix review round 1)', () => {
+  let incidents = {};
+  const step = (s) => {
+    const applied = applySignal(incidents, s);
+    incidents = applied.incidents;
+    return applied.change;
+  };
+  step(signal('fault', '2024-11-18T09:00:00Z'));
+  step(signal('fault', '2024-11-27T14:00:00Z'));
+  // "Repaired on 27 November": the same day as the last report closes it.
+  assert.equal(step(signal('restored', '2024-11-27T00:00:00Z')), 'would-close');
+});

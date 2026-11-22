@@ -41,7 +41,7 @@ const REPAIRED = '(?:repaired|restored)';
 // Any of these in the title makes it doubtful, whatever its shape.
 const BLOCKERS = [
   // Negation, denial, hedging.
-  /\b(?:no|not|none|never|nothing|without|zero|unaffected|unharmed|intact|normal|normally|usual|deny|denies|denied|false|unfounded|baseless|rumou?rs?|hoax|untrue|claims?|rejects?|refutes?|feared|unconfirmed|confirm\w*|suspected|possible|possibly|potential|likely|reportedly|alleged|allegedly|ei)\b|n't\b|-free\b|\btolerant\b/u,
+  /\b(?:no|not|none|never|nothing|without|zero|unaffected|unharmed|intact|normal|normally|usual|deny|denies|denied|false|unfounded|baseless|rumou?rs?|hoax|untrue|claims?|rejects?|refutes?|feared|unconfirmed|confirm\w*|suspected|possible|possibly|potential|likely|reportedly|alleged|allegedly|retract\w*|withdr[ae]wn?|withdraws?|incorrect\w*|mistak\w*|errors?|erroneous\w*|misreport\w*|dismiss\w*|ruled out|ei)\b|n't\b|-free\b|\btolerant\b/u,
   // Future, plans, conditions, questions.
   /(?<!(?:^|[^\p{L}\p{N}-])\d{1,2} )\bmay\b(?! \d)|\b(?:will|would|shall|might|could|can|should|must|to be|to start|expected|expects?|planned|plans?|scheduled|upcoming|soon|once|until|awaits?|awaiting|delayed|pending|if|whether|what|how|why|in case)\b|\?/u,
   // Partial, temporary or moved: not a clean repair.
@@ -167,16 +167,20 @@ function cablePhrase(name, speakers, { cable = true } = {}) {
  * connection is back online". A second clause ("and …") may follow only a
  * stated verb. "A cut in the C-Lion1 cable has been ruled out" is none.
  */
+// The one second clause a break sentence may have: "… and the direct
+// submarine cable connection between Finland and Germany is back online".
+const BACK_ONLINE = String.raw`(?: and the [^,;]{1,90} (?:is|are) back online)?`;
+
 function breakShapesFor(name, speakers) {
   const cable = cablePhrase(name, speakers, { cable: false });
   return [
     new RegExp(`^(?:the |a )?(?:break|cut) (?:in|on|of|to) ${cable}$`, 'u'),
     new RegExp(
-      `^(?:the |a )?(?:break|cut) (?:in|on|of|to) ${cable} (?:has been|was|is) (?:detected|found|located|repaired)(?: and .+)?$`,
+      `^(?:the |a )?(?:break|cut) (?:in|on|of|to) ${cable} (?:has been|was|is) (?:detected|found|located|repaired)${BACK_ONLINE}$`,
       'u',
     ),
     new RegExp(
-      `^${cable} (?:was|has been|is) (?:cut|severed|broken)(?: and .+)?$`,
+      `^${cable} (?:was|has been|is) (?:cut|severed|broken)${BACK_ONLINE}$`,
       'u',
     ),
   ];
@@ -292,10 +296,12 @@ export function templateClaim(
   if (!match) return { reason: 'no-allowed-title-shape' };
   const [claim] = match;
   // A break stated in the summary counts only in a whole sentence of a
-  // break shape, with no doubtful wording, and at most one of the source's
-  // places after it: "The break in Cinia's C-Lion1 submarine cable has been
-  // repaired." Nothing else in the summary is judged.
-  const summaryBreak = String(summary)
+  // break shape, with no doubtful wording, no other year, and at most one of
+  // the source's places after it: "The break in Cinia's C-Lion1 submarine
+  // cable has been repaired." Any denial, retraction or hedge anywhere in
+  // the summary ("Cinia says it was misreported.") cancels it. Nothing else
+  // in the summary is judged.
+  const sentences = String(summary)
     .split(/(?<=[.!])\s+/)
     .map((sentence) =>
       sentence
@@ -305,10 +311,19 @@ export function templateClaim(
         .replace(/[\s.!,;:]+$/u, '')
         .trim(),
     )
-    .some((sentence) => {
-      if (!sentence || /[?？]/.test(sentence)) return false;
-      if (BLOCKERS.some((pattern) => pattern.test(fold(sentence))))
-        return false;
+    .filter(Boolean);
+  const denied = sentences.some((sentence) =>
+    QUOTE_BLOCKERS[0].test(fold(sentence)),
+  );
+  const summaryBreak =
+    !denied &&
+    sentences.some((sentence) => {
+      if (/[?？]/.test(sentence)) return false;
+      const folded = fold(sentence);
+      if (BLOCKERS.some((pattern) => pattern.test(folded))) return false;
+      for (const m of folded.matchAll(/\b(19\d\d|20\d\d)\b/g))
+        if (Number(m[1]) !== noticeYear) return false;
+      if (/'\d\d\b/.test(folded)) return false;
       const tail = PLACE_TAIL.exec(sentence);
       if (tail?.groups?.from) {
         const own = new Set(places.map((p) => fold(p)));
@@ -443,12 +458,18 @@ export function applySignal(
         };
       return { incidents: next, change: 'restore-without-open-incident' };
     }
-    if (Date.parse(when) < Date.parse(open.openedAt))
+    // A repair dated by day only (midnight) is compared by day: "repaired
+    // on 27 November" is not older than a fault update that afternoon.
+    const before = (time) =>
+      when.endsWith('T00:00:00.000Z')
+        ? when.slice(0, 10) < String(time ?? '').slice(0, 10)
+        : Date.parse(when) < Date.parse(time ?? '');
+    if (before(open.openedAt))
       return { incidents: next, change: 'restore-before-incident' };
     // A repair dated before the latest fault report is older news than
     // that report (a delayed notice, or another source read later): the
     // fault stands.
-    if (Date.parse(when) < Date.parse(open.lastReportedAt ?? open.openedAt))
+    if (before(open.lastReportedAt ?? open.openedAt))
       return { incidents: next, change: 'restore-before-last-report' };
     next[cableId] = {
       ...open,
