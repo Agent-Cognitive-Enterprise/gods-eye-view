@@ -362,3 +362,103 @@ test('a notice is dated by its publication time, never after it was seen', () =>
   );
   assert.equal(noticeTime({ publishedAt: null }, seenAt), Date.parse(seenAt));
 });
+
+test('a summary confirms a break only in a whole, affirmative sentence (PR #8 review)', () => {
+  const fault = 'C-Lion1 submarine cable fault';
+  for (const summary of [
+    'A cut in the C-Lion1 submarine cable has been ruled out.',
+    'A cut in the C-Lion1 submarine cable and the Estlink cable has been ruled out.',
+    'The C-Lion1 submarine cable was cut, according to unconfirmed reports.',
+    'Was the C-Lion1 submarine cable cut?',
+    'The C-Lion1 submarine cable was not cut.',
+  ])
+    assert.equal(
+      judge(fault, operator, { summary }).breakConfirmed,
+      false,
+      summary,
+    );
+  for (const summary of [
+    'The C-Lion1 submarine cable was cut.',
+    'The C-Lion1 submarine cable was cut near Gotland.',
+    'A break in the C-Lion1 submarine cable has been located.',
+  ])
+    assert.equal(
+      judge(fault, operator, { summary }).breakConfirmed,
+      true,
+      summary,
+    );
+});
+
+test('a repair dated before the latest fault report leaves the incident open (PR #8 review)', () => {
+  let incidents = {};
+  const step = (s) => {
+    const applied = applySignal(incidents, s);
+    incidents = applied.incidents;
+    return applied.change;
+  };
+  assert.equal(step(signal('fault', '2026-11-18T08:00:00Z')), 'would-show');
+  assert.equal(step(signal('fault', '2026-11-21T08:00:00Z')), 'would-update');
+  // A delayed repair notice dated the 19th, read after the 21st's report.
+  assert.equal(
+    step(signal('restored', '2026-11-19T08:00:00Z')),
+    'restore-before-last-report',
+  );
+  assert.equal(incidents['c-lion1'].status, 'open');
+  // A repair after the latest report closes it.
+  assert.equal(step(signal('restored', '2026-11-22T08:00:00Z')), 'would-close');
+});
+
+test('a retracted, old or denied break in the summary confirms nothing (fix review round 1)', () => {
+  const fault = 'Fault detected in Cinia C-Lion1 submarine cable';
+  for (const summary of [
+    'The C-Lion1 submarine cable was cut and this was later retracted.',
+    'The C-Lion1 submarine cable was cut and Cinia has withdrawn it.',
+    'The C-Lion1 submarine cable was cut and this was incorrect.',
+    'A break in the C-Lion1 submarine cable was detected and later ruled out.',
+    'The C-Lion1 submarine cable was cut and repaired in 2019.',
+    'Earlier media claimed this. The C-Lion1 submarine cable was cut. Cinia says it was misreported.',
+  ])
+    assert.equal(
+      judge(fault, operator, { summary }).breakConfirmed,
+      false,
+      summary,
+    );
+  assert.equal(
+    judge("Cinia's C-Lion1 Submarine Cable Has Fully Restored", operator, {
+      summary:
+        "The break in Cinia's C-Lion1 submarine cable has been repaired and the direct submarine cable connection between Finland and Germany is back online.",
+    }).breakConfirmed,
+    true,
+  );
+});
+
+test('a repair dated by day only is compared by day (fix review round 1)', () => {
+  let incidents = {};
+  const step = (s) => {
+    const applied = applySignal(incidents, s);
+    incidents = applied.incidents;
+    return applied.change;
+  };
+  step(signal('fault', '2024-11-18T09:00:00Z'));
+  step(signal('fault', '2024-11-27T14:00:00Z'));
+  // "Repaired on 27 November": the same day as the last report closes it.
+  assert.equal(step(signal('restored', '2024-11-27T00:00:00Z')), 'would-close');
+});
+
+test('a retraction worded any way, or a back-online clause about anything else, confirms no break (fix review round 2)', () => {
+  const fault = 'Fault detected in Cinia C-Lion1 submarine cable';
+  for (const summary of [
+    'The C-Lion1 submarine cable was cut. Cinia apologises for the inaccurate notice.',
+    'The C-Lion1 submarine cable was cut. The earlier notice was wrong.',
+    'The C-Lion1 submarine cable was cut. Cinia has rescinded the notice.',
+    'The C-Lion1 submarine cable was cut. This turned out to be a sensor fault.',
+    'The C-Lion1 submarine cable was cut. Update: it was a power fault at the landing station.',
+    'The C-Lion1 submarine cable is broken and the tabloid stories saying so are back online.',
+    'The C-Lion1 submarine cable was cut. Cinia corrects its earlier notice: the cable is damaged.',
+  ])
+    assert.equal(
+      judge(fault, operator, { summary }).breakConfirmed,
+      false,
+      summary,
+    );
+});
