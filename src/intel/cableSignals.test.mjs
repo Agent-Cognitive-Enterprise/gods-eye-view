@@ -362,3 +362,48 @@ test('a notice is dated by its publication time, never after it was seen', () =>
   );
   assert.equal(noticeTime({ publishedAt: null }, seenAt), Date.parse(seenAt));
 });
+
+test('a summary confirms a break only in a whole, affirmative sentence (PR #8 review)', () => {
+  const fault = 'C-Lion1 submarine cable fault';
+  for (const summary of [
+    'A cut in the C-Lion1 submarine cable has been ruled out.',
+    'A cut in the C-Lion1 submarine cable and the Estlink cable has been ruled out.',
+    'The C-Lion1 submarine cable was cut, according to unconfirmed reports.',
+    'Was the C-Lion1 submarine cable cut?',
+    'The C-Lion1 submarine cable was not cut.',
+  ])
+    assert.equal(
+      judge(fault, operator, { summary }).breakConfirmed,
+      false,
+      summary,
+    );
+  for (const summary of [
+    'The C-Lion1 submarine cable was cut.',
+    'The C-Lion1 submarine cable was cut near Gotland.',
+    'A break in the C-Lion1 submarine cable has been located.',
+  ])
+    assert.equal(
+      judge(fault, operator, { summary }).breakConfirmed,
+      true,
+      summary,
+    );
+});
+
+test('a repair dated before the latest fault report leaves the incident open (PR #8 review)', () => {
+  let incidents = {};
+  const step = (s) => {
+    const applied = applySignal(incidents, s);
+    incidents = applied.incidents;
+    return applied.change;
+  };
+  assert.equal(step(signal('fault', '2026-11-18T08:00:00Z')), 'would-show');
+  assert.equal(step(signal('fault', '2026-11-21T08:00:00Z')), 'would-update');
+  // A delayed repair notice dated the 19th, read after the 21st's report.
+  assert.equal(
+    step(signal('restored', '2026-11-19T08:00:00Z')),
+    'restore-before-last-report',
+  );
+  assert.equal(incidents['c-lion1'].status, 'open');
+  // A repair after the latest report closes it.
+  assert.equal(step(signal('restored', '2026-11-22T08:00:00Z')), 'would-close');
+});

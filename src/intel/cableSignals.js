@@ -160,12 +160,25 @@ function cablePhrase(name, speakers, { cable = true } = {}) {
   return `${lead}${escape(fold(name))}(?: (?:submarine|subsea|undersea|sea))?${named ? '(?: cable(?: system)?)?' : ' cable(?: system)?'}`;
 }
 
-/** Sentence openings that state a physical break of the named cable. */
+/**
+ * Whole sentences that state a physical break of the named cable, with at
+ * most a place after them: "The C-Lion1 submarine cable was cut", "The
+ * break in Cinia's C-Lion1 submarine cable has been repaired and the
+ * connection is back online". A second clause ("and …") may follow only a
+ * stated verb. "A cut in the C-Lion1 cable has been ruled out" is none.
+ */
 function breakShapesFor(name, speakers) {
   const cable = cablePhrase(name, speakers, { cable: false });
   return [
-    new RegExp(`^(?:the |a )?(?:break|cut) (?:in|on|of|to) ${cable}\\b`, 'u'),
-    new RegExp(`^${cable} (?:was|has been|is) (?:cut|severed|broken)\\b`, 'u'),
+    new RegExp(`^(?:the |a )?(?:break|cut) (?:in|on|of|to) ${cable}$`, 'u'),
+    new RegExp(
+      `^(?:the |a )?(?:break|cut) (?:in|on|of|to) ${cable} (?:has been|was|is) (?:detected|found|located|repaired)(?: and .+)?$`,
+      'u',
+    ),
+    new RegExp(
+      `^${cable} (?:was|has been|is) (?:cut|severed|broken)(?: and .+)?$`,
+      'u',
+    ),
   ];
 }
 
@@ -278,17 +291,35 @@ export function templateClaim(
   const match = shapes.find(([, pattern]) => pattern.test(text));
   if (!match) return { reason: 'no-allowed-title-shape' };
   const [claim] = match;
-  // A break stated in the summary counts only when a sentence opens with
-  // it: "The break in Cinia's C-Lion1 submarine cable has been repaired …".
-  // Nothing else in the summary is judged.
+  // A break stated in the summary counts only in a whole sentence of a
+  // break shape, with no doubtful wording, and at most one of the source's
+  // places after it: "The break in Cinia's C-Lion1 submarine cable has been
+  // repaired." Nothing else in the summary is judged.
   const summaryBreak = String(summary)
     .split(/(?<=[.!])\s+/)
-    .map((sentence) => fold(sentence).trim())
-    .some((sentence) =>
-      breakShapesFor(cableName, speakers).some((pattern) =>
-        pattern.test(sentence),
-      ),
-    );
+    .map((sentence) =>
+      sentence
+        .normalize('NFC')
+        .replace(APOSTROPHES, "'")
+        .replace(/\s+/g, ' ')
+        .replace(/[\s.!,;:]+$/u, '')
+        .trim(),
+    )
+    .some((sentence) => {
+      if (!sentence || /[?？]/.test(sentence)) return false;
+      if (BLOCKERS.some((pattern) => pattern.test(fold(sentence))))
+        return false;
+      const tail = PLACE_TAIL.exec(sentence);
+      if (tail?.groups?.from) {
+        const own = new Set(places.map((p) => fold(p)));
+        if (!own.has(fold(tail.groups.from)) || !own.has(fold(tail.groups.to)))
+          return false;
+      }
+      const core = fold(tail ? sentence.slice(0, tail.index) : sentence);
+      return breakShapesFor(cableName, speakers).some((pattern) =>
+        pattern.test(core),
+      );
+    });
   return { claim, breakConfirmed: PHYSICAL.test(whole) || summaryBreak };
 }
 
@@ -414,6 +445,11 @@ export function applySignal(
     }
     if (Date.parse(when) < Date.parse(open.openedAt))
       return { incidents: next, change: 'restore-before-incident' };
+    // A repair dated before the latest fault report is older news than
+    // that report (a delayed notice, or another source read later): the
+    // fault stands.
+    if (Date.parse(when) < Date.parse(open.lastReportedAt ?? open.openedAt))
+      return { incidents: next, change: 'restore-before-last-report' };
     next[cableId] = {
       ...open,
       status: 'closed',

@@ -276,9 +276,12 @@ without a person (`src/intel/cableSignals.js`):
      years.
 
    Its claim is `fault` or `restored`. A break is recorded when the title
-   says cut, severed, broken or break, or when a summary sentence opens
-   with it ("The break in Cinia's C-Lion1 submarine cable has been
-   repaired …").
+   says cut, severed, broken or break, or when a whole summary sentence
+   states it in a break shape, with no doubtful wording and at most one of
+   the source's places after it ("The C-Lion1 submarine cable was cut near
+   Gotland", "The break in Cinia's C-Lion1 submarine cable has been
+   repaired and the connection is back online"). "A cut in the C-Lion1
+   cable has been ruled out" records none.
 
    Allowed shapes decide, not a list of blocked words. Two review rounds
    showed that a blocklist alone never stops the next wrong signal: "Cinia
@@ -304,7 +307,9 @@ without a person (`src/intel/cableSignals.js`):
    same time.
    - A clear fault opens an incident on its cable, or updates the open one.
    - A clear repair notice closes it, unless the repair is dated before the
-     incident began.
+     incident began or before its latest fault report (a delayed repair
+     notice, or another source read later, does not close a fault reported
+     after it).
    - A fault dated no later than the close belongs to the closed incident.
    - An open incident with no report for 30 days fades: it was last
      reported then, not proven repaired.
