@@ -454,6 +454,7 @@ test('a retraction worded any way, or a back-online clause about anything else, 
     'The C-Lion1 submarine cable was cut. This turned out to be a sensor fault.',
     'The C-Lion1 submarine cable was cut. Update: it was a power fault at the landing station.',
     'The C-Lion1 submarine cable is broken and the tabloid stories saying so are back online.',
+    'The C-Lion1 submarine cable was cut. Cinia corrects its earlier notice: the cable is damaged.',
   ])
     assert.equal(
       judge(fault, operator, { summary }).breakConfirmed,

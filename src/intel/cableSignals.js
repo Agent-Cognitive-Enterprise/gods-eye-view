@@ -41,7 +41,7 @@ const REPAIRED = '(?:repaired|restored)';
 // Any of these in the title makes it doubtful, whatever its shape.
 const BLOCKERS = [
   // Negation, denial, hedging.
-  /\b(?:no|not|none|never|nothing|without|zero|unaffected|unharmed|intact|normal|normally|usual|deny|denies|denied|false|unfounded|baseless|rumou?rs?|hoax|untrue|claims?|rejects?|refutes?|feared|unconfirmed|confirm\w*|suspected|possible|possibly|potential|likely|reportedly|alleged|allegedly|retract\w*|withdr[ae]wn?|withdraws?|incorrect\w*|mistak\w*|errors?|erroneous\w*|misreport\w*|dismiss\w*|ruled out|inaccura\w*|wrong\w*|rescind\w*|turned out|ei)\b|n't\b|-free\b|\btolerant\b/u,
+  /\b(?:no|not|none|never|nothing|without|zero|unaffected|unharmed|intact|normal|normally|usual|deny|denies|denied|false|unfounded|baseless|rumou?rs?|hoax|untrue|claims?|rejects?|refutes?|feared|unconfirmed|confirm\w*|suspected|possible|possibly|potential|likely|reportedly|alleged|allegedly|retract\w*|withdr[ae]wn?|withdraws?|incorrect\w*|mistak\w*|errors?|erroneous\w*|misreport\w*|dismiss\w*|ruled out|inaccura\w*|wrong\w*|rescind\w*|correct(?:s|ed|ing|ion|ions)?|turned out|ei)\b|n't\b|-free\b|\btolerant\b/u,
   // Future, plans, conditions, questions.
   /(?<!(?:^|[^\p{L}\p{N}-])\d{1,2} )\bmay\b(?! \d)|\b(?:will|would|shall|might|could|can|should|must|to be|to start|expected|expects?|planned|plans?|scheduled|upcoming|soon|once|until|awaits?|awaiting|delayed|pending|if|whether|what|how|why|in case)\b|\?/u,
   // Partial, temporary or moved: not a clean repair.
