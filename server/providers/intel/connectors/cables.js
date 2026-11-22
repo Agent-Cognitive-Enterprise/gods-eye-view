@@ -25,6 +25,7 @@ import {
   impactFor,
   landingCountries,
   landingPoints,
+  mergeImpact,
 } from '../../../../src/intel/cableImpact.js';
 import {
   cableMentions,
@@ -38,7 +39,10 @@ import {
   cableAssessmentSchema,
   validateCableAssessment,
 } from '../../../../src/intel/cableAssessment.js';
-import { liveRecords } from '../../../../src/intel/cableEvents.js';
+import {
+  incidentIdOf,
+  liveRecords,
+} from '../../../../src/intel/cableEvents.js';
 import { mergedCableFeatures } from '../../../../src/intel/cableRoutes.js';
 import {
   STALE_NOTICE_MS,
@@ -712,8 +716,10 @@ const IODA_MAX_HOURS = 7 * 24;
 
 /**
  * Phase 4: IODA's country outages beside the open incidents, at most once
- * every three hours and only while one is open. Returns the new state and
- * log lines; a failing IODA keeps the last impact and is logged.
+ * every three hours and only while one is open. Impact is kept per incident
+ * and only grows while it lasts (IODA's window is shorter than an
+ * incident); a new incident on the cable starts bare. Returns the new state
+ * and log lines; a failing IODA keeps the last impact and is logged.
  */
 export async function checkImpact({
   state,
@@ -725,14 +731,28 @@ export async function checkImpact({
   const next = structuredClone(state);
   const lines = [];
   const open = Object.entries(next.incidents ?? {}).filter(
-    ([, incident]) => incident.status === 'open',
+    ([, incident]) =>
+      incident?.status === 'open' &&
+      Number.isFinite(Date.parse(incident.openedAt ?? '')),
   );
-  // Nothing open: nothing to show beside, and no request.
+  // Only the open incidents' own impact is kept.
+  const kept = {};
+  for (const [cableId, incident] of open) {
+    const held = next.impact?.[cableId];
+    if (held?.incidentId === incidentIdOf(incident))
+      kept[cableId] = {
+        incidentId: held.incidentId,
+        entries: mergeImpact([], held.entries),
+      };
+  }
+  next.impact = kept;
   if (!open.length) {
     delete next.impact;
     return { state: next, lines };
   }
-  if (now() - Date.parse(next.iodaCheckedAt ?? '') < IODA_EVERY_MS)
+  // A check in the last three hours (a time in the future counts as none).
+  const age = now() - Date.parse(next.iodaCheckedAt ?? '');
+  if (Number.isFinite(age) && age >= 0 && age < IODA_EVERY_MS)
     return { state: next, lines };
   const earliest = Math.min(
     ...open.map(([, incident]) => Date.parse(incident.openedAt)),
@@ -754,7 +774,7 @@ export async function checkImpact({
     });
     return { state: next, lines };
   }
-  const impact = {};
+  const before = JSON.stringify(next.impact);
   for (const [cableId, incident] of open) {
     const found = impactFor({
       incident,
@@ -762,19 +782,19 @@ export async function checkImpact({
       outages,
       now: now(),
     });
-    if (found.length) impact[cableId] = found;
+    const entries = mergeImpact(next.impact[cableId]?.entries, found);
+    if (entries.length)
+      next.impact[cableId] = { incidentId: incidentIdOf(incident), entries };
   }
-  const before = JSON.stringify(state.impact ?? {});
-  next.impact = impact;
-  if (JSON.stringify(impact) !== before)
+  if (JSON.stringify(next.impact) !== before)
     lines.push({
       seenAt,
       change: 'ioda-impact',
-      cables: Object.keys(impact),
+      cables: Object.keys(next.impact),
       countries: Object.fromEntries(
-        Object.entries(impact).map(([id, list]) => [
+        Object.entries(next.impact).map(([id, held]) => [
           id,
-          list.map((entry) => entry.country),
+          held.entries.map((entry) => entry.country),
         ]),
       ),
     });

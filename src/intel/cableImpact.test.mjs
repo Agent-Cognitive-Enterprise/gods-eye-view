@@ -82,6 +82,8 @@ test('only outages in a landing country, during the incident, are shown beside i
     outage('IN', '2026-11-18T05:00:00.000Z', '2026-11-18T12:00:00.000Z'),
     // Ended two days before the incident.
     outage('OM', '2026-11-15T00:00:00.000Z', '2026-11-16T00:00:00.000Z'),
+    // Running for weeks before it: not "at the same time".
+    outage('AE', '2026-10-20T00:00:00.000Z', '2026-11-19T00:00:00.000Z'),
   ];
   const found = impactFor({
     incident,
@@ -105,8 +107,9 @@ test('only outages in a landing country, during the incident, are shown beside i
     [],
   );
   const sentence = impactSentence(found);
-  assert.match(sentence, /Pakistan from 2026-11-18 \(routing \(BGP\)\)/);
-  assert.match(sentence, /does not say this cable caused it/);
+  // The qualifier comes first, so a card cut after three lines keeps it.
+  assert.match(sentence, /^Impact only, cause unknown: IODA \(Georgia Tech\)/);
+  assert.match(sentence, /Pakistan from 2026-11-18/);
   assert.equal(impactSentence([]), '');
 });
 
@@ -131,14 +134,17 @@ test('the impact goes on the card of the confirmed event, and a change updates i
   assert.doesNotMatch(engine.activeEvents()[0].summary, /IODA/);
   clock += 3 * 3600_000;
   const impact = {
-    'transworld-tw1': impactFor({
-      incident,
-      countries: ['PK'],
-      outages: [
-        outage('PK', '2026-11-18T05:00:00.000Z', '2026-11-18T12:00:00.000Z'),
-      ],
-      now: clock,
-    }),
+    'transworld-tw1': {
+      incidentId: incident.incidentId,
+      entries: impactFor({
+        incident,
+        countries: ['PK'],
+        outages: [
+          outage('PK', '2026-11-18T05:00:00.000Z', '2026-11-18T12:00:00.000Z'),
+        ],
+        now: clock,
+      }),
+    },
   };
   const second = liveRecords({
     incidents: { 'transworld-tw1': incident },
@@ -151,10 +157,22 @@ test('the impact goes on the card of the confirmed event, and a change updates i
   const [result] = engine.ingest(second.records);
   assert.equal(result.status, 'material_update');
   const [event] = engine.activeEvents();
-  assert.match(
-    event.summary,
-    /IODA \(Georgia Tech\) saw internet outage signals/,
-  );
+  assert.match(event.summary, /^Impact only, cause unknown: IODA/);
+  // Shown, but no news: the camera cooldown is not lifted.
+  assert.equal(event.revision - (event.quiet_revisions ?? 0), 1);
+  // Another incident on the cable gets none of it.
+  const other = {
+    ...incident,
+    incidentId: '2026-12-01T00:00:00.000Z',
+    openedAt: '2026-12-01T00:00:00.000Z',
+  };
+  const fresh = liveRecords({
+    incidents: { 'transworld-tw1': other },
+    features,
+    publisherOf,
+    impact,
+  });
+  assert.doesNotMatch(fresh.records[0].summary, /IODA/);
   // Impact changes nothing else: still the operator's fault, still one source.
   assert.equal(event.subtype, 'submarine_cable_fault');
   assert.equal(event.lineages.length, 1);
@@ -169,4 +187,23 @@ test('the impact goes on the card of the confirmed event, and a change updates i
     }).records.length,
     0,
   );
+});
+
+test('a cable landing in many countries still fits its qualifier on a three-line card', () => {
+  const many = ['AE', 'DJ', 'EG', 'IN', 'OM', 'PK'].map((country) => ({
+    country,
+    name: `Country ${country}`,
+    start: '2026-11-18T05:00:00.000Z',
+    end: '2026-11-18T09:00:00.000Z',
+    datasources: ['bgp'],
+  }));
+  const sentence = impactSentence(many);
+  assert.match(sentence, /and 2 more\. $/);
+  // The card wraps the summary at 60 characters on 3 lines.
+  assert.match(
+    sentence.slice(0, 180),
+    /^Impact only, cause unknown: IODA \(Georgia Tech\)/,
+  );
+  // Malformed stored entries are dropped, never thrown on.
+  assert.equal(impactSentence([{ country: 'PK' }]), '');
 });

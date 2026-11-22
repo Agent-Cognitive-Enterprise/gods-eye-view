@@ -579,15 +579,18 @@ it regularly.
 
 - **What it asks for:** one request to IODA's outage events for all
   countries, only while a live incident is open, at most every three
-  hours, covering the open incidents (from a day before the earliest, up to
-  seven days). No key is needed. A failed request is logged as
-  `ioda-failed` and keeps the last impact.
-- **What it shows:** outages in a country where the cable lands, from a
-  day before the incident opened until now, added to the event's card:
-  "At the same time IODA (Georgia Tech) saw internet outage signals in a
-  country this cable lands in: Pakistan from 2026-11-18 (routing (BGP)).
-  That shows impact in the country; it does not say this cable caused it."
-  A change is logged as `ioda-impact` and sends an updated record.
+  hours, covering up to seven days back. No key is needed. A failed
+  request is logged as `ioda-failed` and keeps the last impact.
+- **What it shows:** outages in a country where the cable lands that began
+  no earlier than a day before the incident opened. Impact is kept per
+  incident and only grows while it lasts, so an outage seen once stays on
+  the card even after it drops out of IODA's seven-day window; a new
+  incident on the cable starts bare. The sentence leads the card's
+  summary, qualifier first, and names at most four countries: "Impact only,
+  cause unknown: IODA (Georgia Tech) saw internet outages where this cable
+  lands, in Pakistan from 2026-11-18." A change is logged as `ioda-impact`
+  and sends an updated record. It is shown, but counted as no news: it
+  lifts no camera cooldown and starts no re-alert.
 - **Landing countries:** each end of each of the cable's catalogue lines,
   matched to the nearest TeleGeography landing point within 0.1°, whose
   country is looked up in Natural Earth (with a few territory names

@@ -95,7 +95,7 @@ export function cableRecord({
       : `${name} submarine cable fault, ${by} reports`;
   const summary = closed
     ? `Repair reported on ${dayOf(incident.closedAt)}. The fault was first reported on ${dayOf(incident.openedAt)}.`
-    : `First reported on ${dayOf(incident.openedAt)}, last reported on ${dayOf(incident.lastReportedAt)}.${broken ? ' The source confirms a physical break.' : ' A fault does not by itself mean the cable is cut.'}${impactSentence(impact)}`;
+    : `${impactSentence(impact)}First reported on ${dayOf(incident.openedAt)}, last reported on ${dayOf(incident.lastReportedAt)}.${broken ? ' The source confirms a physical break.' : ' A fault does not by itself mean the cable is cut.'}`;
   const url = incident.sources?.at(-1) ?? null;
   return {
     provider: CABLE_EVENT_PROVIDER,
@@ -151,7 +151,7 @@ export function liveRecords({
   published = {},
   features,
   publisherOf,
-  // Phase 4: cable id → impactFor() entries, for open incidents.
+  // Phase 4: cable id → {incidentId, entries} (checkImpact), open only.
   impact = {},
 }) {
   const records = [];
@@ -171,7 +171,14 @@ export function liveRecords({
     Date.parse(sent.lastReportedAt ?? '') + FAULT_FADE_MS;
   for (const [cableId, incident] of Object.entries(incidents ?? {})) {
     const sent = published[cableId];
-    const seen = incident.status === 'open' ? (impact[cableId] ?? []) : [];
+    // Only this incident's impact: a new incident on the cable starts bare.
+    const held = impact[cableId];
+    const seen =
+      incident.status === 'open' &&
+      held?.incidentId === incidentIdOf(incident) &&
+      Array.isArray(held.entries)
+        ? held.entries
+        : [];
     if (sent?.key === publishKey(incident, seen)) continue;
     let shown = incident;
     if (incident.status === 'closed') {

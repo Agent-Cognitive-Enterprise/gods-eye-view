@@ -33,7 +33,8 @@ const ISO2 = /^[A-Z]{2}$/;
 // A landing point within this many degrees of a line's end is where it lands.
 const LANDING_REACH_DEG = 0.1;
 const HOUR_MS = 3600_000;
-// An outage that began this long before the incident is not "at the same time".
+// An outage that began more than this before the incident is not "at the
+// same time".
 const LEAD_MS = 24 * HOUR_MS;
 
 /** Country name (lower case) → ISO 3166-1 alpha-2, from Natural Earth. */
@@ -108,9 +109,9 @@ export function landingCountries(feature, points) {
 
 /**
  * The country outages beside one cable incident: in a country the cable
- * lands in, and overlapping the incident (from a day before it opened).
- * `outages` are iodaOutages() results. Returns [{country, name, start, end,
- * datasources}], sorted by country.
+ * lands in, beginning no earlier than a day before the incident opened, and
+ * begun by now. `outages` are iodaOutages() results. Returns [{country, name,
+ * start, end, datasources}], sorted by country.
  */
 export function impactFor({ incident, countries, outages, now }) {
   const opened = Date.parse(incident?.openedAt ?? '');
@@ -122,37 +123,76 @@ export function impactFor({ incident, countries, outages, now }) {
     const start = Date.parse(outage.start ?? '');
     const end = Date.parse(outage.end ?? '');
     if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
-    if (end < opened - LEAD_MS || start > now) continue;
+    // An outage already running long before the incident is not "at the
+    // same time"; nor is one that has not begun.
+    if (start < opened - LEAD_MS || start > now) continue;
     out.push({
       country: outage.country,
       name: String(outage.name ?? outage.country).slice(0, 80),
       start: outage.start,
       end: outage.end,
       datasources: [
-        ...new Set((outage.signals ?? []).map((s) => s.datasource)),
+        ...new Set((outage.signals ?? []).map((s) => String(s.datasource))),
       ].sort(),
     });
   }
-  return out.sort((a, b) => (a.country < b.country ? -1 : 1));
+  return mergeImpact([], out);
 }
 
-const SIGNAL_NAMES = Object.freeze({
-  bgp: 'routing (BGP)',
-  'ping-slash24': 'active probing',
-  'merit-nt': 'network telescope',
-  gtr: 'Google traffic',
-});
+/** A well-formed impact entry, as stored in the shadow state. */
+const isEntry = (entry) =>
+  ISO2.test(String(entry?.country)) &&
+  typeof entry?.name === 'string' &&
+  Number.isFinite(Date.parse(entry?.start ?? '')) &&
+  Number.isFinite(Date.parse(entry?.end ?? '')) &&
+  Array.isArray(entry?.datasources);
 
-/** The card's sentence for an incident's impact, or '' when there is none. */
+/**
+ * Impact for one incident only grows while it lasts: a country seen once
+ * stays (IODA's query window is shorter than an incident), with its
+ * earliest start and latest end. Malformed entries are dropped.
+ */
+export function mergeImpact(held, found) {
+  const byCountry = new Map();
+  for (const entry of [...(held ?? []), ...(found ?? [])]) {
+    if (!isEntry(entry)) continue;
+    const known = byCountry.get(entry.country);
+    if (!known) {
+      byCountry.set(entry.country, {
+        ...entry,
+        datasources: [...entry.datasources],
+      });
+      continue;
+    }
+    if (entry.start < known.start) known.start = entry.start;
+    if (entry.end > known.end) known.end = entry.end;
+    known.datasources = [
+      ...new Set([...known.datasources, ...entry.datasources]),
+    ].sort();
+  }
+  return [...byCountry.values()].sort((a, b) =>
+    a.country < b.country ? -1 : 1,
+  );
+}
+
+// The card shows about three short lines: the qualifier comes first, and
+// only a few countries are named.
+const MAX_LISTED = 4;
+
+/**
+ * The card's sentence for an incident's impact, or '' when there is none.
+ * It leads the summary, qualifier first, so a cut card still says it.
+ */
 export function impactSentence(impact) {
-  if (!impact?.length) return '';
-  const places = impact
-    .map((entry) => {
-      const signals = entry.datasources
-        .map((id) => SIGNAL_NAMES[id] ?? id)
-        .join(', ');
-      return `${entry.name} from ${String(entry.start).slice(0, 10)} (${signals})`;
-    })
-    .join('; ');
-  return ` At the same time IODA (Georgia Tech) saw internet outage signals in a country this cable lands in: ${places}. That shows impact in the country; it does not say this cable caused it.`;
+  const entries = (impact ?? []).filter(isEntry);
+  if (!entries.length) return '';
+  const named = entries
+    .slice(0, MAX_LISTED)
+    .map((entry) => `${entry.name} from ${String(entry.start).slice(0, 10)}`)
+    .join(', ');
+  const more =
+    entries.length > MAX_LISTED
+      ? ` and ${entries.length - MAX_LISTED} more`
+      : '';
+  return `Impact only, cause unknown: IODA (Georgia Tech) saw internet outages where this cable lands, in ${named}${more}. `;
 }

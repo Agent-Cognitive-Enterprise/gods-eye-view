@@ -879,7 +879,7 @@ test('IODA is asked at most every three hours, only while an incident is open, a
   });
   assert.equal(calls.length, 1);
   assert.deepEqual(
-    first.state.impact['c-lion1'].map((e) => e.country),
+    first.state.impact['c-lion1'].entries.map((e) => e.country),
     ['FI'],
   );
   assert.equal(first.lines[0].change, 'ioda-impact');
@@ -904,6 +904,59 @@ test('IODA is asked at most every three hours, only while an incident is open, a
   });
   assert.deepEqual(failed.state.impact, first.state.impact);
   assert.equal(failed.lines[0].change, 'ioda-failed');
+  // Later IODA no longer lists the outage: it stays on this incident.
+  clock += 3 * 3600_000;
+  const later = await checkImpact({
+    state: failed.state,
+    countriesOf,
+    now: () => clock,
+    poll: async () => ({ outages: [] }),
+  });
+  assert.deepEqual(later.state.impact, first.state.impact);
+  // A new incident on the cable starts bare.
+  const reopened = await checkImpact({
+    state: {
+      ...later.state,
+      incidents: {
+        'c-lion1': {
+          ...open,
+          incidentId: '2026-12-01T00:00:00.000Z',
+          openedAt: '2026-12-01T00:00:00.000Z',
+        },
+      },
+    },
+    countriesOf,
+    now: () => clock,
+    poll: async () => ({ outages: [] }),
+  });
+  assert.deepEqual(reopened.state.impact, {});
+  // A check time in the future does not stop IODA for ever; a bad incident
+  // date is no reason to ask.
+  let asked = 0;
+  await checkImpact({
+    state: { ...first.state, iodaCheckedAt: '2099-01-01T00:00:00.000Z' },
+    countriesOf,
+    now: () => clock,
+    poll: async () => {
+      asked += 1;
+      return { outages: [] };
+    },
+  });
+  assert.equal(asked, 1);
+  const bad = await checkImpact({
+    state: {
+      ...base,
+      incidents: { 'c-lion1': { ...open, openedAt: 'not a date' } },
+    },
+    countriesOf,
+    now: () => clock,
+    poll: async () => {
+      asked += 1;
+      return { outages: [] };
+    },
+  });
+  assert.equal(asked, 1);
+  assert.equal('impact' in bad.state, false);
 });
 
 test('IODA stays off unless live mode and GEV_INTEL_CABLES_IODA=1 are both set', () => {

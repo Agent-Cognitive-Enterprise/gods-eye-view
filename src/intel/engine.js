@@ -406,6 +406,10 @@ export function createIntelEngine({ store, now, settings = {} }) {
       return { status: 'non_material', event_id: parent.event_id, reasons: [] };
     }
     const updated = applyMaterial(parent, observation, lineage, reasons);
+    // Fork: a cable card's impact line alone (IODA, phase 4) is shown, but it
+    // is no news: no re-alert, no camera cooldown lifted.
+    if (reasons.every((reason) => reason === 'cable_summary_changed'))
+      updated.quiet_revisions = (updated.quiet_revisions ?? 0) + 1;
     store.saveEvent(updated);
     store.saveObservation(observation, { ...link, material: true });
     snapshotRevision(updated, observation, reasons, 'material_update');
