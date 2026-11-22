@@ -1,0 +1,140 @@
+{
+  "sources": [
+    {
+      "id": "cinia-news",
+      "format": "rss",
+      "url": "https://www.cinia.fi/en/news/rss.xml",
+      "sourceKind": "operator",
+      "publisher": "Cinia",
+      "remit": "Cinia's own cables, such as C-Lion1"
+    },
+    {
+      "id": "cinia-news-page",
+      "enabled": false,
+      "format": "page",
+      "url": "https://www.cinia.fi/en/news",
+      "pathPrefix": "/en/news/",
+      "sourceKind": "operator",
+      "publisher": "Cinia",
+      "remit": "The same notices as cinia-news; an example of a page source"
+    },
+    {
+      "id": "wiocc-news",
+      "format": "page",
+      "url": "https://www.wiocc.net/news",
+      "pathPrefix": "/news/",
+      "sourceKind": "operator",
+      "publisher": "WIOCC",
+      "remit": "WIOCC's capacity on EASSy, Equiano, 2Africa and other African routes; mostly commercial news"
+    },
+    {
+      "id": "space-norway",
+      "format": "rss",
+      "url": "https://spacenorway.com/feed/",
+      "sourceKind": "operator",
+      "publisher": "Space Norway",
+      "remit": "The Svalbard cable system and Arctic Way"
+    },
+    {
+      "id": "seaborn-news",
+      "format": "rss",
+      "url": "https://seabornnetworks.com/feed/",
+      "sourceKind": "operator",
+      "publisher": "Seaborn Networks",
+      "remit": "Seabras-1 and Seaborn's South American network"
+    },
+    {
+      "id": "tata-communications",
+      "format": "rss",
+      "url": "https://www.tatacommunications.com/press-release/rss.xml",
+      "sourceKind": "operator",
+      "publisher": "Tata Communications",
+      "remit": "Tata's own cables (TGN and consortium shares); mostly corporate news"
+    },
+    {
+      "id": "traficom-news",
+      "format": "page",
+      "url": "https://www.traficom.fi/en/newsroom",
+      "pathPrefix": "/en/news/",
+      "sourceKind": "authority",
+      "publisher": "Traficom (Finnish Transport and Communications Agency)",
+      "remit": "Communications networks in Finland; the page lists only its newest notices, so poll it daily"
+    },
+    {
+      "id": "nkom-news",
+      "format": "page",
+      "url": "https://nkom.no/aktuelt",
+      "pathPrefix": "/aktuelt/",
+      "sourceKind": "authority",
+      "publisher": "Nkom (Norwegian Communications Authority)",
+      "remit": "Electronic communications in Norway, including the Svalbard cables; notices are in Norwegian"
+    },
+    {
+      "id": "subtel-forum",
+      "format": "rss",
+      "url": "https://subtelforum.com/feed/",
+      "sourceKind": "news",
+      "publisher": "SubTel Forum",
+      "remit": "Industry news: leads only, look for the operator's own notice"
+    },
+    {
+      "id": "transworld",
+      "format": "rss",
+      "url": "https://www.tw1.com/feed/",
+      "sourceKind": "operator",
+      "publisher": "Transworld Associates",
+      "remit": "TW1, and SEA-ME-WE 5 where it lands in Pakistan; the feed is mostly marketing"
+    },
+    {
+      "id": "pta-news",
+      "enabled": false,
+      "format": "page",
+      "url": "https://www.pta.gov.pk/en/media-center",
+      "pathPrefix": "/en/media-center/",
+      "sourceKind": "authority",
+      "publisher": "Pakistan Telecommunication Authority",
+      "remit": "Telecoms in Pakistan; it reported the SEA-ME-WE 5 fault of 2026-11-18, but its site timed out from Australia on 2026-11-21, so it is untested"
+    },
+    {
+      "id": "dawn-news",
+      "format": "rss",
+      "url": "https://www.dawn.com/feeds/home",
+      "sourceKind": "news",
+      "publisher": "Dawn",
+      "remit": "Pakistani news: leads only"
+    },
+    {
+      "id": "propakistani",
+      "format": "rss",
+      "url": "https://propakistani.pk/feed/",
+      "sourceKind": "news",
+      "publisher": "ProPakistani",
+      "remit": "Pakistani technology news: leads only"
+    },
+    {
+      "id": "telecom-review",
+      "format": "rss",
+      "url": "https://www.telecomreview.com/feed/",
+      "sourceKind": "news",
+      "publisher": "Telecom Review",
+      "remit": "Middle East telecoms news: leads only"
+    },
+    {
+      "id": "arab-news",
+      "format": "rss",
+      "url": "https://www.arabnews.com/rss.xml",
+      "sourceKind": "news",
+      "publisher": "Arab News",
+      "remit": "Saudi and Red Sea news: leads only"
+    },
+    {
+      "id": "gulf-news",
+      "format": "rss",
+      "url": "https://gulfnews.com/stories.rss",
+      "sourceKind": "news",
+      "publisher": "Gulf News",
+      "remit": "UAE and Gulf news: leads only"
+    }
+  ],
+  "ioda": { "enabled": false }
+}

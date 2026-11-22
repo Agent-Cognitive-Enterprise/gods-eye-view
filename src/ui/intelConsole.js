@@ -11,7 +11,13 @@
  * camera. The panel stays hidden unless the server reports the feature on.
  * Nothing runs while the tab is hidden; on return one step catches up.
  */
-import { Cesium, viewerBehind } from '../fork/engine.js';
+import {
+  Cesium,
+  addScenePrimitive,
+  removeScenePrimitive,
+  requestSceneRender,
+  viewerBehind,
+} from '../fork/engine.js';
 import {
   formatNumber,
   formatRelativeTime,
@@ -44,6 +50,17 @@ import { formatQuantity } from './unitLabels.js';
 import { createSpeechPlayer } from '../voice/localAudio.js';
 import { isTrackingClickGesture } from '../data/trackingClickGesture.js';
 import { FEED_LABELS } from './feedLabels.js';
+import {
+  cableRouteIndex,
+  cableRouteTargets,
+  routeFor,
+} from '../intel/cableRoutes.js';
+
+// Fork: the bundled cable catalogue, for the routes of cable incidents.
+const CABLE_CATALOGUE_URL = new URL(
+  '../data/local_data/telegeography_submarine_cables/cable-geo.json',
+  import.meta.url,
+).href;
 
 const PANEL_ID = 'intel-panel';
 const LABEL_SOURCE = 'intel-labels';
@@ -1022,6 +1039,7 @@ export function createIntelConsole({
     renderFeeds();
     renderAi();
     renderMarkers();
+    renderCableRoutes();
     renderCard();
     updateOverview();
   }
@@ -1109,6 +1127,77 @@ export function createIntelConsole({
         ? Cesium.Color.WHITE.withAlpha(opacity)
         : Cesium.Color.BLACK.withAlpha(0.6 * opacity);
     point.outlineWidth = focused || hollow ? 3 : 1.5;
+  }
+
+  // Fork: the route of each cable with a confirmed incident from the cable
+  // feed, drawn over the cable layer whether that layer is on or not. The
+  // catalogue is fetched once, the first time a cable event is shown.
+  let cableLines = null; // PolylineCollection
+  const cableLineState = new Map(); // cableId -> {polylines, look}
+  let cableRoutes = null; // cableId -> [[lon, lat], …] lines
+  let cableRoutesLoad = null;
+
+  function loadCableRoutes() {
+    cableRoutesLoad ??= globalThis
+      .fetch(CABLE_CATALOGUE_URL, { cache: 'force-cache' })
+      .then((response) =>
+        response.ok
+          ? response.json()
+          : Promise.reject(new Error(`HTTP ${response.status}`)),
+      )
+      .then(
+        (collection) => {
+          // A console torn down meanwhile draws nothing.
+          if (abort.signal.aborted) return;
+          cableRoutes = cableRouteIndex(collection);
+          renderCableRoutes();
+        },
+        () => {
+          // Tried again with the next render that needs it.
+          cableRoutesLoad = null;
+        },
+      );
+  }
+
+  function renderCableRoutes() {
+    if (!viewer || !Cesium || viewer.isDestroyed?.()) return;
+    if (abort.signal.aborted) return;
+    const targets = cableRouteTargets(data.events);
+    if (!targets.size && !cableLineState.size) return;
+    if (targets.size && !cableRoutes) {
+      loadCableRoutes();
+      return;
+    }
+    cableLines ??= addScenePrimitive(viewer, new Cesium.PolylineCollection());
+    if (!cableLines) return;
+    let changed = false;
+    for (const [id, target] of targets) {
+      const look = `${target.opacity}|${target.resolved}`;
+      const held = cableLineState.get(id);
+      if (held?.look === look) continue;
+      for (const line of held?.polylines ?? []) cableLines.remove(line);
+      const color = Cesium.Color.fromCssColorString(
+        CATEGORY_COLORS.infrastructure_disruption ?? '#cccccc',
+      ).withAlpha(Math.max(0.15, target.resolved ? 0.35 : target.opacity));
+      const polylines = (routeFor(cableRoutes, id) ?? []).map((points) =>
+        cableLines.add({
+          positions: Cesium.Cartesian3.fromDegreesArrayHeights(
+            points.flatMap(([lon, lat]) => [lon, lat, 500]),
+          ),
+          width: target.resolved ? 2 : 4,
+          material: Cesium.Material.fromType('Color', { color }),
+        }),
+      );
+      cableLineState.set(id, { polylines, look });
+      changed = true;
+    }
+    for (const [id, held] of cableLineState) {
+      if (targets.has(id)) continue;
+      for (const line of held.polylines) cableLines.remove(line);
+      cableLineState.delete(id);
+      changed = true;
+    }
+    if (changed) requestSceneRender(viewer);
   }
 
   function renderMarkers() {
@@ -2125,6 +2214,9 @@ export function createIntelConsole({
         viewer.scene.primitives.remove(points);
       points = null;
       markerState.clear();
+      removeScenePrimitive(viewer, cableLines);
+      cableLines = null;
+      cableLineState.clear();
       labelLook = '';
       // The panel is Vue's markup and outlives this console: no dot or
       // spoken state may claim an Autopilot that is gone.

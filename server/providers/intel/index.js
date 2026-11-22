@@ -21,12 +21,14 @@ import { usgsConnector } from './connectors/usgs.js';
 import { whoConnector } from './connectors/who.js';
 import { worldBankConnector } from './connectors/worldBank.js';
 import { airSeaConnector } from './connectors/airsea.js';
+import { cableConnector } from './connectors/cables.js';
 import {
   createFastFeeds,
   createPolledObserver,
   fastFeedsEnabled,
 } from '../fastfeeds/index.js';
 import { createLatencyBook } from '../fastfeeds/latency.js';
+import { foregroundActive } from './llmGate.js';
 import { createLocalLlm } from './localLlm.js';
 import { createIntelService } from './service.js';
 
@@ -40,6 +42,9 @@ const MAX_BODY = 16 * 1024;
  * The feed set for this environment. Public no-key feeds are on unless
  * GEV_INTEL_<NAME>=0; GDELT (machine-coded news) is opt-in with
  * GEV_INTEL_GDELT=1; ReliefWeb and ACLED are listed and wait for credentials.
+ * Submarine cable notices are opt-in with GEV_INTEL_CABLES=1, in shadow mode
+ * (logged in the intel folder, never sent to the engine) unless
+ * GEV_INTEL_CABLES_LIVE=1 sends the confirmed incidents.
  * GEV_INTEL_OFFLINE=1 contacts no feed at all: drills and the stored archive
  * only (CI, demonstrations, air-gapped use).
  */
@@ -47,6 +52,8 @@ export function intelConnectors({
   env = process.env,
   ghostMapsWatcher,
   airSeaHub,
+  dir = null,
+  llm = null,
 } = {}) {
   if (env.GEV_INTEL_OFFLINE === '1') return [];
   const on = (name) => env[`GEV_INTEL_${name}`] !== '0';
@@ -83,6 +90,25 @@ export function intelConnectors({
   // Air & Sea signals (fork): only where the air/sea plugin runs too.
   if (airSeaHub && env.GEV_AIRSEA_ENABLED === '1' && on('AIRSEA'))
     connectors.push(airSeaConnector({ hub: airSeaHub }));
+  // Submarine cable notices (fork): opt-in. In shadow mode they log what
+  // would be shown and send nothing to the engine; GEV_INTEL_CABLES_LIVE=1
+  // sends the confirmed incidents (operators' and regulators' own, never
+  // news) to Autopilot.
+  // The local model reads doubtful cable notices unless
+  // GEV_INTEL_CABLES_LLM=0; a voice conversation keeps it for itself.
+  if (env.GEV_INTEL_CABLES === '1' && dir)
+    connectors.push(
+      cableConnector({
+        dir,
+        llm: env.GEV_INTEL_CABLES_LLM === '0' ? null : llm,
+        foreground: () => foregroundActive(),
+        live: env.GEV_INTEL_CABLES_LIVE === '1',
+        // IODA's data-use terms are not settled: opt-in only.
+        ioda:
+          env.GEV_INTEL_CABLES_LIVE === '1' &&
+          env.GEV_INTEL_CABLES_IODA === '1',
+      }),
+    );
   return connectors;
 }
 
@@ -225,12 +251,18 @@ export function intelProxy({
     const dir = env.GEV_INTEL_DB
       ? path.dirname(path.resolve(env.GEV_INTEL_DB))
       : path.join(root, '.gev-cache', 'intel');
-    const connectors = intelConnectors({ env, ghostMapsWatcher, airSeaHub });
     // Loopback-only local model; GEV_LLM_DISABLED=1 keeps scoring rule-based.
     const llm =
       env.GEV_LLM_DISABLED === '1'
         ? null
         : createLocalLlm({ baseUrl: env.GEV_LLM_BASE_URL });
+    const connectors = intelConnectors({
+      env,
+      ghostMapsWatcher,
+      airSeaHub,
+      dir,
+      llm,
+    });
     const latency = createLatencyBook();
     service = createIntelService({
       storeFile: env.GEV_INTEL_DB || path.join(dir, 'intel.sqlite'),

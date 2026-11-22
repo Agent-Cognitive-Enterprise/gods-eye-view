@@ -22,6 +22,7 @@ import { ruleSeverity, scoreEvent, verificationOf } from './scoring.js';
 import {
   CATEGORY_POLICY,
   isAdvisorySubtype,
+  isCableSubtype,
   isPostsOnly,
   isPushReport,
   isSocialOnly,
@@ -250,6 +251,15 @@ function applyMaterial(event, observation, lineage, reasons) {
     next.summary_source = familyKey;
   }
   if (observation.subtype && !next.subtype) next.subtype = observation.subtype;
+  // Fork: a cable fault its source confirms as a cut becomes a break; a
+  // break never turns back into a fault.
+  else if (
+    observation.official &&
+    observation.provider === 'cables' &&
+    observation.subtype === 'submarine_cable_break' &&
+    isCableSubtype(next.subtype)
+  )
+    next.subtype = observation.subtype;
   if (Number.isFinite(observation.valid_until))
     next.valid_until = Math.max(next.valid_until ?? 0, observation.valid_until);
   if (!observation.time_zone_known) next.time_zone_known = false;
@@ -396,6 +406,10 @@ export function createIntelEngine({ store, now, settings = {} }) {
       return { status: 'non_material', event_id: parent.event_id, reasons: [] };
     }
     const updated = applyMaterial(parent, observation, lineage, reasons);
+    // Fork: a cable card's impact line alone (IODA, phase 4) is shown, but it
+    // is no news: no re-alert, no camera cooldown lifted.
+    if (reasons.every((reason) => reason === 'cable_summary_changed'))
+      updated.quiet_revisions = (updated.quiet_revisions ?? 0) + 1;
     store.saveEvent(updated);
     store.saveObservation(observation, { ...link, material: true });
     snapshotRevision(updated, observation, reasons, 'material_update');

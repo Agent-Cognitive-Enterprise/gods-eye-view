@@ -620,7 +620,9 @@ export const DATA_CREDITS = [
       'NOAA tsunami warning centres and the U.S. National Weather Service (public domain); ' +
       'NASA EONET (public domain); World Health Organization Disease Outbreak News; ' +
       'World Bank World Development Indicators (CC BY 4.0); ' +
-      'optional: ReliefWeb (UN OCHA), The GDELT Project (machine-coded, unverified).',
+      'optional: ReliefWeb (UN OCHA), The GDELT Project (machine-coded, unverified); ' +
+      'submarine cable notices from cable operators and regulators (each publisher named on its event, under its own terms); ' +
+      '<a href="https://ioda.inetintel.cc.gatech.edu" target="_blank" rel="noopener">IODA</a> (Georgia Tech) internet outage signals, impact only.',
   },
   {
     key: 'banking-access',

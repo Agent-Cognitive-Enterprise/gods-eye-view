@@ -18,4 +18,5 @@ export const FEED_LABELS = Object.freeze({
   'acled-conflict': msg('ACLED conflict data'),
   'gdelt-events': msg('GDELT machine-coded news'),
   'airsea-signals': msg('Air & Sea signals'),
+  'submarine-cables': msg('Submarine cable notices'),
 });
