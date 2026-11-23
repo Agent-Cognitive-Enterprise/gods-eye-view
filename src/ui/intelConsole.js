@@ -50,6 +50,7 @@ import { formatQuantity } from './unitLabels.js';
 import { createSpeechPlayer } from '../voice/localAudio.js';
 import { isTrackingClickGesture } from '../data/trackingClickGesture.js';
 import { FEED_LABELS } from './feedLabels.js';
+import { rootClassSwitch } from './rail/rootClass.js';
 import {
   cableRouteIndex,
   cableRouteTargets,
@@ -311,6 +312,12 @@ export function createIntelConsole({
   const feedsBody = documentRef.getElementById('intel-feeds-body');
   const feedsCount = documentRef.getElementById('intel-feeds-count');
   const abort = new AbortController();
+  // On <html> while Autopilot flies (auto or paused) / while it is paused.
+  const autopilotOnClass = rootClassSwitch(documentRef, 'gev-autopilot-on');
+  const autopilotPausedClass = rootClassSwitch(
+    documentRef,
+    'gev-autopilot-paused',
+  );
   let destroyed = false;
   let enabled = false;
   let world = 'live';
@@ -518,6 +525,10 @@ export function createIntelConsole({
     // and says it to screen readers (its label and aria-pressed are the
     // tab's own: Vue renders them).
     panel.dataset.autopilot = mode;
+    // The tab's dot and ring select on classes on <html>, not on a
+    // `body:has(#intel-panel[...])` (src/ui/rail/rootClass.js says why).
+    autopilotOnClass.set(mode !== 'off');
+    autopilotPausedClass.set(mode === 'paused');
     describeTab(mode === 'off' ? '' : `${t('AUTOPILOT ON')}: ${modeLabel}`);
   }
 
@@ -2190,6 +2201,8 @@ export function createIntelConsole({
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      autopilotOnClass.release();
+      autopilotPausedClass.release();
       fastPanel?.destroy();
       overview?.destroy();
       cancelFlights();

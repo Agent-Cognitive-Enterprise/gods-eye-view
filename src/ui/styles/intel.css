@@ -344,9 +344,9 @@
 /* The right rail's AUTOPILOT tab carries the Autopilot state (it replaced the
    top-centre start/stop icon): a green dot while it flies the camera, an amber
    ring while paused, none when off. Cyan stays the open-tab colour. The item
-   is already position: relative (kit.css). */
-body:has(#intel-panel:is([data-autopilot='auto'], [data-autopilot='paused']))
-  .ui-rail__item[data-rail-item='intel-panel']::after {
+   is already position: relative (kit.css). intelConsole.js holds the classes
+   on <html> (no body:has(): see src/ui/rail/rootClass.js). */
+html.gev-autopilot-on .ui-rail__item[data-rail-item='intel-panel']::after {
   content: '';
   position: absolute;
   top: 4px;
@@ -359,8 +359,7 @@ body:has(#intel-panel:is([data-autopilot='auto'], [data-autopilot='paused']))
   pointer-events: none;
 }
 /* Paused is a ring, not a dot: the shape tells it apart, not only colour. */
-body:has(#intel-panel[data-autopilot='paused'])
-  .ui-rail__item[data-rail-item='intel-panel']::after {
+html.gev-autopilot-paused .ui-rail__item[data-rail-item='intel-panel']::after {
   box-sizing: border-box;
   background: transparent;
   border: 2px solid #ffcf6e;
@@ -408,12 +407,14 @@ body.gev-dock-hidden #gev-omnibar {
 /* Specific enough to win over both upstream credit placements, without
    !important (src/creditAttribution.test.mjs vets these two selectors). */
 body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode) #cesium-credits,
-body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode):has(
+body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode):is(
+    .hud-minimal-active *,
     #intel-hud[data-variant='minimal'].active
   )
   #cesium-credits,
 body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode) #gev-credits,
-body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode):has(
+body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode):is(
+    .hud-minimal-active *,
     #intel-hud[data-variant='minimal'].active
   )
   #gev-credits {

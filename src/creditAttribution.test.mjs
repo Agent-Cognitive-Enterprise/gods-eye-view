@@ -249,7 +249,7 @@ const RECOGNIZED = new Set([
   // Fork: the dock auto-hides (src/ui/dockAutoHide.js); with it hidden the
   // credit drops to the bottom edge, where nothing else sits.
   'body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode) #cesium-credits',
-  "body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode):has(#intel-hud[data-variant='minimal'].active) #cesium-credits",
+  "body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode):is(.hud-minimal-active *, #intel-hud[data-variant='minimal'].active) #cesium-credits",
   // dock
   '#command-dock',
   '#command-dock:has(#location-bar:not(.collapsed))',

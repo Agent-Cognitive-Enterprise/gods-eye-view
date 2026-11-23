@@ -40,13 +40,55 @@ test('the AUTOPILOT tab is the one Autopilot icon, and shows when it runs', () =
     'utf8',
   );
   assert.doesNotMatch(css, /#intel-autopilot-btn/);
+  // The mode is also held as classes on <html> (upstream's rule: no
+  // body:has(), src/ui/rail/rootClass.js), let go of when the console goes.
+  assert.match(source, /autopilotOnClass\.set\(mode !== 'off'\);/);
+  assert.match(source, /autopilotPausedClass\.set\(mode === 'paused'\);/);
+  assert.match(source, /autopilotOnClass\.release\(\);/);
+  assert.match(source, /autopilotPausedClass\.release\(\);/);
   // A dot on the tab while it flies the camera, an amber ring while paused.
   assert.match(
     css,
-    /body:has\(#intel-panel:is\(\[data-autopilot='auto'\], \[data-autopilot='paused'\]\)\)\s*\.ui-rail__item\[data-rail-item='intel-panel'\]::after \{[^}]*content: '';/,
+    /html\.gev-autopilot-on\s*\.ui-rail__item\[data-rail-item='intel-panel'\]::after \{[^}]*content: '';/,
   );
   assert.match(
     css,
-    /body:has\(#intel-panel\[data-autopilot='paused'\]\)\s*\.ui-rail__item\[data-rail-item='intel-panel'\]::after \{[^}]*border: 2px solid #ffcf6e;/,
+    /html\.gev-autopilot-paused\s*\.ui-rail__item\[data-rail-item='intel-panel'\]::after \{[^}]*border: 2px solid #ffcf6e;/,
   );
+  // The paused ring comes after the dot, at the same weight, so it wins.
+  assert.ok(
+    css.indexOf('html.gev-autopilot-paused') >
+      css.indexOf('html.gev-autopilot-on'),
+  );
+});
+
+test('the root classes follow the mode and go with the console', async () => {
+  const { rootClassSwitch } = await import('./rail/rootClass.js');
+  const classes = new Set();
+  const doc = {
+    documentElement: {
+      classList: {
+        add: (name) => classes.add(name),
+        remove: (name) => classes.delete(name),
+      },
+    },
+  };
+  const on = rootClassSwitch(doc, 'gev-autopilot-on');
+  const paused = rootClassSwitch(doc, 'gev-autopilot-paused');
+  const show = (mode) => {
+    on.set(mode !== 'off');
+    paused.set(mode === 'paused');
+    return [...classes].sort();
+  };
+  assert.deepEqual(show('auto'), ['gev-autopilot-on']);
+  assert.deepEqual(show('paused'), [
+    'gev-autopilot-on',
+    'gev-autopilot-paused',
+  ]);
+  assert.deepEqual(show('auto'), ['gev-autopilot-on']);
+  assert.deepEqual(show('off'), []);
+  show('paused');
+  on.release();
+  paused.release();
+  assert.deepEqual([...classes], []);
 });
