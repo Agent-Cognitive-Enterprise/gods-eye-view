@@ -239,6 +239,13 @@ const RULES = flattenRules(css);
 
 // Selectors that position a modelled element's OWN box. Anything else that
 // positions one of these elements is an unmodelled construct and fails.
+// Fork (intel.css): the hidden-dock credit drop inside the desktop Omnibar
+// layout, that layout's scope with .gev-dock-hidden on body.
+const FORK_OMNIBAR_DOCK_HIDDEN_SCOPE =
+  'body.gev-dock-hidden:not(.mobile-shell):not(.cockpit-mode):not(.scene-playback-mode):not(.ui-clean-view):not(.recording-mode):where(.has-omnibar.dock-has-voice *)';
+const FORK_OMNIBAR_DOCK_HIDDEN_CREDIT = `${FORK_OMNIBAR_DOCK_HIDDEN_SCOPE} #cesium-credits`;
+const FORK_OMNIBAR_DOCK_HIDDEN_MINIMAL_CREDIT = `${FORK_OMNIBAR_DOCK_HIDDEN_SCOPE}:is(.hud-minimal-active *, #intel-hud[data-variant='minimal'].active) #cesium-credits`;
+
 const RECOGNIZED = new Set([
   // credit
   '#cesium-credits',
@@ -250,6 +257,10 @@ const RECOGNIZED = new Set([
   // credit drops to the bottom edge, where nothing else sits.
   'body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode) #cesium-credits',
   "body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode):is(.hud-minimal-active *, #intel-hud[data-variant='minimal'].active) #cesium-credits",
+  // ...and inside the desktop Omnibar layout, whose own placements outweigh
+  // the two above there (the fork test at the end of this file).
+  FORK_OMNIBAR_DOCK_HIDDEN_CREDIT,
+  FORK_OMNIBAR_DOCK_HIDDEN_MINIMAL_CREDIT,
   // dock
   '#command-dock',
   '#command-dock:has(#location-bar:not(.collapsed))',
@@ -1288,4 +1299,60 @@ test('expanded Context keeps the credits beside it right to left and with the mi
     ),
     'with the minimal HUD, the credits end before the expanded column',
   );
+});
+
+// Fork: with the dock hidden (src/ui/dockAutoHide.js) the credit drops to the
+// bottom edge in the desktop Omnibar layout too, where that layout's own
+// placements outweigh the fork's plain hidden-dock rule.
+test('the hidden-dock credit drop wins inside the desktop Omnibar layout', () => {
+  const forkPlain = [
+    'body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode) #cesium-credits',
+    "body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode):is(.hud-minimal-active *, #intel-hud[data-variant='minimal'].active) #cesium-credits",
+  ];
+  for (const width of WIDTHS.filter((w) => w >= OMNIBAR_MIN_WIDTH)) {
+    for (const minimal of [false, true]) {
+      const credit = resolve(
+        [
+          ...CREDIT_SELECTORS,
+          OMNIBAR.credit,
+          ...(minimal ? [MINIMAL_HUD_CREDIT, OMNIBAR.minimalCredit] : []),
+          forkPlain[0],
+          FORK_OMNIBAR_DOCK_HIDDEN_CREDIT,
+          ...(minimal
+            ? [forkPlain[1], FORK_OMNIBAR_DOCK_HIDDEN_MINIMAL_CREDIT]
+            : []),
+        ],
+        'bottom',
+        width,
+        'hidden-dock Omnibar credit',
+      );
+      assert.equal(
+        credit.part,
+        minimal
+          ? FORK_OMNIBAR_DOCK_HIDDEN_MINIMAL_CREDIT
+          : FORK_OMNIBAR_DOCK_HIDDEN_CREDIT,
+        `the fork's drop owns the credit at ${width}px${minimal ? ' (minimal HUD)' : ''}`,
+      );
+      assert.equal(credit.decl.value, '6px');
+      assert.equal(credit.decl.important, false);
+    }
+  }
+  // One class over each Omnibar placement, nothing more.
+  assert.deepEqual(specificity(FORK_OMNIBAR_DOCK_HIDDEN_CREDIT), [1, 6, 1]);
+  assert.deepEqual(specificity(OMNIBAR.credit), [1, 5, 1]);
+  assert.deepEqual(
+    specificity(FORK_OMNIBAR_DOCK_HIDDEN_MINIMAL_CREDIT),
+    [2, 8, 1],
+  );
+  assert.deepEqual(specificity(OMNIBAR.minimalCredit), [2, 7, 1]);
+  // It sets the bottom only: sides and widths stay the layout's (Expanded
+  // Context and right to left place those).
+  for (const rule of RULES) {
+    if (!rule.parts.includes(FORK_OMNIBAR_DOCK_HIDDEN_CREDIT)) continue;
+    assert.deepEqual(
+      rule.decls.map((decl) => decl.prop),
+      ['bottom'],
+    );
+    assert.equal(rule.media.length, 0);
+  }
 });

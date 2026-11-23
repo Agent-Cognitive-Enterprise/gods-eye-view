@@ -420,6 +420,35 @@ body.gev-dock-hidden:not(.ui-clean-view):not(.recording-mode):is(
   #gev-credits {
   bottom: 6px;
 }
+/* The same inside upstream's desktop Omnibar layout (omnibar-dock.css),
+   whose credit placements name its scope: that scope plus .gev-dock-hidden,
+   one class heavier than each of them. */
+body.gev-dock-hidden:not(.mobile-shell):not(.cockpit-mode):not(
+    .scene-playback-mode
+  ):not(.ui-clean-view):not(.recording-mode):where(
+    .has-omnibar.dock-has-voice *
+  )
+  #cesium-credits,
+body.gev-dock-hidden:not(.mobile-shell):not(.cockpit-mode):not(
+    .scene-playback-mode
+  ):not(.ui-clean-view):not(.recording-mode):where(
+    .has-omnibar.dock-has-voice *
+  ):is(.hud-minimal-active *, #intel-hud[data-variant='minimal'].active)
+  #cesium-credits,
+body.gev-dock-hidden:not(.mobile-shell):not(.cockpit-mode):not(
+    .scene-playback-mode
+  ):not(.ui-clean-view):not(.recording-mode):where(
+    .has-omnibar.dock-has-voice *
+  )
+  #gev-credits,
+body.gev-dock-hidden:not(.mobile-shell):not(.cockpit-mode):not(
+    .scene-playback-mode
+  ):not(.ui-clean-view):not(.recording-mode):where(
+    .has-omnibar.dock-has-voice *
+  ):is(.hud-minimal-active *, #intel-hud[data-variant='minimal'].active)
+  #gev-credits {
+  bottom: 6px;
+}
 
 /* Upper-right corner (fork): no ACTIVE STYLE indicator; the REC readout moves
    up into its place. The cockpit keeps its own layout. */
