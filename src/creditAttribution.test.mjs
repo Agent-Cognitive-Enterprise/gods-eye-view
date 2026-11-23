@@ -1347,8 +1347,23 @@ test('the hidden-dock credit drop wins inside the desktop Omnibar layout', () =>
   assert.deepEqual(specificity(OMNIBAR.minimalCredit), [2, 7, 1]);
   // It sets the bottom only: sides and widths stay the layout's (Expanded
   // Context and right to left place those).
-  for (const rule of RULES) {
-    if (!rule.parts.includes(FORK_OMNIBAR_DOCK_HIDDEN_CREDIT)) continue;
+  // The model follows #cesium-credits only; the same rule must carry the
+  // #gev-credits twin of each selector.
+  const owning = RULES.filter((rule) =>
+    rule.parts.includes(FORK_OMNIBAR_DOCK_HIDDEN_CREDIT),
+  );
+  assert.equal(owning.length, 1, 'one rule drops the credit');
+  for (const selector of [
+    FORK_OMNIBAR_DOCK_HIDDEN_CREDIT,
+    FORK_OMNIBAR_DOCK_HIDDEN_MINIMAL_CREDIT,
+  ])
+    assert.ok(
+      owning[0].parts.includes(
+        selector.replace(/#cesium-credits$/, '#gev-credits'),
+      ),
+      `the drop covers #gev-credits too: ${selector}`,
+    );
+  for (const rule of owning) {
     assert.deepEqual(
       rule.decls.map((decl) => decl.prop),
       ['bottom'],
