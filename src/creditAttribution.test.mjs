@@ -1353,6 +1353,10 @@ test('the hidden-dock credit drop wins inside the desktop Omnibar layout', () =>
     rule.parts.includes(FORK_OMNIBAR_DOCK_HIDDEN_CREDIT),
   );
   assert.equal(owning.length, 1, 'one rule drops the credit');
+  assert.ok(
+    owning[0].parts.includes(FORK_OMNIBAR_DOCK_HIDDEN_MINIMAL_CREDIT),
+    'the minimal-HUD drop is the same rule',
+  );
   for (const selector of [
     FORK_OMNIBAR_DOCK_HIDDEN_CREDIT,
     FORK_OMNIBAR_DOCK_HIDDEN_MINIMAL_CREDIT,
