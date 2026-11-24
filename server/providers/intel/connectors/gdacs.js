@@ -21,6 +21,10 @@ const SUBTYPES = Object.freeze({
   WF: 'wildfire',
 });
 const GREEN_KEPT = new Set(['EQ', 'TC', 'FL', 'VO']);
+// The RSS is about 0.5 MB and gdacs.org sometimes takes ~30 s to send it
+// (24 Nov 2026: 29 s), past the runner's 20 s default. Polls never overlap
+// and come every 6-10 minutes, so a longer wait costs nothing.
+export const GDACS_TIMEOUT_MS = 60_000;
 
 const date = (value) => {
   const ms = Date.parse(value ?? '');
@@ -104,6 +108,7 @@ export function gdacsConnector({
       const { body, notModified } = await fetchText(url, {
         maxBytes: 8 * 1024 * 1024,
         accept: 'application/rss+xml, application/xml',
+        timeoutMs: GDACS_TIMEOUT_MS,
       });
       if (notModified) return { records: [], notModified: true };
       const records = blocks(body, 'item')

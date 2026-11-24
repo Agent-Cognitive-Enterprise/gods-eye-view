@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import zlib from 'node:zlib';
 import { normalizeObservation } from '../../../src/intel/evidence.js';
-import { feedStatus } from './feeds.js';
+import { createFeedRunner, feedStatus } from './feeds.js';
 import {
   countriesInText,
   countryBounds,
@@ -12,7 +12,11 @@ import {
 } from './geography.js';
 import { acledConnector } from './connectors/acled.js';
 import { eonetEventToRecord } from './connectors/eonet.js';
-import { gdacsConnector, gdacsItemToRecord } from './connectors/gdacs.js';
+import {
+  GDACS_TIMEOUT_MS,
+  gdacsConnector,
+  gdacsItemToRecord,
+} from './connectors/gdacs.js';
 import { gdeltConnector, gdeltCsvToRecords } from './connectors/gdelt.js';
 import { nwsAlertToRecord, vtecKey } from './connectors/nws.js';
 import {
@@ -106,6 +110,38 @@ test('GDACS: alerts become official records; routine green items are dropped', a
     }),
   });
   assert.equal(out.records.length, 1);
+});
+
+test('GDACS: the feed waits 60 s for gdacs.org, not the 20 s default', async () => {
+  assert.equal(GDACS_TIMEOUT_MS, 60_000);
+  // Through the real runner: the timeout it arms for the request.
+  const armed = [];
+  const original = AbortSignal.timeout;
+  AbortSignal.timeout = (ms) => {
+    armed.push(ms);
+    return original.call(AbortSignal, ms);
+  };
+  try {
+    const runner = createFeedRunner({
+      connector: gdacsConnector(),
+      ingest: (records) => records.map(() => ({ status: 'new' })),
+      now: () => Date.parse('2026-10-29T07:00:00Z'),
+      fetchImpl: async (_url, init) => {
+        assert.ok(init.signal instanceof AbortSignal);
+        return new Response(
+          `<rss><channel><item>${GDACS_ITEM('Red')}</item></channel></rss>`,
+          { status: 200, headers: { 'content-type': 'application/rss+xml' } },
+        );
+      },
+      log: () => {},
+    });
+    const batch = await runner.pollOnce();
+    assert.equal(batch?.records, 1);
+    assert.deepEqual(armed, [GDACS_TIMEOUT_MS]);
+    assert.equal(runner.health().status, 'healthy');
+  } finally {
+    AbortSignal.timeout = original;
+  }
 });
 
 test('EONET: newest track point, wind severity and the source as lineage', () => {
