@@ -112,7 +112,7 @@ async function main() {
     sessionStorage.setItem('gev:first-run-mission-session:v1', 'dismissed');
   });
   try {
-    await page.goto(`${APP_URL}/?welcome=0`, {
+    await page.goto(`${APP_URL}/?welcome=0&intro=0`, {
       waitUntil: 'domcontentloaded',
       timeout: TIMEOUT_MS,
     });

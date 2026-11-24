@@ -68,6 +68,8 @@ const LABEL_SOURCE = 'intel-labels';
 const CARD_SOURCE = 'intel-card';
 const PICK_PREFIX = 'intel:';
 const TICK_MS = 5_000;
+// While the page's opening holds the camera, Autopilot looks again this often.
+const STARTUP_RETRY_MS = 250;
 const REFRESH_MS = 10_000;
 const REPLAY_REFRESH_MS = 3_000;
 const MAX_LABELS = 12;
@@ -284,7 +286,9 @@ export function whyText(event) {
  * @param {{viewer: object, navigation: object, overlayHost: object,
  *   picking?: object, pointer?: object, documentRef?: Document,
  *   fetchImpl?: Function, now?: () => number, storage?: Storage | null,
- *   openExternal?: (url: string) => void}} options
+ *   openExternal?: (url: string) => void,
+ *   cameraHeld?: () => boolean}} options `cameraHeld`: true while start-up
+ *   holds the camera (src/intel/startupHold.js); Autopilot waits it out.
  */
 export function createIntelConsole({
   viewer: sceneHost,
@@ -299,6 +303,7 @@ export function createIntelConsole({
   openExternal = (url) => window.open(url, '_blank', 'noopener,noreferrer'),
   // Told which event is shown (or null), e.g. to reveal explaining layers.
   onShownEvent = null,
+  cameraHeld = () => false,
 }) {
   // The scene object takes input (the dispatcher); Cesium is its renderer's
   // viewer.
@@ -343,6 +348,7 @@ export function createIntelConsole({
   let flightSeq = 0;
   let pullBackTimers = [];
   let tileTimers = []; // waits for tiles inside a two-stage flight
+  let startupTimer = null; // looks again once the opening lets go
   let ownFlight = false; // the camera flight in progress is this console's
   let storedMode = null; // last mode written to storage
   let modeRestored = false; // nothing is written before the stored mode is read
@@ -1889,6 +1895,16 @@ export function createIntelConsole({
 
   function step() {
     if (scheduler.mode !== 'auto') return;
+    // The page's opening owns the camera until it lands: no flight until then.
+    if (cameraHeld()) {
+      startupTimer ??= setTimeout(() => {
+        startupTimer = null;
+        if (destroyed) return;
+        step();
+        render();
+      }, STARTUP_RETRY_MS);
+      return;
+    }
     const out = stepScheduler(scheduler, {
       // Camera timing (dwell, cooldown, confirmation) is about what a person
       // can watch: wall clock, even when a drill replays faster than real time.
@@ -2201,6 +2217,8 @@ export function createIntelConsole({
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      clearTimeout(startupTimer);
+      startupTimer = null;
       autopilotOnClass.release();
       autopilotPausedClass.release();
       fastPanel?.destroy();

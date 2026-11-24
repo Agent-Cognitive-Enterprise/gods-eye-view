@@ -52,6 +52,7 @@ import {
 import { entityRecord, readEntityRecord } from '../data/entityRecords.js';
 import { overlayHost } from './layers/overlayHost.js';
 import { forkEngineWanted } from '../fork/engine.js';
+import { createStartupHold } from '../intel/startupHold.js';
 import { createResourcesMonitor } from '../ui/resourcesMonitor.js';
 
 /**
@@ -276,6 +277,12 @@ export function createApplicationTools({
       },
       picking: pickRegistry,
       pointer: { isPointerFree },
+      // No Autopilot flight before or during upstream's opening.
+      cameraHeld: createStartupHold({
+        loadingScreen,
+        coverDecides: !!startChrome,
+        openingPlaying,
+      }),
     });
     window.__gevIntel = intelConsole;
     defer(() => {

@@ -129,7 +129,7 @@ async function openPage(query = '') {
       /* the page went away mid-request */
     }
   });
-  await page.goto(`${APP_URL}/${query}`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${APP_URL}/${query}${query ? '&' : '?'}intro=0`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(
     () =>
       window.__gevIntel?.snapshot().enabled &&

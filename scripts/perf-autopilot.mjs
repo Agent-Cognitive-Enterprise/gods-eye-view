@@ -142,7 +142,9 @@ await page.evaluateOnNewDocument((overview) => {
   };
   requestAnimationFrame(loop);
 }, OVERVIEW);
-await page.goto(`${URL}/`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
+// intro=0: no opening flight (src/app/openingIntro.js), as in upstream's QA;
+// it moves the camera and would count in the measurements.
+await page.goto(`${URL}/?intro=0`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
 await page.waitForFunction(
   () => window.__gevIntel?.snapshot?.().enabled === true && window.__godsEyeView?.viewer,
   { timeout: 240_000 },

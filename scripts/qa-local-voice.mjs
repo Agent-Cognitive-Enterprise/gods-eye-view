@@ -92,7 +92,7 @@ try {
   });
   // The app may re-navigate once at startup (locale); wait for it instead.
   await page
-    .goto(`${APP_URL}/`, { waitUntil: 'domcontentloaded' })
+    .goto(`${APP_URL}/?intro=0`, { waitUntil: 'domcontentloaded' })
     .catch(() => {});
   await page.waitForFunction(
     () => window.__gevIntel?.snapshot().enabled && window.__gevVoiceCommands,

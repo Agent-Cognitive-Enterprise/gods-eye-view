@@ -77,7 +77,9 @@ try {
   await page.evaluateOnNewDocument(() =>
     sessionStorage.setItem('gev:first-run-mission-session:v1', 'dismissed'),
   );
-  await page.goto(`${APP_URL}/`, { waitUntil: 'domcontentloaded' });
+  // intro=0: no opening flight (src/app/openingIntro.js), as in upstream's QA:
+  // the checks below start from a still camera.
+  await page.goto(`${APP_URL}/?intro=0`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(
     () => window.__gevIntel?.snapshot().enabled && window.__godsEyeView?.viewer,
     { timeout: 120_000 },
