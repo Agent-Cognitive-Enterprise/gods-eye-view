@@ -162,6 +162,7 @@ test('Autopilot steps only when the camera is not held, and is wired so', () => 
   assert.ok(gate > 0, 'step() asks first');
   assert.ok(gate < step.indexOf('stepScheduler('), 'before any decision');
   assert.match(step, /startupTimer \?\?= setTimeout\(/);
+  assert.match(step, /if \(!startupTimer\) render\(\);/, 'no redraw while held');
   assert.match(console, /cameraHeld = \(\) => false,/);
   assert.match(console, /destroyed = true;\n\s+clearTimeout\(startupTimer\);/);
   const tools = read('../app/tools.js');

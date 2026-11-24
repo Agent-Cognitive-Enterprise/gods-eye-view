@@ -1901,7 +1901,8 @@ export function createIntelConsole({
         startupTimer = null;
         if (destroyed) return;
         step();
-        render();
+        // Still held: step() looked again later, nothing changed to draw.
+        if (!startupTimer) render();
       }, STARTUP_RETRY_MS);
       return;
     }
