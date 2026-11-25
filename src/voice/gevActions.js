@@ -17,6 +17,7 @@ export { readLayerLifecycleSummary } from './layerSummary.js';
 import { defaultGeospatial } from '../search/defaults.js';
 import { msg } from '../i18n/index.js';
 import { useProviderSettingsStore } from '../ui/stores/providerSettings.js';
+import { layerFinderFor } from '../ui/layerFinderFilter.js';
 import { applicationPinia } from '../ui/vueRuntime.js';
 import {
   distance as chordM,
@@ -114,13 +115,11 @@ const PANEL_ALIASES = new Map([
   ['layers', 'data-panel'],
   ['layer menu', 'data-panel'],
   ['data layer menu', 'data-panel'],
-  ['locations', 'location-bar'],
-  ['location', 'location-bar'],
-  ['styles', 'control-panel'],
-  ['filters', 'control-panel'],
-  ['visual styles', 'control-panel'],
-  ['visual preset', 'control-panel'],
-  ['visual presets', 'control-panel'],
+  ['styles', 'pp-toggles'],
+  ['filters', 'pp-toggles'],
+  ['visual styles', 'pp-toggles'],
+  ['visual preset', 'pp-toggles'],
+  ['visual presets', 'pp-toggles'],
   ['provider settings', 'provider-settings'],
   ['cctv', 'cctv-panel'],
   ['cameras', 'cctv-panel'],
@@ -152,11 +151,11 @@ const PANEL_ALIASES = new Map([
   ['scene', 'scene-panel'],
   ['post processing', 'pp-toggles'],
   ['hud controls', 'pp-toggles'],
-  ['map stack', 'control-panel'],
-  ['stack', 'control-panel'],
-  ['basemap', 'control-panel'],
-  ['map sources', 'control-panel'],
-  ['sources', 'control-panel'],
+  ['map stack', 'pp-toggles'],
+  ['stack', 'pp-toggles'],
+  ['basemap', 'pp-toggles'],
+  ['map sources', 'pp-toggles'],
+  ['sources', 'pp-toggles'],
   ['weather', 'weather-panel'],
   ['weather panel', 'weather-panel'],
   ['recent imagery', 'recent-imagery-panel'],
@@ -165,8 +164,6 @@ const PANEL_ALIASES = new Map([
 
 const PANEL_IDS = new Set([
   'data-panel',
-  'location-bar',
-  'control-panel',
   'cctv-panel',
   'radio-panel',
   'global-context-panel',
@@ -3963,10 +3960,8 @@ function findDataLayerRow(layerId) {
 }
 
 function focusDataLayerRow(row, layerId) {
-  // A row the Data Layers finder hides could not be seen: show every row
-  // again (LAYER_FINDER_CLEAR_EVENT in LayerFinder.vue).
   if (row.classList.contains('is-filtered'))
-    document.dispatchEvent(new CustomEvent('gev:layer-finder-clear'));
+    layerFinderFor(row.parentElement)?.clearAll?.();
   row.scrollIntoView({ block: 'center', behavior: 'smooth' });
   row.classList.remove('gev-voice-focus');
   void row.offsetWidth;
@@ -4543,8 +4538,8 @@ async function flyToRequestedLocation(
   const query = String(args.query || '').trim();
   if (query) {
     // A query that names a curated preset POI ("the Texas State Capitol", "Golden Gate Bridge")
-    // flies to its hand-tuned camera pose — the same beautiful framing as clicking the LOCATIONS
-    // panel button — instead of generic geocode framing. An explicit rangeM still overrides distance.
+    // flies to its hand-tuned camera pose — the same framing as choosing its landmark chip in the
+    // Omnibar — instead of generic geocode framing. An explicit rangeM still overrides distance.
     const poiMatch = findPoiByName(query);
     if (poiMatch) {
       const result = immediate(() =>

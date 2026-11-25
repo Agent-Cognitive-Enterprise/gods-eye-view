@@ -56,7 +56,9 @@
     "{n} hPa",
     "{kind} {name}",
     "{speed} {direction}",
-    "3D"
+    "3D",
+    "{utc} UTC",
+    "UTC"
   ],
   "de": [
     "1090 MHz",
@@ -296,6 +298,13 @@
     "Route",
     "3D",
     "KT",
+    "{utc} UTC",
+    "ON AIR",
+    "Stream",
+    "{seconds} s",
+    "Mode",
+    "UTC",
+    "Radius",
     "1 H",
     "12 H",
     "15 MIN",
@@ -319,11 +328,7 @@
     "Server",
     "{value} h",
     "{value} min",
-    "{value} ms",
-    "ON AIR",
-    "Stream",
-    "{seconds} s",
-    "Mode"
+    "{value} ms"
   ],
   "es": [
     "1 min/s",
@@ -500,7 +505,6 @@
     "Inspector",
     "{n} m",
     "{n} km",
-    "Error",
     "Squawk",
     "MMSI",
     "ICAO24",
@@ -518,6 +522,10 @@
     "{n} mm",
     "3D",
     "KT",
+    "{utc} UTC",
+    "Manual",
+    "{seconds} s",
+    "UTC",
     "1 H",
     "12 H",
     "15 MIN",
@@ -532,9 +540,7 @@
     "CPU {before} → {after}",
     "{value} h",
     "{value} min",
-    "{value} ms",
-    "Manual",
-    "{seconds} s"
+    "{value} ms"
   ],
   "fr": [
     "1 min/s",
@@ -580,6 +586,7 @@
     "Conversation",
     "Country",
     "Cyan",
+    "Cyclones · NHC / CPHC · JTWC",
     "DENSE",
     "DEST ---°",
     "DEST {bearing}",
@@ -687,7 +694,6 @@
     "Source",
     "Station",
     "Station {id}",
-    "Style",
     "Suggestions",
     "TAGS · {tags}",
     "TEMP",
@@ -791,6 +797,11 @@
     "{n} mm",
     "3D",
     "KT",
+    "{utc} UTC",
+    "{seconds} s",
+    "contact",
+    "train",
+    "UTC",
     "% POPULATION",
     "1 H",
     "12 H",
@@ -819,9 +830,7 @@
     "CPU {before} → {after}",
     "{value} h",
     "{value} min",
-    "{value} ms",
-    "Cyclones · NHC / CPHC · JTWC",
-    "{seconds} s"
+    "{value} ms"
   ],
   "it": [
     "1 min/s",
@@ -1055,6 +1064,9 @@
     "{n} mm",
     "3D",
     "KT",
+    "{utc} UTC",
+    "{seconds} s",
+    "UTC",
     "1 H",
     "12 H",
     "15 MIN",
@@ -1080,8 +1092,7 @@
     "Server",
     "{value} h",
     "{value} min",
-    "{value} ms",
-    "{seconds} s"
+    "{value} ms"
   ],
   "ja": [
     "1090 MHz",
@@ -1166,6 +1177,7 @@
     "{n} mm",
     "3D",
     "KT",
+    "UTC",
     "AI",
     "CPU {before} → {after}"
   ],
@@ -1362,6 +1374,10 @@
     "{n} mm",
     "3D",
     "KT",
+    "{utc} UTC",
+    "Manual",
+    "{seconds} s",
+    "UTC",
     "1 H",
     "12 H",
     "15 MIN",
@@ -1385,9 +1401,7 @@
     "CPU {before} → {after}",
     "{value} h",
     "{value} min",
-    "{value} ms",
-    "Manual",
-    "{seconds} s"
+    "{value} ms"
   ],
   "ru": [
     "1900–1945",
@@ -1432,7 +1446,9 @@
     "M {n}",
     "{n}%",
     "{kind} {name}",
-    "3D"
+    "3D",
+    "{utc} UTC",
+    "UTC"
   ],
   "sv": [
     "STATION",
@@ -1625,6 +1641,9 @@
     "{n} mm",
     "3D",
     "KT",
+    "{utc} UTC",
+    "{seconds} s",
+    "UTC",
     "15 MIN",
     "1 H",
     "6 H",
@@ -1646,8 +1665,7 @@
     "Server",
     "{value} h",
     "{value} min",
-    "{value} ms",
-    "{seconds} s"
+    "{value} ms"
   ],
   "uk": [
     "1900–1945",
@@ -1686,7 +1704,9 @@
     "M {n}",
     "{n}%",
     "{kind} {name}",
-    "3D"
+    "3D",
+    "{utc} UTC",
+    "UTC"
   ],
   "zh-CN": [
     "1090 MHz",
@@ -1772,6 +1792,7 @@
     "{n}%",
     "{n} hPa",
     "3D",
+    "UTC",
     "CPU {before} → {after}"
   ],
   "zh-Hant": [
@@ -1858,6 +1879,7 @@
     "{n}%",
     "{n} hPa",
     "3D",
+    "UTC",
     "CPU {before} → {after}"
   ],
   "he": [
@@ -1975,6 +1997,8 @@
     "{n} hPa",
     "{kind} {name}",
     "3D",
-    "KT"
+    "KT",
+    "{utc} UTC",
+    "UTC"
   ]
 }

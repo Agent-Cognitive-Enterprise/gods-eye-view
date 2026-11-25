@@ -11,6 +11,8 @@ import {
   readAisTrack,
   aisStreamRows,
   newestAisPositionAt,
+  aisStreamVesselCount,
+  pruneAisStreamCache,
 } from './ais-store.js';
 import { tapRegionalAisIngest } from '../airsea/gnssRegionalBus.js';
 // ---------------------------------------------------------------------------
@@ -159,6 +161,11 @@ export function aisLiveProxy() {
 
   return {
     name: 'ais-live-proxy',
+    api: {
+      // Counts only what the store already holds, without opening or resubscribing the stream.
+      readLayerCount: () =>
+        process.env.AISSTREAM_API_KEY ? aisStreamVesselCount() : null,
+    },
     configureServer(server) {
       install(server.middlewares);
       startAisStreamWatchdogTick();
@@ -255,6 +262,7 @@ function aisWatchdogPolicy() {
  */
 function aisAdapter() {
   if (_aisAdapter) return _aisAdapter;
+  let worldwide = false;
   _aisAdapter = createAisStreamAdapter({
     createSocket: (url) => {
       const WebSocketCtor = aisWebSocketImpl();
@@ -262,10 +270,17 @@ function aisAdapter() {
       return new WebSocketCtor(url);
     },
     resolveUrl: () => aisWatchdogPolicy().url,
-    buildSubscription: aisStreamSubscription,
+    buildSubscription: () => {
+      const subscription = aisStreamSubscription();
+      // A reload may change the box while earlier positions remain in the store.
+      worldwide = aisSubscriptionIsWorldwide(subscription.BoundingBoxes);
+      return subscription;
+    },
     // Fork: the regional GNSS screen reads the same envelopes; it never opens
     // a socket of its own, and the bus swallows its listeners' errors.
-    ingestEnvelope: tapRegionalAisIngest(ingestAisStreamEnvelope),
+    ingestEnvelope: tapRegionalAisIngest((envelope) =>
+      ingestAisStreamEnvelope(envelope, worldwide),
+    ),
     warn: (message) => console.warn(message),
   });
   _aisAdapter.setWatchdogOptions(aisWatchdogBudgets());
@@ -350,6 +365,8 @@ function startAisStreamWatchdogTick() {
     } catch (error) {
       console.warn('[AISStream] watchdog tick failed', error?.message || '');
     }
+    // The store's expiry runs here, so a silent feed still frees its vessels.
+    pruneAisStreamCache();
   }, AISSTREAM_TICK_MS);
   _aisStreamTickTimer.unref?.();
 }
@@ -393,13 +410,21 @@ function aisStreamSubscription() {
   };
 }
 
-function parseJsonEnv(key, fallback) {
+/**
+ * Whether the stream subscribes to the default worldwide box. Unset or
+ * unreadable AISSTREAM_BOUNDING_BOXES falls back to that box.
+ */
+function aisSubscriptionIsWorldwide(boxes) {
+  return JSON.stringify(boxes) === JSON.stringify(AISSTREAM_DEFAULT_BBOXES);
+}
+
+function parseJsonEnv(key, fallback, { warn = true } = {}) {
   const value = process.env[key];
   if (!value) return fallback;
   try {
     return JSON.parse(value);
   } catch {
-    console.warn(`[AISStream] Invalid ${key}; using default.`);
+    if (warn) console.warn(`[AISStream] Invalid ${key}; using default.`);
     return fallback;
   }
 }

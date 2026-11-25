@@ -1,7 +1,13 @@
 import { msg, t } from '../../i18n/index.js';
 import { findFrame } from '../../render/rendererOf.js';
-import { normalizeFeatures } from './geometry.js';
+import { featureReference, normalizeFeatures } from './geometry.js';
+import { cableRecordReference } from './records.js';
 import { ensureGeoidReady } from '../../data/geoid.js';
+
+function featureCount(features, referenceOf) {
+  return new Set(features.filter(referenceOf).map((feature) => feature.id))
+    .size;
+}
 
 export function createIngestion({ state, parts, source }) {
   async function load(viewer) {
@@ -56,7 +62,9 @@ export function createIngestion({ state, parts, source }) {
       parts.rendering.attach(viewer);
       parts.rendering.drawFeatures(cableFeatures, landingFeatures);
 
-      state._count = cableFeatures.length + landingFeatures.length;
+      state._count =
+        featureCount(cableFeatures, cableRecordReference) +
+        featureCount(landingFeatures, featureReference);
       state._loaded = true;
       state._lastUpdate = Date.now();
       state._loadingLabel = '';

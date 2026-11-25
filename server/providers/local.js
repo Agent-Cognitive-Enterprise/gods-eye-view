@@ -45,6 +45,7 @@ import { windProxy } from './wind.js';
 import { exitWithLauncher, isIsolatedInstance } from './isolation.js';
 import { libraryProxy } from './library.js';
 import { createResourceMonitor, resourcesProxy } from './resources/index.js';
+import { layerCountsEndpoint } from './common/layerCounts.js';
 
 /**
  * Construct the local provider plugins in their established order.
@@ -72,12 +73,17 @@ function localProviderPlugins({
   // A staging server has no business near a single-use or quota-bound connection.
   const isolated = isIsolatedInstance();
   if (isolated) exitWithLauncher();
+  const countReaders = {};
+  function withCount(layerId, provider) {
+    countReaders[layerId] = provider.api.readLayerCount;
+    return provider;
+  }
   return [
-    ...(isolated ? [] : [openSkyProxy()]),
-    celestrakProxy(),
+    ...(isolated ? [] : [withCount('flights', openSkyProxy())]),
+    withCount('satellites', celestrakProxy()),
     issTelemetryProxy(),
     tomtomProxy(),
-    firmsProxy(),
+    withCount('local-firms', firmsProxy()),
     rocketLaunchesProxy(),
     terrainHeightsProxy(),
     adsbdbProxy(),
@@ -86,14 +92,14 @@ function localProviderPlugins({
     regionalBriefProxy(),
     geocodeProxy({ storageDir: nominatimStorageDir }),
     weatherEffectsProxy(),
-    cctvProxy({ sourceRoot: defaultSourceRoot }),
+    withCount('cctv', cctvProxy({ sourceRoot: defaultSourceRoot })),
     radioBrowserProxy(),
     gbfsProxy(),
     localReceiversProxy(),
     transitProxy(),
     railProxy(),
     adsbLolProxy(),
-    ...(isolated ? [] : [aisLiveProxy()]),
+    ...(isolated ? [] : [withCount('ais-live-vessels', aisLiveProxy())]),
     trackBackfillProxies(),
     openAiRealtimeProxy({ realtime }),
     ...(gemini ? [geminiLiveProxy({ realtime: gemini })] : []),
@@ -116,6 +122,7 @@ function localProviderPlugins({
     newsProxy(),
     inaturalistProxy(),
     acartiaProxy(),
+    layerCountsEndpoint(countReaders),
     keySetupEndpoint(),
   ];
 }
