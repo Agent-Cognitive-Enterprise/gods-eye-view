@@ -1,6 +1,6 @@
 /**
- * Auto-hiding bottom controls (fork feature): the command dock (locations,
- * voice, visual presets) and the bottom-right corner row (POWER UP, language)
+ * Auto-hiding bottom controls (fork feature): the command dock (voice and
+ * search) and the bottom-right corner row (POWER UP, language)
  * fade out after a few idle seconds and return on any key press or when the
  * pointer nears the bottom edge. While they are hidden, the map attribution
  * drops to the bottom edge (styles in src/ui/styles/intel.css).
@@ -77,9 +77,7 @@ export function createDockAutoHide({
         hasOpenMenu(surface) ||
         // The Omnibar's results or feedback are on show.
         surface.classList?.contains?.('has-results') ||
-        surface.querySelector?.(
-          '.panel-collapsible:not(.collapsed), #location-bar:not(.collapsed)',
-        ) ||
+        surface.querySelector?.('.panel-collapsible:not(.collapsed)') ||
         (active &&
           surface.contains?.(active) &&
           /^(INPUT|SELECT|TEXTAREA)$/.test(active.tagName)),

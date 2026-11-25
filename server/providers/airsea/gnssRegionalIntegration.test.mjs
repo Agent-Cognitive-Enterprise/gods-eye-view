@@ -268,7 +268,8 @@ test('the AIS ingest tap publishes stored envelopes only and returns the store a
   );
   assert.match(
     live,
-    /ingestEnvelope: tapRegionalAisIngest\(ingestAisStreamEnvelope\)/,
+    // Upstream passes the subscription's worldwide flag through (7646568a).
+    /ingestEnvelope: tapRegionalAisIngest\(\s*\(envelope\) =>\s*ingestAisStreamEnvelope\(envelope, worldwide\),?\s*\)/,
   );
 });
 
