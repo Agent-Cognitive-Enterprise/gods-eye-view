@@ -39,13 +39,13 @@ spread over time (near ones about every second, far or off-screen ones about
 every four), a new report that moves a placed flight eases it there from
 where it is drawn, and a tracked aircraft's trail head ends where it is drawn
 in that frame.
-The render governor (`src/renderGovernor.js`) caps a parked scene at
-`IDLE_FRAME_RATE` (60) ticks a second while nothing holds the loop, because
-Cesium still runs the clock, data sources and update listeners on every
-animation frame even when it skips the draw, and lifts the cap while anything
-does: the frame port tells it when the loop's first hold is taken and its last
-released, its own holds (animated visual styles) included. The viewer starts
-at that cap until the governor is installed. Through the idle
+The render governor (`src/renderGovernor.js`) sets the loop's rate: the
+holders' while anything holds it (the frame port tells it when the loop's
+first hold is taken and its last released, its own holds, animated visual
+styles, included), the display's while nothing does, both capped by the
+Display panel's Frame rate (`src/viewFrameRate.js`): 60 until the user sets
+it, 30 to 240 frames a second, or Unlimited, kept across visits. The viewer
+starts at that cap until the governor is installed. Through the idle
 render governor, the camera port holds continuous render from `moveStart` to `moveEnd`, and samples its
 pose every 250 ms in between, so a camera drifting by rounding errors (no
 `moveEnd`) is released after half a second at rest and held again if it moves. The world clock holds continuous render while
@@ -964,9 +964,10 @@ layer can identify (`src/ui/entityContextBridge.js`, through
 `src/ui/views/panels/EntityCard.vue`): the item's facts from its record, a
 route with progress for a flight, an altitude graph, the weather and local
 time where it is, and the flights, vessels, hazards and warnings
-within the radius the panel sets (25 to 1,000 km). Aircraft, satellites and
-vessels are followed as they are picked; the card says Following only while
-the camera follows the card's own item, and closing the card lets go.
+within the radius the panel sets (25 to 1,000 km). A pick selects its item as
+a click on it does; the card's Follow (or a second click on the selected
+item) follows an aircraft, satellite or vessel, the card says Following only
+while the camera follows the card's own item, and closing the card lets go.
 Aircraft and satellites offer Enter Cockpit and Enter orbital view; transit
 vehicles show their motion and fleet. A camera's card shows its latest still
 when available, while live video plays in the CCTV panel. Clicking the
@@ -2242,7 +2243,9 @@ so exactly one draws (the tracked dot too). The model is at its real 109 m span
 with a 72 px floor, flies the station's usual attitude (modules along the
 velocity, the same side to the Earth) from its own per-frame SGP4 sample, sits
 on the follow camera's sample while tracked, loads only once the ISS is shown,
-and hides with the dot's own rules. A click on it tracks the ISS.
+and hides with the dot's own rules. A click on it selects the ISS and centres
+it, as a click does on any moving thing; a second click on it, or its card's
+Follow, rides along.
 The station has several catalog entries that are one body: the ISS itself
 (listed as ISS (ZARYA)), ISS (NAUKA) and whatever vehicle is docked, each with
 a dot of its own, so a click on the station's dot can land on any of them.
@@ -2535,11 +2538,10 @@ callout (`src/data/bhoteKoshiLocator.js`) opens its source on a click, as its
 keyboard action does, and ignores a drag; its evidence cards act only when
 they are the card on top.
 
-Air quality (`./layers/air-quality`) draws its station discs as one renderer
-draw set of ground-clamped fills and reads the view through the camera port; it
-no longer reaches Cesium, so a caller handing it a Cesium viewer,
-with no renderer bound, loads the `./render/cesium/unbound` export once
-first.
+Air quality (`./layers/air-quality`) draws stations and clusters as one renderer
+point set. It reads bounds and movement through the camera port and focus and
+horizon visibility through the query port. A caller supplying an unbound Cesium
+viewer first loads `./render/cesium/unbound`.
 
 Cockpit (`./ui/cockpit`) flies the camera through the camera port on the frame
 port's `preUpdate`, with the shared geo maths, and no longer loads the Cesium
@@ -5744,7 +5746,16 @@ down | auth-failed` (plus the unchanged `missing-key`/`unsupported`) with
 >   `src/overlays/worldOverlay.js` owns one shared DPR-aware text/card canvas,
 >   one detection blend surface, and one world-overlay post-render
 >   scheduler. Both surfaces share the same sizing, clear, projection,
->   and teardown paths. The host includes bounded per-source/per-collision-domain
+>   and teardown paths. On a touch-only device (`(pointer: coarse)` and no
+>   `(any-pointer: fine)`, `src/overlays/canvasPixelRatio.js`; a tablet with
+>   a trackpad, mouse or pencil is not one) both are held at CSS pixels, as
+>   the globe is drawn; a fine pointer keeps the display's ratio, and
+>   attaching or removing one resizes them (`watchTouchOnly`). The scope
+>   mask (`src/scopeMask.js`) follows the same rule for its feathered
+>   gradient, but draws a hard edge (feather under a pixel) at up to 2x on
+>   every device. Both surfaces start 0x0; the detection surface holds a
+>   backing store only while a detection lane is active, and an idle host
+>   releases it without sizing the shared canvas. The host includes bounded per-source/per-collision-domain
 >   arbitration, horizon/viewport culling, shared keyhole fading, cached UI
 >   exclusions, cockpit source gating, pooled hit
 >   rectangles, and development diagnostics. **UI exclusion is a per-rectangle
@@ -5857,7 +5868,7 @@ down | auth-failed` (plus the unchanged `missing-key`/`unsupported`) with
 >   builds a camera matrix or UI inventory, observes layout, or attaches a
 >   render listener. The host creates and lifecycle-manages
 >   `#world-overlay-detection-surface`, DPR-sizes it through the same frame path
->   as `#world-overlay-canvas`, and invokes detection against its
+>   as `#world-overlay-canvas` (0x0 while no detection lane is active), and invokes detection against its
 >   plain source-over context. Detection writes the exact shipped theme
 >   `mixBlendMode` and `filter + drop-shadow(...)` strings to that provided
 >   element, preserving scene-level CRT/NVG/FLIR glow and once-per-layer
@@ -6453,7 +6464,7 @@ its criteria cannot be silently ignored.
 | Live AIS Vessels 🚢                  | AISStream websocket                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | `src/data/aisLiveVessels.js`                                                                                                                              | `/api/vessels`                                                                                                               | 60s (+800ms visibility pass)                                                                                                |
 | Mapped Installations ⌖               | OpenFreeMap military areas; optional configured Overpass names and Google Places search                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | `src/data/militaryInstallations.js`                                                                                                                       | OpenFreeMap tiles, `/api/military-installations`, `/api/google/text-search`                                                  | viewport-driven; transient errors back off, missing capability switches to tiles                                            |
 | Earthquakes                          | USGS                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | `src/data/earthquakes.js`                                                                                                                                 | —                                                                                                                            | 60s                                                                                                                         |
-| Air quality                          | ECCC MSC GeoMet OGC API (AQHI, Canada only)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | `src/layers/airQuality/`                                                                                                                                  | —                                                                                                                            | 20 min readings, 12 h station catalog                                                                                       |
+| Air quality            | US AQI computed per station (default view, the one index); EEA-band per-pollutant views (CO on WHO-based bands); OpenAQ observations (worldwide, optional key); optional host-supplied model field and forecast                                                                                                                                             | `src/layers/airQuality/`                              | `/api/air-quality/openaq`, optional `/api/air-quality/field`                                                        | OpenAQ per view                                                                   |
 | Satellites                           | CelesTrak TLE + SATCAT; bundled UCS pack (purpose)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | `src/data/satellites.js`                                                                                                                                  | `/api/celestrak` + `/api/celestrak-satcat`                                                                                   | 120s                                                                                                                        |
 | Space Missions (30d)                 | Launch Library 2 + CelesTrak                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | `src/data/rocketLaunches.js`                                                                                                                              | `/api/launches` + `/api/celestrak/active`                                                                                    | 5 min                                                                                                                       |
 | Traffic                              | Selectable TomTom / OpenStreetMap / Hybrid roads; optional TomTom flow (BYOK)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | `src/data/traffic.js`                                                                                                                                     | browser-direct OpenFreeMap tiles; `/api/tomtom` for flow                                                                     | viewport-driven; capped tile cache                                                                                          |
@@ -8058,7 +8069,7 @@ silently demoting every later lookup for the session.
   Mission world text has no native `LabelGraphics`: overview launch markers publish at most 48 ambient candidates for a 24-winner budget, while selecting a mission clears that overview source and publishes its launch-site callout, stage re-entry annotations, live/estimated payload-position readout, and orbit annotation as protected selected-lane entries. The source retains the exact former strings and colors. Static anchors reuse the Cartesian values used to build their mission geometry; the moving payload entry reads the layer's per-frame live-position cache; catalog-backed orbit annotation positions are cached in the same one-second matrix update that realigns the orbit primitive. Keyhole edge fade, horizon culling, final collision placement, and UI exclusion are owned by the shared host. Deselect restores the bounded overview, and refresh, disable, and destroy replace or clear both mission sources.
   A selected mission renders its orbit as four repeating tactical sectors, each containing one prominent cyan dot followed by one hundred thin translucent dashes. The bright dots act as orbit anchors while the subdued dash field remains depth-tested against the globe and is shown only for the selected mission.
   Close selected-pad views add one static 500 m-radius cyan launch-zone ring with a low-opacity translucent fill over the sampled photoreal launch-site surface. The single scene primitive is created only for the visible selected site and is otherwise dormant. It appears during Focus, sufficiently close manual zoom, and the replay countdown, but is suppressed above 120 km camera altitude, beyond 180 km direct camera-to-pad range, for unselected missions, and whenever Space Missions is inactive. Focus establishes a launch-site-centered camera transform once; subsequent manual heading and pitch changes remain centered on that site without an automated per-frame correction. Surface mission markers and labels use an additional conservative globe-limb margin before the exact ellipsoid occluder boundary, preventing near-horizon visibility from alternating between frames.
-- **AIS vessels**: hull sprites by vessel kind, tinted by type (see the map sprites entry below), world-space headings, MMSI-keyed reconciliation (selection survives refreshes; pinned 3 refreshes with STALE marker when absent), detection-overlay integration (`type: 'SEA'`; a vessel's callout fades by the painted opacity of its own ambient card, so a card dropped by budget, collisions or UI chrome, or faded at the keyhole rim, leaves the callout readable), contextStore registration for voice Q&A. Empty-space clicks, id-less photorealistic-tile picks, and Escape dismiss the vessel card/HUD/context and clear its trail; picks owned by another layer (including `gev-trail:*`) and raw vessel-record picks without a live MMSI key are no-ops for vessel selection. Click and key handlers detach while the layer is disabled and reinstall on enable. Selecting another vessel replaces the selection and trail, and reconciliation clears a trail if its owning vessel is evicted.
+- **AIS vessels**: hull sprites by vessel kind, tinted by type (see the map sprites entry below), world-space headings, MMSI-keyed reconciliation (selection survives refreshes; pinned 3 refreshes with STALE marker when absent), detection-overlay integration (`type: 'SEA'`; like the aircraft layers, every drawn vessel is a candidate, never a stride sample of the worldwide list, with the selected vessel first, so each vessel on screen gets its bracket; a vessel's callout fades by the painted opacity of its own ambient card, so a card dropped by budget, collisions or UI chrome, or faded at the keyhole rim, leaves the callout readable), contextStore registration for voice Q&A. Empty-space clicks, id-less photorealistic-tile picks, and Escape dismiss the vessel card/HUD/context and clear its trail; picks owned by another layer (including `gev-trail:*`) and raw vessel-record picks without a live MMSI key are no-ops for vessel selection. Click and key handlers detach while the layer is disabled and reinstall on enable. Selecting another vessel replaces the selection and trail, and reconciliation clears a trail if its owning vessel is evicted.
 - **Track trails**: server accumulates per-MMSI ring buffers (`/api/vessels/track?mmsi=`, Float32+Uint32, 64 samples, 30s/25m thinning); aircraft backfill proxies `/api/flights/track` (OAuth, own credit bucket). Military aircraft keep only their locally accumulated trails: `/api/military/track` validates the hex, then answers `503 history_unavailable` without an upstream request.
 - Shared `src/data/pickRegistry.js` stops the two flight layers' click handlers from fighting over the camera.
 
@@ -8391,7 +8402,8 @@ sit on the field's top edge. World Time appears immediately above the dock
 and hides while suggestions, chat, or voice settings are visible. `/`
 focuses search from outside a text field, as do Cmd+K on macOS and Ctrl+K
 elsewhere (Ctrl+K on macOS is left alone); none of them takes focus from an
-open modal dialog or from inside a dialog such as the guide. While voice is
+open modal dialog or from inside a dialog such as the guide; a modal dialog
+kept on the page inside a hidden container is closed and does not count. While voice is
 on, the suggestions give way to the waveform but an error stays shown. The map credits stay on the
 Power Up row in the ordinary desktop layout, and the Tactical bottom-right
 readout sits 8px above that row.
@@ -8557,12 +8569,7 @@ row does (so the keyboard does not stay over the map), and so do Ask GEV, the mi
 walk, and any row while drawing is on (the draw tool reads Enter, Backspace
 and Esc). Escape closes the list, and on an empty, closed field lets go of
 it, so the app's own keys work again. While voice
-is on, the list is closed (not expanded) and Enter runs nothing. Text that
-may be private is never looked up or searched while typed or on Enter: only
-things already loaded on the map may match it, locally, and when only a
-long run of digits makes it look private and it has words (an address can:
-"Москва, ул. Тверская, д. 13, 125009") one row searches it as a place only
-when picked (see below).
+is on, the list is closed (not expanded) and Enter runs nothing.
 
 After "go to" (or "fly to" and the like) the rest of the clause, and a
 following part after a comma that has no verb, is the place, read before
@@ -8584,6 +8591,25 @@ code puts them first, and otherwise the place row keeps the top, so
 "Hamburg" goes to the city before the ship HAMBURG. An unrecognized explicit command
 stays in search. Questions can be sent through Ask GEV, which uses the
 existing typed chat.
+
+A host that passes `entityLookup` to `createApplicationControls`
+(docs/CODE-BOUNDARIES.md, "Entity lookup provider") also has aircraft,
+ships, cameras and satellites anywhere offered for a bare name, code or
+number once typing pauses (`lookupQuery` in `src/ui/omnibarRows.js`: never a
+command, a layer switch, a question, a sentence or coordinates, and never
+while voice has the field). One whose name, id or MMSI is the line (case,
+spaces and punctuation aside) leads the rows and Enter picks it; the others
+come after the loaded items listed before any place row, ahead of the
+places. A line the privacy check keeps from the place service (an MMSI is a
+long number) still lists the host's answers, and is not said to be kept
+back. One already loaded in its layer is listed once, as loaded. Choosing
+one switches its layer on if it is off; one the layer holds is picked as a
+Context row picks it, and one it does not hold yet is centred on once and
+picked with the layer's `pickById` when its next load has it (by id, then by
+MMSI, never by a name; `src/ui/entityLookup.js`). Editing or closing the
+line, picking another row or voice taking the field aborts the request and
+any pick still waiting. The CCTV layer's `pickById` makes a camera the
+active one, its feed shown in the camera panel.
 
 Han, Hangul and Kana names are looked up from two characters (東京), others
 from three.
@@ -8607,8 +8633,7 @@ and errors, keeping the separate Location draft intact.
 
 While typing, a short line (six words or fewer, ten with a number in it
 as an address has, no `?`, not a command,
-coordinates, a hex code, a callsign such as UAL2110 or N123AB, and nothing
-that may be private) is sent to
+coordinates, a hex code or a callsign such as UAL2110 or N123AB) is sent to
 Photon for place suggestions (the suggester itself never sends a line of
 more than eight words, or ten with a number): at most one request every
 500 ms per tab,
@@ -8617,102 +8642,11 @@ place search already uses; a submitted search is not part of this spacing.
 A line that may be one name ("Satellite Beach") is looked up whole. While
 its suggestions show, or a recent-place chip that came from them, the
 OpenStreetMap credit shows too; recent chips from the bundled packs credit
-Wikidata. Private text, by `mayBePrivate` in
-`src/search/placeSuggestions.js`, is never sent to Photon, offered as a
-place, searched or sent to GEV; only things already loaded on the map may
-match it, locally. The line is read after NFKC, so full-width letters,
-digits and "＠" count, and digits of any script count as digits. It is
-any line with: an "@" with something right on both sides, ending a word,
-starting a lowercase handle ("@jdoe"), or spaced before a domain ("john @
-gmail.com") (an email address or a handle, also while it is typed; spaced, as in "Nanjampeta @
-Chandambylu", it is part of a name); an email spelled around a filter
-("john(at)gmail.com", "john[at]gmail[dot]com", "john at gmail dot de",
-"john at gmail.com", "john at gmail (dot) com"); an IP address
-("10.0.0.1", "::1", "fe80::1", "https://[::1]/"); a wallet's recovery
-phrase (see below); seven digits or more with nothing but spaces,
-punctuation, symbols or format characters between them (a phone, card,
-SSN or account number or its start: "+1 415 555", "4111 1111", "123 45
-6789", "123456789", "4111.1111.1111.1111", "123–45–6789"; a street address's house number
-and its postcode are read apart (a house number never starts with 0, and
-a polite word such as "thanks" after the digits is not a city): five digits, or between the street and
-the city "00-950", "111 21", "125009", "1100-053", or four digits after a
-comma ("Straße 120, 1070 Wien"); and so are a US ZIP+4 after a state's
-code or name ("Alice 12345-6789" and "Jo 12345-6789" stay private),
-a Brazilian CEP, a Japanese postcode after "〒" or next to the address in
-Japanese script ("東京都千代田区100-0001"; after a Latin name, as in
-"Shibuya 150-0002", it reads as a phone number), and
-digits on either side of "#", so "Hauptstrasse 12 10115 Berlin", "DC
-20500-0003", "〒100-0001 東京都千代田区" and "Calle 100 # 19-61" are places,
-while a seven-digit postcode alone such as "Tel Aviv 6100000" still reads
-as private); a phone number written with dots; two letters, two
-digits and ten more letters or digits (an IBAN's shape); "password",
-"passcode", "passwd", "pw" or "pwd" followed by anything, "bearer"
-followed by anything but a short capitalised name or a place word such as
-island or lake ("Bearer Island", "bearer island" are places),
-"ssn" followed by a digit, also after "ending", "ends in" or "last four"
-("SSN Station" is a place), "token", "secret",
-"api key", "key" or "pass" followed by ":" or "=", a licence, plate,
-passport, membership, account, policy, ticket, booking, confirmation or
-reference number with a digit after its label ("license ABC1234",
-"passport no. 123456"), "ID" in capitals followed by a number ("ID
-AB123"), "otp", "2fa", "mfa", "cvv", "cvc" or a verification, one-time,
-security, auth or login code followed by a code (any value after a label
-in lower case, "verification code Abc", also before "thanks", ", thanks", "cheers" or "thanks a lot"; after a label
-written as a name, any value that is not one: "OTP Bank" and "Security
-Code Plaza" are places), a "pin" or door, access, gate, alarm or entry
-code followed by a value in mixed case ("PIN aBcD"), a
-door, access, gate, alarm, entry or security code followed by a digit, "api
-key", "access token" or "secret key" followed by a word of six characters
-or more, the word for "password" in the interface's languages
-(contraseña, Passwort, mot de passe, пароль…) followed by anything, or "pin"
-(also "pin code", "pin number", "pin is") followed by a digit; a word
-starting `sk_`, `sk-`, `rk_`, `pk_live`, `ghp_`, `github_pat_`, `glpat-`, `hf_`, a SendGrid
-`SG.` key or a Slack token's `xoxb-` and the like (any case) or
-`AIza` or `eyJ`, or an AWS key id (`AKIA` and twelve capitals or digits
-more; "Akiak" is a place); or a word that may be a password or key, with letters and digits mixed
-within one run (a number beside a word, as in "Yanino-1", "2-chōme" or
-"Route-66", is a name): eight characters or more, six or more with four
-letters and a digit ("hunter22", "Area51"), or six or more with letters,
-digits and a symbol ("Tr0ub4dor&3"). The password words match whole words
-only ("Sachsenhausen" is a place). Over the bundled names (139,502), six
-read as private: two with stray digits ("Maliga0N", "Jerónim67"), two
-joined by "@" to a lower-case handle ("Pulipadu @Govardhanagiri") and two
-with number lists or dates. When the text may be private the field says
-so ("Looks private, so nothing is searched or sent"), and a line whose
-only private sign is an address-sized run of digits (no group over six
-digits, nine at most in all, counted as they fold, no three digits
-followed by four as a phone number writes them, and no word such as
-card, code, key, phone or account beside them, in English and some other
-European languages; compounds such as "Kreditkartennummer" and words in
-other scripts are not read), with words beside it, gets a row
-to search it as a place on purpose ("Search … as a place anyway"), which
-runs the ordinary place search and its online services only when picked; a
-bare number, an email or handle, a password, key, code or IBAN gets none.
-A suggested house is named by its number and its street (or, without a
-street, its locality, district or city) in the order its country writes them: "10 Downing
-Street", "Hauptstraße 12".
-A nine-digit number or a short phone number written with no such word
-still gets the row: only picking it sends anything. One-time and verification codes,
-OTP, 2FA, MFA, CVV and CVC values, "card ending" digits, passphrases,
-recovery or seed phrases (twelve words in a row on the BIP39 English list
-in `src/search/bip39Words.js`, also with commas, numbered, quoted, joined by
-dashes or slashes, or after "my seed is", so a long question or request
-still goes to Ask GEV; twelve with four words for places or for asking about
-them, such as "park", "airport", "near" or "today", are a list or a request,
-which lets about one phrase in a hundred through), "my secret is …", an email spelled
-out ("john at example dot com", "punto com", or letter by letter), a door,
-alarm or lockbox number ("code 4821"; "zip code 90210" and "area code 415"
-are places), "Authorization: Bearer …", a code in a link (`?code=…`), a
-spaced UK National Insurance number and "my id is …" are private too.
-"Boise ID 83702" names Idaho. Some private text is not caught: a
-passphrase run together as one word (a long place name is one word too),
-a lower-case word after "otp", "2fa" or "mfa" ("mfa boston" is a name;
-"otp ABCDEF" is caught) and a code of lower-case letters after "pin" or
-"gate code" ("PIN ABCD" is caught).
-A Japanese postcode after a Latin name is refused ("Shibuya 150-0002"), and
-so is a name in capitals after a code's label ("MFA BOSTON", which cannot
-be told from "OTP ABCDEF"). Text that parses as coordinates or a
-grid reference is not private. A place's name is six words at most, or ten
+Wikidata. A suggested house is named by its number and its street (or,
+without a street, its locality, district or city) in the order its country
+writes them: "10 Downing Street", "Hauptstraße 12". Nothing typed is held
+back as private: what is typed goes to place suggestions, the place search
+and Ask GEV as any other line does. A place's name is six words at most, or ten
 when it has a number in it (an address: "1600 Pennsylvania Ave NW
 Washington DC 20500"). The places picked from the Omnibar's rows and chips that carry a position
 (a typed name searched as a place, or a plan's place, is not kept; the last 20:
@@ -9065,7 +8999,7 @@ at the view center as unknown.
 
 ### Panoptic Detection + Tracked Readout (June 2026)
 
-- `src/data/detection.js` samples enabled layers through each layer's `getDetectableObjects()` contract and renders bounding boxes/labels from the shared host's sole Cesium post-render callback so boxes align with the final camera frame.
+- `src/data/detection.js` samples enabled layers through each layer's `getDetectableObjects()` contract (Live Flights, Military Flights and vessels uncapped, `UNCAPPED_CANDIDATE_LAYERS`; other layers at most 2,600 candidates, `LAYER_CANDIDATE_CAP`) and renders bounding boxes/labels from the shared host's sole Cesium post-render callback so boxes align with the final camera frame.
 - Detection diagnostics count fading labels from the arbiter rows that are
   actually rendered. The label QA harness uses time-weighted label exposure for
   churn and requires conclusive solve/frame samples at both its 12,000-object
@@ -10039,7 +9973,12 @@ unless its plugin hands the application a map engine of its own
   terrain as `quantizedMesh` terrain at its URL (`src/maps/keylessTerrain.js`);
   while the keyless terrain does not answer, the ellipsoid stands in and the
   map stack tries it again behind it. A renderer without the `terrain`
-  capability keeps the ellipsoid.
+  capability keeps the ellipsoid. A `quantizedMesh` terrain source can supply
+  its tiles through `fetchTile`, like `xyz` imagery: Cesium still reads
+  `layer.json` at the source's URL, schedules, cancels and decodes the tiles,
+  and only each tile's bytes come from `fetchTile`; a `missing` tile draws its
+  parent's terrain, a `defer`red one is asked for again shortly
+  (`src/render/cesium/terrainTiles.js`).
 
 A viewer with no renderer bound gets the Cesium engine
 (`src/render/cesium/mapEngine.js`), with the other unbound ports, from the
@@ -10207,6 +10146,213 @@ datacenters, dams and the Nepal locator retain that shared credit while displaye
 
 Military fragments stitch by source identity. Different mapped parcels merge only
 when their footprints touch or contain one another, never across a seam tolerance gap.
+
+### Air quality
+
+Weather → Air quality draws every observation provider together, de-duplicated,
+as one station set. The bundled provider is OpenAQ, worldwide; it republishes
+national networks (India's CPCB and South Africa's SAAQIS among them), which
+are not read separately. The US AQI that GEV computes from concentrations is the one
+index: Canada's AQHI (ECCC) is retired, as it covered Canada only, Canadian
+stations come through OpenAQ like every other country's. A network that
+needs its key or is switched off is guidance, not a failure: the layer turns on
+with its key lines (OpenAQ's, the worldwide network's, first), its Layers row
+says KEY REQUIRED and names the keys it lacks (the layer's key-required stat)
+instead of reading UNAVAILABLE, a network this server leaves off is not named as
+a source, and an update fails only when every network asked failed and no other
+view is on offer. Without the OpenAQ key (the stand-alone default) an install
+shows no stations, and the card names the key to add.
+Installs with keys are unaffected. A host's own provider returns pollutant
+concentrations, one row per station and pollutant. Include `id`, `stationId`,
+`provider`, `name`, `lat`, `lon`, `observedMs`, `parameter`, `units`,
+`value`, `averagingMinutes` and `kind: 'observation'`. Rows of the previous
+index contract (`scale`, `value` and `band`, without `parameter`) draw no
+stations. A host using the reference source needs the `/api/air-quality` routes
+or its own providers, or should withhold the layer.
+There is no provider picker: the card offers views only, the US AQI (the
+default) or one pollutant (PM2.5, PM10, NO2, O3, SO2, CO). Observations retain
+original units and channel timestamps; each view rates them on its own scale
+(below), and no network's own index is requested or shown. A view with no reporting station in sight is displayed as a coverage gap.
+Stations that would overlap on screen draw as one cluster dot at far zoom,
+coloured by the mean of its rated members. A click flies to where its stations
+come apart or selects its highest station when the flight would zoom out or the
+stations never separate. The card is a slim tile card: an Index group of one
+tile, the US AQI, across its row, and a Pollutants group of six. The tiles read
+the selected station, else the model at the view centre, else the nearest
+station in view, preferring rated stations.
+The card shows each provider's status and says when data
+is cached, when a key was rejected, and while OpenAQ is still discovering a
+view, how many of its stations it has checked. A US AQI above 500 reads "500+"
+(the computed value stays in the data), and a station adds at most 500 to its
+cluster's mean. Readings older than six hours are not drawn, judged at draw
+time, even when no fetch has succeeded since; in the AQI view such a value
+leaves the index ("too old"), and the remembered AQI-view values another view's
+tiles read obey the same age. A station's originating network and its licence
+are named in its row's tooltip and in a line under the selected station's name.
+Share links carry only the view; whether stations are shown and the selected
+station are session state.
+The deterministic real-app gates are `scripts/qa-air-quality.mjs` and
+`scripts/qa-openaq.mjs`, each against a dev server; `qa-air-quality.mjs`
+answers `/api/air-quality/openaq` (no key) itself, so its keyless checks hold
+whatever key the server has.
+
+Air quality accepts injected provider definitions through its source
+composition. The standalone default is worldwide OpenAQ (with its key).
+OpenAQ uses the existing Provider Settings registry
+(`OPENAQ_API_KEY`, server-only) and a fixed local proxy, with bounded
+progressive acquisition across all available countries/areas, explicit
+incomplete coverage and source attribution.
+Camera movement triggers debounced viewport discovery, starting near the
+map focus and continuing through the visible bounds (including dateline crossings).
+Loading and partial discovery are distinct from completed searches with no recent
+observations. The OpenAQ fixture gate is `scripts/qa-openaq.mjs`; live coverage
+requires the operator's key.
+OpenAQ navigation reuses stable catalog regions and recent station observations.
+Each pass fetches at most one new catalog page and checks four nearby stations (hours or `/latest`);
+nearby enrichment waits eight seconds and yields capacity to new regions.
+A pass that brings no reading within 5° of the view centre doubles the wait
+before that view's next pass (8 s up to 2 minutes; `PASS_MS`, `MAX_PASS_MS`),
+and one view spends at most a quarter of the hourly budget (`VIEW_SHARE`,
+catalog pages included), so a view left open cannot drain it.
+Cancelling the last view consumer aborts upstream work. Cached observations survive
+view eviction and provider cooldowns. Provider remaining/reset and Retry-After
+headers govern automatic recovery; the card says when a network's request
+budget is reached. The viewport answer carries counts (checked, eligible,
+partial), not the station catalogue, and the browser's few-second discovery
+loop waits while the tab is hidden. A key OpenAQ refuses (a 401, or a 403
+whose answer names the key or account) is not sent upstream again until it
+changes or ten minutes pass; any other 403 fails only that request.
+An unresolved camera never launches a global scan. All views share conservative
+45/minute and 1,800/hour process limits; a shared key's other clients still count.
+
+OpenAQ's selected pollutant uses explicit sensor hourly averages, with period,
+coverage and quality checks. Supported PM2.5, PM10, NO2, O3 and SO2 measurements
+receive a clearly labelled GEV comparison against the European Air Quality Index's
+(EEA) hourly pollutant bands: Good, Fair, Moderate, Poor, Very poor or Extremely
+poor. CO is not in the EEA index: its bands are WHO-based (4, 7, 10, 35 and
+100 mg/m³) and its assessment says so. This is a per-pollutant
+comparison, not an overall station AQI or a local official index. Unknown periods,
+incomplete or flagged hours, unsupported units and unclassified pollutants remain
+neutral and explain why. CO2 concentration is never described as emissions.
+The Weather card is the slim tile card: an Index group (the US AQI) and a
+Pollutants group of tiles coloured by band, a Stations switch, a ramp legend of
+the view's scale, a one-line HIGHEST IN VIEW list (rank, band colour, value,
+name; the station's method, observation age and provenance are its
+tooltip) and, for a selected station, a header with its name,
+who measures it and how old the reading is. It has no headline, status badge or
+activity guidance; the per-reading `general` and `sensitive` guidance texts
+exist only on the assessment in analyst records. Caches are pollutant-scoped. The list
+and counts exclude stations beyond the globe's
+horizon.
+Each view has one scale for colour, ranking and legend. The default US AQI view
+computes an index per station (`src/layers/airQuality/usAqi.js`): every
+observation provider is asked with `mode: 'aqi'` (OpenAQ from each sensor's
+hourly means for PM2.5, PM10, O3 and CO, asked at most once an hour, and each
+location's `/latest` for NO2 and SO2, within the same budget, cache and
+cancellation; a network with a national snapshot from that snapshot), each
+pollutant is put on its table's averaging period (`nowcast.js`: the PM NowCast,
+EPA's ozone NowCast, CO's 8-hour mean, NO2 and SO2 1-hour values; too few hours
+give no sub-index), a station's plausible values get a sub-index each on
+the EPA breakpoints (Technical Assistance Document, Table 6, PM2.5 as revised in
+2024; ozone's current hourly mean also on the 1-hour rows from 0.125 ppm, the
+higher kept) and the highest one sets its index, category, colour and time.
+Pollutant tiles in the AQI view show each pollutant's newest hourly mean on
+its EEA band. A low-cost sensor (`monitor: false`) gets no US AQI (OpenAQ asks
+nothing of one in that view); pollutant views keep it, its row and header
+marked as a sensor. Values more than three hours older than the
+station's newest value kept are left out, as are implausible ones (above a
+pollutant's ceiling, or PM2.5 more than 1.5 × PM10 + 10 µg/m³: smoke, where PM2.5
+nearly equals PM10, still counts); details name each value left out and why.
+The pollutant views leave a value above the same ceilings unrated (CO's at
+200 mg/m³, so its top band, above 100, stays reachable). Gas
+mixing ratios convert at 25 °C (`units.js`) for both the US AQI and the EEA
+comparison. A pollutant view rates every network's concentration on the
+EEA hourly bands, so every station is coloured, ranked and listed on one
+scale.
+Scale-specific translations: EEA hourly quality and US AQI categories are
+translated independently across legends, tiles, list rows and map labels.
+Source category values remain English data; Russian quality and US AQI wording
+retain their own grammatical forms.
+
+#### Merging providers
+
+Of two readings of one site within 150 m from different providers
+(`merge.js`), a reference monitor wins over a low-cost sensor, then a rated
+reading, a network's own (direct) reading over an aggregator's copy and the
+newer one take priority; "rated" is `isRatedReading` in `merge.js`. In the
+AQI view, where each reading is a whole station, the kept station takes in
+each pollutant's freshest value from the site's monitors
+(`mergeStationValues`, its source named in `valueSources` and in the
+station's details) and its index is computed from them, so no network's
+pollutants are lost to another's.
+
+#### Air-quality model field
+
+A host may give the Air quality layer a model field: a forecast of the six
+pollutants and the US AQI on regular grids, one global and an optional finer
+Europe inset (`fieldSource`, `sources['air-quality-field']`; the contract is in
+`src/layers/airQuality/field.js`: `getManifest({ atMs? })` and `getStep(step)`,
+16-bit grids with a per-id scale and 65535 for no data). The stand-alone app has
+none unless one is configured (below), and then shows stations only.
+
+With a field, every view (the US AQI or a pollutant)
+draws that view's field under the stations, in the same bands as the stations:
+each band's colour at its middle, opacity `min(0.82, 0.05 + 0.26 · p)` for scale
+position `p`. It is one `single-image` imagery layer per image on the globe (the
+weather imagery host) and a raised raster shell over photorealistic 3D tiles
+(`src/layers/airQuality/fieldDrawing.js`), in its own slot just under wind's
+(`WEATHER_IMAGERY_Z`, `WEATHER_SHELL_HEIGHTS`; above Active Fires' heat); a new
+step replaces the images without a gap or a moment of both (on the globe the new images load
+clear and take the old ones' place in one frame). Its strength follows the
+camera: 0.85 of the painted opacity from 600 km up, fading on a log scale to
+nothing at 60 km (`FIELD_FADE`); below that the map shows stations only and
+the card still reads the model. The Europe inset blends into the global field over `blendDeg`
+(default 3°) inside its edge with a smoothstep weight. Where the inset is drawn
+both images carry that blended value, the value the tiles read, so the map's
+colour is the tiles' value everywhere; over the blend band they cross-fade
+(the inset at its share `w` of its opacity, the global image under it at
+`(1 − w) / (1 − s · w · a)` with `s` the full strength 0.85), so neither has an
+edge to show. At full strength (600 km up) the pair is exactly as opaque as one
+image; the images are painted once a step, so while the field fades below
+600 km the band is up to 14 % (at 0.44 strength) more opaque than one image. The map shows
+only the step and view the card names: while a step loads, the field drawn
+stays only if it is of the same run and view, and a step that failed is not
+drawn. The forecast is on the timeline: the layer registers the run's first
+step to its last with the world clock, follows the clock while the field is on
+and draws the step nearest its time; playing, the clock waits for the next
+step for at most 20 s. A time outside the run held asks the host for the run
+covering it (`atMs`), once per three hours of time (a failed ask again after a
+minute); at now a run that no longer covers now is let go. Stations are
+readings of now and are hidden away from now (their labels, list and count
+too). The card's time line names the model by the manifest's `sourceShort`, else
+`source`: "updated {age}" at now, "forecast for {time}" ahead of it, the time
+behind it.
+Outside the run, with no run covering the time on its way, one muted line says
+"{source}: no forecast for this time". "Model field unavailable" shows only
+once a manifest has been read: before that a failure may only mean nobody
+configured a field, so the card says nothing.
+Switched off, the layer keeps no grids or images. A manifest's `credit`, when
+it has one, joins the data credits for the session once a run is read. New wording
+from the same source replaces it. CAMS specifies the wording the host supplies.
+
+Development and self-hosting option: `AIR_QUALITY_FIELD_DIR` names a local
+folder of baked grids. It holds `manifest.json` and `<region>/<step>/<id>.u16`,
+with three digits of forecast hours in the step (for example,
+`global/024/pm25.u16`). Each grid stores little-endian uint16 values in rows
+from north to south, as its manifest region describes. Bake each run into a
+new folder and swap it in. These are the files that
+the local server serves under `/api/air-quality/field/manifest` and
+`/api/air-quality/field/grid/<global|europe>/<step>/<id>.u16`
+(`server/providers/airQualityField.js`); standalone sources read it through
+`src/layers/airQuality/fieldSource.js`. Unset (the default), the manifest route
+answers `{ unavailable: true, code: 'not_configured' }` and the layer asks once
+and shows stations only; before a manifest was ever read, a page (a static host
+answering every path with its page), a server error or no answer counts the
+same. Only files already in the folder are served; nothing
+is downloaded. The browser gate `scripts/qa-air-quality.mjs` serves a small cut
+of such grids (`src/layers/airQuality/fixtures/field/`, CAMS, CC BY 4.0) to
+check that the field draws, the timeline spans its forecast and a later step
+changes the tiles.
 
 ### Shared native dropdowns and numeric fields
 
