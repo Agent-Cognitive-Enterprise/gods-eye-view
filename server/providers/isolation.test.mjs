@@ -23,6 +23,7 @@ test('an isolated environment has no shared credential, and .env cannot fill one
       OPENSKY_CLIENT_SECRET: 'real',
       WORLDNEWSAPI_KEY: 'real',
       LIVEUAMAP_API_KEY: 'real',
+      OPENAQ_API_KEY: 'real',
       PATH: 'p',
     },
     { port: 4178, stateDir: 'C:/stage/state' },
@@ -32,6 +33,8 @@ test('an isolated environment has no shared credential, and .env cannot fill one
   // The paid news keys have a per-process daily allowance.
   assert.ok(SHARED_SECRETS.includes('WORLDNEWSAPI_KEY'));
   assert.ok(SHARED_SECRETS.includes('LIVEUAMAP_API_KEY'));
+  // So does OpenAQ's free key (an hourly allowance).
+  assert.ok(SHARED_SECRETS.includes('OPENAQ_API_KEY'));
   assert.equal(env.PATH, 'p');
   assert.equal(
     isolatedEnvironment(

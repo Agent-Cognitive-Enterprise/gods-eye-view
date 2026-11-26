@@ -23,6 +23,9 @@ export const SHARED_SECRETS = Object.freeze([
   // would spend the live instance's share.
   'WORLDNEWSAPI_KEY',
   'LIVEUAMAP_API_KEY',
+  // OpenAQ meters its free key per hour (server/providers/openAqBudget.js
+  // keeps a per-process budget), so the same applies.
+  'OPENAQ_API_KEY',
 ]);
 
 /** Ports of the live instances and their model; a staging server may not take them. */
