@@ -130,6 +130,52 @@ test('a catalog that is not valid, not an object, or not laid out as written is 
   );
 });
 
+// The JSON escape for a character: a backslash, "u", four hex digits.
+const escape = (char) =>
+  `${String.fromCharCode(92)}u${char.charCodeAt(0).toString(16).padStart(4, '0')}`;
+
+test('a catalog that only escapes characters differently still merges', () => {
+  const dot = String.fromCharCode(0xb7);
+  const base = locale({ A: 'a' });
+  const ours = locale({ A: 'a', B: 'b' });
+  // Upstream wrote the middle dot as an escape, as a hand edit may.
+  const upstream = locale({
+    A: 'a',
+    [`CABLE ${dot} {name}`]: `KABEL ${dot} {name}`,
+  }).replaceAll(dot, escape(dot));
+  assert.ok(upstream.includes(escape(dot)));
+  const out = mergeLocale({ base, ours, upstream });
+  assert.equal(out.refused, undefined);
+  assert.deepEqual(JSON.parse(out.text), {
+    A: 'a',
+    [`CABLE ${dot} {name}`]: `KABEL ${dot} {name}`,
+    B: 'b',
+  });
+  // Written out, as JSON.stringify writes it.
+  assert.ok(!out.text.includes(escape(dot)));
+});
+
+test('escapes cannot hide a duplicate or a "__proto__" key', () => {
+  const good = locale({ A: 'a' });
+  // "A" is "A" again: JSON.parse would drop one of them.
+  const duplicate = `{\n  "A": "a",\n  "${escape('A')}": "b"\n}\n`;
+  assert.match(
+    mergeLocale({ base: good, ours: duplicate, upstream: good }).refused,
+    /ours side is not laid out as this rule writes it/,
+  );
+  const proto = `{\n  "${escape('_')}_proto__": "x"\n}\n`;
+  assert.match(
+    mergeLocale({ base: good, ours: good, upstream: proto }).refused,
+    /upstream side has a "__proto__" key/,
+  );
+  // Any other difference in layout is still refused.
+  assert.match(
+    mergeLocale({ base: good, ours: good, upstream: '{\n    "A": "a"\n}\n' })
+      .refused,
+    /upstream side is not laid out/,
+  );
+});
+
 const page = (icons, title = 'GEV') =>
   `<!doctype html>\n<title>${title}</title>\n<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&icon_names=${icons}" rel="stylesheet" />\n<body></body>\n`;
 

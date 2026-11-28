@@ -9,7 +9,8 @@
 // refuses with a reason, and the conflict is then left for a person as before.
 //
 // Every rule refuses rather than guess: when an input is not laid out exactly
-// as the rule would write it (so the result could not keep its form), when a
+// as the rule would write it, escapes inside strings aside (so the result
+// could not keep its form), when a
 // value both sides changed cannot be settled by the rule, or when anything
 // else in the file conflicts. Uses only Node built-ins and git: no upstream code
 // runs here.
@@ -24,10 +25,25 @@ const MISSING = Symbol('missing');
 const same = (a, b) => isDeepStrictEqual(a, b);
 const refuse = (why) => ({ refused: why });
 
+// One JSON string literal: no raw quote, backslash or line break inside.
+const JSON_STRING = /"(?:[^"\\\n]|\\.)*"/g;
+
 /**
- * Parse JSON, refused unless `format` writes the value back as exactly the
- * same text (so the merged file keeps the form, and no duplicate key, which
- * JSON.parse silently drops, goes missing).
+ * The text with every string literal spelled as JSON.stringify spells it
+ * ("\u00b7" becomes "·", "\/" becomes "/"), everything between them as is.
+ * Only the spelling of characters changes, never a value, a key or the layout.
+ */
+function canonicalStrings(text) {
+  return text.replace(JSON_STRING, (literal) =>
+    JSON.stringify(JSON.parse(literal)),
+  );
+}
+
+/**
+ * Parse JSON, refused unless `format` writes the value back as the same text,
+ * up to how characters inside strings are escaped (so the merged file keeps
+ * the form, and no duplicate key, which JSON.parse silently drops, goes
+ * missing). An escaped character comes back written out.
  */
 function parseExact(text, format, label) {
   let value;
@@ -38,10 +54,12 @@ function parseExact(text, format, label) {
   }
   if (!value || typeof value !== 'object' || Array.isArray(value))
     return { why: `the ${label} side is not a JSON object` };
+  const canonical = canonicalStrings(text);
   // Assigning a "__proto__" key sets the prototype instead: it would vanish.
-  if (/"__proto__"\s*:/.test(text))
+  // Checked once escapes are written out, so "\u005f_proto__" is caught too.
+  if (/"__proto__"\s*:/.test(canonical))
     return { why: `the ${label} side has a "__proto__" key` };
-  if (format(value) !== text)
+  if (format(value) !== canonical)
     return { why: `the ${label} side is not laid out as this rule writes it` };
   return { value };
 }
