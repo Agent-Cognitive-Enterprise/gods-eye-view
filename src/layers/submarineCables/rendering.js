@@ -53,16 +53,17 @@ const propColor = (value) =>
 const given = (value) => value !== undefined && value !== null;
 
 /**
- * A cable is drawn wide enough to click.
+ * How wide a cable is drawn.
  *
- * Fork: without upstream's dark edges. An outlined line draws by its own
+ * Fork: 2.5 px as before upstream's 8 px pipes (the user found those too
+ * thick), and without upstream's dark edges. An outlined line draws by its own
  * material, outside the draw port's batches (its settles() and
  * batchable()), and the bundled cables come in 534 colours:
  * some 500 draws on the terrain globe and a ground primitive per cable part
  * on photoreal, in place of one batch, the cost the fork's 11-05 lag fix
  * removed. Plain solid lines keep the batches.
  */
-const CABLE_WIDTH_PX = 8;
+const CABLE_WIDTH_PX = 2.5;
 
 /**
  * How a line draws. A cable with a reference takes the cable's own colour

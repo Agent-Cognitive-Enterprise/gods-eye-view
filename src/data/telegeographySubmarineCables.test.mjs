@@ -743,9 +743,9 @@ test('cables, landing pins and references draw as their entities did', async () 
 
   const [line] = env.set('lines').items.values();
   assert.equal(line.mode, 'draped');
-  // Wide enough to click. Fork: solid, without upstream's darker edges, so
+  // Fork: 2.5 px and solid, without upstream's 8 px darker-edged pipe, so
   // the line stays in the draw port's batches (rendering.js CABLE_WIDTH_PX).
-  assert.equal(line.widthPx, 8);
+  assert.equal(line.widthPx, 2.5);
   assert.deepEqual(line.style, {
     kind: 'solid',
     color: [0x39 / 255, 0xd5 / 255, 1, 0.92],
@@ -1291,7 +1291,7 @@ test('multipart cables keep their own styling, picking and culling on every segm
       (hex & 255) / 255,
       0.92,
     ]);
-    assert.equal(line.widthPx, 8);
+    assert.equal(line.widthPx, 2.5);
   }
   assert.deepEqual(picksOf(env, 'lines'), [
     { lon: -40, lat: 35 },

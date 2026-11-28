@@ -213,7 +213,7 @@ test('cable lines are solid with no outline, so they draw in a batch', async () 
       undefined,
       `globe visible: ${globeVisible}`,
     );
-    assert.equal(line.widthPx, 8, 'wide enough to click, as upstream');
+    assert.equal(line.widthPx, 2.5, 'as before the 8 px pipes');
     env.layer.destroy();
   }
 });
