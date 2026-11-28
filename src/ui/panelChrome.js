@@ -4,6 +4,7 @@ import { applicationPinia } from './vueRuntime.js';
 import { PanelPositionControls } from './panelPositionControls.js';
 import { PanelLayoutController } from './panelLayoutController.js';
 import { arePanelCompanions, isDockedPanel } from './panelAccordion.js';
+import { flushPanelContent } from './rail/panelContent.js';
 import {
   bindPanelDisclosure,
   collapsePanelOnEscape,
@@ -256,10 +257,11 @@ export class PanelChrome {
         ? document.getElementById(panelOrId)
         : panelOrId;
     if (!panelEl?.id) return;
-    this._chromeStore.publish(this._chromeToken, panelEl.id, {
-      ...this._shownPanel(panelEl),
-      ...patch,
-    });
+    const next = { ...this._shownPanel(panelEl), ...patch };
+    this._chromeStore.publish(this._chromeToken, panelEl.id, next);
+    // Content skipped while the panel was closed is painted now, before the
+    // layout pass measures the panel or anything reads its rows.
+    if (!next.collapsed) flushPanelContent(panelEl);
   }
 
   /**
