@@ -143,7 +143,8 @@ export function createBankingAccessLayer({
   let _signature = null;
   let _lastError = null;
   let _lastUpdate = null;
-  let _rowListener = null;
+  /** @type {{ invalidate: () => void } | null} the panels' handle, from init */
+  let _panel = null;
   let _clickHandler = null;
   let _request = null;
   let _mode = read('mode', 'share') === 'people' ? 'people' : 'share';
@@ -153,7 +154,7 @@ export function createBankingAccessLayer({
   let _manager = null;
   let _visibility = null;
   let _restoreTimer = null;
-  const notifyRow = () => _rowListener?.();
+  const notifyRow = () => _panel?.invalidate();
   const canSelect = () =>
     overlayHost && screenSpaceEventHandlerFactory && picking;
 
@@ -641,10 +642,8 @@ export function createBankingAccessLayer({
       });
       scheduleRestore();
     },
-    setRowControlsListener(listener) {
-      _rowListener = listener;
-    },
-    init(viewer) {
+    init(viewer, { panel = null } = {}) {
+      _panel = panel;
       // The scene object the app hands layers takes input (the dispatcher);
       // Cesium is its renderer's viewer.
       _host = viewer;
@@ -725,7 +724,7 @@ export function createBankingAccessLayer({
         _dataSource = null;
       }
       _viewer = null;
-      _rowListener = null;
+      _panel = null;
       _answer = null;
       _signature = null;
     },

@@ -142,7 +142,8 @@ export function createWarningAreasLayer({
   let _signature = null;
   let _lastUpdate = null;
   let _lastError = null;
-  let _rowListener = null;
+  /** @type {{ invalidate: () => void } | null} the panels' handle, from init */
+  let _panel = null;
   let _restoreTimer = null;
   let _selected = null; // detail of the warning opened from the list
   let _visibility = null;
@@ -154,7 +155,7 @@ export function createWarningAreasLayer({
   let _advisories = read('advisories', '0') === '1';
   let _trial = read('trial', '1') === '1';
 
-  const notifyRow = () => _rowListener?.();
+  const notifyRow = () => _panel?.invalidate();
   const visible = () =>
     _warnings.filter(
       (w) =>
@@ -436,14 +437,12 @@ export function createWarningAreasLayer({
       });
       scheduleRestore();
     },
-    setRowControlsListener(listener) {
-      _rowListener = listener;
-    },
     setParams(params = {}) {
       if (typeof params.open === 'string') void open(params.open);
       return true;
     },
-    init(viewer) {
+    init(viewer, { panel = null } = {}) {
+      _panel = panel;
       // The scene object the app hands layers; Cesium is its renderer's viewer.
       _viewer = viewerBehind(viewer);
       viewer = _viewer;
@@ -507,7 +506,7 @@ export function createWarningAreasLayer({
       }
       _viewer = null;
       _manager = null;
-      _rowListener = null;
+      _panel = null;
     },
 
     getRowControls() {

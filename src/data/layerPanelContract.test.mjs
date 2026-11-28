@@ -20,6 +20,8 @@ import { createSceneHost } from '../render/rendererOf.js';
 import { worldClock } from '../time/worldClock.js';
 import { createRecentImageryPanel } from '../ui/recentImagery.js';
 import { installFakeResizeObserver } from '../testSupport/fakeResizeObserver.mjs';
+// Fork: the app records its renderer before it builds the catalog.
+import { setForkRenderer } from '../fork/engine.js';
 
 /**
  * Layers this test cannot enable under Node, driven directly instead: their
@@ -97,6 +99,10 @@ test(
     console.warn = () => {};
     const sizes = installFakeResizeObserver();
     const lifetime = new AbortController();
+    // Fork: as src/app/scene.js does before the catalog is built, so the
+    // fork's Cesium-drawn layers stay out on the stub renderer, as they do in
+    // the app (their interface: src/fork/layerPanelInterface.test.mjs).
+    setForkRenderer('stub');
     const sources = createStandaloneLayerSources();
     sources['air-quality'] = { getSnapshot: async () => [] };
     const catalog = createApplicationCatalog({
@@ -119,6 +125,7 @@ test(
       invalidateDetection() {},
     });
     t.after(async () => {
+      setForkRenderer(null);
       presentation.destroy();
       await lifecycle.destroyAll();
       release();

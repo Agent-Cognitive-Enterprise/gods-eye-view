@@ -213,7 +213,8 @@ export function createTrafficDensityLayer({
   let _signature = null;
   let _lastUpdate = null;
   let _lastError = null;
-  let _rowListener = null;
+  /** @type {{ invalidate: () => void } | null} the panels' handle, from init */
+  let _panel = null;
   let _removeMoveEnd = null;
   let _cameraTimer = null;
   let _restoreTimer = null;
@@ -256,7 +257,7 @@ export function createTrafficDensityLayer({
     );
   }
 
-  const notifyRow = () => _rowListener?.();
+  const notifyRow = () => _panel?.invalidate();
   const showDensity = () => _enabled && _mode !== 'objects';
 
   // Changes to the object layer run one at a time and re-read the wanted
@@ -442,11 +443,8 @@ export function createTrafficDensityLayer({
       scheduleRestore();
     },
 
-    setRowControlsListener(listener) {
-      _rowListener = listener;
-    },
-
-    init(viewer) {
+    init(viewer, { panel = null } = {}) {
+      _panel = panel;
       if (_viewer) throw new Error(`${spec.id} layer is already initialized`);
       // The scene object the app hands layers; Cesium is its renderer's viewer.
       _viewer = viewerBehind(viewer);
@@ -566,7 +564,7 @@ export function createTrafficDensityLayer({
       _manager = null;
       _result = null;
       _signature = null;
-      _rowListener = null;
+      _panel = null;
     },
 
     getRowControls() {

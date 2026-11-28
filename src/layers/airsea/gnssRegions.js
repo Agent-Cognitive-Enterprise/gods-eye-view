@@ -101,11 +101,12 @@ export function createShipGnssRegionsLayer({
   let _showEnded = read('ended', '1') === '1';
   let _lastError = null;
   let _lastUpdate = null;
-  let _rowListener = null;
+  /** @type {{ invalidate: () => void } | null} the panels' handle, from init */
+  let _panel = null;
   let _restoreTimer = null;
   let _signature = null;
   let _visibility = null;
-  const notifyRow = () => _rowListener?.();
+  const notifyRow = () => _panel?.invalidate();
   const drawn = () =>
     _showEnded ? [..._regions.active, ..._regions.ended] : _regions.active;
 
@@ -255,10 +256,8 @@ export function createShipGnssRegionsLayer({
       });
       scheduleRestore();
     },
-    setRowControlsListener(listener) {
-      _rowListener = listener;
-    },
-    init(viewer) {
+    init(viewer, { panel = null } = {}) {
+      _panel = panel;
       // The scene object the app hands layers; Cesium is its renderer's viewer.
       _viewer = viewerBehind(viewer);
       viewer = _viewer;
@@ -310,7 +309,7 @@ export function createShipGnssRegionsLayer({
       }
       _viewer = null;
       _manager = null;
-      _rowListener = null;
+      _panel = null;
     },
     getRowControls() {
       const listed = drawn().slice(0, MAX_LIST);

@@ -72,7 +72,8 @@ export function createTrafficAnomaliesLayer({
   let _results = {}; // domain -> anomalies answer
   let _lastError = null;
   let _lastUpdate = null;
-  let _rowListener = null;
+  /** @type {{ invalidate: () => void } | null} the panels' handle, from init */
+  let _panel = null;
   let _restoreTimer = null;
   let _signature = null;
   let _visibility = null;
@@ -81,7 +82,7 @@ export function createTrafficAnomaliesLayer({
       .split(',')
       .filter((d) => d === 'air' || d === 'sea'),
   );
-  const notifyRow = () => _rowListener?.();
+  const notifyRow = () => _panel?.invalidate();
 
   function render() {
     if (!_primitives) return;
@@ -178,10 +179,8 @@ export function createTrafficAnomaliesLayer({
       });
       scheduleRestore();
     },
-    setRowControlsListener(listener) {
-      _rowListener = listener;
-    },
-    init(viewer) {
+    init(viewer, { panel = null } = {}) {
+      _panel = panel;
       // The scene object the app hands layers; Cesium is its renderer's viewer.
       _viewer = viewerBehind(viewer);
       viewer = _viewer;
@@ -231,7 +230,7 @@ export function createTrafficAnomaliesLayer({
       }
       _viewer = null;
       _manager = null;
-      _rowListener = null;
+      _panel = null;
     },
     getRowControls() {
       const cells = [..._domains].flatMap((d) =>
