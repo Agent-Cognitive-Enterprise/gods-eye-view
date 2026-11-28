@@ -56,8 +56,8 @@ const given = (value) => value !== undefined && value !== null;
  * A cable is drawn wide enough to click.
  *
  * Fork: without upstream's dark edges. An outlined line draws by its own
- * material, outside the draw port's batches (settles() and batchable() in
- * src/render/cesium/draw.js), and the bundled cables come in 534 colours:
+ * material, outside the draw port's batches (its settles() and
+ * batchable()), and the bundled cables come in 534 colours:
  * some 500 draws on the terrain globe and a ground primitive per cable part
  * on photoreal, in place of one batch, the cost the fork's 11-05 lag fix
  * removed. Plain solid lines keep the batches.

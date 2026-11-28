@@ -743,15 +743,12 @@ test('cables, landing pins and references draw as their entities did', async () 
 
   const [line] = env.set('lines').items.values();
   assert.equal(line.mode, 'draped');
-  // A pipe: the cable's colour between darker edges, wide enough to click.
+  // Wide enough to click. Fork: solid, without upstream's darker edges, so
+  // the line stays in the draw port's batches (rendering.js CABLE_WIDTH_PX).
   assert.equal(line.widthPx, 8);
   assert.deepEqual(line.style, {
     kind: 'solid',
     color: [0x39 / 255, 0xd5 / 255, 1, 0.92],
-    outline: {
-      color: [(0x39 / 255) * 0.35, (0xd5 / 255) * 0.35, 0.35, 0.95],
-      widthPx: 3,
-    },
   });
   assert.equal(line.clampTo, undefined, 'cable lines follow the stack');
   // Along the rhumb line, as GeoJSON lines were, in steps under 10 km.
