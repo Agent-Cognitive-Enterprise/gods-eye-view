@@ -200,3 +200,20 @@ test('a stack switch while the layer is off draws nothing', async () => {
   assert.equal(cableLine(env).mode, '3d', 're-enabled on the new surface');
   env.layer.destroy();
 });
+
+test('cable lines are solid with no outline, so they draw in a batch', async () => {
+  // An outlined line draws by its own material (settles() and batchable()
+  // in src/render/cesium/draw.js); upstream's dark edges are left out.
+  for (const globeVisible of [true, false]) {
+    const env = await loaded({ globeVisible });
+    const line = cableLine(env);
+    assert.equal(line.style.kind, 'solid', `globe visible: ${globeVisible}`);
+    assert.equal(
+      line.style.outline,
+      undefined,
+      `globe visible: ${globeVisible}`,
+    );
+    assert.equal(line.widthPx, 8, 'wide enough to click, as upstream');
+    env.layer.destroy();
+  }
+});

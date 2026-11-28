@@ -53,21 +53,20 @@ const propColor = (value) =>
 const given = (value) => value !== undefined && value !== null;
 
 /**
- * A cable is drawn as a pipe: its colour between dark edges, wide enough to
- * click.
+ * A cable is drawn wide enough to click.
+ *
+ * Fork: without upstream's dark edges. An outlined line draws by its own
+ * material, outside the draw port's batches (settles() and batchable() in
+ * src/render/cesium/draw.js), and the bundled cables come in 534 colours:
+ * some 500 draws on the terrain globe and a ground primitive per cable part
+ * on photoreal, in place of one batch, the cost the fork's 11-05 lag fix
+ * removed. Plain solid lines keep the batches.
  */
 const CABLE_WIDTH_PX = 8;
-const CABLE_EDGE_PX = 3;
-const darker = (color) => [
-  color[0] * 0.35,
-  color[1] * 0.35,
-  color[2] * 0.35,
-  0.95,
-];
 
 /**
  * How a line draws. A cable with a reference takes the cable's own colour
- * (or the base colour), dark edges and one width, whatever the feature
+ * (or the base colour) and one width, whatever the feature
  * asks; every other
  * line keeps the GeoJSON styling it always had: the source's colour,
  * overridable by the feature's simplestyle `stroke`, `stroke-opacity` and
@@ -78,11 +77,8 @@ function lineStyle(props, cable, styled, baseColor) {
     const color = propColor(props.color) ?? baseColor;
     return {
       widthPx: CABLE_WIDTH_PX,
-      style: {
-        kind: 'solid',
-        color: withAlpha(color, 0.92),
-        outline: { color: darker(color), widthPx: CABLE_EDGE_PX },
-      },
+      // Fork: no outline, so the line stays in a batch (see CABLE_WIDTH_PX).
+      style: { kind: 'solid', color: withAlpha(color, 0.92) },
     };
   }
   return {
